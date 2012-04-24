@@ -1,0 +1,65 @@
+#!/bin/csh -f
+#BSUB -J GO.coco.par
+#BSUB -u komuro
+#BSUB -n 4
+#BSUB -W 10
+#BSUB -a ICE
+#BSUB -R rusage[mem=128]
+
+setenv OGCMDIR /home/komuro/coco5.0
+setenv BINARY  $OGCMDIR/bin/coco.par
+setenv RUNDIR  $OGCMDIR/RUN
+setenv DATDIR  $RUNDIR
+setenv MPIRUN  mpijob
+setenv PARAMET PARAMET
+
+cd $RUNDIR
+/bin/rm -f $PARAMET
+
+#######################################################################
+cat << EOF >>! $PARAMET
+ &nmrun crun='coco5.0 test' &end
+
+# &nmschm ieb=9, ileap=90 &end
+ &nmcaln icaln=0 &end
+ &nmtime itstrt=0,1,1,0,0,0,
+         itend=0,2,1,0,0,0,
+         tmstp=1.0D0, iutstp=4, ntsplt=60 &end
+ &nmrstr irintv=100, iurint=1, irsrwd=1 &end
+ &nmaccv acc=1.D0 &end
+ &nmaccb accb=1.D0 &end
+ &nmfini cfinit='$DATDIR/INITO', irstrt=0 &end
+ &nmfrst cfrest='$RUNDIR/RSTO' &end
+ &nmmask cfmask='$RUNDIR/MASK' &end
+
+ &nmdout iodstr=0,1,1,0,0,0,
+         iodend=0,2,1,0,0,0,
+         iodint=1, iudint=3, iodavr=0, iodsng=1 &end
+ &nmhist cohitm='T', cohfil='t' &end
+ &nmhist cohitm='S', cohfil='s' &end
+ &nmhist cohitm='U', cohfil='u' &end
+ &nmhist cohitm='V', cohfil='v' &end
+ &nmhist cohitm='SH', cohfil='sh' &end
+
+ &nmsfbc cftsfc='$DATDIR/TSFC','$DATDIR/SSFC',
+         cftdmp='$DATDIR/TDMP','$DATDIR/SDMP',
+         cftaux='$DATDIR/TAUX',
+         cftauy='$DATDIR/TAUY' &end
+
+ &nmvish amh=3.D10 &end
+ &nmdifh ahh=1.D7 &end
+ &nmdifi ahi=3.D8 &end
+ &nmdfsh ash=1.D7 &end
+# &nmdadj ahvcnv=1.D4 &end
+ &nmvisv amv0=1.D0,1.D0,1.D0,1.D0,1.D0,1.D0,1.D0,1.D0,1.D0,1.D0,1.D0,1.D0,1.D0,1.D0,1.D0,1.D0,1.D0,1.D0,1.D0,1.D0,1.D0,1.D0,1.D0,1.D0,1.D0,1.D0,1.D0,1.D0 &end
+ &nmdifv ahv0=0.1D0,0.1D0,0.1D0,0.1D0,0.1D0,0.11D0,0.12D0,0.13D0,0.14D0,0.15D0,0.2D0,0.3D0,0.45D0,0.65D0,0.9D0,1.2D0,1.55D0,1.9D0,2.2D0,2.45D0,2.65D0,2.8D0,2.9D0,2.95D0,2.96D0,2.97D0,2.98D0,2.99D0 &end
+ &nmdvnk mz=10 &end
+ &nmbtmf btmfrc=1.3D-3 &end
+
+ &nmwupc alpha=0.7D0, alphav=0.9D0 &end
+ &nmimpl aimp=5.D-1 &end
+EOF
+#######################################################################
+
+rm STDOUT* ERROUT
+$MPIRUN "$BINARY >& ERROUT"

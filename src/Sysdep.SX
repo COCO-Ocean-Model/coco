@@ -1,0 +1,10 @@
+FC      = sxf90
+FFLAGS  = -Wf'-pvctl fullmsg' 
+FOPTION = $(FFLAGS) -I$(OGCMDIR)/src/include -USX $(OPTBDY) $(OPTSRST) $(OPTBBL) $(OPTTRIPOLE)
+
+AR      = sxar r
+RANLIB  = touch
+RM      = rm -f
+
+.F.o:
+	$(FC) $(FOPTION) -c $<

@@ -1,0 +1,24 @@
+FC      = esmpif90
+##FFLAGS  = -C vsafe -Wf'-pvctl fullmsg'
+FFLAGS  =  -Wf'-L fmtlist transform -pvctl fullmsg noassume nodivloop noloopchg vr256 noverrchk novlchk -i noerrchk' -pi
+
+##FFLAGS  = -Wf'-pvctl fullmsg noassume nodivloop noloopchg vr256 noverrchk novlchk -i noerrchk' -pi
+
+##FFLAGS  =  -Wf'-L fmtlist transform \
+                      -pvctl fullmsg vr256 noverrchk novlchk -i noerrchk \
+                      -O extendreorder' \
+                  -pi noexp=rmdidx,xcoff,catnum,sortin \
+                  -gmalloc \
+                  -acct
+
+FOPTION = $(FFLAGS) -I$(OGCMDIR)/src/include -DOPT_PARALLEL -UES $(OPTBDY) $(OPTSRST) $(OPTBBL) $(OPTTRIPOLE)
+
+AR      = esar r
+RANLIB  = touch
+RM      = rm -f
+
+.F.o:
+	sed -e '/^\*VOPTION/s/.*/\*vdir nodep/' $< > $*.tmp.F
+	$(FC) $(FOPTION) -c $*.tmp.F
+	mv $*.tmp.o $*.o
+	$(RM) $*.tmp.F

@@ -1,0 +1,13 @@
+FC	= ifort
+#FFLAGS	= -u -w -O3 -mp -ip -convert big_endian
+FFLAGS = -u -w -O2 -fltconsistency -mtune=itanium2-p9000 -convert big_endian
+#FFLAGS  = -u -w -O0 -convert big_endian
+#FOPTION = $(FFLAGS) /home/komuro/fp/lib/ctype.o -Vaxlib -I$(OGCMDIR)/src/include $(OPTBDY) $(OPTBBL) $(OPTTRIPOLE)
+FOPTION = $(FFLAGS) -Vaxlib -I$(OGCMDIR)/src/include $(OPTBDY) $(OPTSRST) $(OPTBBL) $(OPTTRIPOLE)
+
+AR	= ar r
+RANLIB	= ranlib
+#RANLIB	= touch
+
+.F.o:
+	$(FC) $(FOPTION) -c $<

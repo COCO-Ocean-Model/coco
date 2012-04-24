@@ -1,0 +1,8 @@
+FC	= f90
+FFLAGS	= 
+FOPTION = 
+UNIT22	= ftn22
+RUNOPT	= 
+
+.F.o:
+	$(FC) $(FOPTION) -c $<

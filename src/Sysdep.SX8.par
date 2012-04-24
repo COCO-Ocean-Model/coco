@@ -1,0 +1,10 @@
+FC      = sxmpif90
+FFLAGS  = -Wf'-pvctl fullmsg noassume nodivloop noloopchg vr256 noverrchk novlchk -i noerrchk' -pi
+FOPTION = $(FFLAGS) -I$(OGCMDIR)/src/include -DOPT_PARALLEL -USX $(OPTBDY) $(OPTSRST) $(OPTBBL) $(OPTTRIPOLE)
+
+AR      = sxar r
+RANLIB  = touch
+RM      = rm -f
+
+.F.o:
+	$(FC) $(FOPTION) -c $<

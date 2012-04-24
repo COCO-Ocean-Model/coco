@@ -1,0 +1,13 @@
+FC	= f77
+FFLAGS	= -u
+FOPTION = $(FFLAGS) -I$(OGCMDIR)/src/include
+UNIT31	= fort.31
+UNIT32	= fort.32
+UNIT33	= fort.33
+UNIT34	= fort.34
+UNIT35	= fort.35
+UNIT36	= fort.36
+RUNOPT	=
+
+.F.o:
+	$(FC) $(FOPTION) -c $<

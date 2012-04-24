@@ -1,0 +1,11 @@
+FC	= f77
+FFLAGS  =
+FOPTION = -W0,'$(FFLAGS)'
+UNIT22	= ft.22
+RUNOPT	= -F'port(stduf)'
+
+.f.o:
+	sed -e '/^      INCLUDE/s/"/(/' $< | sed -e '/^      INCLUDE/s/"/)/' > $*.tmp.f
+	$(FC) $(FOPTIONS) -c $*.tmp.f
+	mv $*.tmp.o $*.o
+	$(RM) $*.tmp.f

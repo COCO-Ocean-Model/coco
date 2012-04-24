@@ -1,0 +1,8 @@
+FC	= f90
+FFLAGS  =
+FOPTION = -W0,'$(FFLAGS)' -I$(OGCMDIR)/src/include
+UNIT41	= ft.41
+RUNOPT	= 
+
+.F.o:
+	$(FC) $(FOPTION) -c $<

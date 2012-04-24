@@ -1,0 +1,8 @@
+FC	= f77
+FFLAGS	= -f -N3 -N26 -B108
+FOPTION = $(FFLAGS)
+UNIT22	= fort.22
+RUNOPT	=
+
+.F.o:
+	$(FC) $(FOPTION) -c $<

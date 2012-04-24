@@ -1,0 +1,10 @@
+FC	= g77
+FFLAGS	= -O -u
+FOPTION = $(FFLAGS) -I$(OGCMDIR)/src/include $(OPTBDY) $(OPTSRST) $(OPTBBL) $(OPTTRIPOLE)
+
+AR	= ar r
+RANLIB	= ranlib
+#RANLIB	= touch
+
+.F.o:
+	$(FC) $(FOPTION) -c $<

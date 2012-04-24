@@ -1,0 +1,8 @@
+FC	= ifort
+FFLAGS	= -convert big_endian
+FOPTION = $(FFLAGS)
+UNIT22	= fort.22
+RUNOPT	=
+
+.F.o:
+	$(FC) $(FOPTION) -c $<

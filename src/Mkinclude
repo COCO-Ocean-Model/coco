@@ -1,0 +1,30 @@
+OGCMDIR	= /home/komuro/esata1/work_coco5.0/coco5.0
+RM	= rm -f
+
+SYSTEM	= ifort
+
+MODEL = coco
+#MODEL = icedcoco
+
+PARALLEL = .par
+#OPTBDY  = -DOPT_BODY
+#OPTSRST = -DOPT_SRST
+#OPTBBL  = -DOPT_BBL
+#OPTTRIPOLE = -DOPT_TRIPOLE
+
+TSTAG=.tstag
+
+# coco default
+OBJOPT	= tflxt.iso-ut.o dvdnk.o
+
+# icedcoco default
+#OBJOPT	= tflxt.iso-ut.o dvdnk.o ipthm.linrmp.o 
+
+# CORE global simple
+#OBJOPT	= aocea.icedcoco.nmlwtr.o tflxt.iso-ut.o dvdnk.c0lat.o csrvl.bblmzns.o cvisc.amh2d.o fshlw.novis.o ipthm.linrmp.o ipmmt.pice.o aprdc.icedcoco.tundf$(TSTAG).o tslvt.icedcoco.tundf.para.o sfcng.CORE.o utint.CORE.o
+
+OBJENS = 
+#OBJENS = aocea.$(MODEL).o aprdc.$(MODEL)$(TSTAG).o binst.$(MODEL).o bstbc.$(MODEL).o cadvc$(TSTAG).o ctnuv$(TSTAG).o dvlva.o
+
+TARGET	= $(OGCMDIR)/bin/$(MODEL)$(PARALLEL)
+LIBOGCM	= $(OGCMDIR)/lib/lib$(MODEL)$(PARALLEL).a

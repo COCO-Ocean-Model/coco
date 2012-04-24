@@ -1,0 +1,8 @@
+FC	= f77
+FFLAGS	= -u -convert big_endian -O4 -fast -fpe3 -tune host 
+FOPTION = $(FFLAGS) -I$(OGCMDIR)/src/include
+UNIT41	= fort.41
+RUNOPT	=
+
+.F.o:
+	$(FC) $(FOPTION) -c $<

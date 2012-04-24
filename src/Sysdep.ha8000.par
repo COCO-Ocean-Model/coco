@@ -1,0 +1,20 @@
+FC	= /opt/mpich-mx/bin/mpif90
+#LINKOPT	= -noparallel
+LINKOPT	= -parallel
+RUNOPT = -F'PORT(ENDIANINOUT)'
+
+#FFLAGS	= -Os -noifswpl -nodisbracket -autoinline -hf77  -codemodel=medium 
+#FFLAGS	= $(LINKOPT) -Os -hf77  -codemodel=medium 
+##FFLAGS	= -Oss -autoinline -hf77  -codemodel=medium  $(LINKOPT)
+FFLAGS	= -msg=w -Oss -autoinline -codemodel=medium  $(LINKOPT)
+FOPTION = $(FFLAGS) -I$(OGCMDIR)/src/include -DOPT_PARALLEL $(OPTBDY) $(OPTSRST) $(OPTBBL) $(OPTTRIPOLE)
+#FFLAGS	=  opt(o(ss),predicate(0),disbracket(0)),list(s,p),langlvl(hf(77))
+#FOPTION = -W0,"'$(FFLAGS)'" -I$(OGCMDIR)/src/include -DOPT_PARALLEL $(OPTBDY) $(OPTSRST) $(OPTBBL) $(OPTTRIPOLE)
+
+
+AR	= /usr/bin/ar -r 
+RANLIB	= /usr/bin/ranlib
+RM	= rm -f
+
+.F.o:
+	$(FC) $(FOPTION) -c $<

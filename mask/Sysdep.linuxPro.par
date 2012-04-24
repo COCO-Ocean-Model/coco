@@ -1,0 +1,10 @@
+FC	= f77
+FFLAGS	= -f -s -N15 -N26
+#FC	= f90
+#FFLAGS	= -N26 -YALL_NAMES=LCS -YEXT_SFX=_
+FOPTION = $(FFLAGS) -DOPT_PARALLEL
+UNIT22	= fort.22
+RUNOPT	=
+
+.F.o:
+	$(FC) $(FOPTION) -c $<
