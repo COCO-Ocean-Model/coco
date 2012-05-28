@@ -1,5 +1,6 @@
 *** COCO の使い方 *** written by H.Hasumi, 
                      revised by Y.Komuro, '12.04.20 ver.4.9.beta1
+                     revised by Y.Komuro, '12.05.28 ver.4.9.beta2
 
 目次
 
@@ -2017,8 +2018,6 @@ NMMLEP:
 を設定してもよい。
 
 * tflxt.iso-som, tslvt.($MODEL).som
-【注意：このルーチンは ver.4.9.beta1 時点で tripolar で正常に動くか
-  テストされていない。おそらく問題ないと思われるが、利用は注意されたし】
 トレーサーの拡散に等密度面拡散および Gent et al. (1995) による isopycnal
 layer thickness diffusion を、移流に second order moment scheme
 (Prather, 1988) を用いる。指定すべきパラメータは tflxt.iso-ut の

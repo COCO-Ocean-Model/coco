@@ -138,7 +138,7 @@ c ---------------------------------------------------------------------
      &                                    1.D0,  0,  0 )
             CALL RSTADD(SY(1, 1, N), OEOF,
      &                  NXDIM, NYDIM, NZDIM, 'SY', 'OCN',
-     &                                    1.D0,  0,  0 )
+     &                                   -1.D0,  0,  0 )
             CALL RSTADD(SZ(1, 1, N), OEOF,
      &                  NXDIM, NYDIM, NZDIM, 'SZ', 'OCN',
      &                                    1.D0,  0,  0 )
@@ -153,13 +153,13 @@ c ---------------------------------------------------------------------
      &                                    1.D0,  0,  0 )
             CALL RSTADD(SXY(1, 1, N), OEOF,
      &                  NXDIM, NYDIM, NZDIM, 'SXY', 'OCN',
-     &                                    1.D0,  0,  0 )
+     &                                   -1.D0,  0,  0 )
             CALL RSTADD(SXZ(1, 1, N), OEOF,
      &                  NXDIM, NYDIM, NZDIM, 'SXZ', 'OCN',
      &                                    1.D0,  0,  0 )
             CALL RSTADD(SYZ(1, 1, N), OEOF,
      &                  NXDIM, NYDIM, NZDIM, 'SYZ', 'OCN',
-     &                                    1.D0,  0,  0 )
+     &                                   -1.D0,  0,  0 )
 #else
             CALL RSTADD(SX(1, 1, N), OEOF,
      &                  NXDIM, NYDIM, NZDIM, 'SX', 'OCN')
@@ -186,9 +186,9 @@ c ---------------------------------------------------------------------
 
       IF (OFINAL) THEN
          DO N = 1, NTDIM
-            CALL FINADD( SX(1, 1, N), NXDIM, NYDIM, NZDIM, 'SX', 'OCN')
-            CALL FINADD( SY(1, 1, N), NXDIM, NYDIM, NZDIM, 'SY', 'OCN')
-            CALL FINADD( SZ(1, 1, N), NXDIM, NYDIM, NZDIM, 'SZ', 'OCN')
+            CALL FINADD( SX(1, 1, N), NXDIM, NYDIM, NZDIM, 'SX',  'OCN')
+            CALL FINADD( SY(1, 1, N), NXDIM, NYDIM, NZDIM, 'SY',  'OCN')
+            CALL FINADD( SZ(1, 1, N), NXDIM, NYDIM, NZDIM, 'SZ',  'OCN')
             CALL FINADD(SXX(1, 1, N), NXDIM, NYDIM, NZDIM, 'SXX', 'OCN')
             CALL FINADD(SYY(1, 1, N), NXDIM, NYDIM, NZDIM, 'SYY', 'OCN')
             CALL FINADD(SZZ(1, 1, N), NXDIM, NYDIM, NZDIM, 'SZZ', 'OCN')
@@ -217,42 +217,43 @@ c ---------------------------------------------------------------------
          DO N = 1, NTDIM
             DO K = 1, NZDIM
                DO IJ = 1, NXYDIM
-                  F0 (IJ, K) = 0.D0
-                  FM (IJ, K) = 0.D0
-                  FX (IJ, K) = 0.D0
-                  FY (IJ, K) = 0.D0
-                  FZ (IJ, K) = 0.D0
-                  FXX(IJ, K) = 0.D0
-                  FYY(IJ, K) = 0.D0
-                  FZZ(IJ, K) = 0.D0
-                  FXY(IJ, K) = 0.D0
-                  FXZ(IJ, K) = 0.D0
-                  FYZ(IJ, K) = 0.D0
+                  F0 (IJ, K)    = 0.D0
+                  FM (IJ, K)    = 0.D0
+                  FX (IJ, K)    = 0.D0
+                  FY (IJ, K)    = 0.D0
+                  FZ (IJ, K)    = 0.D0
+                  FXX(IJ, K)    = 0.D0
+                  FYY(IJ, K)    = 0.D0
+                  FZZ(IJ, K)    = 0.D0
+                  FXY(IJ, K)    = 0.D0
+                  FXZ(IJ, K)    = 0.D0
+                  FYZ(IJ, K)    = 0.D0
                   S0 (IJ, K, N) = 0.D0
                   SM (IJ, K, N) = 0.D0
-                  VLMX(IJ, K) = 0.D0
-                  VLMY(IJ, K) = 0.D0
-                  VLMZ(IJ)    = 0.D0
-                  ALF(IJ, K)  = 0.D0
+                  VLMX(IJ, K)   = 0.D0
+                  VLMY(IJ, K)   = 0.D0
+                  VLMZ(IJ)      = 0.D0
+                  ALF(IJ, K)    = 0.D0
                END DO
             END DO
          END DO
+
          IF (OEOF) THEN
-         DO N = 1, NTDIM
-            DO K = 1, NZDIM
-               DO IJ = 1, NXYDIM
-                  SX (IJ, K, N) = 0.D0
-                  SY (IJ, K, N) = 0.D0
-                  SZ (IJ, K, N) = 0.D0
-                  SXX(IJ, K, N) = 0.D0
-                  SYY(IJ, K, N) = 0.D0
-                  SZZ(IJ, K, N) = 0.D0
-                  SXY(IJ, K, N) = 0.D0
-                  SXZ(IJ, K, N) = 0.D0
-                  SYZ(IJ, K, N) = 0.D0
+            DO N = 1, NTDIM
+               DO K = 1, NZDIM
+                  DO IJ = 1, NXYDIM
+                     SX (IJ, K, N) = 0.D0
+                     SY (IJ, K, N) = 0.D0
+                     SZ (IJ, K, N) = 0.D0
+                     SXX(IJ, K, N) = 0.D0
+                     SYY(IJ, K, N) = 0.D0
+                     SZZ(IJ, K, N) = 0.D0
+                     SXY(IJ, K, N) = 0.D0
+                     SXZ(IJ, K, N) = 0.D0
+                     SYZ(IJ, K, N) = 0.D0
+                  END DO
                END DO
             END DO
-         END DO
          END IF
 
 !---- area normal to u defined on UV-grid
@@ -532,11 +533,13 @@ c ---------------------------------------------------------------------
       DO 630 N = 1, NTDIM
          DO 620 K = KSTR, KEND
             DO 610 IJ = IJTSTR, IJTEND
+
                ADT(IJ, K, N) =
      &         (  (  (FTX(IJ+LE, K, N) - FTX(IJ, K, N)) * RX
      &             + (FTY(IJ+LN, K, N) - FTY(IJ, K, N)) * RY(IJ)) *
      &            RXT(IJ) * RYT(IJ)
      &          + FTZ(IJ, K, N) - FTZ(IJ, K+1, N)) / DZ(IJ, K)
+
   610       CONTINUE
   620    CONTINUE
   630 CONTINUE
@@ -552,6 +555,7 @@ c ---------------------------------------------------------------------
       END DO
 
       DO N = 1, NTDIM
+
          DO IJ = IJTSTR, IJTEND+NXDIM
             IJLS = IJ + LS
             FTY(IJ, KEND, N) =
@@ -576,6 +580,7 @@ c ---------------------------------------------------------------------
      &         RXT(IJ) * RYT(IJ)
      &       + FTZ(IJ, KEND, N)) / DZ(IJ, KEND)
          END DO
+
       END DO
 
 #endif
@@ -992,7 +997,7 @@ c ---------------------------------------------------------------------
             IJLS  = IJ + LS
             IJLSW = IJ + LSW
 
-            UV(IJ, K) = ( VY(IJLS , K) * VLMX(IJLS, K)
+            UV(IJ, K) = ( VY(IJLS , K) * VLMX(IJLS , K)
      &                  + VY(IJLSW, K) * VLMX(IJLSW, K) )
      &                * AMSKT(IJ, K) * AMSKT(IJLS, K) 
 
@@ -1082,23 +1087,23 @@ c ---------------------------------------------------------------------
 !---- bug fix 2
 #ifdef OPT_PARALLEL
 #ifdef OPT_TRIPOLE
-      CALL SHIFT1(    SY(:,:,N),
-     D             NXDIM, NYDIM, NZDIM,
-     I             1.D0,      0,      0 )
-      CALL SHIFT1(   SYY(:,:,N),
-     D             NXDIM, NYDIM, NZDIM,
-     I             1.D0,      0,      0 )
-      CALL SHIFT1(   SXY(:,:,N),
-     D             NXDIM, NYDIM, NZDIM,
-     I             1.D0,      0,      0 )
-      CALL SHIFT1(   SYZ(:,:,N),
-     D             NXDIM, NYDIM, NZDIM,
-     I             1.D0,      0,      0 )
+         CALL SHIFT1( SY(:,:,N),
+     D                NXDIM, NYDIM, NZDIM,
+     I               -1.D0,      0,      0 )
+         CALL SHIFT1( SYY(:,:,N),
+     D                NXDIM, NYDIM, NZDIM,
+     I                1.D0,      0,      0 )
+         CALL SHIFT1( SXY(:,:,N),
+     D                NXDIM, NYDIM, NZDIM,
+     I               -1.D0,      0,      0 )
+         CALL SHIFT1( SYZ(:,:,N),
+     D                NXDIM, NYDIM, NZDIM,
+     I               -1.D0,      0,      0 )
 #else
-         CALL SHIFT1( SY (:,:,N), NXDIM, NYDIM, NZDIM )
-         CALL SHIFT1( SYY(:,:,N), NXDIM, NYDIM, NZDIM )
-         CALL SHIFT1( SXY(:,:,N), NXDIM, NYDIM, NZDIM )
-         CALL SHIFT1( SYZ(:,:,N), NXDIM, NYDIM, NZDIM )
+      CALL SHIFT1( SY (:,:,N), NXDIM, NYDIM, NZDIM )
+      CALL SHIFT1( SYY(:,:,N), NXDIM, NYDIM, NZDIM )
+      CALL SHIFT1( SXY(:,:,N), NXDIM, NYDIM, NZDIM )
+      CALL SHIFT1( SYZ(:,:,N), NXDIM, NYDIM, NZDIM )
 #endif
 #endif
 
@@ -1767,31 +1772,31 @@ c ---------------------------------------------------------------------
 #ifdef OPT_TRIPOLE
       CALL SHIFT1(    SX,
      D             NXDIM, NYDIM, NZTDIM,
-     I             1.D0,      0,      0 )
+     I              1.D0,     0,      0 )
       CALL SHIFT1(    SY,
      D             NXDIM, NYDIM, NZTDIM,
-     I             1.D0,      0,      0 )
+     I             -1.D0,     0,      0 )
       CALL SHIFT1(    SZ,
      D             NXDIM, NYDIM, NZTDIM,
-     I             1.D0,      0,      0 )
+     I              1.D0,     0,      0 )
       CALL SHIFT1(   SXX,
      D             NXDIM, NYDIM, NZTDIM,
-     I             1.D0,      0,      0 )
+     I              1.D0,     0,      0 )
       CALL SHIFT1(   SYY,
      D             NXDIM, NYDIM, NZTDIM,
-     I             1.D0,      0,      0 )
+     I              1.D0,     0,      0 )
       CALL SHIFT1(   SZZ,
      D             NXDIM, NYDIM, NZTDIM,
-     I             1.D0,      0,      0 )
+     I              1.D0,     0,      0 )
       CALL SHIFT1(   SXY,
      D             NXDIM, NYDIM, NZTDIM,
-     I             1.D0,      0,      0 )
+     I             -1.D0,     0,      0 )
       CALL SHIFT1(   SXZ,
      D             NXDIM, NYDIM, NZTDIM,
-     I             1.D0,      0,      0 )
+     I              1.D0,     0,      0 )
       CALL SHIFT1(   SYZ,
      D             NXDIM, NYDIM, NZTDIM,
-     I             1.D0,      0,      0 )
+     I             -1.D0,     0,      0 )
 #else
 !      CALL SHIFT1( S0 , NXDIM, NYDIM, NZTDIM )
       CALL SHIFT1( SX , NXDIM, NYDIM, NZTDIM )
