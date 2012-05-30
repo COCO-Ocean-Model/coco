@@ -26,3 +26,4 @@ clean:
 	cd shared; make clean
 	cd enstr; make clean
 	cd option; make clean
+	$(RM) ../lib/*
