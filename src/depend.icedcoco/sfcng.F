@@ -5,7 +5,10 @@
      O            TAUAIX, TAUAIY, TAUAOX, TAUAOY,
      O                FT,   PTOP,   SSFC,
      I                 T,      A,     HI,     TI,    HSN)
-
+      use zocdim
+      use zocgrd
+      use zocmsk
+      use zocphy
       IMPLICIT NONE
 
 c --- information -----------------------------------------------------
@@ -26,11 +29,6 @@ c     '10.04.14  M.Kurogi: (COCO4.4 tripolar code by Dr. Suzuki)
 c
 c
 c ---------------------------------------------------------------------
-
-#include "zocdim.F"
-#include "zocgrd.F"
-#include "zocmsk.F"
-#include "zocphy.F"
 
       REAL*8 FACTM, FACTH, FACTW
       PARAMETER(FACTM = 1.0D+1, FACTH = 1.0D+3, FACTW = 1.0D+2)
@@ -307,11 +305,9 @@ c *********************************************************************
      I           DTFDS , DQFDS , DGFDS ,
      I           RFLXSD, RFLXLD,
      I           GRICR , TMI) 
+      use zocdim
+      use zocphy
       IMPLICIT NONE
-*
-*   [PARAM] 
-#include "zocdim.F"
-#include "zocphy.F"
 *   
 *   [MODIFY] 
       REAL*8     GDTS  ( NXYDIM )                !! skin temperature
@@ -414,10 +410,9 @@ c *********************************************************************
 c *********************************************************************
 
       SUBROUTINE OSFBCS_OMIP
+      use zocdim
+      use zocphy
       IMPLICIT NONE
-
-#include "zocdim.F"
-#include "zocphy.F"
 
       INTEGER NTYZ0, NRBND
       PARAMETER(NTYZ0 = 3, NRBND = 3)
@@ -577,12 +572,11 @@ c *********************************************************************
       SUBROUTINE SEAZ0F_OMIP
      O         ( GRZ0M , GRZ0H , GRZ0E ,
      I           USFC  )
+      use zocdim
+      use zocphy
       IMPLICIT NONE
 *
 *      roughness of sea surface (Miller et al., 1992)
-*
-#include "zocdim.F"
-#include "zocphy.F"
 *
 *   [OUTPUT] 
       REAL*8     GRZ0M  ( NXYDIM )        !! surface roughness (V)
@@ -660,11 +654,10 @@ c *********************************************************************
      O           DTFDT , DTFDS , DQFDS , 
      I           USFC  , GDTA  , GDQA  , GDPS  ,
      I           GDTS  , GRZ0  )
+      use zocdim
+      use zocphy
+      use zqsat
       IMPLICIT NONE
-*
-*   [PARAM] 
-#include "zocdim.F"
-#include "zocphy.F"
 
       INTEGER NTYZ0
       PARAMETER(NTYZ0 = 3)
@@ -702,7 +695,6 @@ c *********************************************************************
       NAMELIST /NMSAIR/ ZA
 *
 *   [INTERNAL FUNC] 
-#include        "zqsat.F"                /* saturate q */
       DATA       OFIRST / .TRUE. /
       DATA ZA / 2.D0 /
 *
@@ -746,10 +738,9 @@ c *********************************************************************
       SUBROUTINE BLKCOF_OMIP
      O         ( CMV   , CHV   , CEV   ,
      I           USFC  , GDTA  , GDQA  , GDTS  , GDPS  , GRZ0  )
+      use zocdim
+      use zocphy
       IMPLICIT NONE
-
-#include "zocdim.F"
-#include "zocphy.F"
 
       INTEGER NTYZ0
       PARAMETER(NTYZ0 = 3)
@@ -858,6 +849,9 @@ c *********************************************************************
       SUBROUTINE BDYFLX(
      O                 TQ,
      I                  T)
+      use zocdim
+      use zocgrd
+      use zocmsk
       IMPLICIT NONE
 
 c --- information -----------------------------------------------------
@@ -871,17 +865,13 @@ c     '02.06.02  H.Hasumi: tracer dimension
 c
 c ---------------------------------------------------------------------
 
-#include "zocdim.F"
-#include "zocgrd.F"
-#include "zocmsk.F"
-
       REAL*8      TQ(NXYDIM, NZDIM, NTDIM)
       REAL*8       T(NXYDIM, NZDIM, NTDIM)
 
       INTEGER     IJ,      K,      L,      N
 
       REAL*8  TBDY(NXYDIM, NZDIM, NTDIM), TDMB(NXYDIM, NZDIM, NTDIM)
-      COMMON /WORK/ TBDY, TDMB
+c      COMMON /WORK/ TBDY, TDMB
 
 c      DO L = 1, NTDIM
       DO L = 1, 2

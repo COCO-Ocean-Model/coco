@@ -1,6 +1,9 @@
       SUBROUTINE OVTSET(
      O                       R,
      I                       T)
+      use zocdim
+      use zocgrd
+      use zocmsk
       IMPLICIT NONE
 
 c --- information -----------------------------------------------------
@@ -25,10 +28,6 @@ c     '10.04.14  Y.Komuro: dummy OVTURN (just diagnosing R)
 c
 c ---------------------------------------------------------------------
 
-#include "zocdim.F"
-#include "zocgrd.F"
-#include "zocmsk.F"
-
       REAL*8       R(NXYDIM, NZDIM)
       REAL*8       T(NXYDIM, NZDIM, NTDIM)
       REAL*8       H(NXYDIM)
@@ -37,7 +36,7 @@ c ---------------------------------------------------------------------
       REAL*8    CONV(NXYDIM, NZDIM)
       REAL*8   DZSIG(NXYDIM, NZDIM)
       INTEGER    LUP(NXYDIM)
-      COMMON /WORK/ TTL, W2, CONV, DZSIG, LUP
+c      COMMON /WORK/ TTL, W2, CONV, DZSIG, LUP
 
       REAL*8 C0(NZDIM), C1(NZDIM), C2(NZDIM)
       REAL*8 C3(NZDIM), C4(NZDIM), C5(NZDIM), C6(NZDIM)

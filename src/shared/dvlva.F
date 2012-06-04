@@ -1,6 +1,9 @@
       SUBROUTINE VELVAD(
      O               UADV,   VADV,   WADV,
      I                  U,      V,      W)
+      use zocdim
+      use zocgrd
+      use zocmsk
       IMPLICIT NONE
 
 c --- information -----------------------------------------------------
@@ -19,10 +22,6 @@ c     '09.02.23  Y.Komuro: bug fix by Dr. Kurogi
 c                          (loop length extended)
 c
 c ---------------------------------------------------------------------
-
-#include "zocdim.F"
-#include "zocgrd.F"
-#include "zocmsk.F"
 
       REAL*8    UADV(NXYDIM, NZDIM),   VADV(NXYDIM, NZDIM)
       REAL*8    WADV(NXYDIM, NZDIM)

@@ -5,7 +5,10 @@
      O            TAUAIX, TAUAIY, TAUAOX, TAUAOY,
      O                FT,   PTOP,   SSFC,
      I                 T,      A,     HI,     TI,    HSN)
-
+      use zocdim
+      use zocgrd
+      use zocmsk
+      use zocphy
       IMPLICIT NONE
 
 c --- information -----------------------------------------------------
@@ -27,11 +30,6 @@ c     '10.04.14  M.kurogi
 c     '10.04.14  M.Kurogi: for tripolar grid
 c
 c ---------------------------------------------------------------------
-
-#include "zocdim.F"
-#include "zocgrd.F"
-#include "zocmsk.F"
-#include "zocphy.F"
 
       REAL*8 FACTM, FACTH, FACTW
       PARAMETER(FACTM = 1.0D+1, FACTH = 1.0D+3, FACTW = 1.0D+2)
@@ -457,13 +455,11 @@ c *********************************************************************
      I           DTFDS , DQFDS , DGFDS ,
      I           RFLXS , RFLXLD,
      I           GRICR , GRSNW ,    TMI) 
+      use zocdim
+      use zocgrd
+      use zocfil
+      use zocphy
       IMPLICIT NONE
-*
-*   [PARAM] 
-#include "zocdim.F"
-#include "zocgrd.F"
-#include "zocfil.F"
-#include "zocphy.F"
 *   
 *   [MODIFY] 
       REAL*8     GDTS  ( NXYDIM )                !! skin temperature
@@ -629,11 +625,10 @@ c               WRITE(JFPAR, *) IJ, CORT, SINIJ, ASWO2D(IJ)
 c *********************************************************************
 
       SUBROUTINE OSFBCS_OMIP
+      use zocdim
+      use zocfil
+      use zocphy
       IMPLICIT NONE
-
-#include "zocdim.F"
-#include "zocfil.F"
-#include "zocphy.F"
 
       INTEGER NTYZ0, NRBND
       PARAMETER(NTYZ0 = 3, NRBND = 3)
@@ -781,12 +776,11 @@ c *********************************************************************
      O           DUFDU,  DQFDQ,
      I           USFC  , VSFC  , GDTA  , GDQA  , GDPS  ,
      I           GDTS  , L )
+      use zocdim
+      use zocfil
+      use zocphy
+c      use zqsat
       IMPLICIT NONE
-*
-*   [PARAM] 
-#include "zocdim.F"
-#include "zocfil.F"
-#include "zocphy.F"
 
       INTEGER NTYZ0
       PARAMETER(NTYZ0 = 3)
@@ -923,11 +917,11 @@ c *********************************************************************
       SUBROUTINE BLKCOF_CORE
      O         ( CMV   , CHV   , CEV   ,
      I           USFC  , VSFC  , GDTA  , GDQA  , GDTS  , GDPS,    L  )
+      use zocdim
+      use zocfil
+      use zocphy
+c      use zqsat
       IMPLICIT NONE
-
-#include "zocdim.F"
-#include "zocfil.F"
-#include "zocphy.F"
 
       INTEGER NTYZ0
       PARAMETER(NTYZ0 = 3)
@@ -998,7 +992,7 @@ c     bug fix 080908
       DATA       OFIRST / .TRUE. /
 *
 *   [INTERNAL FUNC] 
-#include        "zqsat.F"                /* saturate q */      
+#include        "zqsat.F"                /* saturate q */
 *
 *   [ONCE] 
       IF ( OFIRST ) THEN
@@ -1158,6 +1152,9 @@ c *********************************************************************
       SUBROUTINE BDYFLX(
      O                 TQ,
      I                  T)
+      use zocdim
+      use zocgrd
+      use zocmsk
       IMPLICIT NONE
 
 c --- information -----------------------------------------------------
@@ -1171,17 +1168,13 @@ c     '02.06.02  H.Hasumi: tracer dimension
 c
 c ---------------------------------------------------------------------
 
-#include "zocdim.F"
-#include "zocgrd.F"
-#include "zocmsk.F"
-
       REAL*8      TQ(NXYDIM, NZDIM, NTDIM)
       REAL*8       T(NXYDIM, NZDIM, NTDIM)
 
       INTEGER     IJ,      K,      L,      N
 
       REAL*8  TBDY(NXYDIM, NZDIM, NTDIM), TDMB(NXYDIM, NZDIM, NTDIM)
-      COMMON /WORK/ TBDY, TDMB
+c      COMMON /WORK/ TBDY, TDMB
 
 c      DO L = 1, NTDIM
       DO L = 1, 2

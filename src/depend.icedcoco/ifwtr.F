@@ -3,6 +3,10 @@
      M              PREC,   SNOW,
      O              EVAP,   SUBI, ADJLAT,
      I               WEV,    WSB,   SOFF)
+      use zocdim
+      use zocgrd
+      use zocmsk
+      use zocphy
       IMPLICIT NONE
 
 c --- information -----------------------------------------------------
@@ -15,11 +19,6 @@ c     '08.06.11  H.Hasumi: initial/final processing
 c     '08.07.10  H.Hasumi: initial/final processing
 c
 c ---------------------------------------------------------------------
-
-#include "zocdim.F"
-#include "zocgrd.F"
-#include "zocmsk.F"
-#include "zocphy.F"
 
       REAL*8      AX(NXYDIM, 0:NIC),    HIX(NXYDIM, 0:NIC)
       REAL*8     HSX(NXYDIM, 0:NIC)
@@ -39,7 +38,7 @@ c ---------------------------------------------------------------------
 
       REAL*8      AZ(NXYDIM, 0:NIC),    HIZ(NXYDIM, 0:NIC)
       REAL*8     HSZ(NXYDIM, 0:NIC)
-      COMMON /WORK/ AZ, HIZ, HSZ
+c      COMMON /WORK/ AZ, HIZ, HSZ
 
       DATA OFIRST / .TRUE. /
 

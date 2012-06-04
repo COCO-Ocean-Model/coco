@@ -10,9 +10,8 @@ c
 c ---------------------------------------------------------------------
 
       SUBROUTINE RMMSKV
-
-#include "zocdim.F"
-#include "zocmsk.F"
+      use zocdim
+      use zocmsk
 
       INTEGER     IJ
 
@@ -27,9 +26,8 @@ c ---------------------------------------------------------------------
 c *********************************************************************
 
       SUBROUTINE ADMKV1
-
-#include "zocdim.F"
-#include "zocmsk.F"
+      use zocdim
+      use zocmsk
 
       INTEGER     IJ
 
@@ -43,9 +41,8 @@ c *********************************************************************
 c *********************************************************************
 
       SUBROUTINE ADMKVB
-
-#include "zocdim.F"
-#include "zocmsk.F"
+      use zocdim
+      use zocmsk
 
       INTEGER     IJ
 
@@ -59,9 +56,8 @@ c *********************************************************************
 c *********************************************************************
 
       SUBROUTINE ADMSKV
-
-#include "zocdim.F"
-#include "zocmsk.F"
+      use zocdim
+      use zocmsk
 
       INTEGER     IJ
 
@@ -76,9 +72,8 @@ c *********************************************************************
 c *********************************************************************
 
       SUBROUTINE RMMSKT
-
-#include "zocdim.F"
-#include "zocmsk.F"
+      use zocdim
+      use zocmsk
 
       INTEGER     IJ
 
@@ -93,9 +88,8 @@ c *********************************************************************
 c *********************************************************************
 
       SUBROUTINE ADMKTB
-
-#include "zocdim.F"
-#include "zocmsk.F"
+      use zocdim
+      use zocmsk
 
       INTEGER     IJ
 
@@ -109,9 +103,8 @@ c *********************************************************************
 c *********************************************************************
 
       SUBROUTINE ADMKT1
-
-#include "zocdim.F"
-#include "zocmsk.F"
+      use zocdim
+      use zocmsk
 
       INTEGER     IJ
 
@@ -125,9 +118,8 @@ c *********************************************************************
 c *********************************************************************
 
       SUBROUTINE ADMSKT
-
-#include "zocdim.F"
-#include "zocmsk.F"
+      use zocdim
+      use zocmsk
 
       INTEGER     IJ
 

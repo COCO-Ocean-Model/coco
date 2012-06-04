@@ -1,5 +1,6 @@
 #ifdef OPT_PARALLEL
       SUBROUTINE GS2DST
+      use zocdim
       IMPLICIT NONE
 
 c --- information -----------------------------------------------------
@@ -14,7 +15,6 @@ c
 c ---------------------------------------------------------------------
 
 #include "mpif.h"
-#include "zocdim.F"
 
       REAL*8       Q(NXDIM, NYDIM),     QG(NXGDIM, NYGDIM)
       REAL*8      QS(NX   , NY   ),    QSG(IGSTR:IGEND, JGSTR:JGEND)

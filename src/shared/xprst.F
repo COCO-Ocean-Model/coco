@@ -3,6 +3,8 @@
      O                      C4,     C5,     C6,
      O                      D0,     D1,     D2,     D3,     D4,
      O                      D5,     D6,     D7,     D8,     D9)
+      use zocdim
+      use zocgrd
       IMPLICIT NONE
 
 c --- information -----------------------------------------------------
@@ -14,9 +16,6 @@ c  HISTORY
 c     '07.05.01  H.Hasumi
 c
 c ---------------------------------------------------------------------
-
-#include "zocdim.F"
-#include "zocgrd.F"
 
       REAL*8 P10, P1T, P1TT, P1TTT, P1S, P1ST, P1SS,
      &       P1P, P1PTT,P1PS, P1PP, P1PPTT
@@ -92,10 +91,9 @@ c **********************************************************************
      O                      C4,     C5,     C6,
      O                      D0,     D1,     D2,     D3,     D4,
      O                      D5,     D6,     D7,     D8,     D9)
+      use zocdim
+      use zocgrd
       IMPLICIT NONE
-
-#include "zocdim.F"
-#include "zocgrd.F"
 
       REAL*8 P10, P1T, P1TT, P1TTT, P1S, P1ST, P1SS,
      &       P1P, P1PTT,P1PS, P1PP, P1PPTT

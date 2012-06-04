@@ -8,6 +8,11 @@
      I               WIO,    WAO,    WAS,    WIL,
      I              EVAP,   SUBI,   ROFF, ADJLAT,
      I               QIO)
+      use zocdim
+      use zocgrd
+      use zocmsk
+      use zocphy
+c      use zocite
       IMPLICIT NONE
 
 c ---- information ----------------------------------------------------
@@ -25,11 +30,6 @@ c     '09.05.25  Y.Komuro: CMIP5 output code included
 c                          (basal/lateral melting processes separated)
 c
 c ---------------------------------------------------------------------
-
-#include "zocdim.F"
-#include "zocgrd.F"
-#include "zocmsk.F"
-#include "zocphy.F"
 
       REAL*8      AX(NXYDIM, 0:NIC),    HIX(NXYDIM, 0:NIC)
       REAL*8     HSX(NXYDIM, 0:NIC)
@@ -57,9 +57,9 @@ c ---------------------------------------------------------------------
       REAL*8     WEN(NXYDIM),    WSN(NXYDIM)
       REAL*8  LAXHIX(NXYDIM, 0:NIC), LAXEIX(NXYDIM, 0:NIC)
       REAL*8  DAXEIT(NXYDIM, 0:NIC), DAXEIB(NXYDIM, 0:NIC)
-      COMMON /WORK/ AZ, AXHIX, AXHSX, AXHSXN, WAI,
-     &              WI, WS, WEN, WSN, AXEIX, AXEIXN,
-     &              LAXHIX, LAXEIX, DAXEIT, DAXEIB
+c      COMMON /WORK/ AZ, AXHIX, AXHSX, AXHSXN, WAI,
+c     &              WI, WS, WEN, WSN, AXEIX, AXEIXN,
+c     &              LAXHIX, LAXEIX, DAXEIT, DAXEIB
 
       REAL*8     RRI,    RRS, RORIRS
       REAL*8   RSFUS

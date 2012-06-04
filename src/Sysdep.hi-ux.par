@@ -1,11 +1,15 @@
 FC	= /usr/mpi/bin/mpif90
 FFLAGS	= mp(p(4),procnum(8),diag(2)),pvec(diag(1)),opt(o(ss),predicate(0),disbracket(0)),list(s,p),langlvl(hf(77))
-FOPTION = -W0,"'$(FFLAGS)'" -I$(OGCMDIR)/src/include -DOPT_PARALLEL $(OPTBDY) $(OPTSRST) $(OPTBBL) $(OPTTRIPOLE)
+FOPTION = -W0,"'$(FFLAGS)'" -I$(OGCMDIR)/src/include -I$(OGCMDIR)/src/module -I$(OGCMDIR)/src/shared  -I$(OGCMDIR)/src/depend.$(MODEL) -I$(OGCMDIR)/src/option -DOPT_PARALLEL $(OPTBDY) $(OPTSRST) $(OPTBBL) $(OPTTRIPOLE)
 LINKOPT	= -parallel
 
 AR	= /usr/ccs/bin/ar r
 RANLIB	= touch
 RM	= rm -f
 
+.SUFFIXES: .F90
+ 
 .F.o:
+	$(FC) $(FOPTION) -c $<
+.F90.o:
 	$(FC) $(FOPTION) -c $<

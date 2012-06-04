@@ -1,6 +1,9 @@
       SUBROUTINE TMINTP(
      O                   DITEM,
      I                   IITEM)
+      use zocdim
+      use zocgrd
+      use zocfil
       IMPLICIT NONE
 
 c --- information -----------------------------------------------------
@@ -20,9 +23,6 @@ c ---------------------------------------------------------------------
 #ifdef OPT_PARALLEL
 #include "mpif.h"
 #endif
-#include "zocdim.F"
-#include "zocgrd.F"
-#include "zocfil.F"
 
       INTEGER   NITEM
       PARAMETER(NITEM = (NTDIM-2)*2+10)
@@ -443,6 +443,9 @@ c *********************************************************************
       SUBROUTINE TMINTB(
      O                   DITEM,
      I                   IITEM)
+      use zocdim
+      use zocgrd
+      use zocfil
       IMPLICIT NONE
 
 c --- information -----------------------------------------------------
@@ -461,9 +464,6 @@ c ---------------------------------------------------------------------
 #ifdef OPT_PARALLEL
 #include "mpif.h"
 #endif
-#include "zocdim.F"
-#include "zocgrd.F"
-#include "zocfil.F"
 
       INTEGER   NITEM
 c      PARAMETER(NITEM = NTDIM*2)

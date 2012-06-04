@@ -2,6 +2,7 @@
      O               AMV,    AHV,
      I                UY,     VY,      R,   TAUX,   TAUY,
      I                TY,     HY)
+      use zocdim
       IMPLICIT NONE
 
 c --- information -----------------------------------------------------
@@ -20,8 +21,6 @@ c     '08.06.11  H.Hasumi: initial/final processing
 c     '08.07.10  H.Hasumi: initial/final processing
 c
 c ---------------------------------------------------------------------
-
-#include "zocdim.F"
 
       REAL*8      UY(NXYDIM, NZDIM),     VY(NXYDIM, NZDIM)
       REAL*8       R(NXYDIM, NZDIM)
@@ -74,6 +73,8 @@ c *********************************************************************
 
       SUBROUTINE VDIFFB(
      M                AMV,    AHV)
+      use zocdim
+      use zocmsk
       IMPLICIT NONE
 
 c --- information -----------------------------------------------------
@@ -85,9 +86,6 @@ c  HISTORY
 c     '01.02.08  H.Hasumi
 c
 c ---------------------------------------------------------------------
-
-#include "zocdim.F"
-#include "zocmsk.F"
 
       REAL*8     AMV(NXYDIM, NZDIM),    AHV(NXYDIM, NZDIM)
 

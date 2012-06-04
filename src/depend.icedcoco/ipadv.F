@@ -4,6 +4,11 @@
      O                FIX,    FIY,    FSX,    FSY,
      O                FEX,    FEY,
      I                UIY,    VIY)
+      use zocdim
+      use zocgrd
+      use zocmsk
+      use zocphy
+c      use zocite
       IMPLICIT NONE
 
 c ---- information ----------------------------------------------------
@@ -25,11 +30,6 @@ c     '09.09.04  Y.Komuro: extra output code (FEX/FEY)
 c
 c ---------------------------------------------------------------------
 
-#include "zocdim.F"
-#include "zocgrd.F"
-#include "zocmsk.F"
-#include "zocphy.F"
-
       REAL*8      AX(NXYDIM, 0:NIC),     AZ(NXYDIM, 0:NIC)
       REAL*8     HIX(NXYDIM, 0:NIC),    HIZ(NXYDIM, 0:NIC)
       REAL*8     EIX(NXYDIM, 0:NIC),    EIZ(NXYDIM, 0:NIC)
@@ -43,7 +43,7 @@ c ---------------------------------------------------------------------
       REAL*8     FAX(NXYDIM,   NIC),    FAY(NXYDIM,   NIC)
       REAL*8   AXHIX(NXYDIM, 0:NIC),  AXHSX(NXYDIM, 0:NIC)
       REAL*8   AXEIX(NXYDIM, 0:NIC)
-      COMMON /WORK/ FAX, FAY, AXHIX, AXHSX, AXEIX
+c      COMMON /WORK/ FAX, FAY, AXHIX, AXHSX, AXEIX
 
       REAL*8       U,     UP,     UM
       REAL*8       V,     VP,     VM

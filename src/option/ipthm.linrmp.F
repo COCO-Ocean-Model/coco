@@ -8,6 +8,11 @@
      I               WIO,    WAO,    WAS,    WIL,
      I              EVAP,   SUBI,   ROFF, ADJLAT,
      I               QIO)
+      use zocdim
+      use zocgrd
+      use zocmsk
+      use zocphy
+c      use zocite
       IMPLICIT NONE
 
 c ---- information ----------------------------------------------------
@@ -29,10 +34,6 @@ c ---------------------------------------------------------------------
 #ifdef OPT_PARALLEL
 #include "mpif.h"
 #endif
-#include "zocdim.F"
-#include "zocgrd.F"
-#include "zocmsk.F"
-#include "zocphy.F"
 
       REAL*8      AX(NXYDIM, 0:NIC),    HIX(NXYDIM, 0:NIC)
       REAL*8     HSX(NXYDIM, 0:NIC)
@@ -70,12 +71,12 @@ c ---------------------------------------------------------------------
       REAL*8  LAXHIX(NXYDIM, 0:NIC), LAXHSX(NXYDIM, 0:NIC) 
       REAL*8  LAXEIX(NXYDIM, 0:NIC)
       REAL*8  DAXEIT(NXYDIM, 0:NIC), DAXEIB(NXYDIM, 0:NIC)
-      COMMON /WORK/ AZ, AXHIX, AXHSX, AXHSXN, WAI,
-     &              WI, WS, WEN, WSN, AXEIX, AXEIXN,
-     &              HIZ, AFLRM, AFLRMC, FDTN, FDTCN, HICN,
-     &              G0, G1, HIL, HIR, DA, DAHI,
-     &              DAHS, DAEI, LAXHIX, LAXHSX, LAXEIX,
-     &              DAXEIT, DAXEIB
+c      COMMON /WORK/ AZ, AXHIX, AXHSX, AXHSXN, WAI,
+c     &              WI, WS, WEN, WSN, AXEIX, AXEIXN,
+c     &              HIZ, AFLRM, AFLRMC, FDTN, FDTCN, HICN,
+c     &              G0, G1, HIL, HIR, DA, DAHI,
+c     &              DAHS, DAEI, LAXHIX, LAXHSX, LAXEIX,
+c     &              DAXEIT, DAXEIB
 
 
       REAL*8     RRI,    RRS, RORIRS

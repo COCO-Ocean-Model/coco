@@ -2,6 +2,7 @@
       SUBROUTINE SHFT1I(
      M                      IQ,
      D                    IDIM,   JDIM)
+      use zocdim
       IMPLICIT NONE
 
 c --- information -----------------------------------------------------
@@ -17,7 +18,6 @@ c
 c ---------------------------------------------------------------------
 
 #include "mpif.h"
-#include "zocdim.F"
 
       INTEGER   IDIM,   JDIM
       INTEGER     IQ(IDIM, JDIM)
@@ -106,10 +106,10 @@ c *********************************************************************
      O            IRVBX1, IRVBX2,
      I            ISDBX1, ISDBX2,
      D            NBFDIM)
+      use zocdim
       IMPLICIT NONE
 
 #include "mpif.h"
-#include "zocdim.F"
 
       INTEGER ISDBX1(ICOMM, NYDIM), ISDBX2(ICOMM, NYDIM)
       INTEGER IRVBX1(ICOMM, NYDIM), IRVBX2(ICOMM, NYDIM)
@@ -149,10 +149,10 @@ c *********************************************************************
      O            IRVBY1, IRVBY2,
      I            ISDBY1, ISDBY2,
      D            NBFDIM)
+      use zocdim
       IMPLICIT NONE
 
 #include "mpif.h"
-#include "zocdim.F"
 
       INTEGER ISDBY1(NXDIM, JCOMM), ISDBY2(NXDIM, JCOMM)
       INTEGER IRVBY1(NXDIM, JCOMM), IRVBY2(NXDIM, JCOMM)
@@ -190,10 +190,10 @@ c *********************************************************************
       SUBROUTINE SHFTINT(
      M                      IQ,
      D                    IDIM,   JDIM)
+      use zocdim
       IMPLICIT NONE
 
 #include "mpif.h"
-#include "zocdim.F"
 
       INTEGER   IDIM,   JDIM
       INTEGER     IQ(IDIM, JDIM)
@@ -246,10 +246,10 @@ CC
       SUBROUTINE SHFTINV(
      M                      IQ,
      D                    IDIM,   JDIM)
+      use zocdim
       IMPLICIT NONE
 
 #include "mpif.h"
-#include "zocdim.F"
 
       INTEGER   IDIM,   JDIM
       INTEGER     IQ(IDIM, JDIM)
@@ -305,10 +305,10 @@ c *********************************************************************
      O            IRVBY1, IRVBY2,
      I            ISDBY1, ISDBY2,
      D            NBFDIM)
+      use zocdim
       IMPLICIT NONE
 
 #include "mpif.h"
-#include "zocdim.F"
 
       INTEGER ISDBY1(NXDIM, JCOMM), ISDBY2(NXDIM, JCOMM)
       INTEGER IRVBY1(NXDIM, JCOMM), IRVBY2(NXDIM, JCOMM)

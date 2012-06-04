@@ -5,6 +5,9 @@
      I                 UY,     UX,     VY,     VX,
      I                 HX,     HY,
      I               UADV,   VADV,   WADV)
+      use zocdim
+      use zocgrd
+      use zocmsk
       IMPLICIT NONE
 
 c --- information -----------------------------------------------------
@@ -21,10 +24,6 @@ c     '10.04.14  M.Kurogi: staggered time stepping
 c     '10.04.14  M.Kurogi: (COCO4.4 tripolar code by Dr. Suzuki)
 c
 c ---------------------------------------------------------------------
-
-#include "zocdim.F"
-#include "zocgrd.F"
-#include "zocmsk.F"
 
       REAL*8 C1,C2,C3
       PARAMETER (C1=23.D0/12.D0, C2=-16.D0/12.D0, C3=5.D0/12.D0)
@@ -60,10 +59,10 @@ c ---------------------------------------------------------------------
       REAL*8    FUZU(NXYDIM, NZDIM),   FVZU(NXYDIM, NZDIM)
       REAL*8    FUZD(NXYDIM, NZDIM),   FVZD(NXYDIM, NZDIM)
       REAL*8      RZ(NXYDIM, NZDIM),    RZM(NXYDIM, NZDIM)
-      COMMON /WORK/ FUZ, FUZU, FUZD, FVZ, FVZU, FVZD, RZ, RZM
+c      COMMON /WORK/ FUZ, FUZU, FUZD, FVZ, FVZU, FVZD, RZ, RZM
 
       REAL*8     DIV(NXYDIM, KSTR:KSTR+KZ-1)
-      REAL*8   HVBOT(NXYDIM)
+      REAL*8   HVBOT(NXYDIM), HVBOTX(NXYDIM)
       INTEGER     IJ,      K
 
       LOGICAL OFIRST
@@ -174,6 +173,22 @@ C#endif
      &               RYM(IJ) * 0.25D0
      &             + ZBOT
          HVBOT(IJ) = 1.D0 / HVBOT(IJ)
+         HVBOTX(IJ) = (  (HX(IJ)    + HX(IJ+LE) ) * DY(IJ)
+     &                + (HX(IJ+LN) + HX(IJ+LNE)) * DY(IJ+LN)) *
+     &               RYM(IJ) * 0.25D0
+     &             + ZBOT
+         HVBOTX(IJ) = 1.D0 / HVBOTX(IJ)
+      END DO
+
+      DO K = KSTR, KSTR+KZ-1
+         DO IJ = IJVSTR, IJVEND
+            RZ (IJ, K) = 1.D0 * RS (K) * HVBOTX(IJ)
+         END DO
+      END DO
+      DO K = KSTR+KZ, KEND
+         DO IJ = IJVSTR, IJVEND
+            RZ (IJ, K) = 1.D0 / DZV(IJ, K)
+         END DO
       END DO
 
       DO K = KSTR, KSTR+KZ-1
@@ -578,11 +593,10 @@ c *********************************************************************
      M                 GX,     GY,     XX,     YY,
      I                 UY,     UX,     VY,     VX,
      I               UADV,   VADV,   WADV)
+      use zocdim
+      use zocgrd
+      use zocmsk
       IMPLICIT NONE
-
-#include "zocdim.F"
-#include "zocgrd.F"
-#include "zocmsk.F"
 
       REAL*8 C1,C2,C3
       PARAMETER (C1=23.D0/12.D0, C2=-16.D0/12.D0, C3=5.D0/12.D0)
@@ -619,7 +633,7 @@ c *********************************************************************
       REAL*8     FUZ(NXYDIM, NZDIM),    FVZ(NXYDIM, NZDIM)
       REAL*8    FUZU(NXYDIM, NZDIM),   FVZU(NXYDIM, NZDIM)
       REAL*8    FUZD(NXYDIM, NZDIM),   FVZD(NXYDIM, NZDIM)
-      COMMON /WORK/ FUZ, FUZU, FUZD, FVZ, FVZU, FVZD
+c      COMMON /WORK/ FUZ, FUZU, FUZD, FVZ, FVZU, FVZD
 
       INTEGER     IJ,      K,    KUP
 

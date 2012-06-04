@@ -3,6 +3,11 @@
      M                 AX,    HIX,    EIX,    HSX,    TIX,
      I                 AZ,    HIZ,    EIZ,    HSZ,
      I                 UI,     VI)
+      use zocdim
+      use zocgrd
+      use zocmsk
+      use zocphy
+c      use zocite
       IMPLICIT NONE
 
 c ---- information ----------------------------------------------------
@@ -19,11 +24,6 @@ c     '08.07.10  H.Hasumi: initial/final processing
 c     '08.11.22  Y.Komuro: coping with the situation HRIDGE = HIX
 c
 c ---------------------------------------------------------------------
-
-#include "zocdim.F"
-#include "zocgrd.F"
-#include "zocmsk.F"
-#include "zocphy.F"
 
       REAL*8    PICE(NXYDIM)
       REAL*8      AX(NXYDIM, 0:NIC),     AZ(NXYDIM, 0:NIC)
@@ -43,9 +43,9 @@ c ---------------------------------------------------------------------
       REAL*8      DA(NXYDIM, NIC)
       REAL*8    DAHI(NXYDIM, NIC),   DAHS(NXYDIM, NIC)
       REAL*8    DAEI(NXYDIM, NIC)
-      COMMON /WORK/ AXHIX, AXHSX,
-     &              DIVV, EDIS, WA, WN, WW,
-     &              G, Y, DA, DAHI, DAHS, DAEI
+c      COMMON /WORK/ AXHIX, AXHSX,
+c     &              DIVV, EDIS, WA, WN, WW,
+c     &              G, Y, DA, DAHI, DAHS, DAEI
 
       REAL*8      C1,     C2,     C3
       REAL*8     GAM(NXYDIM, NIC, NIC)

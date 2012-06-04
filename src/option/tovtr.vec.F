@@ -1,6 +1,9 @@
       SUBROUTINE OVTSET(
      O                       R,
      I                       T)
+      use zocdim
+      use zocgrd
+      use zocmsk
       IMPLICIT NONE
 
 c --- information -----------------------------------------------------
@@ -24,10 +27,6 @@ c     '09.02.23  Y.Komuro: add DDENST (only diagnosing R)
 c
 c ---------------------------------------------------------------------
 
-#include "zocdim.F"
-#include "zocgrd.F"
-#include "zocmsk.F"
-
       REAL*8       R(NXYDIM, NZDIM)
       REAL*8       T(NXYDIM, NZDIM, NTDIM)
       REAL*8       H(NXYDIM)
@@ -37,7 +36,7 @@ c ---------------------------------------------------------------------
       REAL*8   DZSIG(NXYDIM, NZDIM)
       INTEGER    LUP(NXYDIM)
       LOGICAL    LOV(NXYDIM)
-      COMMON /WORK/ TTL, W2, CONV, DZSIG, LUP, LOV
+c      COMMON /WORK/ TTL, W2, CONV, DZSIG, LUP, LOV
 
       REAL*8 C0(NZDIM), C1(NZDIM), C2(NZDIM)
       REAL*8 C3(NZDIM), C4(NZDIM), C5(NZDIM), C6(NZDIM)

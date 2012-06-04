@@ -1,5 +1,6 @@
 #ifdef OPT_PARALLEL
       SUBROUTINE SHFTST
+      use zocdim
       IMPLICIT NONE
 
 c --- information -----------------------------------------------------
@@ -15,7 +16,6 @@ c
 c ---------------------------------------------------------------------
 
 #include "mpif.h"
-#include "zocdim.F"
 
       INTEGER   IDIM,   JDIM,   KDIM
       REAL*8      Q1(IDIM, JDIM, KDIM)
@@ -820,10 +820,10 @@ c *********************************************************************
      O            RVBFX1, RVBFX2,
      I            SDBFX1, SDBFX2,
      D            NBFDIM)
+      use zocdim
       IMPLICIT NONE
 
 #include "mpif.h"
-#include "zocdim.F"
 
       REAL*8  SDBFX1(ICOMM, NY, NZTDIM+NZDIM)
       REAL*8  SDBFX2(ICOMM, NY, NZTDIM+NZDIM)
@@ -865,10 +865,10 @@ c *********************************************************************
      O            RVBFY1, RVBFY2,
      I            SDBFY1, SDBFY2,
      D            NBFDIM)
+      use zocdim
       IMPLICIT NONE
 
 #include "mpif.h"
-#include "zocdim.F"
 
       REAL*8  SDBFY1(NXDIM, JCOMM, NZTDIM+NZDIM)
       REAL*8  SDBFY2(NXDIM, JCOMM, NZTDIM+NZDIM)
@@ -908,10 +908,10 @@ c *********************************************************************
      O            RVBFY1, RVBFY2,
      I            SDBFY1, SDBFY2,
      D            NBFDIM)
+      use zocdim
       IMPLICIT NONE
 
 #include "mpif.h"
-#include "zocdim.F"
 
       REAL*8  SDBFY1(NXDIM, JCOMM, NZTDIM+NZDIM)
       REAL*8  SDBFY2(NXDIM, JCOMM, NZTDIM+NZDIM)
@@ -951,10 +951,10 @@ c *********************************************************************
      O            RVBFN1, RVBFN2,
      I            SDBFN1, SDBFN2,
      D            NBFDIM, NBFDM0)
+      use zocdim
       IMPLICIT NONE
 
 #include "mpif.h"
-#include "zocdim.F"
 
       REAL*8  SDBFN1(NXDIM, JCOMM+1, NZTDIM+NZDIM)
       REAL*8  SDBFN2(NXDIM, JCOMM,   NZTDIM+NZDIM)

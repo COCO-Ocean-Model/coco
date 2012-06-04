@@ -1,4 +1,5 @@
       SUBROUTINE FLOPCL
+      use zocfil
       IMPLICIT NONE
 
 c --- information -----------------------------------------------------
@@ -14,7 +15,6 @@ c ---------------------------------------------------------------------
 #ifdef OPT_PARALLEL
 #include "mpif.h"
 #endif
-#include "zocfil.F"
 
       CHARACTER     CF*(NCF),   CACT*(*)
       INTEGER       NF
@@ -92,8 +92,7 @@ c *********************************************************************
 
       SUBROUTINE REWNML(
      O                   IFILE,  JFILE)
-
-#include "zocfil.F"
+      use zocfil
 
       INTEGER  IFILE,  JFILE
 

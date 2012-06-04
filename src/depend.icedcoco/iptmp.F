@@ -3,6 +3,11 @@
      M               TIX,
      M               QAO,    QAI,    QIO,    QII,
      I                AX,    HIX)
+      use zocdim
+      use zocgrd
+      use zocmsk
+      use zocphy
+c      use zocite
       IMPLICIT NONE
 
 c --- information -----------------------------------------------------
@@ -13,11 +18,6 @@ c     '08.06.11  H.Hasumi: initial/final processing
 c     '08.07.10  H.Hasumi: initial/final processing
 c
 c ---------------------------------------------------------------------
-
-#include "zocdim.F"
-#include "zocgrd.F"
-#include "zocmsk.F"
-#include "zocphy.F"
 
       REAL*8     EIX(NXYDIM, 0:NIC),    TIX(NXYDIM, 0:NIC)
       REAL*8     QAO(NXYDIM)

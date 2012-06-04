@@ -1,5 +1,9 @@
       SUBROUTINE TMSTUP(
      O             TSTRT,   TEND,    DTT)
+      use zocfil
+#ifdef OPT_PARALLEL
+      use zocnod
+#endif
       IMPLICIT NONE
 
 c --- information -----------------------------------------------------
@@ -17,10 +21,8 @@ c     '10.04.14  M.Kurogi: staggered time stepping
 c
 c ---------------------------------------------------------------------
 
-#include "zocfil.F"
 #ifdef OPT_PARALLEL
 #include "mpif.h"
-#include "zocnod.F"
 #endif
 
       INTEGER   NTSCYC

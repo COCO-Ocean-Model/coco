@@ -3,6 +3,7 @@
      O                      HA,   UBTA,   VBTA,
      I                      UB,     VB,     TB,
      I                      HB,   UBTB,   VBTB)
+      use zocdim
       IMPLICIT NONE
 
 c --- information -----------------------------------------------------
@@ -12,8 +13,6 @@ c     '02.10.10  H.Nakano: from COCO3.4
 c     '07.04.23  H.Hasumi
 c
 c ---------------------------------------------------------------------
-
-#include "zocdim.F"
 
       REAL*8      TA(NXYZDM, NTDIM),     TB(NXYZDM, NTDIM)
       REAL*8      UA(NXYZDM),     UB(NXYZDM)
@@ -49,9 +48,8 @@ c *********************************************************************
      M                      HA,   UBTA,   VBTA,
      M                      UB,     VB,     TB,
      M                      HB,   UBTB,   VBTB)
+      use zocdim
       IMPLICIT NONE
-
-#include "zocdim.F"
 
       REAL*8      TA(NXYZDM, NTDIM),     TB(NXYZDM, NTDIM)
       REAL*8      UA(NXYZDM),     UB(NXYZDM)
@@ -99,8 +97,8 @@ c *********************************************************************
       SUBROUTINE FORSTI(
      O                AA,    HIA,    UIA,    VIA,    TIA,    HSA,
      I                AB,    HIB,    UIB,    VIB,    TIB,    HSB)
-
-#include "zocdim.F"
+      use zocdim
+      IMPLICIT NONE
 
       REAL*8     AA(NXYDIM, 0:NIC),     AB(NXYDIM, 0:NIC)
       REAL*8    HIA(NXYDIM, 0:NIC),    HIB(NXYDIM, 0:NIC)
@@ -133,9 +131,9 @@ c *********************************************************************
       SUBROUTINE EXCNGI(
      M                AA,    HIA,    UIA,    VIA,    TIA,    HSA,
      M                AB,    HIB,    UIB,    VIB,    TIB,    HSB)
-
-#include "zocdim.F"
-
+      use zocdim
+      IMPLICIT NONE
+      
       REAL*8     AA(NXYDIM, 0:NIC),     AB(NXYDIM, 0:NIC)
       REAL*8    HIA(NXYDIM, 0:NIC),    HIB(NXYDIM, 0:NIC)
       REAL*8    UIA(NXYDIM),    UIB(NXYDIM)

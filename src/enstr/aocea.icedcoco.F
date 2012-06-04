@@ -4,6 +4,9 @@
      O              AMV,    AHV,
      O               FT,   PTOP,
      I              DT1)
+      use zocdim
+      use zocgrd
+      use zocfil
       IMPLICIT NONE
 
 c --- information -----------------------------------------------------
@@ -18,10 +21,6 @@ c     '09.05.25  Y.Komuro: CMIP5 output code included
 c     '09.10.06  Y.Komuro: FORSTO before PREDCI
 c
 c ---------------------------------------------------------------------
-
-#include "zocdim.F"
-#include "zocgrd.F"
-#include "zocfil.F"
 
       REAL*8      TA(NXYZDM, NTDIM),     TB(NXYZDM, NTDIM)
       REAL*8      UA(NXYZDM),     UB(NXYZDM)
@@ -505,6 +504,9 @@ c *** Output to file ***
      &                   NX,     NY,      1, NXYDIM, 'SFC')
          CALL CHEKIN(   TSI,   'TSI',
      &                   NX,     NY,    NIC, NXYIDM, 'ICE')
+
+c        CHEKIN routine for FTX/Y/Z & FSX/Y/Z
+         CALL CHKFTX
 
 c        output section for CMIP5
 c        AIG: total sea ice concentration, unit [ND]

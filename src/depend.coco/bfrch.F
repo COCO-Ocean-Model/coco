@@ -3,6 +3,7 @@
      O                      HA,   UBTA,   VBTA,
      I                      UB,     VB,     TB,
      I                      HB,   UBTB,   VBTB)
+      use zocdim
       IMPLICIT NONE
 
 c --- information -----------------------------------------------------
@@ -13,8 +14,6 @@ c     '02.05.29  H.Nakano: tracer dimension
 c     '07.04.23  H.Hasumi
 c
 c ---------------------------------------------------------------------
-
-#include "zocdim.F"
 
       REAL*8      TA(NXYZDM, NTDIM),     TB(NXYZDM, NTDIM)
       REAL*8      UA(NXYZDM),     UB(NXYZDM)
@@ -50,9 +49,8 @@ c *********************************************************************
      M                      HA,   UBTA,   VBTA,
      M                      UB,     VB,     TB,
      M                      HB,   UBTB,   VBTB)
+      use zocdim
       IMPLICIT NONE
-
-#include "zocdim.F"
 
       REAL*8      TA(NXYZDM, NTDIM),     TB(NXYZDM, NTDIM)
       REAL*8      UA(NXYZDM),     UB(NXYZDM)

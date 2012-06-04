@@ -4,6 +4,9 @@
      I                 TY,     HZ,
      I                 UY,     VY,
      I                  W,    AHV)
+      use zocdim
+      use zocgrd
+      use zocmsk
       IMPLICIT NONE
 
 c --- information -----------------------------------------------------
@@ -17,10 +20,6 @@ c     '08.06.11  H.Hasumi: initial/final setup
 c     '08.07.10  H.Hasumi: initial/final setup
 c
 c ---------------------------------------------------------------------
-
-#include "zocdim.F"
-#include "zocgrd.F"
-#include "zocmsk.F"
 
       REAL*8     ADT(NXYDIM, NZDIM, NTDIM)    
       REAL*8   DIFFZ(NXYDIM, NZDIM)
@@ -40,7 +39,9 @@ c ---------------------------------------------------------------------
       REAL*8     FTY(NXYDIM, NZDIM, NTDIM)
       REAL*8     FTZ(NXYDIM, NZDIM, NTDIM)
       REAL*8     WZC(NXYDIM, NZDIM),    RZM(NXYDIM, NZDIM)
-      COMMON /WORK/ FTX, FTY, FTZ, WZC, RZM
+c      COMMON /WORK/ FTX, FTY, FTZ, WZC, RZM
+c      COMMON /WORK/ WZC, RZM
+      COMMON /WORKFT/ FTX, FTY, FTZ
 
       REAL*8   HZBOT(NXYDIM)
 
@@ -476,11 +477,10 @@ c *********************************************************************
      O              XDTDZ,  YDTDZ,  ZDTDX,  ZDTDY,
      I                 TY,     TX,     
      W               DTDX,   DTDY,   DTDZ)
+      use zocdim
+      use zocgrd
+      use zocmsk
       IMPLICIT NONE
-
-#include "zocdim.F"
-#include "zocgrd.F"
-#include "zocmsk.F"
 
       REAL*8   XDZDX(NXYDIM, NZDIM),  YDZDY(NXYDIM, NZDIM)
       REAL*8   ZDZDX(NXYDIM, NZDIM),  ZDZDY(NXYDIM, NZDIM)
@@ -722,12 +722,11 @@ c *********************************************************************
      I                 TY,
      I                 UY,     VY,      W,
      I                AHV)
+      use zocdim
+      use zocgrd
+      use zocmsk
       IMPLICIT NONE
-
-#include "zocdim.F"
-#include "zocgrd.F"
-#include "zocmsk.F"
-
+      
       REAL*8     ADT(NXYDIM, NZDIM, NTDIM)
       REAL*8   DIFFZ(NXYDIM, NZDIM)
       REAL*8      TX(NXYDIM, NZDIM, NTDIM),     TY(NXYDIM, NZDIM, NTDIM)
@@ -737,7 +736,7 @@ c *********************************************************************
       REAL*8     FTX(NXYDIM, NZDIM, NTDIM)
       REAL*8     FTY(NXYDIM, NZDIM, NTDIM)
       REAL*8     FTZ(NXYDIM, NZDIM, NTDIM)
-      COMMON /WORK/ FTX, FTY, FTZ
+      COMMON /WORKFT/ FTX, FTY, FTZ
 
       REAL*8   TADVX(NXYDIM, NTDIM),  TADVY(NXYDIM, NTDIM)
       COMMON /UTADV/ TADVX, TADVY
@@ -813,3 +812,32 @@ c *********************************************************************
       RETURN
       END
 #endif
+c *********************************************************************
+      SUBROUTINE CHKFTX
+      use zocdim
+      implicit none
+
+      REAL*8     FTX(NXYDIM, NZDIM, NTDIM)
+      REAL*8     FTY(NXYDIM, NZDIM, NTDIM)
+      REAL*8     FTZ(NXYDIM, NZDIM, NTDIM)
+      COMMON /WORKFT/ FTX, FTY, FTZ
+
+      IF (OINIT .OR. OFINAL) THEN
+         RETURN
+      END IF
+
+      CALL CHEKIN(   FTX,  'FTX',
+     &                NX,     NY,     NZ, NXYZDM, 'OCN')
+      CALL CHEKIN(   FTY,  'FTY',
+     &                NX,     NY,     NZ, NXYZDM, 'OCN')
+      CALL CHEKIN(   FTZ,  'FTZ',
+     &                NX,     NY,     NZ, NXYZDM, 'OCN')
+      CALL CHEKIN(   FTX(1, 1, 2),  'FSX',
+     &                NX,     NY,     NZ, NXYZDM, 'OCN')
+      CALL CHEKIN(   FTY(1, 1, 2),  'FSY',
+     &                NX,     NY,     NZ, NXYZDM, 'OCN')
+      CALL CHEKIN(   FTZ(1, 1, 2),  'FSZ',
+     &                NX,     NY,     NZ, NXYZDM, 'OCN')
+
+      RETURN
+      END 

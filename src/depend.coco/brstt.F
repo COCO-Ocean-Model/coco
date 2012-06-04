@@ -4,6 +4,8 @@
      O                  HB,   UBTB,   VBTB,
      O                   W,    AMV,    AHV,
      O                  FT)
+      use zocdim
+      use zocfil
       IMPLICIT NONE
 
 c --- information -----------------------------------------------------
@@ -25,8 +27,6 @@ c ---------------------------------------------------------------------
 #ifdef OPT_PARALLEL
 #include "mpif.h"
 #endif
-#include "zocdim.F"
-#include "zocfil.F"
 
       REAL*8      UB(NXDIM, NYDIM, NZDIM),     VB(NXDIM, NYDIM, NZDIM)
       REAL*8      TB(NXDIM, NYDIM, NZDIM, NTDIM)
@@ -47,7 +47,7 @@ c ---------------------------------------------------------------------
       SAVE BUF2, BUF3, G2D, G3D
 #else
       REAL*8    BUF2(NX, NY),   BUF3(NX, NY, NZ)
-      COMMON /WORK/ BUF2, BUF3
+c      COMMON /WORK/ BUF2, BUF3
 #endif
 #ifdef OPT_TRIPOLE
       REAL*8    FACT  ! set 1 for scalar, set -1 for vector

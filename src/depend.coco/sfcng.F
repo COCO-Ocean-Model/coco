@@ -1,6 +1,9 @@
       SUBROUTINE SFCFLX(
      O                 FT,   TAUX,   TAUY,
      I                  T)
+      use zocdim
+      use zocgrd
+      use zocmsk
       IMPLICIT NONE
 
 c --- information -----------------------------------------------------
@@ -17,10 +20,6 @@ c     '07.04.23  H.Hasumi
 c
 c ---------------------------------------------------------------------
 
-#include "zocdim.F"
-#include "zocgrd.F"
-#include "zocmsk.F"
-
       REAL*8      FT(NXYDIM, NTDIM)
       REAL*8    TAUX(NXYDIM),   TAUY(NXYDIM)
       REAL*8       T(NXYDIM, NZDIM, NTDIM)
@@ -28,7 +27,7 @@ c ---------------------------------------------------------------------
       INTEGER     IJ,      L,      N
 
       REAL*8  TSFC(NXYDIM, NTDIM), TDMP(NXYDIM, NTDIM)
-      COMMON /WORK/ TSFC, TDMP
+c      COMMON /WORK/ TSFC, TDMP
 
       CALL TMINTP(
      O              TAUX,
@@ -70,6 +69,9 @@ c *********************************************************************
       SUBROUTINE BDYFLX(
      O                 TQ,
      I                  T)
+      use zocdim
+      use zocgrd
+      use zocmsk
       IMPLICIT NONE
 
 c --- information -----------------------------------------------------
@@ -83,17 +85,13 @@ c     '02.06.02  H.Hasumi: tracer dimension
 c
 c ---------------------------------------------------------------------
 
-#include "zocdim.F"
-#include "zocgrd.F"
-#include "zocmsk.F"
-
       REAL*8      TQ(NXYDIM, NZDIM, NTDIM)
       REAL*8       T(NXYDIM, NZDIM, NTDIM)
 
       INTEGER     IJ,      K,      L,      N
 
       REAL*8  TBDY(NXYDIM, NZDIM, NTDIM), TDMB(NXYDIM, NZDIM, NTDIM)
-      COMMON /WORK/ TBDY, TDMB
+c      COMMON /WORK/ TBDY, TDMB
 
 c      DO L = 1, NTDIM
       DO L = 1, 2

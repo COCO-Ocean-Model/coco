@@ -1,6 +1,9 @@
       SUBROUTINE THMASC(
      M                  DR,     DI,
      C                   A,     BR,     BI,      C)
+      use zocdim
+      use zocgrd
+      use zocmsk
       IMPLICIT NONE
 
 c --- information -----------------------------------------------------
@@ -14,10 +17,6 @@ c     '02.05.29  H.Nakano: tracer dimension
 c     '07.04.23  H.Hasumi
 c
 c ---------------------------------------------------------------------
-
-#include "zocdim.F"
-#include "zocgrd.F"
-#include "zocmsk.F"
 
       REAL*8       A(NXYDIM, NZDIM),      C(NXYDIM, NZDIM)
       REAL*8      BR(NXYDIM, NZDIM),     BI(NXYDIM, NZDIM)
@@ -73,11 +72,10 @@ c *********************************************************************
       SUBROUTINE THOMAS(
      M                 ADT,     AC,
      I                  AA,     AB)
+      use zocdim
+      use zocgrd
+      use zocmsk
       IMPLICIT NONE
-
-#include "zocdim.F"
-#include "zocgrd.F"
-#include "zocmsk.F"
 
       REAL*8      AA(NXYDIM, NZDIM),     AB(NXYDIM, NZDIM)
       REAL*8      AC(NXYDIM, NZDIM)

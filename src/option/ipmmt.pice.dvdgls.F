@@ -7,6 +7,10 @@
      I                UIY,    VIY,   PICE,
      I                 UX,     VX,     HY,   PTOP,
      I             TAUAIX, TAUAIY, TAUAOX, TAUAOY)
+      use zocdim
+      use zocgrd
+      use zocmsk
+      use zocphy
       IMPLICIT NONE
 
 c --- information -----------------------------------------------------
@@ -28,11 +32,6 @@ c     '10.04.14  M.Kurogi: (COCO4.4 tripolar code by Dr. Suzuki)
 c     '11.12.27  Y.Komuro: for tripolar
 c
 c ---------------------------------------------------------------------
-
-#include "zocdim.F"
-#include "zocgrd.F"
-#include "zocmsk.F"
-#include "zocphy.F"
 
       REAL*8      AX(NXYDIM, 0:NIC),     AY(NXYDIM, 0:NIC)
       REAL*8      AZ(NXYDIM, 0:NIC)
@@ -62,10 +61,10 @@ c ---------------------------------------------------------------------
       REAL*8  AVRMSX(NXYDIM),   AVRA(NXYDIM)
       REAL*8  ACCELU(NXYDIM), ACCELV(NXYDIM)
       REAL*8    CTAU(NXYDIM),     HH(NXYDIM)
-      COMMON /WORK/ ZETA, ETA, EMZ, EPZ, ECOF,
-     &              EXX, EYY, EXY,
-     &              MICE, AICE, AVRMSX, AVRA,
-     &              ACCELU, ACCELV, CTAU, HH
+c      COMMON /WORK/ ZETA, ETA, EMZ, EPZ, ECOF,
+c     &              EXX, EYY, EXY,
+c     &              MICE, AICE, AVRMSX, AVRA,
+c     &              ACCELU, ACCELV, CTAU, HH
 
       REAL*8    CAIC,   CAIS,   CIOC,   CIOS
       REAL*8    ELST(NXYDIM)
@@ -395,11 +394,10 @@ c *********************************************************************
       SUBROUTINE STRAIN(
      O                EXX,    EYY,    EXY,
      I                 UI,     VI)
+      use zocdim
+      use zocgrd
+      use zocmsk
       IMPLICIT NONE
-
-#include "zocdim.F"
-#include "zocgrd.F"
-#include "zocmsk.F"
 
       REAL*8     EXX(NXYDIM),    EYY(NXYDIM),    EXY(NXYDIM)
       REAL*8      UI(NXYDIM),     VI(NXYDIM)
@@ -437,10 +435,9 @@ c *********************************************************************
      O               ZETA,    ETA,    EMZ,    EPZ,   PICE,
      I               AICE,   MICE,
      I                EXX,    EYY,    EXY)
+      use zocdim
+      use zocmsk
       IMPLICIT NONE
-
-#include "zocdim.F"
-#include "zocmsk.F"
 
       REAL*8    ZETA(NXYDIM),    ETA(NXYDIM)
       REAL*8     EMZ(NXYDIM),    EPZ(NXYDIM)

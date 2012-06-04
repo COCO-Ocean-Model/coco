@@ -1,6 +1,9 @@
       SUBROUTINE SRCVEL(
      O                 GX,     GY,     XX,     YY,
      I                 UX,     VX)
+      use zocdim
+      use zocgrd
+      use zocmsk
       IMPLICIT NONE
 
 c --- information -----------------------------------------------------
@@ -16,10 +19,6 @@ c     '08.06.11  H.Hasumi: initial/final processing
 c     '08.07.10  H.Hasumi: initial/final processing
 c
 c ---------------------------------------------------------------------
-
-#include "zocdim.F"
-#include "zocgrd.F"
-#include "zocmsk.F"
 
       REAL*8      GX(NXYDIM, NZDIM),     GY(NXYDIM, NZDIM)
       REAL*8      XX(NXYDIM, NZDIM),     YY(NXYDIM, NZDIM)
@@ -80,6 +79,9 @@ c *********************************************************************
       SUBROUTINE SRCVLB(
      O                 GX,     GY,     XX,     YY,
      I                 UX,     VX)
+      use zocdim
+      use zocgrd
+      use zocmsk
       IMPLICIT NONE
 
 c --- information -----------------------------------------------------
@@ -91,10 +93,6 @@ c  HISTORY
 c     '01.02.08  H.Hasumi
 c
 c ---------------------------------------------------------------------
-
-#include "zocdim.F"
-#include "zocgrd.F"
-#include "zocmsk.F"
 
       REAL*8      GX(NXYDIM, NZDIM),     GY(NXYDIM, NZDIM)
       REAL*8      XX(NXYDIM, NZDIM),     YY(NXYDIM, NZDIM)

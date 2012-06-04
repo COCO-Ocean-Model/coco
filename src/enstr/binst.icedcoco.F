@@ -3,6 +3,10 @@
      I                 UB,     VB,     TB,
      I                 HB,   UBTB,   VBTB,
      I                  W,    AMV,    AHV)
+      use zocdim
+      use zocgrd
+      use zocphy
+      use zocmsk
       IMPLICIT NONE
 
 c --- information -----------------------------------------------------
@@ -17,11 +21,6 @@ c     '10.04.14  M.Kurogi: (COCO4.4 tripolar code by Dr. Suzuki)
 c
 c ---------------------------------------------------------------------
 
-#include "zocdim.F"
-#include "zocgrd.F"
-#include "zocphy.F"
-#include "zocmsk.F"
-
       REAL*8      TB(NXYZDM, NTDIM)
       REAL*8      UB(NXYZDM),     VB(NXYZDM)
       REAL*8      HB(NXYDIM)
@@ -31,7 +30,7 @@ c ---------------------------------------------------------------------
       REAL*8     AMV(NXYZDM),    AHV(NXYZDM)
 
       REAL*8      UZ(NXYDIM),     VZ(NXYDIM)
-      COMMON /WORK/ UZ, VZ
+c      COMMON /WORK/ UZ, VZ
 
       INTEGER    IJK, IJ, K
 

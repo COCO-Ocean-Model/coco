@@ -4,6 +4,9 @@
      O              AMV,    AHV,
      O               FT,
      I              DT1)
+      use zocdim
+      use zocgrd
+      use zocfil
       IMPLICIT NONE
 
 c --- information -----------------------------------------------------
@@ -27,10 +30,6 @@ c     '08.07.10  H.Hasumi: initial/final processing
 c     '10.04.14  M.kurogi: (COCO4.4 tripolar code by Dr. Suzuki)
 c
 c ---------------------------------------------------------------------
-
-#include "zocdim.F"
-#include "zocgrd.F"
-#include "zocfil.F"
 
       REAL*8      TA(NXYZDM, NTDIM),     TB(NXYZDM, NTDIM)
       REAL*8      UA(NXYZDM),     UB(NXYZDM)
@@ -414,6 +413,9 @@ c *** Output to file ***
             CALL CHEKIN(      FT(1, L),      CFTNAM(L),
      &                      NX,     NY,      1, NXYDIM, 'SFC')
          END DO
+
+c        CHEKIN routine for FTX/Y/Z & FSX/Y/Z
+         CALL CHKFTX
 
       CALL CHKOUT(
      I            OFLOUT)

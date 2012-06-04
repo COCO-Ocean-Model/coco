@@ -2,6 +2,10 @@
      O               AMV,    AHV,
      I                UY,     VY,      R,   TAUX,   TAUY,
      I                TY,     HY)
+      use zocdim
+      use zocgrd
+      use zocmsk
+      use zocphy
       IMPLICIT NONE
 
 c --- information -----------------------------------------------------
@@ -30,11 +34,6 @@ c     '10.04.14  M.Kurogi: (COCO4.4 tripolar code by Dr. Suzuki)
 c
 c ---------------------------------------------------------------------
 
-#include "zocdim.F"
-#include "zocgrd.F"
-#include "zocmsk.F"
-#include "zocphy.F"
-
       REAL*8      UY(NXYDIM, NZDIM),     VY(NXYDIM, NZDIM)
       REAL*8       R(NXYDIM, NZDIM)
       REAL*8     AMV(NXYDIM, NZDIM),    AHV(NXYDIM, NZDIM)
@@ -59,12 +58,12 @@ c ---------------------------------------------------------------------
       REAL*8      AA(NXYDIM, NZDIM),     AB(NXYDIM, NZDIM)
       REAL*8      AC(NXYDIM, NZDIM),    ADE(NXYDIM, NZDIM)
       REAL*8     DML(NXYDIM)
-      COMMON /WORK/ DZSIG, RZMSIG, DEPTH, DRDZ, DUVDZ, TLS, C, FEZ
-      EQUIVALENCE(DZSIG(1, 1), ADE(1, 1))
-      EQUIVALENCE(DEPTH(1, 1), AA(1, 1))
-      EQUIVALENCE(FEZ(1, 1), AB(1, 1))
-      EQUIVALENCE(DUVDZ(1, 1), AC(1, 1))
-      EQUIVALENCE(C(1, 1), AMVTMP(1, 1))
+c      COMMON /WORK/ DZSIG, RZMSIG, DEPTH, DRDZ, DUVDZ, TLS, C, FEZ
+c      EQUIVALENCE(DZSIG(1, 1), ADE(1, 1))
+c      EQUIVALENCE(DEPTH(1, 1), AA(1, 1))
+c      EQUIVALENCE(FEZ(1, 1), AB(1, 1))
+c      EQUIVALENCE(DUVDZ(1, 1), AC(1, 1))
+c      EQUIVALENCE(C(1, 1), AMVTMP(1, 1))
 
       REAL*8 CC0(NZDIM), CC1(NZDIM), CC2(NZDIM)
       REAL*8 CC3(NZDIM), CC4(NZDIM), CC5(NZDIM), CC6(NZDIM)
@@ -576,6 +575,8 @@ c *********************************************************************
 
       SUBROUTINE VDIFFB(
      M                AMV,    AHV)
+      use zocdim
+      use zocmsk
 
 c --- information -----------------------------------------------------
 c
@@ -586,9 +587,6 @@ c  HISTORY
 c     '01.02.08  H.Hasumi
 c
 c ---------------------------------------------------------------------
-
-#include "zocdim.F"
-#include "zocmsk.F"
 
       REAL*8     AMV(NXYDIM, NZDIM),    AHV(NXYDIM, NZDIM)
 

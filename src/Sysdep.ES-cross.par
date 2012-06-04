@@ -11,14 +11,22 @@ FFLAGS  =  -Wf'-L fmtlist transform -pvctl fullmsg noassume nodivloop noloopchg 
                   -gmalloc \
                   -acct
 
-FOPTION = $(FFLAGS) -I$(OGCMDIR)/src/include -DOPT_PARALLEL -UES $(OPTBDY) $(OPTSRST) $(OPTBBL) $(OPTTRIPOLE)
+FOPTION = $(FFLAGS) -I$(OGCMDIR)/src/include -I$(OGCMDIR)/src/module -I$(OGCMDIR)/src/shared  -I$(OGCMDIR)/src/depend.$(MODEL) -I$(OGCMDIR)/src/option -DOPT_PARALLEL -UES $(OPTBDY) $(OPTSRST) $(OPTBBL) $(OPTTRIPOLE)
 
 AR      = esar r
 RANLIB  = touch
 RM      = rm -f
+
+.SUFFIXES: .F90
 
 .F.o:
 	sed -e '/^\*VOPTION/s/.*/\*vdir nodep/' $< > $*.tmp.F
 	$(FC) $(FOPTION) -c $*.tmp.F
 	mv $*.tmp.o $*.o
 	$(RM) $*.tmp.F
+
+.F90.o:
+	sed -e '/^\*VOPTION/s/.*/\*vdir nodep/' $< > $*.tmp.F90
+	$(FC) $(FOPTION) -c $*.tmp.F90
+	mv $*.tmp.o $*.o
+	$(RM) $*.tmp.F90

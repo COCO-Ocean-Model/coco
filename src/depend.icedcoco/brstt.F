@@ -7,6 +7,9 @@
      O               TSI,
      O                FT,  SWABS,     FS,
      O              TAUX,   TAUY,   PTOP)
+      use zocdim
+      use zocphy
+      use zocfil
       IMPLICIT NONE
 
 c --- information -----------------------------------------------------
@@ -30,9 +33,6 @@ c ---------------------------------------------------------------------
 #ifdef OPT_PARALLEL
 #include "mpif.h"
 #endif
-#include "zocdim.F"
-#include "zocphy.F"
-#include "zocfil.F"
 
       REAL*8      UB(NXDIM, NYDIM, NZDIM),     VB(NXDIM, NYDIM, NZDIM)
       REAL*8      TB(NXDIM, NYDIM, NZDIM, NTDIM)
@@ -66,7 +66,7 @@ C      COMMON /WORK/ BUF2, BUF3, BUFI, G2D, G3D, GID
 #else
       REAL*8    BUF2(NX, NY),   BUF3(NX, NY, NZ)
       REAL*8    BUFI(NX, NY, NIC)
-      COMMON /WORK/ BUF2, BUF3, BUFI
+c      COMMON /WORK/ BUF2, BUF3, BUFI
 #endif
 #ifdef OPT_TRIPOLE
       REAL*8    FACT  ! set 1 for scalar, set -1 for vector

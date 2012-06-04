@@ -1,5 +1,8 @@
       SUBROUTINE SHDIFF(
      M                 TX,     HX)
+      use zocdim
+      use zocgrd
+      use zocmsk
       IMPLICIT NONE
 
 c --- information -----------------------------------------------------
@@ -12,10 +15,6 @@ c     '08.07.10  H.Hasumi: initial/final processing
 c
 c ---------------------------------------------------------------------
 
-#include "zocdim.F"
-#include "zocgrd.F"
-#include "zocmsk.F"
-
       REAL*8      HX(NXYDIM)
       REAL*8      TX(NXYDIM, NZDIM, NTDIM)
 
@@ -23,7 +22,7 @@ c ---------------------------------------------------------------------
       REAL*8     FHX(NXYDIM),    FHY(NXYDIM)
       REAL*8     FTX(NXYDIM),    FTY(NXYDIM)
       REAL*8  RHXBOT(NXYDIM)
-      COMMON /WORK/ TSH, FHX, FHY, FTX, FTY, RHXBOT
+c      COMMON /WORK/ TSH, FHX, FHY, FTX, FTY, RHXBOT
 
       INTEGER     IJ,      K,      N 
       INTEGER  IFPAR,  JFPAR

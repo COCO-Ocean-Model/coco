@@ -1,4 +1,6 @@
       PROGRAM ICEDCOCO
+      use zocdim
+      use zocfil
       IMPLICIT NONE
 
 c --- information -----------------------------------------------------
@@ -21,8 +23,6 @@ c ---------------------------------------------------------------------
 #ifdef OPT_PARALLEL
 #include "mpif.h"
 #endif
-#include "zocdim.F"
-#include "zocfil.F"
 
       REAL*8     TA(NXDIM, NYDIM, NZDIM, NTDIM)
       REAL*8     TB(NXDIM, NYDIM, NZDIM, NTDIM)
@@ -47,8 +47,8 @@ c ---------------------------------------------------------------------
       REAL*8   TAUX(NXDIM, NYDIM),   TAUY(NXDIM, NYDIM)
       REAL*8   PTOP(NXDIM, NYDIM)
 
-      REAL*8  WRK(NWRK)
-      COMMON /WORK/ WRK
+c      REAL*8  WRK(NWRK)
+c      COMMON /WORK/ WRK
 
       REAL*8      DT,     TT,     TS,    TSS
       INTEGER     NT,   ITST,    ITS,   NTSS
@@ -97,9 +97,9 @@ c *** Initial setup ***
       READ(IFPAR, NMRUN, END=99)
    99 CONTINUE
       WRITE(NFSTDO, *) 'Run name :'//CRUN
-      DO IJK = 1, NWRK
-         WRK(IJK) = 0.D0
-      END DO
+c      DO IJK = 1, NWRK
+c         WRK(IJK) = 0.D0
+c      END DO
 
       OFINAL = .FALSE.
       OINIT = .FALSE.
@@ -148,9 +148,9 @@ c *** Initial setup ***
 c *** Main loop ***
 
       CALL CLCSTR('MAIN')
-      DO IJK = 1, NWRK
-         WRK(IJK) = 0.D0
-      END DO
+c      DO IJK = 1, NWRK
+c         WRK(IJK) = 0.D0
+c      END DO
       TT = TSTRT
       NT = 0
   100 CONTINUE
@@ -271,6 +271,7 @@ c *** Handling for termination ***
 c *********************************************************************
 
       SUBROUTINE PARSET
+      use zocdim
 
 c --- information -----------------------------------------------------
 c
@@ -282,7 +283,6 @@ c
 c ---------------------------------------------------------------------
 
 #include "mpif.h"
-#include "zocdim.F"
 
       INTEGER  IFPAR,  JFPAR
 #ifdef OPT_TRIPOLE
@@ -406,7 +406,7 @@ ccc      CALL MPI_INIT(IERR)
 c *********************************************************************
 
       SUBROUTINE PARFIN
-
+      use zocnod
 c --- information -----------------------------------------------------
 c
 c  Finalization for parallelization
@@ -417,7 +417,6 @@ c
 c ---------------------------------------------------------------------
 
 #include "mpif.h"
-#include "zocnod.F"
 
       CALL MPI_FINALIZE(IERR)
 

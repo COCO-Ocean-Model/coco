@@ -2,6 +2,9 @@
      M                 UX,     VX,
      I                 GX,     GY,    AMV,
      I                 HX)
+      use zocdim
+      use zocgrd
+      use zocmsk
       IMPLICIT NONE
 
 c --- information -----------------------------------------------------
@@ -19,10 +22,6 @@ c     '08.07.10  H.Hasumi: initial/final processing
 c
 c ---------------------------------------------------------------------
 
-#include "zocdim.F"
-#include "zocgrd.F"
-#include "zocmsk.F"
-
       REAL*8      UX(NXYDIM, NZDIM),     VX(NXYDIM, NZDIM)
       REAL*8      GX(NXYDIM, NZDIM),     GY(NXYDIM, NZDIM)
       REAL*8     AMV(NXYDIM, NZDIM)
@@ -33,7 +32,7 @@ c ---------------------------------------------------------------------
       REAL*8     ADR(NXYDIM, NZDIM),    ADI(NXYDIM, NZDIM)
       REAL*8  TDIFFZ(NXYDIM, NZDIM)
       REAL*8   HVBOT(NXYDIM)
-      COMMON /WORK/ AA, ABR, ABI, AC, ADR, ADI, TDIFFZ, HVBOT
+c      COMMON /WORK/ AA, ABR, ABI, AC, ADR, ADI, TDIFFZ, HVBOT
 
       REAL*8     CF1,    CF2
       LOGICAL OFIRST

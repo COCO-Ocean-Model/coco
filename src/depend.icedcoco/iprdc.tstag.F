@@ -7,6 +7,9 @@
      I                  WEV,    WSB,
      I                 PREC,   SNOW,   ROFF,   SOFF,
      I               TAUAIX, TAUAIY, TAUAOX, TAUAOY)
+      use zocdim
+      use zocgrd
+      use zocphy
       IMPLICIT NONE
 
 c --- information -----------------------------------------------------
@@ -24,10 +27,6 @@ c     '09.09.26  Y.Komuro: bug fix
 c     '10.04.14  M.Kurogi: staggered time stepping
 c     '10.04.14  M.Kurogi: (COCO4.4 tripolar code by Dr. Suzuki)
 c ---------------------------------------------------------------------
-
-#include "zocdim.F"
-#include "zocgrd.F"
-#include "zocphy.F"
 
       REAL*8      TX(NXYDIM, NZDIM, NTDIM)
       REAL*8      UX(NXYDIM, NZDIM),     VX(NXYDIM, NZDIM)

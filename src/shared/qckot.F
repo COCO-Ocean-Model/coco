@@ -1,4 +1,8 @@
       SUBROUTINE CHKSET
+      use zocdim
+      use zocgrd
+      use zocfil
+      use zocout
       IMPLICIT NONE
 
 c --- information -----------------------------------------------------
@@ -16,11 +20,6 @@ c     '07.09.25  H.Hasumi: multi-category sea ice
 c     '08.??.??  Y.Komuro: SNGOUG/DBLOUG are allocated in all the nodes                           
 c
 c ---------------------------------------------------------------------
-
-#include "zocdim.F"
-#include "zocgrd.F"
-#include "zocfil.F"
-#include "zocout.F"
 
       LOGICAL OFLOUT(NFOMAX), OFLSTK(NFOMAX)
       INTEGER NXITEM, NYITEM, NZITEM, NDITEM

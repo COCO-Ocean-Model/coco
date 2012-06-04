@@ -2,6 +2,9 @@
      O                  W,
      I                 UX,     VX,
      I                 HX,     HZ)
+      use zocdim
+      use zocgrd
+      use zocmsk
       IMPLICIT NONE
 
 c --- information -----------------------------------------------------
@@ -15,17 +18,13 @@ c     '08.07.10  H.Hasumi: initial/final processing
 c
 c ---------------------------------------------------------------------
 
-#include "zocdim.F"
-#include "zocgrd.F"
-#include "zocmsk.F"
-
       REAL*8      UX(NXYDIM, NZDIM),     VX(NXYDIM, NZDIM)
       REAL*8      HX(NXYDIM),            HZ(NXYDIM)
       REAL*8       W(NXYDIM, NZDIM)
 
       REAL*8     FTX(NXYDIM, NZDIM),    FTY(NXYDIM, NZDIM)
       REAL*8    DHDT(NXYDIM), RHZBOT(NXYDIM)
-      COMMON /WORK/ FTX , FTY, DHDT, RHZBOT
+c      COMMON /WORK/ FTX , FTY, DHDT, RHZBOT
 
       INTEGER     IJ,      K
       INTEGER   IJLW,   IJLS,  IJLSW

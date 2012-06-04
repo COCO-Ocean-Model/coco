@@ -17,11 +17,13 @@ $(OPTLST):
 	cd option; make
 
 lib:
+	cd module; make
 	cd depend.$(MODEL); make
 	cd shared; make
 
 clean:
 	$(RM) *~ *.o *.trace core
+	cd module; make clean
 	cd depend.$(MODEL); make clean
 	cd shared; make clean
 	cd enstr; make clean

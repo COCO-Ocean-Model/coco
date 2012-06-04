@@ -12,11 +12,15 @@ FFLAGS	= -u -w -xAVX -fpe0 -convert big_endian -lmpi -DOPT_PARALLEL
 #FFLAGS	= -u -w -traceback -g -fpe0 -O2 -fltconsistency -mtune=itanium2-p9000 -convert big_endian -lmpi -DOPT_PARALLEL
 #FFLAGS	= -check -u -w -traceback -g -fpe0 -O2 -fltconsistency -mtune=itanium2-p9000 -convert big_endian -lmpi -DOPT_PARALLEL
 
-FOPTION = $(FFLAGS) -Vaxlib -I$(OGCMDIR)/src/include $(OPTBDY) $(OPTSRST) $(OPTBBL) $(OPTTRIPOLE)
+FOPTION = $(FFLAGS) -Vaxlib -I$(OGCMDIR)/src/include -I$(OGCMDIR)/src/module -I$(OGCMDIR)/src/shared  -I$(OGCMDIR)/src/depend.$(MODEL) -I$(OGCMDIR)/src/option $(OPTBDY) $(OPTSRST) $(OPTBBL) $(OPTTRIPOLE)
 
 AR	= ar r
 RANLIB	= ranlib
 #RANLIB	= touch
 
+.SUFFIXES: .F90
+ 
 .F.o:
+	$(FC) $(FOPTION) -c $<
+.F90.o:
 	$(FC) $(FOPTION) -c $<

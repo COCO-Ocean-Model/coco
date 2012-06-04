@@ -2,7 +2,7 @@ include ../src/Mkinclude
 include Sysdep.$(SYSTEM)$(PARALLEL)
 
 GEO	= GEO
-OUT	= zocdim.F
+OUT	= zocdim.F90
 
 xmkmsk:
 ifeq ($(OPTTRIPOLE), -DOPT_TRIPOLE)

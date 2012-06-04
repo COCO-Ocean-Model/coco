@@ -1,4 +1,8 @@
       SUBROUTINE SVTSET
+      use zocdim
+      use zocgrd
+      use zocmsk
+      use zocphy
       IMPLICIT NONE
 
 c --- information -----------------------------------------------------
@@ -17,11 +21,6 @@ c     '12.01.30  Y.Komuro: (change surface water flux by T. Suzuki)
 c
 c ---------------------------------------------------------------------
 
-#include "zocdim.F"
-#include "zocgrd.F"
-#include "zocmsk.F"
-#include "zocphy.F"
-
       REAL*8      TX(NXYDIM, NZDIM, NTDIM)
       REAL*8     ADT(NXYDIM, NZDIM, NTDIM)
       REAL*8      HX(NXYDIM),     HZ(NXYDIM)
@@ -35,21 +34,21 @@ c ---------------------------------------------------------------------
       REAL*8  SWCONV(NXYDIM, NZDIM)
       SAVE RGAMMA, SWCONV
 
-      REAL*8     FTX(NXYDIM, NZDIM, NTDIM)
-      REAL*8     FTY(NXYDIM, NZDIM, NTDIM)
-      REAL*8     FTZ(NXYDIM, NZDIM, NTDIM)
-      REAL*8     WZC(NXYDIM, NZDIM),    RZM(NXYDIM, NZDIM)
+c      REAL*8     FTX(NXYDIM, NZDIM, NTDIM)
+c      REAL*8     FTY(NXYDIM, NZDIM, NTDIM)
+c      REAL*8     FTZ(NXYDIM, NZDIM, NTDIM)
+c      REAL*8     WZC(NXYDIM, NZDIM),    RZM(NXYDIM, NZDIM)
 
-      REAL*8     FTX2(NXYDIM, NZDIM, NTDIM)
-      REAL*8     FTY2(NXYDIM, NZDIM, NTDIM)
-      REAL*8     FTZ2(NXYDIM, NZDIM, NTDIM)
+c      REAL*8     FTX2(NXYDIM, NZDIM, NTDIM)
+c      REAL*8     FTY2(NXYDIM, NZDIM, NTDIM)
+c      REAL*8     FTZ2(NXYDIM, NZDIM, NTDIM)
 !      COMMON /WORK/ FTX, FTY, FTZ, WZC, RZM
-      COMMON /WORK/ FTX, FTY, FTZ, FTX2, FTY2, FTZ2, WZC, RZM
+c      COMMON /WORK/ FTX, FTY, FTZ, FTX2, FTY2, FTZ2, WZC, RZM
       REAL*8      AA(NXYDIM, NZDIM),     AB(NXYDIM, NZDIM)
       REAL*8      AC(NXYDIM, NZDIM)
-      EQUIVALENCE(FTX(1, 1, 1), AA(1, 1))
-      EQUIVALENCE(FTY(1, 1, 1), AB(1, 1))
-      EQUIVALENCE(FTZ(1, 1, 1), AC(1, 1))
+c      EQUIVALENCE(FTX(1, 1, 1), AA(1, 1))
+c      EQUIVALENCE(FTY(1, 1, 1), AB(1, 1))
+c      EQUIVALENCE(FTZ(1, 1, 1), AC(1, 1))
 
       REAL*8      DH(NXYDIM),  HZBOT(NXYDIM),  HXBOT(NXYDIM)
       REAL*8     DZB,    DZT
@@ -154,30 +153,31 @@ c =====================================================================
          RETURN
       END IF
 
-      CALL CHEKIN(   FTX,  'FTX',
-     &                NX,     NY,     NZ, NXYZDM, 'OCN')
-      CALL CHEKIN(   FTY,  'FTY',
-     &                NX,     NY,     NZ, NXYZDM, 'OCN')
-      CALL CHEKIN(   FTZ,  'FTZ',
-     &                NX,     NY,     NZ, NXYZDM, 'OCN')
-      CALL CHEKIN(   FTX2,  'FTX2',
-     &                NX,     NY,     NZ, NXYZDM, 'OCN')
-      CALL CHEKIN(   FTY2,  'FTY2',
-     &                NX,     NY,     NZ, NXYZDM, 'OCN')
-      CALL CHEKIN(   FTZ2,  'FTZ2',
-     &                NX,     NY,     NZ, NXYZDM, 'OCN')
-      CALL CHEKIN(   FTX(1, 1, 2),  'FSX',
-     &                NX,     NY,     NZ, NXYZDM, 'OCN')
-      CALL CHEKIN(   FTY(1, 1, 2),  'FSY',
-     &                NX,     NY,     NZ, NXYZDM, 'OCN')
-      CALL CHEKIN(   FTZ(1, 1, 2),  'FSZ',
-     &                NX,     NY,     NZ, NXYZDM, 'OCN')
-      CALL CHEKIN(   FTX2(1, 1, 2),  'FSX2',
-     &                NX,     NY,     NZ, NXYZDM, 'OCN')
-      CALL CHEKIN(   FTY2(1, 1, 2),  'FSY2',
-     &                NX,     NY,     NZ, NXYZDM, 'OCN')
-      CALL CHEKIN(   FTZ2(1, 1, 2),  'FSZ2',
-     &                NX,     NY,     NZ, NXYZDM, 'OCN')
+c      moved to tflxt.F
+c      CALL CHEKIN(   FTX,  'FTX',
+c     &                NX,     NY,     NZ, NXYZDM, 'OCN')
+c      CALL CHEKIN(   FTY,  'FTY',
+c     &                NX,     NY,     NZ, NXYZDM, 'OCN')
+c      CALL CHEKIN(   FTZ,  'FTZ',
+c     &                NX,     NY,     NZ, NXYZDM, 'OCN')
+c      CALL CHEKIN(   FTX2,  'FTX2',
+c     &                NX,     NY,     NZ, NXYZDM, 'OCN')
+c      CALL CHEKIN(   FTY2,  'FTY2',
+c     &                NX,     NY,     NZ, NXYZDM, 'OCN')
+c      CALL CHEKIN(   FTZ2,  'FTZ2',
+c     &                NX,     NY,     NZ, NXYZDM, 'OCN')
+c      CALL CHEKIN(   FTX(1, 1, 2),  'FSX',
+c     &                NX,     NY,     NZ, NXYZDM, 'OCN')
+c      CALL CHEKIN(   FTY(1, 1, 2),  'FSY',
+c     &                NX,     NY,     NZ, NXYZDM, 'OCN')
+c      CALL CHEKIN(   FTZ(1, 1, 2),  'FSZ',
+c     &                NX,     NY,     NZ, NXYZDM, 'OCN')
+c      CALL CHEKIN(   FTX2(1, 1, 2),  'FSX2',
+c     &                NX,     NY,     NZ, NXYZDM, 'OCN')
+c      CALL CHEKIN(   FTY2(1, 1, 2),  'FSY2',
+c     &                NX,     NY,     NZ, NXYZDM, 'OCN')
+c      CALL CHEKIN(   FTZ2(1, 1, 2),  'FSZ2',
+c     &                NX,     NY,     NZ, NXYZDM, 'OCN')
 c      DO L=3, NTDIM
 c         CALL CHEKIN(   FTX(1, 1, L), CTXNAM(L),
 c     &                   NX,     NY,     NZ, NXYZDM,  'OCN')
@@ -390,6 +390,12 @@ c *********************************************************************
 
       SUBROUTINE TTSSET
 
+      use zocdim
+      use zocgrd
+      use zocmsk
+      use zocphy
+      implicit none
+
 c --- information -----------------------------------------------------
 c
 c  HISTORY
@@ -399,13 +405,8 @@ c     '08.03.06  Y.Komuro: parallel code merged (from MIROC3.2)
 c                          bug fix (LTNGG incorrect)
 c
 c ---------------------------------------------------------------------
-      implicit none
 
 #include "mpif.h"
-#include "zocdim.F"
-#include "zocgrd.F"
-#include "zocphy.F"
-#include "zocmsk.F"
 
       INTEGER   NTDIM1
       PARAMETER(NTDIM1 = NTDIM + 1)
@@ -897,6 +898,11 @@ c *********************************************************************
 
       SUBROUTINE TTSSET
 
+      use zocdim
+      use zocgrd
+      use zocmsk
+      use zocphy
+      implicit none
 c --- information -----------------------------------------------------
 c
 c  HISTORY
@@ -906,11 +912,6 @@ c     '08.03.06  Y.Komuro: non-parallel only
 c                          bug fix (LTNGG incorrect)
 c
 c ---------------------------------------------------------------------
-
-#include "zocdim.F"
-#include "zocgrd.F"
-#include "zocphy.F"
-#include "zocmsk.F"
 
       INTEGER NTUNNEL,NTNGR,NTIGR
       PARAMETER (NTUNNEL = 20)

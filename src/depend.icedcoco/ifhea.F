@@ -3,6 +3,10 @@
      O               WAO,    WIO,    WAS,    WIL,
      I                 A,      T,     SH,
      I               QAO,    QAI,    QIO,    QII,  SWABS)
+      use zocdim
+      use zocgrd
+      use zocmsk
+      use zocphy
       IMPLICIT NONE
 
 c --- information -----------------------------------------------------
@@ -16,11 +20,6 @@ c     '08.06.11  H.Hasumi: initial/final processing
 c     '08.07.10  H.Hasumi: initial/final processing
 c
 c ---------------------------------------------------------------------
-
-#include "zocdim.F"
-#include "zocgrd.F"
-#include "zocmsk.F"
-#include "zocphy.F"
 
       REAL*8     WAO(NXYDIM)
       REAL*8     WIO(NXYDIM, NIC),    WAS(NXYDIM, NIC)
@@ -39,7 +38,7 @@ c ---------------------------------------------------------------------
       SAVE SWCNV1, OFIRST
 
       REAL*8    WFRZ(NXYDIM),    WIB(NXYDIM),   WILM(NXYDIM)
-      COMMON /WORK/ WFRZ, WIB, WILM
+c      COMMON /WORK/ WFRZ, WIB, WILM
 
       REAL*8    TDEV
       INTEGER     IJ,      K

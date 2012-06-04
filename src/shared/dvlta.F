@@ -1,6 +1,9 @@
       SUBROUTINE VELTAD(
      O               UADV,   VADV,
      I                UBT,    VBT,      U,      V)
+      use zocdim
+      use zocgrd
+      use zocmsk
       IMPLICIT NONE
 
 c --- information -----------------------------------------------------
@@ -17,17 +20,13 @@ c                          (initialize UADV/VADV)
 c
 c ---------------------------------------------------------------------
 
-#include "zocdim.F"
-#include "zocgrd.F"
-#include "zocmsk.F"
-
       REAL*8    UADV(NXYDIM, NZDIM),   VADV(NXYDIM, NZDIM)
       REAL*8       U(NXYDIM, NZDIM),      V(NXYDIM, NZDIM)
       REAL*8     UBT(NXYDIM),    VBT(NXYDIM)
 
       REAL*8    UAVR(NXYDIM),   VAVR(NXYDIM)
       REAL*8    UBAR(NXYDIM),   VBAR(NXYDIM)
-      COMMON /WORK/ UAVR, VAVR, UBAR, VBAR
+c      COMMON /WORK/ UAVR, VAVR, UBAR, VBAR
 
       INTEGER     IJ,      K
 

@@ -4,6 +4,9 @@
      O              AMV,    AHV,
      O               FT,   PTOP,
      I              DT1)
+      use zocdim
+      use zocgrd
+      use zocfil
       IMPLICIT NONE
 
 c --- information -----------------------------------------------------
@@ -21,10 +24,6 @@ c     '09.10.06  Y.Komuro: FORSTO before PREDCI
 c     '11.12.13  Y.Komuro: time scale for water normalization
 c
 c ---------------------------------------------------------------------
-
-#include "zocdim.F"
-#include "zocgrd.F"
-#include "zocfil.F"
 
       REAL*8      TA(NXYZDM, NTDIM),     TB(NXYZDM, NTDIM)
       REAL*8      UA(NXYZDM),     UB(NXYZDM)
@@ -523,6 +522,9 @@ c *** Output to file ***
          CALL CHEKIN(   TSI,   'TSI',
      &                   NX,     NY,    NIC, NXYIDM, 'ICE')
 
+c        CHEKIN routine for FTX/Y/Z & FSX/Y/Z
+         CALL CHKFTX
+
 c        temporal output section for CMIP5
 c        AIG: total sea ice concentration, unit [ND]
 c        HIG: sea ice thickness averaged over the entire grid cell
@@ -547,7 +549,10 @@ c *********************************************************************
      M                 PREC,    WEV,
      I                   SH,      A,     HI,     HS)
 
-
+      use zocdim
+      use zocgrd
+      use zocmsk
+      use zocphy
       IMPLICIT NONE
 
 c --- information -----------------------------------------------------
@@ -560,10 +565,6 @@ c
 c ---------------------------------------------------------------------
 
 #include "mpif.h"
-#include "zocdim.F"
-#include "zocgrd.F"
-#include "zocmsk.F"
-#include "zocphy.F"
 
       REAL*8   PREC(NXYDIM),    WEV(NXYDIM)
       REAL*8     SH(NXYDIM)

@@ -1,5 +1,7 @@
       SUBROUTINE BTAVST(
      O                   UBTAV,  VBTAV)
+      use zocdim
+      use zocgrd
       IMPLICIT NONE
 
 c ---- information ----------------------------------------------------
@@ -9,9 +11,6 @@ c     '99.08.17  H.Hasumi
 c     '07.04.23  H.Hasumi
 c
 c ---------------------------------------------------------------------
-
-#include "zocdim.F"
-#include "zocgrd.F"
 
       REAL*8   UBTAV(NXYDIM),  VBTAV(NXYDIM)
       REAL*8     UBT(NXYDIM),    VBT(NXYDIM)

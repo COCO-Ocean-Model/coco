@@ -1,4 +1,8 @@
       SUBROUTINE RDGEO
+      use zocdim
+      use zocmsk
+      use zocgrd
+      use zocfil
       IMPLICIT NONE
 
 c --- information -----------------------------------------------------
@@ -17,10 +21,6 @@ c ---------------------------------------------------------------------
 #ifdef OPT_PARALLEL
 #include "mpif.h"
 #endif
-#include "zocdim.F"
-#include "zocmsk.F"
-#include "zocgrd.F"
-#include "zocfil.F"
 
 #ifdef OPT_PARALLEL
       INTEGER,ALLOCATABLE :: G2DI(:)

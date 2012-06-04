@@ -12,6 +12,8 @@
      W                    GX,     GY,     XX,     YY,
      W                   GXX,    GYY,
      W                  UADV,   VADV,   WADV)
+      use zocdim
+      use zocgrd
       IMPLICIT NONE
 
 c --- information -----------------------------------------------------
@@ -28,9 +30,6 @@ c     '10.10.15  H.Tatebe: staggered time stepping (COCO4.4 by Dr. Kurogi)
 c     '12.01.30  Y.Komuro: (change surface water flux by T. Suzuki)
 c
 c ---------------------------------------------------------------------
-
-#include "zocdim.F"
-#include "zocgrd.F"
 
       REAL*8      TY(NXYZDM, NTDIM),     TX(NXYZDM, NTDIM)
       REAL*8      UY(NXYZDM),     UX(NXYZDM)

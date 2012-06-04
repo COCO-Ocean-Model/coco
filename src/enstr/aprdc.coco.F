@@ -11,6 +11,8 @@
      W                    GX,     GY,     XX,     YY,
      W                   GXX,    GYY,
      W                  UADV,   VADV,   WADV)
+      use zocdim
+      use zocgrd
       IMPLICIT NONE
 
 c --- information -----------------------------------------------------
@@ -36,9 +38,6 @@ c     '09.01.20  T.Suzuki: bug fix (SHIFT UX/VX after STBBVT)
 c     '10.04.14  M.Kurogi: (COCO4.4 tripolar code by Dr. Suzuki)
 c
 c ---------------------------------------------------------------------
-
-#include "zocdim.F"
-#include "zocgrd.F"
 
       REAL*8      TY(NXYZDM, NTDIM),     TX(NXYZDM, NTDIM)
       REAL*8      UY(NXYZDM),     UX(NXYZDM)

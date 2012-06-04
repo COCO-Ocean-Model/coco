@@ -1,6 +1,11 @@
       SUBROUTINE ICTRNS(
      M                 AX,    HIX,    HSX,    EIX,    TIX,
      M                 FT,     FS)
+      use zocdim
+      use zocgrd
+      use zocmsk
+      use zocphy
+c      use zocite
       IMPLICIT NONE
 
 c ---- information ----------------------------------------------------
@@ -18,10 +23,6 @@ c ---------------------------------------------------------------------
 #ifdef OPT_PARALLEL
 #include "mpif.h"
 #endif
-#include "zocdim.F"
-#include "zocgrd.F"
-#include "zocmsk.F"
-#include "zocphy.F"
 
       REAL*8      AX(NXYDIM, 0:NIC)
       REAL*8     HIX(NXYDIM, 0:NIC)
@@ -32,7 +33,7 @@ c ---------------------------------------------------------------------
       REAL*8   AXHIX(NXYDIM, 0:NIC),  AXHSX(NXYDIM, 0:NIC)
       REAL*8   AXEIX(NXYDIM, 0:NIC)
       REAL*8      CI(NXYDIM)
-      COMMON /WORK/ AXHIX, AXHSX, AXEIX, CI
+c      COMMON /WORK/ AXHIX, AXHSX, AXEIX, CI
 
       REAL*8     RRI,    RRS
       REAL*8     TMI

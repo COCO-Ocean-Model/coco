@@ -1,6 +1,10 @@
       SUBROUTINE MODGXY(
      M                GXX,    GYY,
      I               UBTX,   VBTX)
+      use zocdim
+      use zocgrd
+      use zocmsk
+      use zocphy
       IMPLICIT NONE
 
 c ---- information ----------------------------------------------------
@@ -16,12 +20,8 @@ c     '12.01.30  Y.Komuro: (change surface water flux by T. Suzuki)
 c
 c ---------------------------------------------------------------------
 
-#include "zocdim.F"
       INTEGER   NCF
       PARAMETER(NCF = 256)
-#include "zocgrd.F"
-#include "zocmsk.F"
-#include "zocphy.F"
 
       REAL*8      HX(NXYDIM),     HY(NXYDIM)
       REAL*8    UBTX(NXYDIM),   UBTY(NXYDIM)
@@ -40,8 +40,8 @@ c ---------------------------------------------------------------------
       REAL*8      GU(NXYDIM),     GV(NXYDIM)
       REAL*8     SXX(NXYDIM),    SYY(NXYDIM)
       REAL*8     SXY(NXYDIM),    SYX(NXYDIM)
-      COMMON /WORK/ FUX, FUY, FVX, FVY, FHX, FHY, GU, GV,
-     &              SXX, SYY, SXY, SYX
+c      COMMON /WORK/ FUX, FUY, FVX, FVY, FHX, FHY, GU, GV,
+c     &              SXX, SYY, SXY, SYX
 
       REAL*8      CF
       INTEGER     IJ,      I,      J

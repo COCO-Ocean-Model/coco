@@ -1,6 +1,9 @@
       SUBROUTINE VELVAD(
      O               UADV,   VADV,   WADV,
      I                  U,      V,      W)
+      use zocdim
+      use zocgrd
+      use zocmsk
       IMPLICIT NONE
 
 c --- information -----------------------------------------------------
@@ -31,10 +34,6 @@ c     '10.04.14  M.kurogi
 c     '10.04.14  M.Kurogi: for tripolar grid
 c
 c ---------------------------------------------------------------------
-
-#include "zocdim.F"
-#include "zocgrd.F"
-#include "zocmsk.F"
 
       REAL*8    UADV(NXYDIM, NZDIM),   VADV(NXYDIM, NZDIM)
       REAL*8    WADV(NXYDIM, NZDIM, 9)
@@ -207,11 +206,10 @@ c *********************************************************************
       SUBROUTINE VELVAB(
      M               WADV,
      I                  W)
+      use zocdim
+      use zocgrd
+      use zocmsk
       IMPLICIT NONE
-
-#include "zocdim.F"
-#include "zocgrd.F"
-#include "zocmsk.F"
 
       REAL*8    WADV(NXYDIM, NZDIM, 9)
       REAL*8       W(NXYDIM, NZDIM)
@@ -330,8 +328,9 @@ c *********************************************************************
 
 #ifdef OPT_TRIPOLE
       SUBROUTINE EXCNGW(WADV)
+      use zocdim
       IMPLICIT NONE
-#include "zocdim.F"
+
       REAL*8    WADV(NXDIM, NYDIM, NZDIM, 9)
       REAL*8   WADV2(NXDIM, NYDIM, NZDIM, 9)
 

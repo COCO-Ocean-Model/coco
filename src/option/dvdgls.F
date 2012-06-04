@@ -2,6 +2,10 @@
      O               AMV,    AHV,
      I                UY,     VY,      R,   TAUX,   TAUY,
      I                TY,     HY)
+      use zocdim
+      use zocgrd
+      use zocmsk
+      use zocphy
       IMPLICIT NONE
 
 c --- information -----------------------------------------------------
@@ -18,11 +22,6 @@ c     '10.04.13  Y.Komuro: bug fix (for non-BBL use etc.)
 c     '12.01.19  Y.Komuro: bug fix (GH in unstable situation)
 c
 c ---------------------------------------------------------------------
-
-#include "zocdim.F"
-#include "zocgrd.F"
-#include "zocmsk.F"
-#include "zocphy.F"
 
       REAL*8      UY(NXYDIM, NZDIM),     VY(NXYDIM, NZDIM)
       REAL*8       R(NXYDIM, NZDIM)
@@ -59,8 +58,8 @@ c ---------------------------------------------------------------------
       REAL*8   DPSI0(NXYDIM), SCNP3D(NXYDIM, NZDIM)
       REAL*8    TAOX(NXYDIM),   TAOY(NXYDIM)
       REAL*8  CTKEMN(NXYDIM, NZDIM), CTFILT(NXYDIM, NZDIM)
-      COMMON /WORK/ DZSIG, RZMSIG, DRDZ, DUVDZ,
-     &              DEPTH, DEPTHM, SCNP3D, FWALL
+c      COMMON /WORK/ DZSIG, RZMSIG, DRDZ, DUVDZ,
+c     &              DEPTH, DEPTHM, SCNP3D, FWALL
 
       REAL*8 CC0(NZDIM), CC1(NZDIM), CC2(NZDIM)
       REAL*8 CC3(NZDIM), CC4(NZDIM), CC5(NZDIM), CC6(NZDIM)
@@ -1004,6 +1003,8 @@ c *********************************************************************
 
       SUBROUTINE VDIFFB(
      M                AMV,    AHV)
+      use zocdim
+      use zocmsk
 
 c --- information -----------------------------------------------------
 c
@@ -1014,9 +1015,6 @@ c  HISTORY
 c     '01.02.08  H.Hasumi
 c
 c ---------------------------------------------------------------------
-
-#include "zocdim.F"
-#include "zocmsk.F"
 
       REAL*8     AMV(NXYDIM, NZDIM),    AHV(NXYDIM, NZDIM)
 

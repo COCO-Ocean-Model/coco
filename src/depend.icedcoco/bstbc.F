@@ -14,11 +14,11 @@ c ---------------------------------------------------------------------
 #ifdef OPT_PARALLEL
       SUBROUTINE STBCTR(
      M                       T,      R)
+      use zocdim
+      use zocmsk
       IMPLICIT NONE
 
 #include "mpif.h"
-#include "zocdim.F"
-#include "zocmsk.F"
 
       REAL*8       T(NXDIM, NYDIM, NZDIM, NTDIM)
       REAL*8       R(NXDIM, NYDIM, NZDIM)
@@ -51,9 +51,8 @@ c *********************************************************************
 
       SUBROUTINE STBCSH(
      M                      SH)
+      use zocdim
       IMPLICIT NONE
-
-#include "zocdim.F"
 
       REAL*8      SH(NXDIM, NYDIM)
 
@@ -75,10 +74,9 @@ c *********************************************************************
 
       SUBROUTINE STBCBT(
      M                     UBT,    VBT)
+      use zocdim
+      use zocmsk
       IMPLICIT NONE
-
-#include "zocdim.F"
-#include "zocmsk.F"
 
       REAL*8     UBT(NXDIM, NYDIM),    VBT(NXDIM, NYDIM)
 
@@ -102,10 +100,9 @@ c *********************************************************************
 
       SUBROUTINE STBCTR(
      M                       T,      R)
+      use zocdim
+      use zocmsk
       IMPLICIT NONE
-
-#include "zocdim.F"
-#include "zocmsk.F"
 
       REAL*8       T(NXDIM, NYDIM, NZDIM, NTDIM)
       REAL*8       R(NXDIM, NYDIM, NZDIM)
@@ -161,9 +158,8 @@ c *********************************************************************
 
       SUBROUTINE STBCUV(
      M                       U,      V)
+      use zocdim
       IMPLICIT NONE
-
-#include "zocdim.F"
 
       REAL*8       U(NXDIM, NYDIM, NZDIM)
       REAL*8       V(NXDIM, NYDIM, NZDIM)
@@ -190,9 +186,8 @@ c *********************************************************************
 
       SUBROUTINE STBCGG(
      M                     GXX,    GYY)
+      use zocdim
       IMPLICIT NONE
-
-#include "zocdim.F"
 
       REAL*8     GXX(NXDIM, NYDIM),    GYY(NXDIM, NYDIM)
 
@@ -216,9 +211,8 @@ c *********************************************************************
 
       SUBROUTINE STBCAD(
      M                    UADV,   VADV,   WADV)
+      use zocdim
       IMPLICIT NONE
-
-#include "zocdim.F"
 
       REAL*8    UADV(NXDIM, NYDIM, NZDIM)
       REAL*8    VADV(NXDIM, NYDIM, NZDIM)
@@ -248,9 +242,8 @@ c *********************************************************************
 
       SUBROUTINE STBCAV(
      M                     AMV,    AHV)
+      use zocdim
       IMPLICIT NONE
-
-#include "zocdim.F"
 
       REAL*8     AMV(NXDIM, NYDIM, NZDIM)
       REAL*8     AHV(NXDIM, NYDIM, NZDIM)
@@ -277,9 +270,8 @@ c *********************************************************************
 
       SUBROUTINE STBCTU(
      M                    TAUX,   TAUY)
+      use zocdim
       IMPLICIT NONE
-
-#include "zocdim.F"
 
       REAL*8    TAUX(NXDIM, NYDIM),   TAUY(NXDIM, NYDIM)
 
@@ -303,9 +295,9 @@ c *********************************************************************
 
       SUBROUTINE STBCSI(
      M                       A,     HI,     EI,     TI,     HS)
-
-#include "zocdim.F"
-#include "zocmsk.F"
+      use zocdim
+      use zocmsk
+      IMPLICIT NONE
 
       REAL*8       A(NXDIM, NYDIM, 0:NIC)
       REAL*8      HI(NXDIM, NYDIM, 0:NIC)
@@ -341,8 +333,8 @@ c *********************************************************************
 
       SUBROUTINE STBCVI(
      M                      UI,     VI)
-
-#include "zocdim.F"
+      use zocdim
+      IMPLICIT NONE
 
       REAL*8      UI(NXDIM, NYDIM)
       REAL*8      VI(NXDIM, NYDIM)
@@ -377,10 +369,9 @@ c ---------------------------------------------------------------------
 
       SUBROUTINE STBBGV(
      M                      GX,     GY)
+      use zocdim
+      use zocmsk
       IMPLICIT NONE
-
-#include "zocdim.F"
-#include "zocmsk.F"
 
       REAL*8      GX(NXYDIM, NZDIM),     GY(NXYDIM, NZDIM)
 
@@ -408,10 +399,9 @@ c *********************************************************************
 
       SUBROUTINE STBBUV(
      M                       U,      V)
+      use zocdim
+      use zocmsk
       IMPLICIT NONE
-
-#include "zocdim.F"
-#include "zocmsk.F"
 
       REAL*8       U(NXYDIM, NZDIM),      V(NXYDIM, NZDIM)
 
@@ -430,10 +420,9 @@ c *********************************************************************
 
       SUBROUTINE STBBVT(
      M                       U,      V)
+      use zocdim
+      use zocmsk
       IMPLICIT NONE
-
-#include "zocdim.F"
-#include "zocmsk.F"
 
       REAL*8       U(NXYDIM, NZDIM),      V(NXYDIM, NZDIM)
 
@@ -454,10 +443,9 @@ c *********************************************************************
 
       SUBROUTINE STBBGT(
      M                     ADT,  DIFFZ)
+      use zocdim
+      use zocmsk
       IMPLICIT NONE
-
-#include "zocdim.F"
-#include "zocmsk.F"
 
       REAL*8     ADT(NXYDIM, NZDIM, NTDIM)
       REAL*8   DIFFZ(NXYDIM, NZDIM)
@@ -486,10 +474,9 @@ c *********************************************************************
 
       SUBROUTINE STBBTR(
      M                       T)
+      use zocdim
+      use zocmsk
       IMPLICIT NONE
-
-#include "zocdim.F"
-#include "zocmsk.F"
 
       REAL*8       T(NXYDIM, NZDIM, NTDIM)
 
@@ -509,10 +496,9 @@ c *********************************************************************
 
       SUBROUTINE STBBT2(
      M                       T)
+      use zocdim
+      use zocmsk
       IMPLICIT NONE
-
-#include "zocdim.F"
-#include "zocmsk.F"
 
       REAL*8       T(NXYDIM, NZDIM, NTDIM)      
 

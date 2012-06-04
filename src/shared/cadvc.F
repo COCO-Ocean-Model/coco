@@ -3,6 +3,9 @@
      I                 UY,     UX,     VY,     VX,
      I                 HX,     HY,
      I               UADV,   VADV,   WADV)
+      use zocdim
+      use zocgrd
+      use zocmsk
       IMPLICIT NONE
 
 c --- information -----------------------------------------------------
@@ -17,10 +20,6 @@ c     '08.07.10  H.Hasumi: initial/final processing
 c
 c ---------------------------------------------------------------------
 
-#include "zocdim.F"
-#include "zocgrd.F"
-#include "zocmsk.F"
-
       REAL*8      UY(NXYDIM, NZDIM),     UX(NXYDIM, NZDIM)
       REAL*8      VY(NXYDIM, NZDIM),     VX(NXYDIM, NZDIM)
       REAL*8      HY(NXYDIM)       ,     HX(NXYDIM)
@@ -33,11 +32,11 @@ c ---------------------------------------------------------------------
       REAL*8     FUY(NXYDIM, NZDIM),    FVY(NXYDIM, NZDIM)
       REAL*8     FUZ(NXYDIM, NZDIM),    FVZ(NXYDIM, NZDIM)
       REAL*8      RZ(NXYDIM, NZDIM),    RZM(NXYDIM, NZDIM)
-      COMMON /WORK/ FUX, FUY, FUZ, FVX, FVY, FVZ, RZ, RZM
+c      COMMON /WORK/ FUX, FUY, FUZ, FVX, FVY, FVZ, RZ, RZM
 *** RZ is taken over from the previous subroutine VSCVEL ***
 
       REAL*8     DIV(NXYDIM, KSTR:KSTR+KZ-1)
-      REAL*8   HVBOT(NXYDIM)
+      REAL*8   HVBOT(NXYDIM), HVBOTX(NXYDIM)
       INTEGER     IJ,      K
 
       IF (OINIT .OR. OFINAL) THEN
@@ -61,6 +60,22 @@ c ---------------------------------------------------------------------
      &               RYM(IJ) * 0.25D0
      &             + ZBOT
          HVBOT(IJ) = 1.D0 / HVBOT(IJ)
+         HVBOTX(IJ) = (  (HX(IJ)    + HX(IJ+LE) ) * DY(IJ)
+     &                + (HX(IJ+LN) + HX(IJ+LNE)) * DY(IJ+LN)) *
+     &               RYM(IJ) * 0.25D0
+     &             + ZBOT
+         HVBOTX(IJ) = 1.D0 / HVBOTX(IJ)
+      END DO
+
+      DO K = KSTR, KSTR+KZ-1
+         DO IJ = IJVSTR, IJVEND
+            RZ (IJ, K) = 1.D0 * RS (K) * HVBOTX(IJ)
+         END DO
+      END DO
+      DO K = KSTR+KZ, KEND
+         DO IJ = IJVSTR, IJVEND
+            RZ (IJ, K) = 1.D0 / DZV(IJ, K)
+         END DO
       END DO
 
       DO K = KSTR, KSTR+KZ-2
@@ -216,6 +231,9 @@ c *********************************************************************
      M                 GX,     GY,     XX,     YY,
      I                 UY,     UX,     VY,     VX,
      I               UADV,   VADV,   WADV)
+      use zocdim
+      use zocgrd
+      use zocmsk
       IMPLICIT NONE
 
 c --- information -----------------------------------------------------
@@ -223,10 +241,6 @@ c
 c  Advection term of the BBL momentum eqs.
 c
 c ---------------------------------------------------------------------
-
-#include "zocdim.F"
-#include "zocgrd.F"
-#include "zocmsk.F"
 
       REAL*8      UY(NXYDIM, NZDIM),     UX(NXYDIM, NZDIM)
       REAL*8      VY(NXYDIM, NZDIM),     VX(NXYDIM, NZDIM)
@@ -241,7 +255,7 @@ c ---------------------------------------------------------------------
       REAL*8     FUX(NXYDIM),    FVX(NXYDIM)
       REAL*8     FUY(NXYDIM),    FVY(NXYDIM)
       REAL*8     FUZ(NXYDIM),    FVZ(NXYDIM)
-      COMMON /WORK/ FUX, FUY, FUZ, FVX, FVY, FVZ
+c      COMMON /WORK/ FUX, FUY, FUZ, FVX, FVY, FVZ
 
       INTEGER     IJ,    KUP
 

@@ -3,6 +3,10 @@
      I                 UY,     UX,     VY,     VX,
      I                 HX,     HY,
      I                AMV,   TAUX,   TAUY)
+      use zocdim
+      use zocgrd
+      use zocmsk
+      use zocphy
       IMPLICIT NONE
 
 c --- information -----------------------------------------------------
@@ -18,11 +22,6 @@ c     '08.07.10  H.Hasumi: initial/final processing
 c     '09.01.06  T.Suzuki: bug fix (FUZ/FVZ added to GX/GY in VSCVLB)
 c
 c ---------------------------------------------------------------------
-
-#include "zocdim.F"
-#include "zocgrd.F"
-#include "zocmsk.F"
-#include "zocphy.F"
 
       REAL*8      UY(NXYDIM, NZDIM),     UX(NXYDIM, NZDIM)
       REAL*8      VY(NXYDIM, NZDIM),     VX(NXYDIM, NZDIM)
@@ -43,9 +42,9 @@ c ---------------------------------------------------------------------
       REAL*8     SXX(NXYDIM),    SYY(NXYDIM)
       REAL*8     SXY(NXYDIM)
       REAL*8     SZX(NXYDIM, NZDIM),    SZY(NXYDIM, NZDIM)
-      COMMON /WORK/ FUX, FUY, FUZ, FVX, FVY, FVZ, RZ, RZM
-      EQUIVALENCE(FUZ(1, 1), SZX(1, 1))
-      EQUIVALENCE(FVZ(1, 1), SZY(1, 1))
+c      COMMON /WORK/ FUX, FUY, FUZ, FVX, FVY, FVZ, RZ, RZM
+c      EQUIVALENCE(FUZ(1, 1), SZX(1, 1))
+c      EQUIVALENCE(FVZ(1, 1), SZY(1, 1))
 
       REAL*8   HVBOT(NXYDIM)
       REAL*8     EXX,    EYY,    EXY
@@ -320,6 +319,10 @@ c *********************************************************************
      M                 GX,     GY,     XX,     YY,
      I                 UY,     UX,     VY,     VX,
      I                AMV)
+      use zocdim
+      use zocgrd
+      use zocmsk
+      use zocphy
       IMPLICIT NONE
 
 c --- information -----------------------------------------------------
@@ -330,11 +333,6 @@ c  HISTORY
 c     '01.12.03  H.Hasumi: from cflxvb.F of COCO3.3.05
 c
 c ---------------------------------------------------------------------
-
-#include "zocdim.F"
-#include "zocgrd.F"
-#include "zocmsk.F"
-#include "zocphy.F"
 
       REAL*8      UY(NXYDIM, NZDIM),     UX(NXYDIM, NZDIM)
       REAL*8      VY(NXYDIM, NZDIM),     VX(NXYDIM, NZDIM)
@@ -355,9 +353,9 @@ c ---------------------------------------------------------------------
       REAL*8     SZX(NXYDIM),    SZY(NXYDIM)
       REAL*8      HU(NXYDIM),     HV(NXYDIM)
       REAL*8      DD(NXYDIM)
-      COMMON /WORK/ FUX, FUY, FUZ, FVX, FVY, FVZ,
-     &              SXX, SYY, SXY, SZX, SZY,
-     &               HU,  HV,  DD
+c      COMMON /WORK/ FUX, FUY, FUZ, FVX, FVY, FVZ,
+c     &              SXX, SYY, SXY, SZX, SZY,
+c     &               HU,  HV,  DD
 
       REAL*8     EXX,    EYY,    EXY
       REAL*8      PI

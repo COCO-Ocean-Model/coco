@@ -4,6 +4,10 @@
      I                 XX,     YY,
      I                 UY,     VY,     HY,      R,
      I                 UX,     VX,   UADV,   VADV)
+      use zocdim
+      use zocgrd
+      use zocmsk
+      use zocphy
       IMPLICIT NONE
 
 c --- information -----------------------------------------------------
@@ -22,11 +26,6 @@ c     '10.04.14  M.Kurogi: staggered time stepping
 c
 c ---------------------------------------------------------------------
 
-#include "zocdim.F"
-#include "zocgrd.F"
-#include "zocmsk.F"
-#include "zocphy.F"
-
       REAL*8       R(NXYDIM, NZDIM),     HY(NXYDIM)
       REAL*8      UY(NXYDIM, NZDIM),     VY(NXYDIM, NZDIM)
       REAL*8      UX(NXYDIM, NZDIM),     VX(NXYDIM, NZDIM)
@@ -44,8 +43,9 @@ c ---------------------------------------------------------------------
       REAL*8      VU(NXYDIM)       ,     VV(NXYDIM)
       REAL*8   HVBOT(NXYDIM)
       REAL*8   DZSIG(NXYDIM, NZDIM)
-      COMMON /WORK/ PX, PXM,  PY, PYM, UU, UV, VU, VV,
-     &              HVBOT, DZSIG
+c      COMMON /WORK/ PX, PXM,  PY, PYM, UU, UV, VU, VV,
+c     &              HVBOT, DZSIG
+      COMMON /WORK2/ PX, PXM,  PY, PYM
 
       INTEGER     IJ,      K
 
@@ -415,6 +415,10 @@ c *********************************************************************
      I                XX,     YY,
      I                UY,     VY,     TY,  
      I                UX,     VX)
+      use zocdim
+      use zocgrd
+      use zocmsk
+      use zocphy
       IMPLICIT NONE
 
 c --- information -----------------------------------------------------
@@ -423,11 +427,6 @@ c  Pressure gradient and Coriolis terms for the BBL momentum eqs. See
 c Nakano and Suginohara (2002, JPO).
 c
 c ---------------------------------------------------------------------
-
-#include "zocdim.F"
-#include "zocgrd.F"
-#include "zocmsk.F"
-#include "zocphy.F"
 
       REAL*8     GXX(NXYDIM)       ,    GYY(NXYDIM)
       REAL*8      GX(NXYDIM, NZDIM),     GY(NXYDIM, NZDIM)
@@ -438,7 +437,7 @@ c ---------------------------------------------------------------------
 
       REAL*8      PX(NXYDIM, NZDIM),    PXM(NXYDIM, NZDIM)
       REAL*8      PY(NXYDIM, NZDIM),    PYM(NXYDIM, NZDIM)
-      COMMON /WORK/ PX, PXM,  PY, PYM
+      COMMON /WORK2/ PX, PXM,  PY, PYM
 
       REAL*8  C0B(NXYDIM), C1B(NXYDIM), C2B(NXYDIM), C3B(NXYDIM)
       REAL*8  C4B(NXYDIM), C5B(NXYDIM), C6B(NXYDIM)
