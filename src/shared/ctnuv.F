@@ -1,14 +1,33 @@
+      module ctnuv
+
+      use zocdim
+      use zocgrd
+      use zocmsk
+      use zocphy
+
+      implicit none
+      private
+
+      REAL(8), SAVE :: PX(NXYDIM, NZDIM),    PXM(NXYDIM, NZDIM)
+      REAL(8), SAVE :: PY(NXYDIM, NZDIM),    PYM(NXYDIM, NZDIM)
+
+      public :: tnduvd
+#ifdef OPT_BBL
+      public :: tnduvb
+#endif
+      contains 
+
       SUBROUTINE TNDUVD(
      O                GXX,    GYY,
      M                 GX,     GY,
      I                 XX,     YY,
      I                 UY,     VY,     HY,      R,
      I                 UX,     VX,   UADV,   VADV)
-      use zocdim
-      use zocgrd
-      use zocmsk
-      use zocphy
-      IMPLICIT NONE
+c      use zocdim
+c      use zocgrd
+c      use zocmsk
+c      use zocphy
+c      IMPLICIT NONE
 
 c --- information -----------------------------------------------------
 c
@@ -36,15 +55,15 @@ c ---------------------------------------------------------------------
       REAL*8     COF
       SAVE COF
 
-      REAL*8      PX(NXYDIM, NZDIM),    PXM(NXYDIM, NZDIM)
-      REAL*8      PY(NXYDIM, NZDIM),    PYM(NXYDIM, NZDIM)
+c      REAL*8      PX(NXYDIM, NZDIM),    PXM(NXYDIM, NZDIM)
+c      REAL*8      PY(NXYDIM, NZDIM),    PYM(NXYDIM, NZDIM)
       REAL*8      UU(NXYDIM)       ,     UV(NXYDIM)
       REAL*8      VU(NXYDIM)       ,     VV(NXYDIM)
       REAL*8   HVBOT(NXYDIM)
       REAL*8   DZSIG(NXYDIM, NZDIM)
 c      COMMON /WORK/ PX, PXM,  PY, PYM, UU, UV, VU, VV,
 c     &              HVBOT, DZSIG
-      COMMON /WORK2/ PX, PXM,  PY, PYM
+c      COMMON /WORK2/ PX, PXM,  PY, PYM
 
       INTEGER     IJ,      K
 
@@ -306,7 +325,7 @@ C
   800 CONTINUE
 
       RETURN
-      END
+      END SUBROUTINE TNDUVD
 #ifdef OPT_BBL
 c *********************************************************************
 
@@ -316,11 +335,11 @@ c *********************************************************************
      I                XX,     YY,
      I                UY,     VY,     TY,  
      I                UX,     VX)
-      use zocdim
-      use zocgrd
-      use zocmsk
-      use zocphy
-      IMPLICIT NONE
+c      use zocdim
+c      use zocgrd
+c      use zocmsk
+c      use zocphy
+c      IMPLICIT NONE
 
 c --- information -----------------------------------------------------
 c
@@ -336,10 +355,10 @@ c ---------------------------------------------------------------------
       REAL*8      UY(NXYDIM, NZDIM),     VY(NXYDIM, NZDIM)
       REAL*8      TY(NXYDIM, NZDIM, NTDIM)     
 
-      REAL*8      PX(NXYDIM, NZDIM),    PXM(NXYDIM, NZDIM)
-      REAL*8      PY(NXYDIM, NZDIM),    PYM(NXYDIM, NZDIM)
+c      REAL*8      PX(NXYDIM, NZDIM),    PXM(NXYDIM, NZDIM)
+c      REAL*8      PY(NXYDIM, NZDIM),    PYM(NXYDIM, NZDIM)
 c      COMMON /WORK/ PX, PXM,  PY, PYM
-      COMMON /WORK2/ PX, PXM,  PY, PYM
+c      COMMON /WORK2/ PX, PXM,  PY, PYM
 
       REAL*8  C0B(NXYDIM), C1B(NXYDIM), C2B(NXYDIM), C3B(NXYDIM)
       REAL*8  C4B(NXYDIM), C5B(NXYDIM), C6B(NXYDIM)
@@ -557,5 +576,6 @@ c      COMMON /WORK/ PX, PXM,  PY, PYM
       END DO
 
       RETURN
-      END
-#endif
+      END SUBROUTINE TNDUVB
+#endif 
+      end module ctnuv

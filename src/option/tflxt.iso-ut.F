@@ -1,13 +1,33 @@
+      module tflxt
+
+      use zocdim
+      use zocgrd
+      use zocmsk
+
+      implicit none
+      private
+
+      REAL(8), SAVE :: FTX(NXYDIM, NZDIM, NTDIM)
+      REAL(8), SAVE :: FTY(NXYDIM, NZDIM, NTDIM)
+      REAL(8), SAVE :: FTZ(NXYDIM, NZDIM, NTDIM)
+      REAL(8), SAVE :: TADVX(NXYDIM, NTDIM),  TADVY(NXYDIM, NTDIM)
+
+      public :: flxtrc, dnsgrd, chkftx
+#ifdef OPT_BBL
+      public :: flxtrb
+#endif
+      contains 
+
       SUBROUTINE FLXTRC(
      O                ADT,  DIFFZ,
      I                 TX,     HX,
      I                 TY,     HZ,
      I                 UY,     VY,
      I                  W,    AHV)
-      use zocdim
-      use zocgrd
-      use zocmsk
-      IMPLICIT NONE
+c      use zocdim
+c      use zocgrd
+c      use zocmsk
+c      IMPLICIT NONE
 
 c --- information -----------------------------------------------------
 c
@@ -35,13 +55,13 @@ c ---------------------------------------------------------------------
       LOGICAL OFIRST
       SAVE RYMLLS, RYMRYM, DX2, RX2, EPS, OFIRST
 
-      REAL*8     FTX(NXYDIM, NZDIM, NTDIM)
-      REAL*8     FTY(NXYDIM, NZDIM, NTDIM)
-      REAL*8     FTZ(NXYDIM, NZDIM, NTDIM)
+c      REAL*8     FTX(NXYDIM, NZDIM, NTDIM)
+c      REAL*8     FTY(NXYDIM, NZDIM, NTDIM)
+c      REAL*8     FTZ(NXYDIM, NZDIM, NTDIM)
       REAL*8     WZC(NXYDIM, NZDIM),    RZM(NXYDIM, NZDIM)
 c      COMMON /WORK/ FTX, FTY, FTZ, WZC, RZM
 c      COMMON /WORK/ WZC, RZM
-      COMMON /WORKFT/ FTX, FTY, FTZ
+c      COMMON /WORKFT/ FTX, FTY, FTZ
 
       REAL*8   HZBOT(NXYDIM)
 
@@ -74,8 +94,8 @@ c      COMMON /WORK/ WZC, RZM
       REAL*8    TMIN,   TMAX
       REAL*8    SLP1,   SLP2
 
-      REAL*8   TADVX(NXYDIM, NTDIM),  TADVY(NXYDIM, NTDIM)
-      COMMON /UTADV/ TADVX, TADVY
+c      REAL*8   TADVX(NXYDIM, NTDIM),  TADVY(NXYDIM, NTDIM)
+c      COMMON /UTADV/ TADVX, TADVY
 
 c      REAL*8  PSIGMX(NXYDIM, NZDIM), PSIGMY(NXYDIM, NZDIM)
 
@@ -468,7 +488,7 @@ c      CALL CHEKIN(PSIGMX, 'PSIGMX', NX, NY, NZ, NXYZDM, 'OCN')
 c      CALL CHEKIN(PSIGMY, 'PSIGMY', NX, NY, NZ, NXYZDM, 'OCN')
 
       RETURN
-      END
+      END SUBROUTINE FLXTRC
 
 c *********************************************************************
 
@@ -477,10 +497,10 @@ c *********************************************************************
      O              XDTDZ,  YDTDZ,  ZDTDX,  ZDTDY,
      I                 TY,     TX,     
      W               DTDX,   DTDY,   DTDZ)
-      use zocdim
-      use zocgrd
-      use zocmsk
-      IMPLICIT NONE
+c      use zocdim
+c      use zocgrd
+c      use zocmsk
+c      IMPLICIT NONE
 
       REAL*8   XDZDX(NXYDIM, NZDIM),  YDZDY(NXYDIM, NZDIM)
       REAL*8   ZDZDX(NXYDIM, NZDIM),  ZDZDY(NXYDIM, NZDIM)
@@ -712,7 +732,7 @@ c *********************************************************************
   550 CONTINUE
 
       RETURN
-      END
+      END SUBROUTINE DNSGRD
 #ifdef OPT_BBL
 c *********************************************************************
 
@@ -722,10 +742,10 @@ c *********************************************************************
      I                 TY,
      I                 UY,     VY,      W,
      I                AHV)
-      use zocdim
-      use zocgrd
-      use zocmsk
-      IMPLICIT NONE
+c      use zocdim
+c      use zocgrd
+c      use zocmsk
+c      IMPLICIT NONE
       
       REAL*8     ADT(NXYDIM, NZDIM, NTDIM)
       REAL*8   DIFFZ(NXYDIM, NZDIM)
@@ -733,13 +753,13 @@ c *********************************************************************
       REAL*8      UY(NXYDIM, NZDIM),     VY(NXYDIM, NZDIM)
       REAL*8       W(NXYDIM, NZDIM),    AHV(NXYDIM, NZDIM)
 
-      REAL*8     FTX(NXYDIM, NZDIM, NTDIM)
-      REAL*8     FTY(NXYDIM, NZDIM, NTDIM)
-      REAL*8     FTZ(NXYDIM, NZDIM, NTDIM)
-      COMMON /WORKFT/ FTX, FTY, FTZ
+c      REAL*8     FTX(NXYDIM, NZDIM, NTDIM)
+c      REAL*8     FTY(NXYDIM, NZDIM, NTDIM)
+c      REAL*8     FTZ(NXYDIM, NZDIM, NTDIM)
+c      COMMON /WORKFT/ FTX, FTY, FTZ
 
-      REAL*8   TADVX(NXYDIM, NTDIM),  TADVY(NXYDIM, NTDIM)
-      COMMON /UTADV/ TADVX, TADVY
+c      REAL*8   TADVX(NXYDIM, NTDIM),  TADVY(NXYDIM, NTDIM)
+c      COMMON /UTADV/ TADVX, TADVY
 
       REAL*8       U,      V
       INTEGER     IJ,      K,   IJLS,   IJLW,      N
@@ -810,17 +830,17 @@ c *********************************************************************
       END DO
 
       RETURN
-      END
+      END SUBROUTINE FLXTRB
 #endif
 c *********************************************************************
       SUBROUTINE CHKFTX
-      use zocdim
-      implicit none
+c      use zocdim
+c      implicit none
 
-      REAL*8     FTX(NXYDIM, NZDIM, NTDIM)
-      REAL*8     FTY(NXYDIM, NZDIM, NTDIM)
-      REAL*8     FTZ(NXYDIM, NZDIM, NTDIM)
-      COMMON /WORKFT/ FTX, FTY, FTZ
+c      REAL*8     FTX(NXYDIM, NZDIM, NTDIM)
+c      REAL*8     FTY(NXYDIM, NZDIM, NTDIM)
+c      REAL*8     FTZ(NXYDIM, NZDIM, NTDIM)
+c      COMMON /WORKFT/ FTX, FTY, FTZ
 
       IF (OINIT .OR. OFINAL) THEN
          RETURN
@@ -840,4 +860,6 @@ c *********************************************************************
      &                NX,     NY,     NZ, NXYZDM, 'OCN')
 
       RETURN
-      END 
+      END SUBROUTINE CHKFTX
+
+      end module tflxt

@@ -7,5 +7,14 @@ $(OPTLST):$(OBJOPT)
 	cp $(OBJOPT) $(OPTLST) ..
 	$(RM) $(OPTLST)
 
+lib1:$(OBJOPT1)
+	cp $(OBJOPT1) ..
+
+lib2:$(OBJOPT2)
+	cp $(OBJOPT2) ..
+
+optlist:
+	echo $(OBJOPT) > ../$(OPTLST)
+
 clean:
 	$(RM) *~ *.o *.trace *.cpp core

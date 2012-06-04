@@ -1,7 +1,7 @@
 include ../Mkinclude
 include $(OGCMDIR)/src/Sysdep.$(SYSTEM)$(PARALLEL)
 
-OBJSTD	= \
+OBJSTD1	= \
           atmct$(TSTAG).o \
           bchmk.o \
           bgs2d.o \
@@ -30,8 +30,21 @@ OBJSTD	= \
           utrdg.o \
           xprst.o
 
+OBJSTD2	= 
+
+OBJSTD	= $(OBJSTD1) \
+          $(OBJSTD2)
+
 $(LIBOGCM):$(OBJSTD)
 	$(AR) $(LIBOGCM) $(OBJSTD)
+	$(RANLIB) $(LIBOGCM)
+
+lib1:$(OBJSTD1)
+	$(AR) $(LIBOGCM) $(OBJSTD1)
+	$(RANLIB) $(LIBOGCM)
+
+lib2:$(OBJSTD2)
+	$(AR) $(LIBOGCM) $(OBJSTD2)
 	$(RANLIB) $(LIBOGCM)
 
 clean:
