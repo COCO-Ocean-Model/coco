@@ -1,6 +1,6 @@
 FC	= mpif90
 FFLAGS	= -u -byteswapio -Mbyteswapio -O3 -fastsse -tp=k8-64
-FOPTION = $(FFLAGS) -I$(OGCMDIR)/src/include -I$(OGCMDIR)/src/module -I$(OGCMDIR)/src/shared  -I$(OGCMDIR)/src/depend.$(MODEL) -I$(OGCMDIR)/src/option -DOPT_PARALLEL $(OPTBDY) $(OPTSRST) $(OPTBBL) $(OPTTRIPOLE)
+FOPTION = $(FFLAGS) -I$(OGCMDIR)/src/include -I$(OGCMDIR)/src/module -I$(OGCMDIR)/src/shared  -I$(OGCMDIR)/src/depend.$(MODEL) -DOPT_PARALLEL $(OPTBDY) $(OPTSRST) $(OPTBBL) $(OPTTRIPOLE)
 
 AR	= ar r
 RANLIB	= ranlib

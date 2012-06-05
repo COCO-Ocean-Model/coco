@@ -1,6 +1,6 @@
 FC      = sxmpif90
 FFLAGS  = -Wf'-pvctl fullmsg noassume nodivloop noloopchg vr256 noverrchk novlchk -i noerrchk' -pi
-FOPTION = $(FFLAGS) -I$(OGCMDIR)/src/include -I$(OGCMDIR)/src/module -I$(OGCMDIR)/src/shared -I$(OGCMDIR)/src/option -I$(OGCMDIR)/src/depend.$(MODEL) -DOPT_PARALLEL -USX $(OPTBDY) $(OPTSRST) $(OPTBBL) $(OPTTRIPOLE)
+FOPTION = $(FFLAGS) -I$(OGCMDIR)/src/include -I$(OGCMDIR)/src/module -I$(OGCMDIR)/src/shared -I$(OGCMDIR)/src/depend.$(MODEL) -DOPT_PARALLEL -USX $(OPTBDY) $(OPTSRST) $(OPTBBL) $(OPTTRIPOLE)
 
 AR      = sxar r
 RANLIB  = touch

@@ -1,35 +1,35 @@
 module zqsat   ! Clausis-Clapeyron
 
-use zocphy, only: &
- &   epsv,    es0,     el,  emelt,  tqice,   rvap,  tmelt
+  use zocphy, only: &
+    &   epsv,    es0,     el,  emelt,  tqice,   rvap,  tmelt
 
-implicit none
+  implicit none
 
-private
-public :: fqsat, fdqsat
+  private
+  public :: fqsat, fdqsat
 
 contains
 
 function fqsat(t, p)   ! saturation water vapour mixing ratio
-real(8) ::  fqsat
-real(8), intent(in) ::      t,      p
+  real(8) ::  fqsat
+  real(8), intent(in) ::      t,      p
 
-fqsat = epsv * es0 / p &
- &    * exp( (el+emelt/2.d0*(1.d0-sign(1.d0,t-tqice))) &
- &           / rvap *( 1.d0/tmelt - 1.d0/t ) )
-return
+  fqsat = epsv * es0 / p &
+     &    * exp( (el+emelt/2.d0*(1.d0-sign(1.d0,t-tqice))) &
+     &           / rvap *( 1.d0/tmelt - 1.d0/t ) )
+  return
 
 end function fqsat
 
 !#######################################################################
 
 function fdqsat(t, qs)  ! d(qsat)/d(t)
-real(8) :: fdqsat
-real(8), intent(in) :: t, qs
+  real(8) :: fdqsat
+  real(8), intent(in) :: t, qs
 
-fdqsat = (el+emelt/2.d0*(1.d0-sign(1.d0,t-tmelt))) &
- &     * qs / ( rvap * t*t )
-return
+  fdqsat = (el+emelt/2.d0*(1.d0-sign(1.d0,t-tmelt))) &
+     &     * qs / ( rvap * t*t )
+  return
 
 end function fdqsat
 

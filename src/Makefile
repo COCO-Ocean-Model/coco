@@ -3,12 +3,14 @@ include Sysdep.$(SYSTEM)$(PARALLEL)
 MAIN	= $(MODEL).o
 OPTLST	= OPTION-LIST
 ENSLST	= ENSTR-LIST
+MODOPT	= $(shell echo $(OBJOPT) | sed -e "s/\.[^[:blank:]]*o/\.mod/g")
+MODENS	= $(shell echo $(OBJENS) | sed -e "s/\.[^[:blank:]]*o/\.mod/g")
 
 all:lib $(TARGET)
 
 $(TARGET):$(LIBOGCM) $(MAIN)
 	$(FC) $(FOPTION) -o $@ $(MAIN) $(OBJENS) $(OBJOPT) $(LIBOGCM) $(LINKOPT)
-	$(RM) $(ENSLST) $(OBJENS) $(OPTLST) $(OBJOPT)
+	$(RM) $(ENSLST) $(OBJENS) $(OPTLST) $(OBJOPT) $(MODOPT) $(MODENS)
 
 $(ENSLST):
 	cd enstr; make
@@ -26,11 +28,11 @@ lib:
 	cd shared; make lib2
 	cd enstr; make lib2
 	cd option; make lib2
-	cd enstr; make enslist
-	cd option; make optlist
+	cd enstr; make
+	cd option; make
 
 clean:
-	$(RM) *~ *.o *.trace core
+	$(RM) *~ *.o *.mod *.trace core
 	cd module; make clean
 	cd depend.$(MODEL); make clean
 	cd shared; make clean

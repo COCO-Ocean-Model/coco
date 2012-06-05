@@ -30,4 +30,4 @@ lib2:$(OBJSTD2)
 	$(RANLIB) $(LIBOGCM)
 
 clean:
-	$(RM) *~ *.o *.trace *.cpp core
+	$(RM) *~ *.o *.mod *.trace *.cpp core

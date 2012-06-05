@@ -116,7 +116,7 @@ c ---------------------------------------------------------------------
      W            MSK3D1)
 
       WRITE(*, *)
-      WRITE(*, '(A)')
+      WRITE(*, '(2X,A)')
      & 'logical, save :: oinit, ofinal'
 
       WRITE(*, *)
@@ -352,12 +352,12 @@ c =====================================================================
       END IF
 
 #ifdef OPT_PARALLEL
-      WRITE(*, '(A,A8,I7,A,A8,I7)')
+      WRITE(*, '(2X,A,A8,I7,A,A8,I7)')
      & 'integer, parameter :: ',
      & 'ijvgst =', IJVSTR, ', ',
      & 'ijvged =', IJVEND
 #else
-      WRITE(*, '(A,A8,I7,A,A8,I7)')
+      WRITE(*, '(2X,A,A8,I7,A,A8,I7)')
      & 'integer, parameter :: ',
      & 'ijvstr =', IJVSTR, ', ',
      & 'ijvend =', IJVEND
@@ -506,12 +506,12 @@ c =====================================================================
       END IF
 
 #ifdef OPT_PARALLEL
-      WRITE(*, '(A,A8,I7,A,A8,I7)')
+      WRITE(*, '(2X,A,A8,I7,A,A8,I7)')
      & 'integer, parameter :: ',
      & 'ijtgst =', IJTSTR, ', ',
      & 'ijtged =', IJTEND
 #else
-      WRITE(*, '(A,A8,I7,A,A8,I7)')
+      WRITE(*, '(2X,A,A8,I7,A,A8,I7)')
      & 'integer, parameter :: ',
      & 'ijtstr =', IJTSTR, ', ',
      & 'ijtend =', IJTEND
@@ -787,46 +787,46 @@ C  120 CONTINUE
       WRITE(*, '(A)') 'module zocdim'
       WRITE(*, *)
 #ifdef OPT_PARALLEL
-      WRITE(*, '(A)') 'use zocnod'
+      WRITE(*, '(2X,A)') 'use zocnod'
       WRITE(*, *)
 #endif
-      WRITE(*, '(A)') 'implicit none'
+      WRITE(*, '(2X,A)') 'implicit none'
       WRITE(*, *)
 
 #ifdef OPT_PARALLEL
-      WRITE(*, '(A,2(A8,I7,A),A8,I7)')
+      WRITE(*, '(2X,A,2(A8,I7,A),A8,I7)')
      & 'integer, parameter :: ',
      & 'nxg    =', NX, ', ',
      & 'nyg    =', NY, ', ',
      & 'nz     =', NZ
-      WRITE(*, '(A,I7,A)')
+      WRITE(*, '(2X,A,I7,A)')
      & 'integer, parameter :: kz     =', KZ
-      WRITE(*, '(A,I7,A)')
+      WRITE(*, '(2X,A,I7,A)')
      & 'integer, parameter :: nic    =', NIC
-      WRITE(*, '(A,2(A8,I7,A),A8,I7)')
+      WRITE(*, '(2X,A,2(A8,I7,A),A8,I7)')
      & 'integer, parameter :: ',
      & 'nxgdim =', NXDIM, ', ',
      & 'nygdim =', NYDIM, ', ',
      & 'nzdim  =', NZDIM
-      WRITE(*, '(A,2(A8,I7,A),A8,I7)')
+      WRITE(*, '(2X,A,2(A8,I7,A),A8,I7)')
      & 'integer, parameter :: ',
      & 'igstr  =', ISTR, ', ',
      & 'jgstr  =', JSTR, ', ',
      & 'kstr   =', KSTR
-      WRITE(*, '(A,2(A8,I7,A),A8,I7)')
+      WRITE(*, '(2X,A,2(A8,I7,A),A8,I7)')
      & 'integer, parameter :: ',
      & 'igend  =', IEND, ', ',
      & 'jgend  =', JEND, ', ',
      & 'kend   =', KEND
-      WRITE(*, '(A,A8,I7,A,A8,I7)')
+      WRITE(*, '(2X,A,A8,I7,A,A8,I7)')
      & 'integer, parameter :: ',
      & 'ijgstr =', ISTR+(JSTR-1)*NXDIM, ', ',
      & 'ijgend =', IEND+(JEND-1)*NXDIM
       WRITE(*, *)
 
-      WRITE(*, '(A)')
+      WRITE(*, '(2X,A)')
      & 'integer, parameter :: nxyg = nxg*nyg, nxyzg = nxyg*nz'
-      WRITE(*, '(A,A)')
+      WRITE(*, '(2X,A,A)')
      & 'integer, parameter :: nxygdm = nxgdim*nygdim, ',
      & 'nxyzgd = nxygdm*nzdim'
       WRITE(*, *)
@@ -840,131 +840,131 @@ C  120 CONTINUE
       IJSSTR = NXSDIM * (JSSTR - 1) + ISSTR
       IJSEND = NXSDIM * (JSEND - 1) + ISEND
 
-      WRITE(*, '(A,A8,I7,A,A8,I7)')
+      WRITE(*, '(2X,A,A8,I7,A,A8,I7)')
      & 'integer, parameter :: ',
      & 'nx     =', NXS, ', ',
      & 'ny     =', NYS
-      WRITE(*, '(A,A8,I7,A,A8,I7)')
+      WRITE(*, '(2X,A,A8,I7,A,A8,I7)')
      & 'integer, parameter :: ',
      & 'nxdim  =', NXSDIM, ', ',
      & 'nydim  =', NYSDIM
-      WRITE(*, '(A,A8,I7,A,A8,I7)')
+      WRITE(*, '(2X,A,A8,I7,A,A8,I7)')
      & 'integer, parameter :: ',
      & 'istr   =', ISSTR, ', ',
      & 'jstr   =', JSSTR
-      WRITE(*, '(A,A8,I7,A,A8,I7)')
+      WRITE(*, '(2X,A,A8,I7,A,A8,I7)')
      & 'integer, parameter :: ',
      & 'iend   =', ISEND, ', ',
      & 'jend   =', JSEND
-      WRITE(*, '(A,A8,I7,A,A8,I7)')
+      WRITE(*, '(2X,A,A8,I7,A,A8,I7)')
      & 'integer, parameter :: ',
      & 'ijstr  =', IJSSTR, ', ',
      & 'ijend  =', IJSEND
       WRITE(*, *)
 
-      WRITE(*, '(A,I7,A)')
+      WRITE(*, '(2X,A,I7,A)')
      & 'integer, parameter :: ntdim =', NTDIM
       WRITE(*, *)
 
-      WRITE(*, '(A)')
+      WRITE(*, '(2X,A)')
      & 'integer, parameter :: nxy = nx*ny, nxyz = nxy*nz'
-      WRITE(*, '(A,A)')
+      WRITE(*, '(2X,A,A)')
      & 'integer, parameter :: nxydim = nxdim*nydim, ',
      & 'nxyzdm = nxydim*nzdim'
-      WRITE(*, '(A)')
+      WRITE(*, '(2X,A)')
      & 'integer, parameter :: nztdim = nzdim*ntdim'
-      WRITE(*, '(A)')
+      WRITE(*, '(2X,A)')
      & 'integer, parameter :: nxyidm = nxydim*(nic+1)'
       WRITE(*, *)
 
-      WRITE(*, '(A)')
+      WRITE(*, '(2X,A)')
      & 'integer, parameter :: nwrk = nxyzdm*(ntdim*3+2)'
       WRITE(*, *)
 
-      WRITE(*, '(A)')
+      WRITE(*, '(2X,A)')
      & 'integer, parameter :: lng = nxgdim, lsg = -nxgdim'
-      WRITE(*, '(A)')
+      WRITE(*, '(2X,A)')
      & 'integer, parameter :: lneg = nxgdim+1, lnwg = nxgdim-1'
-      WRITE(*, '(A)')
+      WRITE(*, '(2X,A)')
      & 'integer, parameter :: lseg = -nxgdim+1, lswg = -nxgdim-1'
-      WRITE(*, '(A)')
+      WRITE(*, '(2X,A)')
      & 'integer, parameter :: lssg = -2 * nxgdim'
       WRITE(*, *)
 
-      WRITE(*, '(A)')
+      WRITE(*, '(2X,A)')
      & 'integer, parameter :: le = 1, lw = -1, ln = nxdim, ls = -nxdim'
-      WRITE(*, '(A)')
+      WRITE(*, '(2X,A)')
      & 'integer, parameter :: lne = nxdim+1, lnw = nxdim-1'
-      WRITE(*, '(A)')
+      WRITE(*, '(2X,A)')
      & 'integer, parameter :: lse = -nxdim+1, lsw = -nxdim-1'
-      WRITE(*, '(A)')
+      WRITE(*, '(2X,A)')
      & 'integer, parameter :: lww = -2, lss = -2 * nxdim'
       WRITE(*, *)
 
-      WRITE(*, '(A,A8,I7,A,A8,I7)')
+      WRITE(*, '(2X,A,A8,I7,A,A8,I7)')
      & 'integer, parameter :: ',
      & 'inodes =', INODES, ', ',
      & 'jnodes =', JNODES
-      WRITE(*, '(A)')
+      WRITE(*, '(2X,A)')
      & 'integer, parameter :: icomm = istr-1, jcomm = jstr-1'
       WRITE(*, *)
 #else
-      WRITE(*, '(A,2(A8,I7,A),A8,I7)')
+      WRITE(*, '(2X,A,2(A8,I7,A),A8,I7)')
      & 'integer, parameter :: ',
      & 'nx     =', NX, ', ',
      & 'ny     =', NY, ', ',
      & 'nz     =', NZ
-      WRITE(*, '(A,I7,A)')
+      WRITE(*, '(2X,A,I7,A)')
      & 'integer, parameter :: kz     =', KZ
-      WRITE(*, '(A,I7,A)')
+      WRITE(*, '(2X,A,I7,A)')
      & 'integer, parameter :: nic    =', NIC
-      WRITE(*, '(A,2(A8,I7,A),A8,I7)')
+      WRITE(*, '(2X,A,2(A8,I7,A),A8,I7)')
      & 'integer, parameter :: ',
      & 'nxdim  =', NXDIM, ', ',
      & 'nydim  =', NYDIM, ', ',
      & 'nzdim  =', NZDIM
-      WRITE(*, '(A,2(A8,I7,A),A8,I7)')
+      WRITE(*, '(2X,A,2(A8,I7,A),A8,I7)')
      & 'integer, parameter :: ',
      & 'istr   =', ISTR, ', ',
      & 'jstr   =', JSTR, ', ',
      & 'kstr   =', KSTR
-      WRITE(*, '(A,2(A8,I7,A),A8,I7)')
+      WRITE(*, '(2X,A,2(A8,I7,A),A8,I7)')
      & 'integer, parameter :: ',
      & 'iend   =', IEND, ', ',
      & 'jend   =', JEND, ', ',
      & 'kend   =', KEND
-      WRITE(*, '(A,A8,I7,A,A8,I7)')
+      WRITE(*, '(2X,A,A8,I7,A,A8,I7)')
      & 'integer, parameter :: ',
      & 'ijstr  =', ISTR+(JSTR-1)*NXDIM, ', ',
      & 'ijend  =', IEND+(JEND-1)*NXDIM
       WRITE(*, *)
 
-      WRITE(*, '(A,I7,A)')
+      WRITE(*, '(2X,A,I7,A)')
      & 'integer, parameter :: ntdim =', NTDIM
       WRITE(*, *)
 
-      WRITE(*, '(A)')
+      WRITE(*, '(2X,A)')
      & 'integer, parameter :: nxy = nx*ny, nxyz = nxy*nz'
-      WRITE(*, '(A,A)')
+      WRITE(*, '(2X,A,A)')
      & 'integer, parameter :: nxydim = nxdim*nydim, ',
      & 'nxyzdm = nxydim*nzdim'
-      WRITE(*, '(A)')
+      WRITE(*, '(2X,A)')
      & 'integer, parameter :: nztdim = nzdim*ntdim'
-      WRITE(*, '(A)')
+      WRITE(*, '(2X,A)')
      & 'integer, parameter :: nxyidm = nxydim*(nic+1)'
       WRITE(*, *)
 
-      WRITE(*, '(A)')
+      WRITE(*, '(2X,A)')
      & 'integer, parameter :: nwrk = nxyzdm*(ntdim*3+2)'
       WRITE(*, *)
 
-      WRITE(*, '(A)')
+      WRITE(*, '(2X,A)')
      & 'integer, parameter :: le = 1, lw = -1, ln = nxdim, ls = -nxdim'
-      WRITE(*, '(A)')
+      WRITE(*, '(2X,A)')
      & 'integer, parameter :: lne = nxdim+1, lnw = nxdim-1'
-      WRITE(*, '(A)')
+      WRITE(*, '(2X,A)')
      & 'integer, parameter :: lse = -nxdim+1, lsw = -nxdim-1'
-      WRITE(*, '(A)')
+      WRITE(*, '(2X,A)')
      & 'integer, parameter :: lww = -2, lss = -2 * nxdim'
       WRITE(*, *)
 #endif

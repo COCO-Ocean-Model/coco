@@ -1,30 +1,41 @@
-OGCMDIR	= /home/komuro/esata1/work_coco5.0/coco5.0
+OGCMDIR	= /home/G10206/komuro/coco_latest
 RM	= rm -f
 
 SYSTEM	= ifort
 
-MODEL = coco
-#MODEL = icedcoco
+#MODEL = coco
+MODEL = icedcoco
 
 PARALLEL = .par
-#OPTBDY  = -DOPT_BODY
-#OPTSRST = -DOPT_SRST
-#OPTBBL  = -DOPT_BBL
+OPTBDY  = -DOPT_BODY
+OPTSRST = -DOPT_SRST
+OPTBBL  = -DOPT_BBL
 #OPTTRIPOLE = -DOPT_TRIPOLE
 
-TSTAG=.tstag
+#TSTAG=.tstag
 
 # coco default
-OBJOPT	= tflxt.iso-ut.o dvdnk.o
+#OBJOPT1 = tflxt.iso-ut.o
+#OBJOPT2 = dvdnk.o
 
 # icedcoco default
-#OBJOPT	= tflxt.iso-ut.o dvdnk.o ipthm.linrmp.o 
+#OBJOPT1 = tflxt.iso-ut.o
+#OBJOPT2 = dvdnk.o ipthm.linrmp.o 
 
 # CORE global simple
-#OBJOPT	= aocea.icedcoco.nmlwtr.o tflxt.iso-ut.o dvdnk.c0lat.o csrvl.bblmzns.o cvisc.amh2d.o fshlw.novis.o ipthm.linrmp.o ipmmt.pice.o aprdc.icedcoco.tundf$(TSTAG).o tslvt.icedcoco.tundf.para.o sfcng.CORE.o utint.CORE.o
+#OBJOPT1 = tflxt.iso-ut.o
+#OBJOPT2 = aocea.icedcoco.nmlwtr.o dvdnk.c0lat.o csrvl.bblmzns.o cvisc.amh2d.o fshlw.novis.o ipthm.linrmp.o ipmmt.pice.o aprdc.icedcoco.tundf$(TSTAG).o tslvt.icedcoco.tundf.para.o sfcng.CORE.o utint.CORE.o
 
-OBJENS = 
-#OBJENS = aocea.$(MODEL).o aprdc.$(MODEL)$(TSTAG).o binst.$(MODEL).o bstbc.$(MODEL).o cadvc$(TSTAG).o ctnuv$(TSTAG).o dvlva.o
+OBJOPT1	= tflxt.iso-ut.o
+OBJOPT2	= dvdnk.o sfcng.CORE.o utint.CORE.o
+
+OBJENS1 = 
+OBJENS2 = 
+#OBJENS1 = binst.$(MODEL).o bstbc.$(MODEL).o cadvc$(TSTAG).o ctnuv$(TSTAG).o dvlva.o
+#OBJENS2 = aocea.$(MODEL).o aprdc.$(MODEL)$(TSTAG).o
+
+OBJOPT	= $(OBJOPT1) $(OBJOPT2)
+OBJENS	= $(OBJENS1) $(OBJENS2)
 
 TARGET	= $(OGCMDIR)/bin/$(MODEL)$(PARALLEL)
 LIBOGCM	= $(OGCMDIR)/lib/lib$(MODEL)$(PARALLEL).a
