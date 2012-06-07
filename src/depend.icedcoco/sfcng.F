@@ -656,7 +656,6 @@ c *********************************************************************
      I           GDTS  , GRZ0  )
       use zocdim
       use zocphy
-      use zqsat
       IMPLICIT NONE
 
       INTEGER NTYZ0
@@ -697,6 +696,10 @@ c *********************************************************************
 *   [INTERNAL FUNC] 
       DATA       OFIRST / .TRUE. /
       DATA ZA / 2.D0 /
+*
+!===== Define statement function 
+#include        "zqsat.F"                /* saturate q */
+!===== 
 *
       IF ( OFIRST ) THEN
          CALL REWNML(IFPAR, JFPAR)

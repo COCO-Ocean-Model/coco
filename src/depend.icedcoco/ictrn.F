@@ -5,7 +5,6 @@
       use zocgrd
       use zocmsk
       use zocphy
-c      use zocite
       IMPLICIT NONE
 
 c ---- information ----------------------------------------------------
@@ -49,7 +48,9 @@ c      COMMON /WORK/ AXHIX, AXHSX, AXEIX, CI
       NAMELIST /NMISLT/ SI
       SAVE AMIN, SI
 
+!===== Define statement function 
 #include "zocite.F"
+!===== 
 
       DATA OFIRST / .TRUE. /
       DATA AMIN, AMAX / 1.0D-6, 1.D0 /

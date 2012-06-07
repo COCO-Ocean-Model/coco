@@ -8,7 +8,6 @@
       use zocgrd
       use zocmsk
       use zocphy
-c      use zocite
       IMPLICIT NONE
 
 c ---- information ----------------------------------------------------
@@ -58,7 +57,9 @@ c      COMMON /WORK/ FAX, FAY, AXHIX, AXHSX, AXEIX
       SAVE SI, OFIRST
       NAMELIST /NMISLT/ SI
 
+!===== Define statement function 
 #include "zocite.F"
+!===== 
 
       DATA SI / 5.D0 /
       DATA OFIRST / .TRUE. /

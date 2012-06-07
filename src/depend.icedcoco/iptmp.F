@@ -7,7 +7,6 @@
       use zocgrd
       use zocmsk
       use zocphy
-c      use zocite
       IMPLICIT NONE
 
 c --- information -----------------------------------------------------
@@ -35,7 +34,9 @@ c ---------------------------------------------------------------------
       NAMELIST /NMISLT/ SI
       SAVE SI
 
+!===== Define statement function 
 #include "zocite.F"
+!===== 
 
       DATA OFIRST / .TRUE. /
       DATA SI / 5.D0 /

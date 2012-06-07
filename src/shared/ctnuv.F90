@@ -364,18 +364,20 @@ subroutine tnduvb( &
   integer ::      ij,      k,     kk
   integer ::    ijle,   ijln,   ijne
 
-!  real(8) ::    rbbl,     tb,     sb
-!  real(8) ::  c0, c1, c2, c3, c4, c5, c6
-!  real(8) ::  d0, d1, d2, d3, d4, d5, d6, d7, d8, d9
-!
-!  rbbl (tb, sb, c0, c1, c2, c3, c4, c5, c6, &
-!     &  d0, d1, d2, d3, d4, d5, d6, d7, d8, d9) = &
-!     &   (c0 + (c1 + (c2 + c3 * tb) * tb) * tb &
-!     &       + (c4 + c5 * tb + c6 * sb) * sb) &
-!     & / (d0 + (d1 + (d2 + (d3 + d4 * tb) * tb) * tb) * tb &
-!     &       + (d5 + (d6 + d7 * tb * tb) * tb &
-!     &             + (d8 + d9 * tb * tb) * sqrt(sb)) * sb) &
-!     & - 1.d3
+!===== Define statement function 
+  real(8) ::    rbbl,     tb,     sb
+  real(8) ::  c0, c1, c2, c3, c4, c5, c6
+  real(8) ::  d0, d1, d2, d3, d4, d5, d6, d7, d8, d9
+
+  rbbl (tb, sb, c0, c1, c2, c3, c4, c5, c6, &
+     &  d0, d1, d2, d3, d4, d5, d6, d7, d8, d9) = &
+     &   (c0 + (c1 + (c2 + c3 * tb) * tb) * tb &
+     &       + (c4 + c5 * tb + c6 * sb) * sb) &
+     & / (d0 + (d1 + (d2 + (d3 + d4 * tb) * tb) * tb) * tb &
+     &       + (d5 + (d6 + d7 * tb * tb) * tb &
+     &             + (d8 + d9 * tb * tb) * sqrt(sb)) * sb) &
+     & - 1.d3
+!===== 
 
   if (oinit .or. ofinal) then
      return
@@ -563,23 +565,23 @@ subroutine tnduvb( &
   return
 end subroutine tnduvb
 ! *********************************************************************
-
-function rbbl(tb, sb, c0, c1, c2, c3, c4, c5, c6, &
-  &           d0, d1, d2, d3, d4, d5, d6, d7, d8, d9)
-
-  real(8) :: rbbl
-  real(8), intent(in) :: tb, sb, c0, c1, c2, c3, c4, c5, c6, &
-    &                    d0, d1, d2, d3, d4, d5, d6, d7, d8, d9
-
-  rbbl = &
-     &   (c0 + (c1 + (c2 + c3 * tb) * tb) * tb &
-     &       + (c4 + c5 * tb + c6 * sb) * sb) &
-     & / (d0 + (d1 + (d2 + (d3 + d4 * tb) * tb) * tb) * tb &
-     &       + (d5 + (d6 + d7 * tb * tb) * tb &
-     &             + (d8 + d9 * tb * tb) * sqrt(sb)) * sb) &
-     & - 1.d3
-
-  return
+! do not use internal function now, instead we use statement function.
+!function rbbl(tb, sb, c0, c1, c2, c3, c4, c5, c6, &
+!  &           d0, d1, d2, d3, d4, d5, d6, d7, d8, d9)
+!
+!  real(8) :: rbbl
+!  real(8), intent(in) :: tb, sb, c0, c1, c2, c3, c4, c5, c6, &
+!    &                    d0, d1, d2, d3, d4, d5, d6, d7, d8, d9
+!
+!  rbbl = &
+!     &   (c0 + (c1 + (c2 + c3 * tb) * tb) * tb &
+!     &       + (c4 + c5 * tb + c6 * sb) * sb) &
+!     & / (d0 + (d1 + (d2 + (d3 + d4 * tb) * tb) * tb) * tb &
+!     &       + (d5 + (d6 + d7 * tb * tb) * tb &
+!     &             + (d8 + d9 * tb * tb) * sqrt(sb)) * sb) &
+!     & - 1.d3
+!
+!  return
 
 end function rbbl
 #endif 

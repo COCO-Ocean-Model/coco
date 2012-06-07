@@ -779,7 +779,6 @@ c *********************************************************************
       use zocdim
       use zocfil
       use zocphy
-c      use zqsat
       IMPLICIT NONE
 
       INTEGER NTYZ0
@@ -833,8 +832,9 @@ c      use zqsat
      &                   USMINH, USMAXH,
      &                   USMINE, USMAXE
 *
-*   [INTERNAL FUNC] 
+!===== Define statement function 
 #include        "zqsat.F"                /* saturate q */
+!===== 
       DATA       OFIRST / .TRUE. /
       DATA       ZA     / 10.D0 /
       DATA       CMMIN  / 1.D-5 /           !! min. bulk coef. of u
@@ -920,7 +920,6 @@ c *********************************************************************
       use zocdim
       use zocfil
       use zocphy
-c      use zqsat
       IMPLICIT NONE
 
       INTEGER NTYZ0
@@ -991,8 +990,9 @@ c     bug fix 080908
       DATA       NITERI / 5 /               !! N. of iteration for ice
       DATA       OFIRST / .TRUE. /
 *
-*   [INTERNAL FUNC] 
+!===== Define statement function 
 #include        "zqsat.F"                /* saturate q */
+!===== 
 *
 *   [ONCE] 
       IF ( OFIRST ) THEN

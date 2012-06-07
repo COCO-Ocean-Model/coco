@@ -7,7 +7,6 @@
       use zocgrd
       use zocmsk
       use zocphy
-c      use zocite
       IMPLICIT NONE
 
 c ---- information ----------------------------------------------------
@@ -69,7 +68,9 @@ c     &              G, Y, DA, DAHI, DAHS, DAEI
       NAMELIST /NMIRDG/ CS, GRIDGE, HRIDGE
       NAMELIST /NMISLT/ SI
 
+!===== Define statement function 
 #include "zocite.F"
+!===== 
 
       DATA OFIRST / .TRUE. /
       DATA ECC, DMIN, FLOSS / 2.D0, 2.0D-7, 17.D0 /
