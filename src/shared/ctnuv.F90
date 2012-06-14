@@ -582,7 +582,7 @@ end subroutine tnduvb
 !     & - 1.d3
 !
 !  return
-
-end function rbbl
+!
+!end function rbbl
 #endif 
 end module ctnuv
