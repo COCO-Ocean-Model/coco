@@ -5,7 +5,7 @@ MPI_INCLUDE	= $(MPI_HOME)/include
 MPI_LIBPATH	= $(MPI_HOME)/lib/lib$(ARCH)
 FC	= /usr/bin/xf90
 FFLAGS	= mp(p(4),procnum(8),diag(2)),pvec(diag(1)),opt(o(ss)),list(s,p),langlvl(hf(77)) 
-FOPTION = -$(ARCH) -W0,"'$(FFLAGS)'" -I$(MPI_ROOT)/USR/include -I$(MPI_INCLUDE) -I$(OGCMDIR)/src/include -I$(OGCMDIR)/src/module -I$(OGCMDIR)/src/shared  -I$(OGCMDIR)/src/depend.$(MODEL) -DOPT_PARALLEL $(OPTBDY) $(OPTSRST) $(OPTBBL) $(OPTTRIPOLE)
+FOPTION = -$(ARCH) -W0,"'$(FFLAGS)'" -I$(MPI_ROOT)/USR/include -I$(MPI_INCLUDE) -I$(OGCMDIR)/src/include -I$(OGCMDIR)/src/module -I$(OGCMDIR)/src -I$(OGCMDIR)/src/shared  -I$(OGCMDIR)/src/depend.$(MODEL) -DOPT_PARALLEL $(OPTBDY) $(OPTSRST) $(OPTBBL) $(OPTTRIPOLE)
 LINKOPT	= -parallel -L$(MPI_LIBPATH) -lfmpi -lmpi
 
 AR	= /usr/bin/xar rs

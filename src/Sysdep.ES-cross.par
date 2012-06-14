@@ -11,7 +11,7 @@ FFLAGS  =  -Wf'-L fmtlist transform -pvctl fullmsg noassume nodivloop noloopchg 
                   -gmalloc \
                   -acct
 
-FOPTION = $(FFLAGS) -I$(OGCMDIR)/src/include -I$(OGCMDIR)/src/module -I$(OGCMDIR)/src/shared  -I$(OGCMDIR)/src/depend.$(MODEL) -DOPT_PARALLEL -UES $(OPTBDY) $(OPTSRST) $(OPTBBL) $(OPTTRIPOLE)
+FOPTION = $(FFLAGS) -I$(OGCMDIR)/src/include -I$(OGCMDIR)/src/module -I$(OGCMDIR)/src -I$(OGCMDIR)/src/shared  -I$(OGCMDIR)/src/depend.$(MODEL) -DOPT_PARALLEL -UES $(OPTBDY) $(OPTSRST) $(OPTBBL) $(OPTTRIPOLE)
 
 AR      = esar r
 RANLIB  = touch
