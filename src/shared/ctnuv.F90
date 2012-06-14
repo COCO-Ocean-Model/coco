@@ -1,5 +1,21 @@
 module ctnuv
 
+! --- information -----------------------------------------------------
+!
+!  Estimate the pressure gradient and Coriolis terms of the equation
+! of motion.
+!
+!  HISTORY
+!     '03.04.22  H.Hasumi: from COCO3.4
+!     '07.04.23  H.Hasumi
+!     '07.05.01  H.Hasumi: for McDougall et al. (2003) eq. of state
+!     '08.06.11  H.Hasumi: initial/final processing
+!     '08.07.10  H.Hasumi: initial/final processing
+!     '09.01.15  T.Suzuki: bug fix vertical integration thanks to Hasumi
+!     '12.06.04  Y.Komuro: for COCO5.0
+!
+! ---------------------------------------------------------------------
+
   use zocdim, only: &
     &  nxdim, nxydim,  nzdim,  ntdim, &
     &   kstr,   kend,     kz, &
@@ -36,22 +52,6 @@ subroutine tnduvd( &
   &     xx,     yy,     uy,     vy, &
   &     hy,      r,     ux,     vx, & 
   &   uadv,   vadv )
-
-! --- information -----------------------------------------------------
-!
-!  Estimate the pressure gradient and Coriolis terms of the equation
-! of motion.
-!
-!  HISTORY
-!     '03.04.22  H.Hasumi: from COCO3.4
-!     '07.04.23  H.Hasumi
-!     '07.05.01  H.Hasumi: for McDougall et al. (2003) eq. of state
-!     '08.06.11  H.Hasumi: initial/final processing
-!     '08.07.10  H.Hasumi: initial/final processing
-!     '09.01.15  T.Suzuki: bug fix vertical integration thanks to Hasumi
-!     '12.06.04  Y.Komuro: for COCO5.0
-!
-! ---------------------------------------------------------------------
 
   real(8), intent(out)   ::    gxx(nxydim),           gyy(nxydim)
   real(8), intent(inout) ::     gx(nxydim, nzdim),     gy(nxydim, nzdim)
@@ -563,6 +563,7 @@ subroutine tnduvb( &
   end do
 
   return
+
 end subroutine tnduvb
 ! *********************************************************************
 ! do not use internal function now, instead we use statement function.
@@ -585,4 +586,5 @@ end subroutine tnduvb
 !
 !end function rbbl
 #endif 
+
 end module ctnuv

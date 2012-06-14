@@ -2,22 +2,23 @@ module tovtr
 
 ! --- information -----------------------------------------------------
 !
-!  convective adjustment for the unstable water column
+!  Convective adjustment for the unstable water column
 !
-!  history
-!     '99.08.16  h.hasumi: from ccsr2-mask
-!     '00.05.30  h.hasumi: change in the initialization of r
-!     '00.12.14  h.hasumi: for hybrid vertical coordinate
-!     '01.01.30  h.hasumi: for partial step bottom topography
-!     '01.09.17  h.hasumi: gamma for bbl
-!     '01.12.07  h.hasumi
-!     '02.05.29  h.nakano: tracer dimension
-!     '07.04.23  h.hasumi
-!     '07.05.01  h.hasumi: mcdougall et al. (2003) eq. of state
-!     '07.09.25  h.hasumi: arguments of chekin
-!     '08.06.11  h.hasumi: initial/final processing
-!     '08.07.10  h.hasumi: initial/final processing
-!     '09.02.23  y.komuro: add ddenst (only diagnosing r)
+!  HISTORY
+!     '99.08.16  H.Hasumi: from CCSR2-MASK
+!     '00.05.30  H.Hasumi: change in the initialization of R
+!     '00.12.14  H.Hasumi: for hybrid vertical coordinate
+!     '01.01.30  H.Hasumi: for partial step bottom topography
+!     '01.09.17  H.Hasumi: GAMMA for BBL
+!     '01.12.07  H.Hasumi
+!     '02.05.29  H.Nakano: tracer dimension
+!     '07.04.23  H.Hasumi
+!     '07.05.01  H.Hasumi: McDougall et al. (2003) eq. of state
+!     '07.09.25  H.Hasumi: arguments of CHEKIN
+!     '08.06.11  H.Hasumi: initial/final processing
+!     '08.07.10  H.Hasumi: initial/final processing
+!     '09.02.23  Y.Komuro: add DDENST (only diagnosing R)
+!     '12.06.14  Y.Komuro: for COCO5.0
 !
 ! ---------------------------------------------------------------------
 
