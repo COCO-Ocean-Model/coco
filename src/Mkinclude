@@ -15,27 +15,18 @@ OPTBBL  = -DOPT_BBL
 #TSTAG=.tstag
 
 # coco default
-#OBJOPT1 = tflxt.iso-ut.o
-#OBJOPT2 = dvdnk.o
+#SRCOPT  = tflxt.iso-ut.F90 dvdif.nk.F
 
 # icedcoco default
-#OBJOPT1 = tflxt.iso-ut.o
-#OBJOPT2 = dvdnk.o ipthm.linrmp.o 
+#SRCOPT  = tflxt.iso-ut.F90 dvdif.nk.F ipthm.linrmp.F 
 
 # CORE global simple
-#OBJOPT1 = tflxt.iso-ut.o
-#OBJOPT2 = aocea.icedcoco.nmlwtr.o dvdnk.c0lat.o csrvl.bblmzns.o cvisc.amh2d.o fshlw.novis.o ipthm.linrmp.o ipmmt.pice.o aprdc.icedcoco.tundf$(TSTAG).o tslvt.icedcoco.tundf.para.o sfcng.CORE.o utint.CORE.o
+#SRCOPT = tflxt.iso-ut.F90 aocea.icedcoco.nmlwtr.F dvdif.nk.c0lat.F csrvl.bblmzns.F cvisc.amh2d.F fshlw.novis.F ipthm.linrmp.F ipmmt.pice.F aprdc.icedcoco.tundf$(TSTAG).F tslvt.icedcoco.tundf.para.F sfcng.CORE.F utint.CORE.F
 
-OBJOPT1	= tflxt.iso-ut.o
-OBJOPT2	= dvdnk.o sfcng.CORE.o utint.CORE.o
+SRCOPT	= tflxt.iso-ut.F90 dvdif.nk.F sfcng.CORE.F utint.CORE.F
 
-OBJENS1 = 
-OBJENS2 = 
-#OBJENS1 = binst.$(MODEL).o bstbc.$(MODEL).o cadvc$(TSTAG).o ctnuv$(TSTAG).o dvlva.o
-#OBJENS2 = aocea.$(MODEL).o aprdc.$(MODEL)$(TSTAG).o
-
-OBJOPT	= $(OBJOPT1) $(OBJOPT2)
-OBJENS	= $(OBJENS1) $(OBJENS2)
+SRCENS  = 
+#SRCENS	= aocea.$(MODEL).F aprdc.$(MODEL)$(TSTAG).F binst.$(MODEL).F bstbc.$(MODEL).F cadvc$(TSTAG).F ctnuv$(TSTAG).F dvlva.F
 
 TARGET	= $(OGCMDIR)/bin/$(MODEL)$(PARALLEL)
 LIBOGCM	= $(OGCMDIR)/lib/lib$(MODEL)$(PARALLEL).a
