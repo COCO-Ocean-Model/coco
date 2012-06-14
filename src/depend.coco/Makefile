@@ -3,7 +3,6 @@ include $(OGCMDIR)/src/Sysdep.$(SYSTEM)$(PARALLEL)
 
 OBJSTD1	= \
           bfrch.o \
-          binst.o \
           brstt.o \
           bstbc.o \
           sfcng.o \
@@ -12,6 +11,7 @@ OBJSTD1	= \
 
 OBJSTD2	= \
           aocea.o \
+          binst.o \
           aprdc$(TSTAG).o
 
 OBJSTD	= $(OBJSTD1) \
