@@ -15,18 +15,18 @@ OPTBBL  = -DOPT_BBL
 #TSTAG=.tstag
 
 # coco default
-#SRCOPT  = tflxt.iso-ut.F90 dvdif.nk.F
+#SRCOPT  = tflxt.iso-ut dvdif.nk
 
 # icedcoco default
-#SRCOPT  = tflxt.iso-ut.F90 dvdif.nk.F ipthm.linrmp.F 
+#SRCOPT  = tflxt.iso-ut dvdif.nk ipthm.linrmp 
 
 # CORE global simple
-#SRCOPT = tflxt.iso-ut.F90 aocea.icedcoco.nmlwtr.F dvdif.nk.c0lat.F csrvl.bblmzns.F cvisc.amh2d.F fshlw.novis.F ipthm.linrmp.F ipmmt.pice.F aprdc.icedcoco.tundf$(TSTAG).F tslvt.icedcoco.tundf.para.F sfcng.CORE.F utint.CORE.F
+#SRCOPT = tflxt.iso-ut aocea.icedcoco.nmlwtr dvdif.nk-c0lat csrvl.bblmzns cvisc.amh2d fshlw.novis ipthm.linrmp ipmmt.pice aprdc.icedcoco.tundf$(TSTAG) tslvt.icedcoco.tundf.para sfcng.CORE utint.CORE
 
-SRCOPT	= tflxt.iso-ut.F90 dvdif.nk.F sfcng.CORE.F utint.CORE.F
+SRCOPT	= tflxt.iso-ut dvdif.nk sfcng.CORE utint.CORE
 
 SRCENS  = 
-#SRCENS	= aocea.$(MODEL).F aprdc.$(MODEL)$(TSTAG).F binst.$(MODEL).F bstbc.$(MODEL).F cadvc$(TSTAG).F ctnuv$(TSTAG).F dvlva.F
+#SRCENS	= aocea.$(MODEL) aprdc.$(MODEL)$(TSTAG) binst.$(MODEL) bstbc.$(MODEL) cadvc$(TSTAG) ctnuv$(TSTAG) dvlva
 
 TARGET	= $(OGCMDIR)/bin/$(MODEL)$(PARALLEL)
 LIBOGCM	= $(OGCMDIR)/lib/lib$(MODEL)$(PARALLEL).a

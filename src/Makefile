@@ -3,65 +3,65 @@ include Sysdep.$(SYSTEM)$(PARALLEL)
 MAIN	= $(MODEL).o
 
 SRCSHR	= \
-          atmct$(TSTAG).F \
-          bchmk.F \
-          bgs2d.F \
-          bgs3d.F \
-          brdge.F \
-          bshfi.F \
-          bshft.F \
-          cadvc$(TSTAG).F \
-          csrvl.F \
-          ctnuv$(TSTAG).F90 \
-          cvisc.F \
-          cvlrd.F \
-          dvdif.F \
-          dvlta.F \
-          dvlva.F \
-          dwdns.F \
-          fbtav.F \
-          fshdf.F \
-          fshlw.F \
-          qckot.F \
-          tflxt.F \
-          tovtr.F90 \
-          ucaln.F \
-          ucloc.$(SYSTEM).F \
-          ufile.F \
-          utrdg.F90 \
-          xprst.F
+          atmct$(TSTAG) \
+          bchmk \
+          bgs2d \
+          bgs3d \
+          brdge \
+          bshfi \
+          bshft \
+          cadvc$(TSTAG) \
+          csrvl \
+          ctnuv$(TSTAG) \
+          cvisc \
+          cvlrd \
+          dvdif \
+          dvlta \
+          dvlva \
+          dwdns \
+          fbtav \
+          fshdf \
+          fshlw \
+          qckot \
+          tflxt \
+          tovtr \
+          ucaln \
+          ucloc.$(SYSTEM) \
+          ufile \
+          utrdg \
+          xprst
 
 SRCDPD.coco	= \
-          aocea.F \
-          aprdc$(TSTAG).F \
-          bfrch.F \
-          binst.F \
-          brstt.F \
-          bstbc.F \
-          sfcng.F \
-          tslvt.F \
-          utint.F
+          aocea \
+          aprdc$(TSTAG) \
+          bfrch \
+          binst \
+          brstt \
+          bstbc \
+          sfcng \
+          tslvt \
+          utint
 
 SRCDPD.icedcoco	= \
-          aocea.F \
-          aprdc$(TSTAG).F \
-          bfrch.F \
-          binst.F \
-          bgsid.F \
-          brstt.F \
-          bstbc.F \
-          ictrn.F \
-          ifhea.F \
-          ifwtr.F \
-          ipadv.F \
-          ipmmt.F \
-          iprdc$(TSTAG).F \
-          iprdg.F \
-          ipthm.F \
-          iptmp.F \
-          sfcng.F \
-          tslvt.F \
-          utint.F
+          aocea \
+          aprdc$(TSTAG) \
+          bfrch \
+          binst \
+          bgsid \
+          brstt \
+          bstbc \
+          ictrn \
+          ifhea \
+          ifwtr \
+          ipadv \
+          ipmmt \
+          iprdc$(TSTAG) \
+          iprdg \
+          ipthm \
+          iptmp \
+          sfcng \
+          tslvt \
+          utint
 
 all:lib $(TARGET)
 
@@ -71,22 +71,40 @@ $(TARGET):$(LIBOGCM) $(MAIN)
 lib:
 	$(RM) build/*.F90 build/*.F
 	for esrc in $(SRCSHR); do \
-	  esrcm=`echo $$esrc | sed -e "s/\..*F/\.F/g"` ; \
-	  (cd build ; ln -s ../shared/$$esrc $$esrcm) ; \
+	  esrcb=`echo $$esrc | sed -e "s/\..*$///"` ; \
+	  ( cd build ; \
+	    if [ -f ../shared/$$esrc.F90 ]; then \
+	     ln -s ../shared/$$esrc.F90 $$esrcb.F90 ; \
+	    else \
+	     ln -s ../shared/$$esrc.F $$esrcb.F ; \
+	    fi ) ; \
 	done
 	for esrc in $(SRCDPD.$(MODEL)); do \
-	  esrcm=`echo $$esrc | sed -e "s/\..*F/\.F/g"` ; \
-	  (cd build ; ln -s ../depend.$(MODEL)/$$esrc $$esrcm) ; \
+	  esrcb=`echo $$esrc | sed -e "s/\..*$///"` ; \
+	  ( cd build ; \
+	    if [ -f ../depend.$(MODEL)/$$esrc.F90 ]; then \
+	     ln -s ../depend.$(MODEL)/$$esrc.F90 $$esrcb.F90 ; \
+	    else \
+	     ln -s ../depend.$(MODEL)/$$esrc.F $$esrcb.F ; \
+	    fi ) ; \
 	done
 	for esrc in $(SRCENS); do \
-	  esrcm=`echo $$esrc | sed -e "s/\..*F/\.F/g"` ; \
 	  esrcb=`echo $$esrc | sed -e "s/\..*$///"` ; \
-	  (cd build ; $(RM) $$esrcb.F* ; ln -s ../enstr/$$esrc $$esrcm) ; \
+	  (cd build ; $(RM) $$esrcb.F* ; \
+	    if [ -f ../enstr/$$esrc.F90 ]; then \
+	     ln -s ../enstr/$$esrc.F90 $$esrcb.F90 ; \
+	    else \
+	     ln -s ../enstr/$$esrc.F $$esrcb.F ; \
+	    fi ) ; \
 	done
 	for esrc in $(SRCOPT); do \
-	  esrcm=`echo $$esrc | sed -e "s/\..*F/\.F/g"` ; \
 	  esrcb=`echo $$esrc | sed -e "s/\..*$///"` ; \
-	  (cd build ; $(RM) $$esrcb.F* ; ln -s ../option/$$esrc $$esrcm) ; \
+	  (cd build ; $(RM) $$esrcb.F* ; \
+	    if [ -f ../option/$$esrc.F90 ]; then \
+	     ln -s ../option/$$esrc.F90 $$esrcb.F90 ; \
+	    else \
+	     ln -s ../option/$$esrc.F $$esrcb.F ; \
+	    fi ) ; \
 	done
 	cd module; make
 	cd build; make
