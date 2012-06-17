@@ -170,6 +170,7 @@ contains
          &      ts
     use zocmsk,  only :                                &
          &   amskt,  amsktb,  nbot
+    use utrdg
 
     implicit none
 
