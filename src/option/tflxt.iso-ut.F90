@@ -107,10 +107,13 @@ subroutine flxtrc( &
      ofirst = .false.
      call rewnml(ifpar, jfpar)
      read(ifpar, nmdifh, iostat=istat)
+     call cstnml(jfpar, 'flxtrc', 'nmdifh', istat)
      call rewnml(ifpar, jfpar)
      read(ifpar, nmdifi, iostat=istat)
+     call cstnml(jfpar, 'flxtrc', 'nmdifi', istat)
      call rewnml(ifpar, jfpar)
      read(ifpar, nmdifg, iostat=istat)
+     call cstnml(jfpar, 'flxtrc', 'nmdifg', istat)
 
      write(jfpar, nmdifh)
      write(jfpar, nmdifi)
@@ -517,6 +520,7 @@ subroutine dnsgrd( &
      ofirst = .false.
      call rewnml(ifpar, jfpar)
      read(ifpar, nmslpm, iostat=istat)
+     call cstnml(jfpar, 'dnsgrd', 'nmslpm', istat)
      write(jfpar, nmslpm)
 
      call secoef( &
@@ -742,6 +746,7 @@ subroutine flxtrb( &
      ofirst = .false.
      call rewnml(ifpar, jfpar)
      read(ifpar, nmbbdh, iostat=istat)
+     call cstnml(jfpar, 'flxtrb', 'nmbbdh', istat)
      write(jfpar, nmbbdh)
   end if
 

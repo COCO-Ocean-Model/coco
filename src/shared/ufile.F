@@ -104,3 +104,22 @@ c *********************************************************************
  999  WRITE(JFILE, *) '*** ERROR IN REWINDING THE NAMELIST FILE ***'
       RETURN
       END
+
+c *********************************************************************
+
+      subroutine cstnml(
+     I                    jfile,  cnsbr,  cnnml,  istat)
+      use zocfil
+
+      integer  jfile, istat 
+      character*(*)  cnsbr,  cnnml
+
+      if (istat > 0) then ! an error occured while reading
+         write(jfile, *)
+     &      '*** ERROR OCCURS while reading namelist:', cnnml,
+     &      ' at subroutine:', cnsbr, ' ***'
+         stop
+      end if
+
+      return
+      end subroutine cstnml

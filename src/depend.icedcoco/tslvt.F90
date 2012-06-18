@@ -88,6 +88,7 @@ contains
        call rewnml( ifpar, jfpar )
        write(jfpar, *) '*** svtset ***'
        read(ifpar, nmacct, iostat = istat )
+       call cstnml(jfpar, 'svtset', 'nmacct', istat)
 
        write(jfpar, *) ' level     gamma'
        do k = 1, nz
@@ -95,9 +96,11 @@ contains
        end do
        call rewnml(ifpar, jfpar)
        read(ifpar, nmswab, iostat = istat )
+       call cstnml(jfpar, 'svtset', 'nmswab', istat)
        write(jfpar, nmswab)
        call rewnml(ifpar, jfpar)
        read(ifpar, nmsrst, iostat = istat )
+       call cstnml(jfpar, 'svtset', 'nmsrst', istat)
        write(jfpar, nmsrst)
 
        if ( osrstr ) then
