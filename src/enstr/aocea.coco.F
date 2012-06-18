@@ -7,6 +7,8 @@
       use zocdim
       use zocgrd
       use zocfil
+      use tflxt
+      use tovtr
       IMPLICIT NONE
 
 c --- information -----------------------------------------------------

@@ -14,6 +14,9 @@
      W                  UADV,   VADV,   WADV)
       use zocdim
       use zocgrd
+      use tslvt
+      use tflxt
+      use tovtr
       IMPLICIT NONE
 
 c --- information -----------------------------------------------------
