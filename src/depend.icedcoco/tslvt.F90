@@ -87,7 +87,7 @@ contains
        gamma(1:nz) = 1.d0
        call rewnml( ifpar, jfpar )
        write(jfpar, *) '*** svtset ***'
-       read(ifpar, nmacct, iostat = istat 
+       read(ifpar, nmacct, iostat = istat )
        call cstnml( jfpar, 'svtset', 'nmacct', istat )
        write(jfpar, nmacct)
        write(jfpar, *) ' level     gamma'

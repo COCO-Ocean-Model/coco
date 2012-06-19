@@ -335,6 +335,10 @@ subroutine tnduvb( &
   &     xx,     yy,     uy,     vy,     ty, &
   &     ux,     vx )
 
+  use xprst
+
+  implicit none
+
 ! --- information -----------------------------------------------------
 !
 !  Pressure gradient and Coriolis terms for the BBL momentum eqs. See

@@ -53,6 +53,10 @@ contains
 subroutine ovtset( &
   &      r,      t )
 
+  use xprst
+
+  implicit none
+
   real(8), intent(out) ::       r(nxydim, nzdim)
   real(8), intent(in)  ::       t(nxydim, nzdim, ntdim)
 
@@ -64,7 +68,6 @@ subroutine ovtset( &
   call rewnml(ifpar, jfpar)
   write(jfpar, *) '*** OVTSET ***'
   read(ifpar, nmacct, iostat=istat)
-  call cstnml(jfpar, 'ovtset', 'nmacct', istat)
 
   call secoef( &
      & c0(kstr), c1(kstr), c2(kstr), c3(kstr), &
