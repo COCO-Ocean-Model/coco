@@ -8,6 +8,7 @@ module ucloc
 !  HISTORY
 !     '97.03.18  H.Hasumi: From AGCM5.4 developed by A.Numaguti
 !     '07.04.23  H.Hasumi
+!     '12.06.15  H.Tatebe: for COCO5.0 in F90
 !
 ! ---------------------------------------------------------------------
 
