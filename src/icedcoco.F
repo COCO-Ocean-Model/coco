@@ -1,6 +1,9 @@
       PROGRAM ICEDCOCO
+
       use zocdim
       use zocfil
+      use ucloc
+
       IMPLICIT NONE
 
 c --- information -----------------------------------------------------

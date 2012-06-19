@@ -87,20 +87,18 @@ contains
        gamma(1:nz) = 1.d0
        call rewnml( ifpar, jfpar )
        write(jfpar, *) '*** svtset ***'
-       read(ifpar, nmacct, iostat = istat )
-       call cstnml(jfpar, 'svtset', 'nmacct', istat)
-
+       read(ifpar, nmacct, iostat = istat 
+       call cstnml( jfpar, 'svtset', 'nmacct', istat )
+       write(jfpar, nmacct)
        write(jfpar, *) ' level     gamma'
        do k = 1, nz
           write(jfpar, '(i6,f10.4)') k, gamma(k)
        end do
        call rewnml(ifpar, jfpar)
        read(ifpar, nmswab, iostat = istat )
-       call cstnml(jfpar, 'svtset', 'nmswab', istat)
        write(jfpar, nmswab)
        call rewnml(ifpar, jfpar)
        read(ifpar, nmsrst, iostat = istat )
-       call cstnml(jfpar, 'svtset', 'nmsrst', istat)
        write(jfpar, nmsrst)
 
        if ( osrstr ) then
