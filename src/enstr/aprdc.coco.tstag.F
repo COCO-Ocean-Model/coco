@@ -13,6 +13,7 @@
      W                  UADV,   VADV,   WADV)
       use zocdim
       use zocgrd
+      use dvdif
       use tflxt
       use tovtr
       IMPLICIT NONE

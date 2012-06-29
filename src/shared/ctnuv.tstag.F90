@@ -438,6 +438,8 @@ subroutine tnduvb( &
 !
 ! ---------------------------------------------------------------------
 
+  use xprst
+
   real(8), intent(inout) ::     gxx(nxydim)       ,    gyy(nxydim)
   real(8), intent(inout) ::      gx(nxydim, nzdim),     gy(nxydim, nzdim)
   real(8), intent(inout) ::      xx(nxydim, nzdim),     yy(nxydim, nzdim)

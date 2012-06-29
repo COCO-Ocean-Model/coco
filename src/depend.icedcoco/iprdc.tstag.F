@@ -10,6 +10,7 @@
       use zocdim
       use zocgrd
       use zocphy
+      use ucloc
       IMPLICIT NONE
 
 c --- information -----------------------------------------------------

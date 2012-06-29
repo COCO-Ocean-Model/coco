@@ -488,6 +488,8 @@ subroutine dnsgrd( &
   &  xdtdz,  ydtdz,  zdtdx,  zdtdy, &
   &     ty,     tx )
 
+  use xprst
+
   real(8), intent(out) ::  xdzdx(nxydim, nzdim),  ydzdy(nxydim, nzdim)
   real(8), intent(out) ::  zdzdx(nxydim, nzdim),  zdzdy(nxydim, nzdim)
   real(8), intent(out) ::  xdtdz(nxydim, nzdim, ntdim)

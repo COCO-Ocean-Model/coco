@@ -14,6 +14,7 @@
      W                  UADV,   VADV,   WADV)
       use zocdim
       use zocgrd
+      use dvdif
       use tslvt
       use tflxt
       use tovtr

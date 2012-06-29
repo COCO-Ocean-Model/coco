@@ -15,6 +15,7 @@
       use zocdim
       use zocgrd
       use ctnuv
+      use dvdif
       use tslvt
       use tflxt
       use tovtr
