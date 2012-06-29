@@ -14,6 +14,7 @@
       use zocdim
       use zocgrd
       use ctnuv
+      use cvisc
       use tflxt
       use tovtr
       IMPLICIT NONE
