@@ -10,6 +10,7 @@
       use tflxt
       use tovtr
       use tslvt
+      use binst
       IMPLICIT NONE
 
 c --- information -----------------------------------------------------
