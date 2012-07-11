@@ -10,6 +10,7 @@
       use zocdim
       use zocgrd
       use zocphy
+      use ipmmt
       use ucloc
       IMPLICIT NONE
 
