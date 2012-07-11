@@ -37,7 +37,10 @@ module dvdif
     &     dz,    dzm,     ds,    dsm,     dt, &
     &   zbot,    cor,   itst, ieuler
   use zocmsk,  only: &
-    &  amskt,  amftz,  amfvz, amsktb, amskvb, &
+#ifdef OPT_BBL
+    & amsktb, amskvb, &
+#endif
+    &  amskt,  amftz,  amfvz, &
     &   nbot,  nbotv
   use zocphy, only: &
     &   rhoo, gravit,  ckarm
