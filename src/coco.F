@@ -1,6 +1,7 @@
       PROGRAM COCO4
       use zocdim
       use zocfil
+      use atmct
       IMPLICIT NONE
 
 c --- information -----------------------------------------------------

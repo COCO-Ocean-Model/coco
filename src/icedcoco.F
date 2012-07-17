@@ -3,7 +3,7 @@
       use zocdim
       use zocfil
       use ucloc
-
+      use atmct
       IMPLICIT NONE
 
 c --- information -----------------------------------------------------
