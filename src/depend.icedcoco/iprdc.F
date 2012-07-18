@@ -11,6 +11,7 @@
       use zocgrd
       use zocphy
       use ipmmt
+      use iptmp
       use ucloc
       IMPLICIT NONE
 

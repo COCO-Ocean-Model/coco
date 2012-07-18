@@ -76,10 +76,10 @@ OBJS.icedcoco	= \
           ifwtr.o \
           ipadv.o \
           ipmmt.o \
+          iptmp.o \
           iprdc.o \
           iprdg.o \
           ipthm.o \
-          iptmp.o \
           sfcng.o \
           tslvt.o \
           utint.o \
