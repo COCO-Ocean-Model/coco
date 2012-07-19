@@ -15,8 +15,6 @@ module iptmp
     &  oinit, ofinal
   use zocgrd, only: &
     &     ts
-!  use zocmsk, only: &
-!    & 
   use zocphy, only: &
     &   rhoi,    cpi,   dtds,   hfus 
 
