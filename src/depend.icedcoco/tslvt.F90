@@ -76,6 +76,8 @@ contains
     use zocphy,  only :                                &
          &     cpo,    rhoo
 
+    use ifhea
+
     implicit none
 
     integer(4)        ::      ij,      k,      n

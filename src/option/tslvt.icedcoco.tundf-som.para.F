@@ -3,6 +3,7 @@
       use zocgrd
       use zocmsk
       use zocphy
+      use ifhea
       IMPLICIT NONE
 
 c --- information -----------------------------------------------------
