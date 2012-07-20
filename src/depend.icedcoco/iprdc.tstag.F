@@ -14,6 +14,7 @@
       use ifhea
       use ifwtr
       use ipmmt
+      use iprdg
       use iptmp
       use ucloc
       IMPLICIT NONE
