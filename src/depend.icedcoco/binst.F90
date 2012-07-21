@@ -28,6 +28,7 @@ contains
 !      use zocphy
   use zocmsk, only : amskv
   use tovtr
+  use dvlva
   implicit none
 
   real(8), intent(out)   :: uadv(nxyzdm), vadv(nxyzdm), wadv(nxyzdm), r(nxyzdm)
