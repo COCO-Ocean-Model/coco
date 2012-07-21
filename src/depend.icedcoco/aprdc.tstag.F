@@ -24,6 +24,7 @@
       use tslvt
       use ucloc
       use fbtav
+      use dvlta
       IMPLICIT NONE
 
 c --- information -----------------------------------------------------
