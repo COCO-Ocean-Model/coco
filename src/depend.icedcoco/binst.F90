@@ -29,6 +29,7 @@ contains
   use zocmsk, only : amskv
   use tovtr
   use dvlva
+  use bstbc
   implicit none
 
   real(8), intent(out)   :: uadv(nxyzdm), vadv(nxyzdm), wadv(nxyzdm), r(nxyzdm)

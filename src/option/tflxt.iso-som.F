@@ -8,6 +8,7 @@
       use zocgrd
       use zocmsk
       use zocfil
+      use bstbc
       IMPLICIT NONE
 
 c --- information -----------------------------------------------------
