@@ -12,6 +12,7 @@
       use tslvt
       use binst
       use brdge
+      use iprdc
       IMPLICIT NONE
 
 c --- information -----------------------------------------------------
