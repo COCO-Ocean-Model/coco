@@ -16,6 +16,7 @@
       use ipadv
       use ipmmt
       use iprdg
+      use ipthm
       use iptmp
       use ucloc
       IMPLICIT NONE
