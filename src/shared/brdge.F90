@@ -22,7 +22,10 @@ contains
   & nxdim, nydim, nzdim,nic, nxydim, nxygdm, nxyzgd, nxygdm,                   &
   & jstr, jend, ijstr, ijend,  kstr, kend,                                     & 
   & ijtstr, ijtend, ijvstr, ijvend,                                            &
-  & iroot, ierr,  jup, jdown, jupe, jupw, myrank
+#ifdef OPT_TRIPOLE
+  & jupe, jupw,                                                                &
+#endif
+  & iroot, ierr,  jup, jdown, myrank
 
 
 #ifdef OPT_BBL
