@@ -5,10 +5,8 @@ module tflxt
 !  HISTORY
 !     '03.05.12  H.Hasumi: from COCO3.4
 !     '07.04.23  H.Hasumi
-!     '07.05.01  H.Hasumi: McDougall et al. (2003) eq. of state
-!     '07.09.25  H.Hasumi: arguments of CHEKIN
-!     '08.06.11  H.Hasumi: initial/final setup
-!     '08.07.10  H.Hasumi: initial/final setup
+!     '08.06.11  H.Hasumi: initial/final processing
+!     '08.07.10  H.Hasumi: initial/final processing
 !     '12.06.04  Y.Komuro: for COCO5.0
 !
 ! ---------------------------------------------------------------------
@@ -64,6 +62,7 @@ subroutine flxtrc( &
   logical, save :: ofirst = .true.
 
   real(8) ::    wzc(nxydim, nzdim),    rzm(nxydim, nzdim)
+  real(8) :: fharmx(nxydim), fharmy(nxydim),   harm(nxydim)
   real(8) ::  hzbot(nxydim)
   real(8) ::  xdzdx(nxydim, nzdim),  ydzdy(nxydim, nzdim)
   real(8) ::  zdzdx(nxydim, nzdim),  zdzdy(nxydim, nzdim)
@@ -94,7 +93,10 @@ subroutine flxtrc( &
   real(8) ::   tmin,   tmax
   real(8) ::   slp1,   slp2
 
-  real(8), save ::    ahh = 0.d0,    ahi = 0.d0,    ahg = 0.d0
+  real(8), save ::  ahb = 0.0d0
+  real(8), save ::  ahh = 0.0d0,  ahi = 0.0d0,  ahg = 0.0d0
+
+  namelist /nmdifb/ ahb
   namelist /nmdifh/ ahh
   namelist /nmdifi/ ahi
   namelist /nmdifg/ ahg
@@ -105,6 +107,10 @@ subroutine flxtrc( &
 
   if (ofirst) then
      ofirst = .false.
+     call rewnml(ifpar, jfpar)
+     read(ifpar, nmdifb, iostat=istat)
+     call cstnml(jfpar, 'flxtrc', 'nmdifb', istat)
+     write(jfpar, nmdifb)
      call rewnml(ifpar, jfpar)
      read(ifpar, nmdifh, iostat=istat)
      call cstnml(jfpar, 'flxtrc', 'nmdifh', istat)
@@ -148,6 +154,40 @@ subroutine flxtrc( &
      end do
   end do
 
+  do n = 1, ntdim
+     do k = kstr, kend
+        do ij = ijtstr-nxdim, ijtend+nxdim+nxdim
+           ijlw = ij + lw
+           ijls = ij + ls
+           fharmx(ij) = ahb * (hyu(ijlw) + hyu(ij+lsw)) &
+             &              / (hxt(ij) + hxt(ijlw)) * &
+             &          (tx(ij, k, n) - tx(ijlw, k, n)) * rx * &
+             &          amskt(ij, k) * amskt(ijlw, k)
+           fharmy(ij) = ahb * (hxu(ijls) + hxu(ij+lsw)) &
+             &              / (hyt(ij) + hyt(ijls)) * &
+             &          (tx(ij, k, n) - tx(ijls, k, n)) * rym(ij) * &
+             &          amskt(ij, k) * amskt(ijls, k)
+        end do
+        do ij = ijtstr-nxdim, ijtend+nxdim
+           harm(ij) = (  (fharmx(ij+le) - fharmx(ij)) * rx &
+             &         + (fharmy(ij+ln) - fharmy(ij)) * ry(ij)) * &
+             &        rxt(ij) * ryt(ij)
+        end do
+        do ij = ijtstr, ijtend+nxdim
+           ijlw = ij + lw
+           ijls = ij + ls
+           ftx(ij, k, n) = - (harm(ij) - harm(ijlw)) * rx * &
+             &             (hyu(ijlw) + hyu(ij+lsw)) &
+!             &             / (hxt(ij) + hxt(ijlw)) * amftx(ij, kstr) &
+             &             / (hxt(ij) + hxt(ijlw)) * amftx(ij, k)
+           fty(ij, k, n) = - (harm(ij) - harm(ijls)) * rym(ij) * &
+             &             (hxu(ijls) + hxu(ij+lsw)) &
+!             &             / (hyt(ij) + hyt(ijls)) * amfty(ij, kstr) &
+             &             / (hyt(ij) + hyt(ijls)) * amfty(ij, k)
+        end do
+     end do
+  end do
+
   do ij = 1, nxydim
      hzbot(ij) = hz(ij) + zbot
   end do
@@ -164,7 +204,7 @@ subroutine flxtrc( &
      end do
   end do
 
-  call chekin(wzc, 'WZC', nx, ny, nz, nxyzdm, 'OCN')
+!  call chekin(wzc, 'WZC', nx, ny, nz, nxyzdm, 'OCN')
 
   do n = 1, ntdim
      do k = kstr+1, kend
@@ -327,7 +367,7 @@ subroutine flxtrc( &
               tadvy(ij, n) = tadvy(ij, n) - 0.5d0 * cxd * d10
            end if
 
-           fty(ij, k, n) = &
+           fty(ij, k, n) = fty(ij, k, n) + &
               &  (  (ahh + ahi) * rym(ijls) / (hyt(ij) + hyt(ijls)) * &
               &     (tx(ij, k, n) - tx(ijls, k, n)) * 2.d0 &
               &   - (ahi - ahg) * ydzdy(ij, k) * ydtdz(ij, k, n)) * &
@@ -436,7 +476,7 @@ subroutine flxtrc( &
               tadvx(ij, n) = tadvx(ij, n) - 0.5d0 * cyl * c01
            end if
                
-           ftx(ij, k, n) = &
+           ftx(ij, k, n) = ftx(ij, k, n) + &
               &   (  (ahh + ahi) * rx / (hxt(ij) + hxt(ijlw)) * &
               &      (tx(ij, k, n) - tx(ijlw, k, n)) * 2.d0 &
               &    - (ahi - ahg) * xdzdx(ij, k) * xdtdz(ij, k, n)) * &
@@ -458,23 +498,6 @@ subroutine flxtrc( &
         end do
      end do
   end do
-
-!  do k = 1, nzdim
-!     do ij = 1, nxydim
-!        psigmx(ij, k) = 0.0d0
-!        psigmy(ij, k) = 0.0d0
-!     end do
-!  end do
-!
-!  do k = kstr, kend
-!     do ij = ijtstr, ijtend+nxdim
-!        psigmx(ij, k) = ahg * ydzdy(ij, k)
-!        psigmy(ij, k) = - ahg * xdzdx(ij, k)
-!     end do
-!  end do
-!
-!  call chekin(psigmx, 'PSIGMX', nx, ny, nz, nxyzdm, 'OCN')
-!  call chekin(psigmy, 'PSIGMY', nx, ny, nz, nxyzdm, 'OCN')
 
   return
 

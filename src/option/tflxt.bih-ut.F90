@@ -5,10 +5,8 @@ module tflxt
 !  HISTORY
 !     '03.05.12  H.Hasumi: from COCO3.4
 !     '07.04.23  H.Hasumi
-!     '07.05.01  H.Hasumi: McDougall et al. (2003) eq. of state
-!     '07.09.25  H.Hasumi: arguments of CHEKIN
-!     '08.06.11  H.Hasumi: initial/final setup
-!     '08.07.10  H.Hasumi: initial/final setup
+!     '08.06.11  H.Hasumi: initial/final processing
+!     '08.07.10  H.Hasumi: initial/final processing
 !     '12.06.04  Y.Komuro: for COCO5.0
 !
 ! ---------------------------------------------------------------------
@@ -64,11 +62,8 @@ subroutine flxtrc( &
   logical, save :: ofirst = .true.
 
   real(8) ::    wzc(nxydim, nzdim),    rzm(nxydim, nzdim)
+  real(8) :: fharmx(nxydim), fharmy(nxydim),   harm(nxydim)
   real(8) ::  hzbot(nxydim)
-  real(8) ::  xdzdx(nxydim, nzdim),  ydzdy(nxydim, nzdim)
-  real(8) ::  zdzdx(nxydim, nzdim),  zdzdy(nxydim, nzdim)
-  real(8) ::  xdtdz(nxydim, nzdim, ntdim),  ydtdz(nxydim, nzdim, ntdim)
-  real(8) ::  zdtdx(nxydim, nzdim, ntdim),  zdtdy(nxydim, nzdim, ntdim)
   real(8) ::    tnt(nxydim),    tet(nxydim)
   real(8) ::    tst(nxydim),    ts2(nxydim)
   real(8) ::    twt(nxydim),    tww(nxydim)
@@ -94,10 +89,9 @@ subroutine flxtrc( &
   real(8) ::   tmin,   tmax
   real(8) ::   slp1,   slp2
 
-  real(8), save ::    ahh = 0.d0,    ahi = 0.d0,    ahg = 0.d0
-  namelist /nmdifh/ ahh
-  namelist /nmdifi/ ahi
-  namelist /nmdifg/ ahg
+  real(8), save ::  ahb = 0.0d0
+
+  namelist /nmdifb/ ahb
 
   if (oinit .or. ofinal) then
      return
@@ -106,17 +100,9 @@ subroutine flxtrc( &
   if (ofirst) then
      ofirst = .false.
      call rewnml(ifpar, jfpar)
-     read(ifpar, nmdifh, iostat=istat)
-     call cstnml(jfpar, 'flxtrc', 'nmdifh', istat)
-     write(jfpar, nmdifh)
-     call rewnml(ifpar, jfpar)
-     read(ifpar, nmdifi, iostat=istat)
-     call cstnml(jfpar, 'flxtrc', 'nmdifi', istat)
-     write(jfpar, nmdifi)
-     call rewnml(ifpar, jfpar)
-     read(ifpar, nmdifg, iostat=istat)
-     call cstnml(jfpar, 'flxtrc', 'nmdifg', istat)
-     write(jfpar, nmdifg)
+     read(ifpar, nmdifb, iostat=istat)
+     call cstnml(jfpar, 'flxtrc', 'nmdifb', istat)
+     write(jfpar, nmdifb)
 
      do ij = ijstr-nxdim, ijend+nxdim
         rymlls(ij) = 1.d0 / dym(ij) / dym(ij-nxdim)
@@ -125,11 +111,6 @@ subroutine flxtrc( &
      dx2 = dx * dx
      rx2 = 1.d0 / dx2
   end if
-
-  call dnsgrd( &
-     &  xdzdx,  ydzdy,  zdzdx,  zdzdy, &
-     &  xdtdz,  ydtdz,  zdtdx,  zdtdy, &
-     &     ty,     tx )
 
   do n = 1, ntdim
      do k = 1, nzdim
@@ -145,6 +126,40 @@ subroutine flxtrc( &
   do k = 1, nzdim
      do ij = 1, nxydim
         diffz(ij, k) = 0.d0
+     end do
+  end do
+
+  do n = 1, ntdim
+     do k = kstr, kend
+        do ij = ijtstr-nxdim, ijtend+nxdim+nxdim
+           ijlw = ij + lw
+           ijls = ij + ls
+           fharmx(ij) = ahb * (hyu(ijlw) + hyu(ij+lsw)) &
+             &              / (hxt(ij) + hxt(ijlw)) * &
+             &          (tx(ij, k, n) - tx(ijlw, k, n)) * rx * &
+             &          amskt(ij, k) * amskt(ijlw, k)
+           fharmy(ij) = ahb * (hxu(ijls) + hxu(ij+lsw)) &
+             &              / (hyt(ij) + hyt(ijls)) * &
+             &          (tx(ij, k, n) - tx(ijls, k, n)) * rym(ij) * &
+             &          amskt(ij, k) * amskt(ijls, k)
+        end do
+        do ij = ijtstr-nxdim, ijtend+nxdim
+           harm(ij) = (  (fharmx(ij+le) - fharmx(ij)) * rx &
+             &         + (fharmy(ij+ln) - fharmy(ij)) * ry(ij)) * &
+             &        rxt(ij) * ryt(ij)
+        end do
+        do ij = ijtstr, ijtend+nxdim
+           ijlw = ij + lw
+           ijls = ij + ls
+           ftx(ij, k, n) = - (harm(ij) - harm(ijlw)) * rx * &
+             &             (hyu(ijlw) + hyu(ij+lsw)) &
+!             &             / (hxt(ij) + hxt(ijlw)) * amftx(ij, kstr) &
+             &             / (hxt(ij) + hxt(ijlw)) * amftx(ij, k)
+           fty(ij, k, n) = - (harm(ij) - harm(ijls)) * rym(ij) * &
+             &             (hxu(ijls) + hxu(ij+lsw)) &
+!             &             / (hyt(ij) + hyt(ijls)) * amfty(ij, kstr) &
+             &             / (hyt(ij) + hyt(ijls)) * amfty(ij, k)
+        end do
      end do
   end do
 
@@ -164,7 +179,7 @@ subroutine flxtrc( &
      end do
   end do
 
-  call chekin(wzc, 'WZC', nx, ny, nz, nxyzdm, 'OCN')
+!  call chekin(wzc, 'WZC', nx, ny, nz, nxyzdm, 'OCN')
 
   do n = 1, ntdim
      do k = kstr+1, kend
@@ -172,11 +187,7 @@ subroutine flxtrc( &
         ku  = k - 1
         kd  = k + 1
         do ij = ijtstr, ijtend
-           diffz(ij, k) = &
-              &   (  ahv(ij, k) &
-              &    + ahi * (  zdzdx(ij, k) * zdzdx(ij, k) &
-              &             + zdzdy(ij, k) * zdzdy(ij, k))) * &
-              &   rzm(ij, k) * amftz(ij, k)
+           diffz(ij, k) = ahv(ij, k) * rzm(ij, k) * amftz(ij, k)
            wut = wzc(ij, k) * ts
                
            vpos = 0.5d0 + sign(0.5d0, wut)
@@ -218,9 +229,6 @@ subroutine flxtrc( &
 
            ftz(ij, k, n) =  &
              & (  diffz(ij, k) * (tx(ij, ku, n) - tx(ij, k, n)) &
-             &  - (ahi + ahg) * &
-             &    (  zdzdx(ij, k) * zdtdx(ij, k, n) &
-             &     + zdzdy(ij, k) * zdtdy(ij, k, n)) &
              &  - wzc(ij, k) * tadv) * amftz(ij, k)
         end do
      end do
@@ -327,12 +335,8 @@ subroutine flxtrc( &
               tadvy(ij, n) = tadvy(ij, n) - 0.5d0 * cxd * d10
            end if
 
-           fty(ij, k, n) = &
-              &  (  (ahh + ahi) * rym(ijls) / (hyt(ij) + hyt(ijls)) * &
-              &     (tx(ij, k, n) - tx(ijls, k, n)) * 2.d0 &
-              &   - (ahi - ahg) * ydzdy(ij, k) * ydtdz(ij, k, n)) * &
-              &  (hxu(ijls) + hxu(ij+lsw)) * 0.5d0 * amfty(ij, k) &
-              &  - v * tadvy(ij, n)
+           fty(ij, k, n) = fty(ij, k, n) &
+             &           - v * tadvy(ij, n)
         end do
      end do
   end do
@@ -436,12 +440,8 @@ subroutine flxtrc( &
               tadvx(ij, n) = tadvx(ij, n) - 0.5d0 * cyl * c01
            end if
                
-           ftx(ij, k, n) = &
-              &   (  (ahh + ahi) * rx / (hxt(ij) + hxt(ijlw)) * &
-              &      (tx(ij, k, n) - tx(ijlw, k, n)) * 2.d0 &
-              &    - (ahi - ahg) * xdzdx(ij, k) * xdtdz(ij, k, n)) * &
-              &   (hyu(ijlw) + hyu(ij+lsw)) * 0.5d0 * amftx(ij, k) &
-              & - u * tadvx(ij, n)
+           ftx(ij, k, n) = ftx(ij, k, n) &
+             &           - u * tadvx(ij, n)
         end do
      end do
 
@@ -459,262 +459,10 @@ subroutine flxtrc( &
      end do
   end do
 
-!  do k = 1, nzdim
-!     do ij = 1, nxydim
-!        psigmx(ij, k) = 0.0d0
-!        psigmy(ij, k) = 0.0d0
-!     end do
-!  end do
-!
-!  do k = kstr, kend
-!     do ij = ijtstr, ijtend+nxdim
-!        psigmx(ij, k) = ahg * ydzdy(ij, k)
-!        psigmy(ij, k) = - ahg * xdzdx(ij, k)
-!     end do
-!  end do
-!
-!  call chekin(psigmx, 'PSIGMX', nx, ny, nz, nxyzdm, 'OCN')
-!  call chekin(psigmy, 'PSIGMY', nx, ny, nz, nxyzdm, 'OCN')
-
   return
 
 end subroutine flxtrc
 
-! *********************************************************************
-
-subroutine dnsgrd( &
-  &  xdzdx,  ydzdy,  zdzdx,  zdzdy, &
-  &  xdtdz,  ydtdz,  zdtdx,  zdtdy, &
-  &     ty,     tx )
-
-  use xprst
-
-  real(8), intent(out) ::  xdzdx(nxydim, nzdim),  ydzdy(nxydim, nzdim)
-  real(8), intent(out) ::  zdzdx(nxydim, nzdim),  zdzdy(nxydim, nzdim)
-  real(8), intent(out) ::  xdtdz(nxydim, nzdim, ntdim)
-  real(8), intent(out) ::  ydtdz(nxydim, nzdim, ntdim)
-  real(8), intent(out) ::  zdtdx(nxydim, nzdim, ntdim)
-  real(8), intent(out) ::  zdtdy(nxydim, nzdim, ntdim)
-  real(8), intent(in)  ::     ty(nxydim, nzdim, ntdim)
-  real(8), intent(in)  ::     tx(nxydim, nzdim, ntdim)
-
-  real(8), save :: c0(nzdim), c1(nzdim), c2(nzdim)
-  real(8), save :: c3(nzdim), c4(nzdim), c5(nzdim), c6(nzdim)
-  real(8), save :: d0(nzdim), d1(nzdim), d2(nzdim), d3(nzdim), d4(nzdim)
-  real(8), save :: d5(nzdim), d6(nzdim), d7(nzdim), d8(nzdim), d9(nzdim)
-  real(8), save :: eps = 1.d-20
-  logical, save :: ofirst = .true.
-
-  real(8) ::   dtdx(nxydim, nzdim, ntdim),   dtdy(nxydim, nzdim, ntdim)
-  real(8) ::   dtdz(nxydim, nzdim, ntdim)
-  real(8) ::     p1,     p2
-  real(8) ::     tl,     sl
-  real(8) ::     rl,    rlw,    rls,    rlu
-  real(8) ::   dzdx,   dzdy
-  integer ::     ij,      k,      n
-  integer ::  ifpar,  jfpar,  istat
-
-  real(8), save :: slpmax = 1.d-2
-  namelist /nmslpm/ slpmax
-
-  if (ofirst) then
-     ofirst = .false.
-     call rewnml(ifpar, jfpar)
-     read(ifpar, nmslpm, iostat=istat)
-     call cstnml(jfpar, 'dnsgrd', 'nmslpm', istat)
-     write(jfpar, nmslpm)
-
-     call secoef( &
-        &   c0(kstr), c1(kstr), c2(kstr), c3(kstr), &
-        &   c4(kstr), c5(kstr), c6(kstr), &
-        &   d0(kstr), d1(kstr), d2(kstr), d3(kstr),  d4(kstr), &
-        &   d5(kstr), d6(kstr), d7(kstr), d8(kstr),  d9(kstr))
-  end if
-
-  do n = 1, ntdim
-     do k = 1, nzdim
-        do ij = 1, nxydim
-           dtdx(ij, k, n) = 0.d0
-           dtdy(ij, k, n) = 0.d0
-           dtdz(ij, k, n) = 0.d0
-        end do
-     end do
-  end do
-
-  do k = kstr, kend
-     do ij = ijtstr, ijtend+nxdim
-        tl = ty(ij, k, 1)
-        sl = ty(ij, k, 2)
-        p1 = c0(k) &
-           &   + (c1(k) + (c2(k) + c3(k) * tl) * tl) * tl &
-           &   + (c4(k) + c5(k) * tl + c6(k) * sl) * sl 
-        p2 = d0(k) &
-           &   + (d1(k) + (d2(k) + (d3(k) + d4(k) * tl) * tl) * tl) * tl &
-           &   + (d5(k) + (d6(k) + d7(k) * tl * tl) * tl &
-           &            + (d8(k) + d9(k) * tl * tl) * sqrt(sl)) * sl 
-        rl = p1 / p2
-
-        tl = ty(ij+lw, k, 1)
-        sl = ty(ij+lw, k, 2)
-        p1 = c0(k) &
-           &   + (c1(k) + (c2(k) + c3(k) * tl) * tl) * tl &
-           &   + (c4(k) + c5(k) * tl + c6(k) * sl) * sl
-        p2 = d0(k) &
-           &   + (d1(k) + (d2(k) + (d3(k) + d4(k) * tl) * tl) * tl) * tl &
-           &   + (d5(k) + (d6(k) + d7(k) * tl * tl) * tl &
-           &            + (d8(k) + d9(k) * tl * tl) * sqrt(sl)) * sl
-        rlw = p1 / p2
-
-        tl = ty(ij+ls, k, 1)
-        sl = ty(ij+ls, k, 2)
-        p1 = c0(k) &
-           &   + (c1(k) + (c2(k) + c3(k) * tl) * tl) * tl &
-           &   + (c4(k) + c5(k) * tl + c6(k) * sl) * sl
-        p2 = d0(k) &
-           &   + (d1(k) + (d2(k) + (d3(k) + d4(k) * tl) * tl) * tl) * tl &
-           &   + (d5(k) + (d6(k) + d7(k) * tl * tl) * tl &
-           &            + (d8(k) + d9(k) * tl * tl) * sqrt(sl)) * sl
-        rls = p1 / p2
-
-        dtdx(ij, k, 1) = (rl - rlw) * rx * 2.d0 &
-           &             / (hxt(ij) + hxt(ij+lw)) * &
-           &             amskt(ij, k) * amskt(ij+lw, k)
-        dtdy(ij, k, 1) = (rl - rls) * rym(ij+ls) * 2.d0 &
-           &             / (hyt(ij) + hyt(ij+ls)) * &
-           &             amskt(ij, k) * amskt(ij+ls, k)
-     end do
-  end do
-
-  do k = kstr+1, kend
-     do ij = ijtstr-nxdim, ijtend+nxdim
-        tl = ty(ij, k, 1)
-        sl = ty(ij, k, 2)
-        p1 = c0(k) &
-           &   + (c1(k) + (c2(k) + c3(k) * tl) * tl) * tl &
-           &   + (c4(k) + c5(k) * tl + c6(k) * sl) * sl
-        p2 = d0(k) &
-           &   + (d1(k) + (d2(k) + (d3(k) + d4(k) * tl) * tl) * tl) * tl &
-           &   + (d5(k) + (d6(k) + d7(k) * tl * tl) * tl &
-           &            + (d8(k) + d9(k) * tl * tl) * sqrt(sl)) * sl
-        rl = p1 / p2
-
-        tl = ty(ij, k-1, 1)
-        sl = ty(ij, k-1, 2)
-        p1 = c0(k) &
-           &   + (c1(k) + (c2(k) + c3(k) * tl) * tl) * tl &
-           &   + (c4(k) + c5(k) * tl + c6(k) * sl) * sl
-        p2 = d0(k) &
-           &   + (d1(k) + (d2(k) + (d3(k) + d4(k) * tl) * tl) * tl) * tl &
-           &   + (d5(k) + (d6(k) + d7(k) * tl * tl) * tl &
-           &            + (d8(k) + d9(k) * tl * tl) * sqrt(sl)) * sl
-        rlu = p1 / p2
-
-        dtdz(ij, k, 1) = min((rlu - rl) / dzm(ij, k), 0.d0) * &
-           &             amftz(ij, k)
-     end do
-  end do
-
-  do k = kstr, kend
-     do ij = ijtstr, ijtend+nxdim
-        dzdx = dtdx(ij, k, 1) * 4.d0 &
-           &   / (  dtdz(ij, k  , 1) + dtdz(ij+lw, k ,  1) &
-           &      + dtdz(ij, k+1, 1) + dtdz(ij+lw, k+1, 1) - eps)
-        xdzdx(ij, k) = min(slpmax, max(-slpmax, dzdx))
-        dzdy = dtdy(ij, k, 1) * 4.d0 * dym(ij+ls) &
-           &   / (  (dtdz(ij, k, 1) + dtdz(ij, k+1, 1)) * dy(ij) &
-           &   + (dtdz(ij+ls, k, 1) + dtdz(ij+ls, k+1, 1)) * dy(ij+ls) &
-           &      - eps)
-        ydzdy(ij, k) = min(slpmax, max(-slpmax, dzdy))
-     end do
-  end do
-
-  do k = kstr+1, kend
-     do ij = ijtstr, ijtend
-        dzdx = ((dtdx(ij, k-1, 1)+dtdx(ij+le, k-1, 1))*dz(ij, k-1) &
-           &  + (dtdx(ij, k  , 1)+dtdx(ij+le, k  , 1))*dz(ij, k)) * &
-           &   0.25d0 / dzm(ij, k) / (dtdz(ij, k, 1) - eps)
-        zdzdx(ij, k) = min(slpmax, max(-slpmax, dzdx)) * &
-           &           amftz(ij, k)
-        dzdy = &
-           &   (  (dtdy(ij, k-1, 1)+dtdy(ij+ln, k-1, 1))*dz(ij, k-1) &
-           &    + (dtdy(ij, k  , 1)+dtdy(ij+ln, k  , 1))*dz(ij, k)) * &
-           &     0.25d0 / dzm(ij, k) / (dtdz(ij, k, 1) - eps)
-        zdzdy(ij, k) = min(slpmax, max(-slpmax, dzdy)) * &
-           &           amftz(ij, k)
-     end do
-  end do
-
-  do n = 1, ntdim
-     do k = 1, nzdim
-        do ij = 1, nxydim
-           dtdx(ij, k, n) = 0.d0
-           dtdy(ij, k, n) = 0.d0
-           dtdz(ij, k, n) = 0.d0
-        end do
-     end do
-  end do
-
-  do n = 1, ntdim
-     do k = kstr, kend
-        do ij = ijtstr, ijtend+nxdim
-           dtdx(ij, k, n) = (tx(ij, k, n) - tx(ij+lw, k, n)) * rx * &
-              &           2.d0 / (hxt(ij) + hxt(ij+lw)) * &
-              &           amskt(ij, k) * amskt(ij+lw, k) 
-           dtdy(ij, k, n) = (tx(ij, k, n) - tx(ij+ls, k, n)) * &
-              &           rym(ij+ls) * &
-              &           2.d0 / (hyt(ij) + hyt(ij+ls)) * &
-              &           amskt(ij, k) * amskt(ij+ls, k)
-        end do
-     end do
-  end do
-
-  do n = 1, ntdim
-     do k = kstr+1, kend
-        do ij = ijtstr-nxdim, ijtend+nxdim
-           dtdz(ij, k, n) = (tx(ij, k-1, n) - tx(ij, k, n)) &
-              &             / dzm(ij, k) * amftz(ij, k)
-        end do
-     end do
-  end do
-
-  do n = 1, ntdim
-     do k = kstr, kend
-        do ij = ijtstr, ijtend+nxdim
-           xdtdz(ij, k, n) = &
-              &   (  dtdz(ij, k, n)   + dtdz(ij+lw, k, n) &
-              &    + dtdz(ij, k+1, n) + dtdz(ij+lw, k+1, n)) *  0.25d0
-           ydtdz(ij, k, n) = &
-              &   (  (dtdz(ij, k, n)    + dtdz(ij, k+1, n)) * &
-              &      dy(ij) &
-              &    + (dtdz(ij+ls, k, n) + dtdz(ij+ls, k+1, n)) * &
-              &      dy(ij+ls)) * &
-              &   rym(ij+ls) * 0.25d0
-        end do
-     end do
-  end do
-
-  do n = 1, ntdim
-     do k = kstr+1, kend
-        do ij = ijtstr, ijtend
-           zdtdx(ij, k, n) = &
-              &   (  (dtdx(ij, k-1, n) + dtdx(ij+le, k-1, n)) * &
-              &      dz(ij, k-1) &
-              &    + (dtdx(ij, k, n) + dtdx(ij+le, k, n)) * &
-              &      dz(ij, k)) &
-              &   / dzm(ij, k) * 0.25d0 * amftz(ij, k)
-           zdtdy(ij, k, n) = &
-              &   (  (dtdy(ij, k-1, n) + dtdy(ij+ln, k-1, n)) * &
-              &      dz(ij, k-1) &
-              &    + (dtdy(ij, k, n) + dtdy(ij+ln, k, n)) * &
-              &      dz(ij, k)) &
-              &   / dzm(ij, k) * 0.25d0 * amftz(ij, k)
-        end do
-     end do
-  end do
-
-  return
-
-end subroutine dnsgrd
 #ifdef OPT_BBL
 ! *********************************************************************
 
