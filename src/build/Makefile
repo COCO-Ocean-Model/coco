@@ -24,7 +24,6 @@ OBJS.coco	= \
           fshdf.o \
           fshlw.o \
           qckot.o \
-          tflxt.o \
           tovtr.o \
           ucaln.o \
           ucloc.o \
@@ -33,6 +32,7 @@ OBJS.coco	= \
           brstt.o \
           bstbc.o \
           sfcng.o \
+          tflxt.o \
           tslvt.o \
           utint.o \
           binst.o \
@@ -62,7 +62,6 @@ OBJS.icedcoco	= \
           fshdf.o \
           fshlw.o \
           qckot.o \
-          tflxt.o \
           tovtr.o \
           ucaln.o \
           ucloc.o \
@@ -81,6 +80,7 @@ OBJS.icedcoco	= \
           ipthm.o \
           iprdc.o \
           sfcng.o \
+          tflxt.o \
           tslvt.o \
           utint.o \
           binst.o \
