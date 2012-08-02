@@ -13,6 +13,7 @@
      W                  UADV,   VADV,   WADV)
       use zocdim
       use zocgrd
+      use csrvl
       use cvisc
       use dvdif
       use fshlw
