@@ -68,6 +68,8 @@ subroutine ovtset( &
   call rewnml(ifpar, jfpar)
   write(jfpar, *) '*** OVTSET ***'
   read(ifpar, nmacct, iostat=istat)
+  call cstnml(jfpar, 'ovtset', 'nmacct', istat)
+  write(jfpar, nmacct)
 
   call secoef( &
      & c0(kstr), c1(kstr), c2(kstr), c3(kstr), &
