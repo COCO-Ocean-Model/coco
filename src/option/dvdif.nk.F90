@@ -626,6 +626,6 @@ subroutine vdiffb( &
 
   return
 end subroutine vdiffb
+#endif
 
 end module dvdif
-#endif
