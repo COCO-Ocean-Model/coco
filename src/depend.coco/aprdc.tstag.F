@@ -15,6 +15,7 @@
       use zocgrd
       use csrvl
       use cvisc
+      use cvlrd
       use dvdif
       use fshlw
       use fshdf
