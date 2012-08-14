@@ -14,6 +14,7 @@
      W                  UADV,   VADV,   WADV)
       use zocdim
       use zocgrd
+      use cadvc
       use csrvl
       use ctnuv
       use cvisc
