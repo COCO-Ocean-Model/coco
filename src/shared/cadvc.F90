@@ -17,8 +17,8 @@ module cadvc
   private
   public  ::  advvel, advvlb
 
-!  logical,     save  ::  ofirst
-!  data ofirst / .true. /
+  logical,     save  ::  ofirst
+  data ofirst / .true. /
 
 contains
 
