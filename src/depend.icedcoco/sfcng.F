@@ -9,6 +9,8 @@
       use zocgrd
       use zocmsk
       use zocphy
+      use utint
+
       IMPLICIT NONE
 
 c --- information -----------------------------------------------------
@@ -855,6 +857,7 @@ c *********************************************************************
       use zocdim
       use zocgrd
       use zocmsk
+      use utint
       IMPLICIT NONE
 
 c --- information -----------------------------------------------------
