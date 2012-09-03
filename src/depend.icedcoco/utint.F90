@@ -3,7 +3,10 @@ module utint
   implicit none
   private
 
-  public  ::  tmintp,  tmintb
+  public  ::  tmintp
+#ifdef OPT_BODY
+  public  ::  tmintb
+#endif
 
 contains
 
