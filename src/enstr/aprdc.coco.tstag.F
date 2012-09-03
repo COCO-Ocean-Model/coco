@@ -43,6 +43,7 @@ c     '08.07.10  H.Hasumi: initial/final processing
 c     '09.01.20  T.Suzuki: bug fix (SHIFT UX/VX after STBBVT)
 c     '10.04.14  M.Kurogi: staggered time stepping
 c     '10.04.14  M.Kurogi: (COCO4.4 tripolar code by Dr. Suzuki)
+c     '12.09.04  Y.Komuro: (change surface water flux by T. Suzuki)
 c
 c ---------------------------------------------------------------------
 
@@ -259,14 +260,14 @@ c *** barotropic flow and surface elevation ***
             CALL SHALOW(
      M                    HTMP,  UBTMP,  VBTMP,
      I                      HX,   UBTX,   VBTX,
-     I                     GXX,    GYY,   PTOP)
+     I                     GXX,    GYY,   PTOP,  FT(1,2))
             CALL BTAVAD(
      M                   UBTAV,  VBTAV,
      I                   UBTMP,  VBTMP)
             CALL SHALOW(
      M                      HX,   UBTX,   VBTX,
      I                    HTMP,  UBTMP,  VBTMP,
-     I                     GXX,    GYY,   PTOP)
+     I                     GXX,    GYY,   PTOP,  FT(1,2))
 #ifdef OPT_PARALLEL
 #ifdef OPT_TRIPOLE
             CALL SHIFT2(  UBTX,   VBTX,
