@@ -13,6 +13,7 @@
       use binst
       use brdge
       use iprdc
+      use sfcng
       IMPLICIT NONE
 
 c --- information -----------------------------------------------------
