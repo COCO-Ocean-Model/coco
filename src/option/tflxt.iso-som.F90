@@ -39,6 +39,7 @@ module tflxt
     &   nbot
   use zocfil, only: &
     &    ncf
+  use brstt
 
   implicit none
   private

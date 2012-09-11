@@ -111,7 +111,7 @@ contains
     write(jfpar, nmislt)
 
     if ( myrank == iroot ) then
-       call filopn(nfinit, cfinit, 'read')
+       call filopn(nfinit, cfinit, 'READ')
        write(jfpar, *) '*** read initial condition file ***'
     end if
 
@@ -719,7 +719,7 @@ contains
        call cstnml( jfpar, 'finout', 'nmfrst', istat )
        write(jfpar, nmfrst)
        if ( myrank == iroot ) then
-          call filopn(nfrest, cfrest, 'write')
+          call filopn(nfrest, cfrest, 'WRITE')
        end if
        ofirst = .false.
     end if
@@ -745,7 +745,7 @@ contains
        chead(38) = 'REAL8'
     end if
 
-    CALL GATHER_3D(G3D, UB)
+    call gather_3d(g3d, ub)
     if ( myrank == iroot ) then
        do k = 1, nz
           do j = 1, nyg
