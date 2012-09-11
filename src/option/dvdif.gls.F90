@@ -52,6 +52,7 @@ subroutine vdiff( &
   &                   ty,     hy)
 
   use xprst
+  use brstt
 
   real(8), intent(out) ::     amv(nxydim, nzdim),    ahv(nxydim, nzdim)
   real(8), intent(in)  ::      uy(nxydim, nzdim),     vy(nxydim, nzdim)

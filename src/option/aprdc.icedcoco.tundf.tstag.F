@@ -25,7 +25,9 @@
       use dvlva
       use dwdns
       use bstbc
-      IMPLICIT NONE
+      use brstt
+
+      implicit none
 
 c --- information -----------------------------------------------------
 c

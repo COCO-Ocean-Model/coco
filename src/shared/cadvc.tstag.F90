@@ -45,6 +45,7 @@ contains
          &     hxu,    hyu,   hxyu,   hyxu,                           &
          &     rxu,    ryu   
     use zocmsk,  only :  amskv,  amfvx,  amfvy
+    use brstt
     
     implicit none
 
@@ -361,6 +362,7 @@ contains
          &     hxu,    hyu,   hxyu,   hyxu,                           &
          &     rxu,    ryu   
     use zocmsk,  only :  amskvb,  nbotv
+    use brstt
     
     implicit none
 
@@ -423,7 +425,7 @@ contains
     if ( ofirst ) then
        ofirst = .false.
        do ij = 1, nxydim
-          rz   (ij) = 1.d0 / dzv(ij, kend)
+          rz(ij) = 1.d0 / dzv(ij, kend)
        end do
     end if
 

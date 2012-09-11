@@ -4,7 +4,9 @@
       use zocfil
       use ucloc
       use atmct
-      IMPLICIT NONE
+      use brstt
+
+      implicit none
 
 c --- information -----------------------------------------------------
 c
