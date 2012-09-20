@@ -3,6 +3,7 @@ include $(OGCMDIR)/src/Sysdep.$(SYSTEM)$(PARALLEL)
 
 OBJS.coco	= \
           utrdg.o \
+          utint.o \
           xprst.o \
           atmct.o \
           bchmk.o \
@@ -11,6 +12,7 @@ OBJS.coco	= \
           brdge.o \
           bshfi.o \
           bshft.o \
+          brstt.o \
           cadvc.o \
           csrvl.o \
           ctnuv.o \
@@ -29,12 +31,10 @@ OBJS.coco	= \
           ucloc.o \
           ufile.o \
           bfrch.o \
-          brstt.o \
           bstbc.o \
           sfcng.o \
           tflxt.o \
           tslvt.o \
-          utint.o \
           binst.o \
           aocea.o \
           aprdc.o
@@ -84,8 +84,8 @@ OBJS.icedcoco	= \
           tflxt.o \
           tslvt.o \
           binst.o \
-          aocea.o \
-          aprdc.o
+	  aprdc.o \
+          aocea.o 
 
 $(LIBOGCM):$(OBJS.$(MODEL))
 	$(AR) $(LIBOGCM) $(OBJS.$(MODEL))

@@ -7,10 +7,14 @@
       use zocdim
       use zocgrd
       use zocfil
+      use tslvt
       use tflxt
       use tovtr
       use brdge
-      IMPLICIT NONE
+      use binst
+      use sfcng
+
+      implicit none
 
 c --- information -----------------------------------------------------
 c

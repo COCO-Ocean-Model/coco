@@ -2,6 +2,8 @@
       use zocdim
       use zocfil
       use atmct
+      use ucloc
+      use brstt
       IMPLICIT NONE
 
 c --- information -----------------------------------------------------
