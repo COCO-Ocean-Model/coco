@@ -53,6 +53,9 @@ subroutine pmomnt( &
   &                    ux,     vx,     hy,   ptop, &
   &                tauaix, tauaiy, tauaox, tauaoy)
 
+  use brstt
+  implicit none
+
   real(8), intent(inout) ::    uix(nxydim),           vix(nxydim)
   real(8), intent(out)   ::   taux(nxydim),          tauy(nxydim)
   real(8), intent(in)    ::     ax(nxydim, 0:nic),     ay(nxydim, 0:nic)
