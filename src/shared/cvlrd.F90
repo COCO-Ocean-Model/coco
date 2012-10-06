@@ -50,6 +50,7 @@ contains
          &      dy,    dym,    dzv,    dzm,    rs,     rsm
     use zocmsk,  only :  amskv,  amfvz
     use utrdg
+    use ufile
 
     implicit none
 

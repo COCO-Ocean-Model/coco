@@ -45,6 +45,7 @@ contains
          &     hxu,    hyu,    hxt,    hyt,                           &
          &     rxt,    ryt
     use zocmsk,  only  :  amskt
+    use ufile
     
     implicit none
 

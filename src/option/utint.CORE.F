@@ -4,6 +4,7 @@
       use zocdim
       use zocgrd
       use zocfil
+      use ufile
       IMPLICIT NONE
 
 c --- information -----------------------------------------------------
@@ -446,6 +447,7 @@ c *********************************************************************
       use zocdim
       use zocgrd
       use zocfil
+      use ufile
       IMPLICIT NONE
 
 c --- information -----------------------------------------------------

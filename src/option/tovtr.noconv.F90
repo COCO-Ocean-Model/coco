@@ -49,6 +49,7 @@ subroutine ovtset( &
   &      r,      t )
 
   use xprst
+  use ufile
 
   implicit none
 

@@ -9,6 +9,8 @@
       use zocgrd
       use zocmsk
       use zocphy
+      use ufile
+
       IMPLICIT NONE
 
 c --- information -----------------------------------------------------
@@ -459,6 +461,8 @@ c *********************************************************************
       use zocgrd
       use zocfil
       use zocphy
+      use ufile
+
       IMPLICIT NONE
 *   
 *   [MODIFY] 
@@ -628,6 +632,8 @@ c *********************************************************************
       use zocdim
       use zocfil
       use zocphy
+      use ufile
+
       IMPLICIT NONE
 
       INTEGER NTYZ0, NRBND
@@ -779,6 +785,8 @@ c *********************************************************************
       use zocdim
       use zocfil
       use zocphy
+      use ufile
+
       IMPLICIT NONE
 
       INTEGER NTYZ0
@@ -920,6 +928,8 @@ c *********************************************************************
       use zocdim
       use zocfil
       use zocphy
+      use ufile
+
       IMPLICIT NONE
 
       INTEGER NTYZ0

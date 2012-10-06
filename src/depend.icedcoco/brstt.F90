@@ -59,6 +59,7 @@ contains
     use zocphy,   only  :                                             &
     &       dtds
     use zocfil
+    use ufile
 
     implicit none
 
@@ -678,6 +679,7 @@ contains
     &        nxg,    nyg,     nz,   nxyg,   nxyzg
     use zocnod,   only  :                                             &
     &     myrank,  iroot
+    use ufile
 
     implicit none
 

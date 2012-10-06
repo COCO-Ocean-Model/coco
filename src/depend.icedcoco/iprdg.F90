@@ -39,6 +39,7 @@ subroutine pridge( &
   &                    ax,    hix,    eix,    hsx,    tix, &
   &                    az,    hiz,    eiz,    hsz, &
   &                    ui,     vi )
+  use ufile
 
   real(8), intent(out)   ::    pice(nxydim)
   real(8), intent(inout) ::      ax(nxydim, 0:nic)

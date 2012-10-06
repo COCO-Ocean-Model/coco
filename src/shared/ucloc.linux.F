@@ -1,5 +1,5 @@
       SUBROUTINE CLCOUT
-
+      use ufile
 c --- information -----------------------------------------------------
 c
 c  Monitoring CPU time on Sun OS (Sun FORTRAN, using the intrinsic

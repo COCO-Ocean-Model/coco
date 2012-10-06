@@ -58,7 +58,8 @@ contains
     use zocnod,  only :  iroot,  myrank
     use zocmsk,  only :  amskv,  amfvx,  amfvy
     use zocfil,  only :  ncf
-    
+    use ufile
+  
     implicit none
 
     real(8),   intent(inout)  ::     gx(nxydim,nzdim),    gy(nxydim,nzdim)
@@ -340,7 +341,8 @@ contains
     use zocnod,  only :   iroot,  myrank
     use zocmsk,  only :  amskvb,  amfvx, amfvy, nbotv
     use zocfil,  only :  ncf
-    
+    use ufile
+
     implicit none
 
     real(8),   intent(inout)  ::     gx(nxydim,nzdim),    gy(nxydim,nzdim)

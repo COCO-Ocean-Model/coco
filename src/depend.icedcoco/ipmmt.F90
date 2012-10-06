@@ -54,6 +54,7 @@ subroutine pmomnt( &
   &                tauaix, tauaiy, tauaox, tauaoy)
 
   use brstt
+  use ufile
   implicit none
 
   real(8), intent(inout) ::    uix(nxydim),           vix(nxydim)
@@ -441,6 +442,7 @@ end subroutine strain
 subroutine rheolo( &
   &                  zeta,    eta,    emz,    epz, &
   &                   exx,    eyy,    exy,   pice)
+  use ufile
 
   real(8), intent(out) ::   zeta(nxydim),    eta(nxydim)
   real(8), intent(out) ::    emz(nxydim),    epz(nxydim)

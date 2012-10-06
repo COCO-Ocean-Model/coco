@@ -49,7 +49,7 @@ contains
   subroutine svtset
 
     use zocdim,  only  :    kstr,    kend
-
+    use ufile
     implicit none
 
     integer(4)        ::       k

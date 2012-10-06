@@ -46,6 +46,7 @@ subroutine padvct( &
   &                   fix,    fiy,    fsx,    fsy, &
   &                   fex,    fey, &
   &                   uiy,    viy)
+  use ufile
 
   real(8), intent(inout) ::      ax(nxydim, 0:nic)
   real(8), intent(inout) ::     hix(nxydim, 0:nic)

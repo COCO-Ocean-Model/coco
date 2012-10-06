@@ -54,6 +54,7 @@ subroutine pmomnt( &
   &                tauaix, tauaiy, tauaox, tauaoy)
 
   use dvdif
+  use ufile
 
   real(8), intent(inout) ::    uix(nxydim),           vix(nxydim)
   real(8), intent(out)   ::   taux(nxydim),          tauy(nxydim)
@@ -444,6 +445,8 @@ end subroutine strain
 subroutine rheolo( &
   &            zeta,    eta,    emz,    epz,   pice, &
   &            aice,   mice,    exx,    eyy,    exy )
+
+  use ufile
 
   real(8), intent(out) ::   zeta(nxydim),    eta(nxydim)
   real(8), intent(out) ::    emz(nxydim),    epz(nxydim)

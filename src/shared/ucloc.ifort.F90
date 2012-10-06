@@ -39,7 +39,7 @@ module ucloc
 contains
 
   subroutine clcout
-
+    use ufile
     implicit none
 
     integer(4)  ::  ic

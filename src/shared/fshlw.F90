@@ -60,7 +60,7 @@ contains
          &     hxu,    hyu,   hxyu,   hyxu,                           &
          &     rxu,    ryu   
     use zocmsk,  only :  amskv,  amfvx,  amfvy
-
+    use ufile
     implicit none
     
     real(8),   intent(inout)  ::    gxx(nxydim),   gyy(nxydim)

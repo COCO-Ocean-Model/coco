@@ -16,6 +16,7 @@ module cvisc
 ! ---------------------------------------------------------------------
 
   use zocdim,  only :  nxydim,  nzdim
+  use ufile
 
   implicit none
 
@@ -299,7 +300,8 @@ contains
     use zocnod,  only :   iroot,  myrank
     use zocmsk,  only :  amskvb,  amfvx, amfvy, nbotv
     use zocfil,  only :  ncf
-    
+    use ufile
+
     implicit none
 
     real(8),   intent(inout)  ::     gx(nxydim,nzdim),    gy(nxydim,nzdim)

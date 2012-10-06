@@ -36,6 +36,7 @@ subroutine fiheat( &
   &                   wao,    wio,    was,    wil, &
   &                     a,      t,     sh, &
   &                   qao,    qai,    qio,    qii,  swabs )
+  use ufile
 
   real(8), intent(inout) ::     ft(nxydim, ntdim)
   real(8), intent(out)   ::    wao(nxydim)

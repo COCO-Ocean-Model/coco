@@ -40,6 +40,8 @@ contains
   subroutine tmstup(                                                           &
    &             tstrt,   tend,    dtt)
   use zocnod, only : ierr
+  use ufile
+
   implicit none
 #include "mpif.h"
 

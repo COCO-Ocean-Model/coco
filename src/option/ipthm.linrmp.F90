@@ -47,6 +47,8 @@ subroutine ptherm( &
   &                  evap,   subi,   roff, adjlat, &
   &                   qio )
 
+  use ufile
+
 #ifdef OPT_PARALLEL
 #include "mpif.h"
 #endif

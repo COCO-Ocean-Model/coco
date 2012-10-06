@@ -64,6 +64,7 @@ contains
     use zocmsk,  only :  amskv,  amfvx,  amfvy
     use zocnod,  only :  iroot,  myrank
     use zocfil,  only :  ncf
+    use ufile
 
     implicit none
     

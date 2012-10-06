@@ -3,6 +3,7 @@
       use zocgrd
       use zocfil
       use zocout
+      use ufile
       IMPLICIT NONE
 
 c --- information -----------------------------------------------------

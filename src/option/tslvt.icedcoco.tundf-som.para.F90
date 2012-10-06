@@ -95,6 +95,7 @@ contains
          &     cpo,    rhoo
 
     use ifhea
+    use ufile
 
     implicit none
 
@@ -447,6 +448,7 @@ contains
     use zocgrd
     use zocmsk
     use zocphy
+    use ufile
 
     implicit none
 

@@ -53,6 +53,7 @@ subroutine vdiff( &
 
   use xprst
   use brstt
+  use ufile
 
   real(8), intent(out) ::     amv(nxydim, nzdim),    ahv(nxydim, nzdim)
   real(8), intent(in)  ::      uy(nxydim, nzdim),     vy(nxydim, nzdim)
@@ -1017,6 +1018,7 @@ subroutine vdiffb( &
 !     '01.02.08  H.Hasumi
 !
 ! ---------------------------------------------------------------------
+  use ufile
 
   real(8) ::    amv(nxydim, nzdim),    ahv(nxydim, nzdim)
 

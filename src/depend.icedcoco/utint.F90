@@ -31,6 +31,7 @@ contains
     use zocgrd,  only  :     tt
     use zocfil,  only  :    ncf
     use zocnod,  only  :  iroot,  myrank
+    use ufile
 
     implicit none
 
@@ -353,7 +354,7 @@ contains
     use zocgrd,  only  :     tt
     use zocfil,  only  :    ncf
     use zocnod,  only  :  iroot,  myrank
-
+    use ufile
     implicit none
 
 #include "mpif.h"

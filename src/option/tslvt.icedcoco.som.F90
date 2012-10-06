@@ -77,6 +77,7 @@ contains
          &     cpo,    rhoo
 
     use ifhea
+    use ufile
 
     implicit none
 

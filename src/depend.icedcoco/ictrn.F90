@@ -40,6 +40,7 @@ contains
 subroutine ictrns( &
   &                    ax,    hix,    hsx,    eix,    tix, &
   &                    ft,     fs )
+  use ufile
 
 !#ifdef OPT_PARALLEL
 !#include "mpif.h"

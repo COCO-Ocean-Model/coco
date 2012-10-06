@@ -41,7 +41,8 @@ contains
 subroutine srcvel( &
   &                    gx,     gy,     xx,     yy, &
   &                    ux,     vx)
-      
+  use ufile
+
   real(8), intent(out) ::     gx(nxydim, nzdim),     gy(nxydim, nzdim)
   real(8), intent(out) ::     xx(nxydim, nzdim),     yy(nxydim, nzdim)
   real(8), intent(in)  ::     ux(nxydim, nzdim),     vx(nxydim, nzdim)
@@ -109,6 +110,7 @@ subroutine srcvlb( &
 !     '12.08.02  Y.Komuro: for COCO5.0
 !
 ! ---------------------------------------------------------------------
+  use ufile
 
   real(8), intent(out) ::      gx(nxydim, nzdim),     gy(nxydim, nzdim)
   real(8), intent(out) ::      xx(nxydim, nzdim),     yy(nxydim, nzdim)

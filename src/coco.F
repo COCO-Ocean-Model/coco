@@ -4,6 +4,8 @@
       use atmct
       use ucloc
       use brstt
+      use ufile
+
       IMPLICIT NONE
 
 c --- information -----------------------------------------------------
@@ -231,6 +233,7 @@ c *********************************************************************
 
       SUBROUTINE PARSET
       use zocdim
+      use ufile
 
 c --- information -----------------------------------------------------
 c

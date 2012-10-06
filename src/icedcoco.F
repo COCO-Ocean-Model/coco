@@ -5,6 +5,7 @@
       use ucloc
       use atmct
       use brstt
+      use ufile
 
       implicit none
 
@@ -277,6 +278,7 @@ c *********************************************************************
 
       SUBROUTINE PARSET
       use zocdim
+      use ufile
 
 c --- information -----------------------------------------------------
 c

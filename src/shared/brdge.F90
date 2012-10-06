@@ -44,6 +44,7 @@ contains
   & rx, ry, rym, rxt, rxu, ryt, ryu, rs, rsm
 
  use zocfil, only : ncf
+ use ufile
 
  implicit none
 #include "mpif.h"

@@ -56,6 +56,8 @@ subroutine flxtrc( &
   &     tx,     hx,     ty,     hz, &
   &     uy,     vy,      w,    ahv )
 
+  use ufile
+
   real(8), intent(out) ::    adt(nxydim, nzdim, ntdim)    
   real(8), intent(out) ::  diffz(nxydim, nzdim)
   real(8), intent(in)  ::     tx(nxydim, nzdim, ntdim)
@@ -518,6 +520,7 @@ subroutine dnsgrd( &
   &     ty,     tx,     hz )
 
   use xprst
+  use ufile
 
   real(8), intent(out) ::  xdzdx(nxydim, nzdim),  ydzdy(nxydim, nzdim)
   real(8), intent(out) ::  zdzdx(nxydim, nzdim),  zdzdy(nxydim, nzdim)
@@ -1340,7 +1343,9 @@ subroutine flxtrb( &
   &    adt,  diffz, &
   &     tx,     ty,     uy,     vy, &
   &      w,    ahv )
-      
+
+  use ufile
+
   real(8), intent(out) ::    adt(nxydim, nzdim, ntdim)
   real(8), intent(out) ::  diffz(nxydim, nzdim)
   real(8), intent(in)  ::     tx(nxydim, nzdim, ntdim)

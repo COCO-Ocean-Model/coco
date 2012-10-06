@@ -45,6 +45,7 @@ subroutine ptherm( &
   &                   wio,    wao,    was,    wil, &
   &                  evap,   subi,   roff, adjlat, &
   &                   qio )
+  use ufile
 
   real(8), intent(inout) ::     ax(nxydim, 0:nic),    hix(nxydim, 0:nic)
   real(8), intent(inout) ::    hsx(nxydim, 0:nic)

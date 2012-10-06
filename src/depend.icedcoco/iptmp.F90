@@ -30,6 +30,7 @@ subroutine icetmp( &
   &                   tix, &
   &                   qao,    qai,    qio,    qii, &
   &                    ax,    hix )
+  use ufile
 
   real(8), intent(out)   ::    eix(nxydim, 0:nic)
   real(8), intent(inout) ::    tix(nxydim, 0:nic)

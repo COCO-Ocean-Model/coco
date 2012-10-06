@@ -55,7 +55,8 @@ contains
     use zocphy,  only  :                                              &
     &    kelvin,    cdi,   dtds,  tmelt
     use utint
-    
+    use ufile
+
     implicit none
 
     real(8),    intent(inout)  ::    qao(nxydim)
@@ -307,6 +308,7 @@ contains
     &     ijstr,   ijend
     use zocphy,  only  :                                              &
     &    tmelt,    emelt,      el,    stb
+    use ufile
 
     implicit none
 
@@ -412,6 +414,7 @@ contains
     use zocdim,  only  :                                              &
     &    nxydim,   ntdim,     nic,                                    &
     &     ijstr,   ijend
+    use ufile
 
     implicit none
 
@@ -563,6 +566,7 @@ contains
     &     ijstr,   ijend
     use zocphy,  only  :                                              &
     &      grav
+    use ufile
 
     implicit none
 !
@@ -648,6 +652,7 @@ contains
     use zocphy,  only  :                                              &
     &        cp,    rvap,    rair,    grav
     use zqsat
+    use ufile
 
     implicit none
 
@@ -726,7 +731,8 @@ contains
     &     ijstr,   ijend
     use zocphy,  only  :                                              &
     &        cp,    rvap,    rair,    grav
-    
+    use ufile
+
     implicit none
 
     real(8),    intent(inout)  ::   cmv( nxydim )        !! bulk transfer coeff.: u

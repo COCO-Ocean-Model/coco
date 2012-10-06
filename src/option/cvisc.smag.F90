@@ -52,7 +52,8 @@ contains
          &     hxt,    hyt,   hxyt,   hyxt,                           &
          &     rxu,    ryu,    rxt,    ryt   
     use zocmsk,  only :  amskv,  amfvx,  amfvy
-    
+    use ufile
+
     implicit none
 
     real(8),   intent(inout)  ::     gx(nxydim,nzdim),    gy(nxydim,nzdim)
@@ -286,7 +287,8 @@ contains
          &     hxt,    hyt,   hxyt,   hyxt,                           &
          &     rxu,    ryu,    rxt,    ryt
     use zocmsk,  only :  amskvb,  amfvx, amfvy, nbotv
-    
+    use ufile
+
     implicit none
 
     real(8),   intent(inout)  ::     gx(nxydim,nzdim),    gy(nxydim,nzdim)

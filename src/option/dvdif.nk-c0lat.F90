@@ -62,6 +62,7 @@ subroutine vdiff( &
 
   use xprst
   use brstt
+  use ufile
 
   real(8), intent(out) ::     amv(nxydim, nzdim),    ahv(nxydim, nzdim)
   real(8), intent(in)  ::      uy(nxydim, nzdim),     vy(nxydim, nzdim)
@@ -624,7 +625,7 @@ end subroutine vdiff
 
 subroutine vdiffb( &
   &                   amv,    ahv )
-  
+
 ! --- information -----------------------------------------------------
 !
 !  Vertical viscosity and diffusion coefficients for the bottom
@@ -635,6 +636,7 @@ subroutine vdiffb( &
 !     '12.06.29  Y.Komuro: for COCO5.0
 !
 ! ---------------------------------------------------------------------
+  use ufile
 
   real(8), intent(inout) ::    amv(nxydim, nzdim),    ahv(nxydim, nzdim)
 
