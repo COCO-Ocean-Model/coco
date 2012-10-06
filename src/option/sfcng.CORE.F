@@ -10,7 +10,7 @@
       use zocmsk
       use zocphy
       use ufile
-
+      use utint
       IMPLICIT NONE
 
 c --- information -----------------------------------------------------
@@ -1165,6 +1165,7 @@ c *********************************************************************
       use zocdim
       use zocgrd
       use zocmsk
+      use utint
       IMPLICIT NONE
 
 c --- information -----------------------------------------------------
