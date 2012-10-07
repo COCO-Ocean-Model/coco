@@ -45,6 +45,7 @@ contains
 
  use zocfil, only : ncf
  use ufile
+ use bgs2d
 
  implicit none
 #include "mpif.h"

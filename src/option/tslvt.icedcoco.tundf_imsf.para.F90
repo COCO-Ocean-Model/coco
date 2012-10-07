@@ -484,6 +484,7 @@ contains
     use zocmsk
     use zocphy
     use ufile
+    use bgs2d
 
     implicit none
 

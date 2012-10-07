@@ -65,6 +65,7 @@ contains
     use zocnod,  only :  iroot,  myrank
     use zocfil,  only :  ncf
     use ufile
+    use bgs2d
 
     implicit none
     

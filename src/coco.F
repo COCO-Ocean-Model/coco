@@ -234,7 +234,7 @@ c *********************************************************************
       SUBROUTINE PARSET
       use zocdim
       use ufile
-
+      use bgs2d
 c --- information -----------------------------------------------------
 c
 c  Initialization for inter-node communication using MPI

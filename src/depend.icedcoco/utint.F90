@@ -32,6 +32,7 @@ contains
     use zocfil,  only  :    ncf
     use zocnod,  only  :  iroot,  myrank
     use ufile
+    use bgs2d
 
     implicit none
 

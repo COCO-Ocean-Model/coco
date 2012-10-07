@@ -59,7 +59,8 @@ contains
     use zocmsk,  only :  amskv,  amfvx,  amfvy
     use zocfil,  only :  ncf
     use ufile
-  
+    use bgs2d
+
     implicit none
 
     real(8),   intent(inout)  ::     gx(nxydim,nzdim),    gy(nxydim,nzdim)
@@ -342,6 +343,7 @@ contains
     use zocmsk,  only :  amskvb,  amfvx, amfvy, nbotv
     use zocfil,  only :  ncf
     use ufile
+    use bgs2d
 
     implicit none
 

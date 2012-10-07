@@ -280,6 +280,8 @@ c *********************************************************************
       use zocdim
       use ufile
       use bgsid
+      use bgs2d
+
 c --- information -----------------------------------------------------
 c
 c  Initialization for inter-node communication using MPI

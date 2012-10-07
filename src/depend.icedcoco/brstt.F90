@@ -61,6 +61,7 @@ contains
     use zocfil
     use ufile
     use bgsid
+    use bgs2d
 
     implicit none
 
@@ -589,6 +590,7 @@ contains
     &        nxg,    nyg,     nz
     use zocnod,   only  :                                             &
     &     myrank,  iroot
+    use bgs2d
 
     implicit none
 
@@ -682,6 +684,7 @@ contains
     &     myrank,  iroot
     use ufile
     use bgsid
+    use bgs2d
 
     implicit none
 
@@ -1189,6 +1192,7 @@ contains
     &        nxg,    nyg,     nz,   nxyg,  nxyzg
     use zocnod,   only  :                                             &
     &     myrank,  iroot
+    use bgs2d
 
     implicit none
 
