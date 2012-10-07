@@ -13,7 +13,7 @@ contains
   &                      ha,   ubta,   vbta,      &
   &                      ub,     vb,     tb,      &
   &                      hb,   ubtb,   vbtb)
- use zocdim
+ use zocdim, only : nxydim, nxyzdm, ntdim
  implicit none
  real(8), intent(out) ::  ua(nxyzdm),   va(nxyzdm),   ta(nxyzdm, ntdim)
  real(8), intent(out) ::  ha(nxydim), ubta(nxydim), vbta(nxydim)
@@ -47,7 +47,7 @@ contains
   &                      ha,   ubta,   vbta,  &
   &                      ub,     vb,     tb,  &
   &                      hb,   ubtb,   vbtb)
- use zocdim
+ use zocdim, only : nxydim, nxyzdm, ntdim
  implicit none
 
  real(8), intent(inout) ::      ta(nxyzdm, ntdim),     tb(nxyzdm, ntdim)
@@ -96,7 +96,7 @@ contains
  subroutine forsti(                                             &
   &                aa,    hia,    uia,    via,    tia,    hsa,  &
   &                ab,    hib,    uib,    vib,    tib,    hsb)
- use zocdim
+ use zocdim, only : nxydim, nic
  implicit none
  real(8), intent(out) ::  aa(nxydim, 0:nic),  hia(nxydim, 0:nic)
  real(8), intent(out) :: uia(nxydim),         via(nxydim)
@@ -130,7 +130,7 @@ contains
  subroutine excngi(                                             &
   &                aa,    hia,    uia,    via,    tia,    hsa,  &
   &                ab,    hib,    uib,    vib,    tib,    hsb)
- use zocdim
+ use zocdim, only : nxydim, nic
  implicit none
       
  real(8), intent(inout) ::  aa(nxydim, 0:nic),     ab(nxydim, 0:nic)
