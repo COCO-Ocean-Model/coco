@@ -30,6 +30,8 @@ contains
   use tovtr
   use dvlva
   use bstbc
+  use bchmk
+
   implicit none
 
   real(8), intent(out)   :: uadv(nxyzdm), vadv(nxyzdm), wadv(nxyzdm), r(nxyzdm)

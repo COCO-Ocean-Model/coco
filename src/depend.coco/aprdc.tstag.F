@@ -26,6 +26,8 @@
       use dvlta
       use dvlva
       use dwdns
+      use bchmk
+
       IMPLICIT NONE
 
 c --- information -----------------------------------------------------

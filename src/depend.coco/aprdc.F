@@ -29,6 +29,8 @@
       use dvlva
       use dwdns
       use ucloc
+      use bchmk
+
       IMPLICIT NONE
 
 c --- information -----------------------------------------------------

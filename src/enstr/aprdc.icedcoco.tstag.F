@@ -21,6 +21,8 @@
       use fbtav
       use dvlta
       use dwdns
+      use bchmk
+
       IMPLICIT NONE
 
 c --- information -----------------------------------------------------

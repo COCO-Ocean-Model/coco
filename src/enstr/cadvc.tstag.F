@@ -8,6 +8,7 @@
       use zocdim
       use zocgrd
       use zocmsk
+      use bchmk
       IMPLICIT NONE
 
 c --- information -----------------------------------------------------

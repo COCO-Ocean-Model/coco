@@ -68,7 +68,8 @@ contains
     use dwdns
     use bstbc
     use brstt
-    
+    use bchmk
+
     implicit none
 
     real(8),    intent(inout)  ::     hx(nxydim) 
