@@ -16,6 +16,7 @@
       use iprdc
       use sfcng
       use ufile
+      use bfrch
 
       IMPLICIT NONE
 

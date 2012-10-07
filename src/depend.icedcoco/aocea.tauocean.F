@@ -13,6 +13,7 @@
       use aprdc
       use iprdc
       use ufile
+      use bfrch
 
       IMPLICIT NONE
 
