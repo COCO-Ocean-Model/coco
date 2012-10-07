@@ -48,6 +48,7 @@ OBJS.icedcoco	= \
           bchmk.o \
           bgs2d.o \
           bgs3d.o \
+          bgsid.o \
           brdge.o \
           bshfi.o \
           bshft.o \
@@ -69,7 +70,6 @@ OBJS.icedcoco	= \
           ucaln.o \
           ucloc.o \
           bfrch.o \
-          bgsid.o \
           bstbc.o \
           ictrn.o \
           ifhea.o \

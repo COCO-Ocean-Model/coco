@@ -60,6 +60,7 @@ contains
     &       dtds
     use zocfil
     use ufile
+    use bgsid
 
     implicit none
 
@@ -680,6 +681,7 @@ contains
     use zocnod,   only  :                                             &
     &     myrank,  iroot
     use ufile
+    use bgsid
 
     implicit none
 

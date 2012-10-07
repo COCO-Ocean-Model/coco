@@ -279,7 +279,7 @@ c *********************************************************************
       SUBROUTINE PARSET
       use zocdim
       use ufile
-
+      use bgsid
 c --- information -----------------------------------------------------
 c
 c  Initialization for inter-node communication using MPI
