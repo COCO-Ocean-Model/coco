@@ -4,6 +4,7 @@
       use zocfil
       use zocout
       use ufile
+      use bgs3d
       IMPLICIT NONE
 
 c --- information -----------------------------------------------------

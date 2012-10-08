@@ -56,6 +56,7 @@ contains
     use zocfil
     use ufile
     use bgs2d
+    use bgs3d
 
     implicit none
 
@@ -367,6 +368,7 @@ contains
     use zocnod,   only  :                                             &
     &     myrank,  iroot
     use bgs2d
+    use bgs3d
 
     implicit none
 
@@ -459,6 +461,7 @@ contains
     &     myrank,  iroot
     use ufile
     use bgs2d
+    use bgs3d
 
     implicit none
 
@@ -766,6 +769,7 @@ contains
     use zocnod,   only  :                                             &
     &     myrank,  iroot
     use bgs2d
+    use bgs3d
 
     implicit none
 

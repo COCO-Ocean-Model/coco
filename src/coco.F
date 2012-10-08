@@ -235,6 +235,7 @@ c *********************************************************************
       use zocdim
       use ufile
       use bgs2d
+      use bgs3d
 c --- information -----------------------------------------------------
 c
 c  Initialization for inter-node communication using MPI
