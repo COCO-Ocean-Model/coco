@@ -4,6 +4,7 @@ include $(OGCMDIR)/src/Sysdep.$(SYSTEM)$(PARALLEL)
 OBJS.coco	= \
           ufile.o \
           bgs2d.o \
+          bshfi.o \
           utrdg.o \
           utint.o \
           xprst.o \
@@ -11,7 +12,6 @@ OBJS.coco	= \
           bchmk.o \
           bgs3d.o \
           brdge.o \
-          bshfi.o \
           bshft.o \
           brstt.o \
           cadvc.o \
@@ -42,6 +42,7 @@ OBJS.coco	= \
 OBJS.icedcoco	= \
           ufile.o \
           bgs2d.o \
+          bshfi.o \
           utrdg.o \
 	  utint.o \
           xprst.o \
@@ -50,7 +51,6 @@ OBJS.icedcoco	= \
           bgs3d.o \
           bgsid.o \
           brdge.o \
-          bshfi.o \
           bshft.o \
           brstt.o \
           cadvc.o \

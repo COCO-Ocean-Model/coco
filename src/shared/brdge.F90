@@ -47,6 +47,7 @@ contains
  use ufile
  use bgs2d
  use bgs3d
+ use bshfi
 
  implicit none
 #include "mpif.h"
