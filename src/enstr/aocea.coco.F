@@ -11,6 +11,7 @@
       use tovtr
       use brdge
       use ufile
+      use qckot
 
       IMPLICIT NONE
 

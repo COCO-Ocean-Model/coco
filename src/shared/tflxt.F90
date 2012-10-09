@@ -310,6 +310,7 @@ end subroutine flxtrb
 #endif
 ! *********************************************************************
 subroutine chkftx
+  use qckot
 
   if (oinit .or. ofinal) then
      return

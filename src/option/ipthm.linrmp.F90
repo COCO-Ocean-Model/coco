@@ -48,6 +48,7 @@ subroutine ptherm( &
   &                   qio )
 
   use ufile
+  use qckot
 
 #ifdef OPT_PARALLEL
 #include "mpif.h"

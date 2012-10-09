@@ -30,15 +30,15 @@ contains
  logical   ::   oex
  integer   ::     i,   ierr
 
- if (cact .eq. 'read') then
+ if (cact .eq. 'READ') then
     inquire(file=cf, exist=oex)
     if (.not. oex) then
        i = index(cf, ' ') - 1
-       write(nfstdo, *) '### file "', cf(1:i), '" does not exist ###'
+       write(nfstdo, *) '### FILE "', cf(1:i), '" DOES NOT EXIST ###'
        call mpi_abort(mpi_comm_world, 1, ierr)
     end if
  else if (cf(1:13) .eq. 'not-specified') then
-    write(nfstdo, *) '### name not specified for output file ###'
+    write(nfstdo, *) '### NAME NOT SPECIFIED FOR OUTPUT FILE ###'
     call mpi_abort(mpi_comm_world, 1, ierr)
  end if
 
@@ -49,14 +49,14 @@ contains
        go to 123
     end if
  end do
- write(nfstdo, *) '### maximum file number exceeded ###'
+ write(nfstdo, *) '### MAXIMUM FILE NUMBER EXCEEDED ###'
  call mpi_abort(mpi_comm_world, 1, ierr)
 
  123  continue
  open(unit=nf, file=cf, form='unformatted', access='sequential')
  rewind(unit=nf)
  i = index(cf, ' ') - 1
- write(nfstdo, *) '*** file "', cf(1:i), '" opened for unit', nf, '***'
+ write(nfstdo, *) '*** FILE "', cf(1:i), '" OPENED FOR UNIT', nf, '***'
 
  return
  end subroutine filopn
@@ -70,7 +70,7 @@ contains
  integer, intent(in) :: nf       
  close(unit=nf)
  opn(nf) = .false.
- write(nfstdo, *) '*** file unit', nf, 'closed ***'
+ write(nfstdo, *) '*** FILE UNIT', nf, 'CLOSED ***'
 
  end subroutine filcls
 
@@ -87,7 +87,7 @@ contains
  rewind(ifile, err=999)
  return
 
- 999  write(jfile, *) '*** error in rewinding the namelist file ***'
+ 999  write(jfile, *) '*** ERROR IN REWINDING THE NAMELIST FILE ***'
  return
  end subroutine rewnml
 
@@ -101,7 +101,7 @@ contains
 
  if (istat > 0) then ! an error occured while reading
     write(jfile, *)                                                            &
-   &          '*** error occurs while reading namelist:', cnnml,               &
+   &          '*** ERROR OCCURS while reading namelist:', cnnml,               &
    &          ' at subroutine:', cnsbr, ' ***'
     stop
  end if

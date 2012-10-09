@@ -11,6 +11,8 @@
       use zocphy
       use ufile
       use utint
+      use qckot
+
       IMPLICIT NONE
 
 c --- information -----------------------------------------------------

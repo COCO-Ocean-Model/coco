@@ -51,6 +51,7 @@ subroutine flxtrc( &
   &     uy,     vy,      w,    ahv )
 
   use ufile
+  use qckot
 
   real(8), intent(out) ::    adt(nxydim, nzdim, ntdim)    
   real(8), intent(out) ::  diffz(nxydim, nzdim)
@@ -804,7 +805,7 @@ end subroutine flxtrb
 ! *********************************************************************
 
 subroutine chkftx
-
+  use qckot
   if (oinit .or. ofinal) then
      return
   end if

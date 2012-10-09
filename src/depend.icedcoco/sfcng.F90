@@ -56,6 +56,7 @@ contains
     &    kelvin,    cdi,   dtds,  tmelt
     use utint
     use ufile
+    use qckot
 
     implicit none
 

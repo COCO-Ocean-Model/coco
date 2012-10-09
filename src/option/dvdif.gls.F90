@@ -55,6 +55,7 @@ subroutine vdiff( &
   use brstt
   use ufile
   use bchmk
+  use qckot
 
   real(8), intent(out) ::     amv(nxydim, nzdim),    ahv(nxydim, nzdim)
   real(8), intent(in)  ::      uy(nxydim, nzdim),     vy(nxydim, nzdim)
@@ -1020,6 +1021,7 @@ subroutine vdiffb( &
 !
 ! ---------------------------------------------------------------------
   use ufile
+  use qckot
 
   real(8) ::    amv(nxydim, nzdim),    ahv(nxydim, nzdim)
 

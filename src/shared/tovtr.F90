@@ -106,6 +106,7 @@ end subroutine ovtset
 
 subroutine ovturn( &
   &      r,      t,      h )
+  use qckot
 
   real(8), intent(out)    ::       r(nxydim, nzdim)
   real(8), intent(inout)  ::       t(nxydim, nzdim, ntdim)

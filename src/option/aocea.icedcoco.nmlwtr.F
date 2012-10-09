@@ -13,6 +13,7 @@
       use brdge
       use ufile
       use bfrch
+      use qckot
 
       IMPLICIT NONE
 
@@ -560,6 +561,8 @@ c *********************************************************************
       use zocgrd
       use zocmsk
       use zocphy
+      use qckot
+
       IMPLICIT NONE
 
 c --- information -----------------------------------------------------

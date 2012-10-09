@@ -17,6 +17,7 @@
       use sfcng
       use ufile
       use bfrch
+      use qckot
 
       IMPLICIT NONE
 

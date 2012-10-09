@@ -14,6 +14,7 @@
       use iprdc
       use ufile
       use bfrch
+      use qckot
 
       IMPLICIT NONE
 

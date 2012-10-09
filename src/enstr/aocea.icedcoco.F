@@ -13,6 +13,7 @@
       use brdge
       use ufile
       use bfrch
+      use qckot
 
       IMPLICIT NONE
 

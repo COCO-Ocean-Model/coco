@@ -14,6 +14,7 @@
       use binst
       use sfcng
       use ufile
+      use qckot
 
       implicit none
 

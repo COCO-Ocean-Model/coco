@@ -52,6 +52,7 @@ subroutine predci( &
   use ipthm
   use iptmp
   use ucloc
+  use qckot
 
   real(8), intent(inout) ::     ax(nxydim, 0:nic)
   real(8), intent(inout) ::    hix(nxydim, 0:nic)
