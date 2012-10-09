@@ -223,7 +223,7 @@ contains
      &             oflstk)
  use zocfil, only : nfomax
  implicit none
- logical ::  oflstk(nfomax)
+ logical, intent(in) ::  oflstk(nfomax)
  integer :: iitem
 
  do iitem = 1, nohitm
@@ -248,7 +248,7 @@ contains
  use zocout, only : dbleou, dbloug, sngoug, wrkout
  use bgs3d
  implicit none
- logical :: oflout(nfomax)
+ logical, intent(in) :: oflout(nfomax)
  integer :: iitem
  integer ::  ixdim,  jydim,  kzdim
  character :: chead(64)*16
@@ -366,9 +366,10 @@ contains
  use zocout, only : nwork, wrkout 
  use zocfil, only : nfstdo
  use ufile
- integer      :: nxitem, nyitem, nzitem, nditem 
- real(8)      :: ditem(nditem)
- character(*) :: ccitem, clas
+ integer,      intent(in) :: nxitem, nyitem, nzitem, nditem 
+ real(8),      intent(in) :: ditem(nditem)
+ character(*), intent(in) :: ccitem, clas
+
  integer :: item, iohitm
  integer ::  jtopad=1
  character ::  ctitem*16
