@@ -53,6 +53,7 @@ subroutine pmomnt( &
   &                    ux,     vx,     hy,   ptop, &
   &                tauaix, tauaiy, tauaox, tauaoy)
 
+  use brstt
   use ufile
 
   real(8), intent(inout) ::    uix(nxydim),           vix(nxydim)
