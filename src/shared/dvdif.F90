@@ -25,9 +25,9 @@ module dvdif
     &  oinit, ofinal
   use zocmsk, only: &
 #ifdef OPT_BBL
-    & amsktb, amskvb, &
+    & amsktb, amskvb, nbotv,  &
 #endif
-    &   nbot,  nbotv
+    &   nbot
 
   implicit none
 

@@ -34,7 +34,7 @@ contains
   & amsktb, amskt0, amskt1, amskvb, amskv0, amskv1, nbotv
 #else
  use zocmsk, only :                                                            &
-  &  amskt, amftx, amfty, amftz,  amskv,  amfvx,  amfvy,  amfvz,  amskb,  nbot, 
+  &  amskt, amftx, amfty, amftz,  amskv,  amfvx,  amfvy,  amfvz,  amskb,  nbot 
 #endif
 
 

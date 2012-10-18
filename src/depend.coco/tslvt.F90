@@ -94,7 +94,10 @@ contains
          &      dz,    dz0,     ds,   zbot,            &
          &      ts
     use zocmsk,  only :                                &
-         &   amskt,  amsktb,  nbot
+#ifdef OPT_BBL
+         &   amsktb,                                   &
+#endif
+         &   amskt,  nbot
     use utrdg
 
     implicit none

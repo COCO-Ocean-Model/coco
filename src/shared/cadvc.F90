@@ -15,7 +15,10 @@ module cadvc
   implicit none
 
   private
-  public  ::  advvel, advvlb
+  public  ::  advvel
+#ifdef OPT_BBL
+  public  ::  advvlb
+#endif
 
   logical,     save  ::  ofirst
   data ofirst / .true. /

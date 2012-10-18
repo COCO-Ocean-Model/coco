@@ -15,7 +15,6 @@ module cadvc
   implicit none
 
   private
-  public  ::  advvel, advvlb
 
   real(8),   parameter,   private  ::  c1 =  23.d0 / 12.d0
   real(8),   parameter,   private  ::  c2 = -16.d0 / 12.d0
@@ -23,6 +22,11 @@ module cadvc
 
   logical,                   save  ::  ofirst
   data ofirst / .true. /
+
+  public  ::  advvel
+#ifdef OPT_BBL
+  public  ::  advvlb
+#endif
 
 contains
 

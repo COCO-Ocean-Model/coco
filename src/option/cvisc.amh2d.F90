@@ -20,7 +20,6 @@ module cvisc
   implicit none
 
   private
-  public  ::  vscvel, vscvlb  !  used in aprdc
 
   real(8),     save  ::    sxx(nxydim),          syy(nxydim)
   real(8),     save  ::    sxy(nxydim),          syx(nxydim)
@@ -32,6 +31,11 @@ module cvisc
 
 !---- temporary arrays
   real(8),     allocatable,    dimension(:,:)     ::  buf2,    g2d
+
+  public  ::  vscvel
+#ifdef OPT_BBL
+  public  ::  vscvlb
+#endif
 
 contains
 

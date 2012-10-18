@@ -20,7 +20,6 @@ module cvisc
   implicit none
 
   private
-  public  ::  vscvel, vscvlb  !  used in aprdc
 
   real(8),     save  ::    sxx(nxydim),          syy(nxydim)
   real(8),     save  ::    sxy(nxydim),          syx(nxydim)
@@ -29,6 +28,11 @@ module cvisc
   logical,     save  ::  ofirst, ofirst_bbl       
   character(len=64)  ::  chead(1:16)
   data ofirst, ofirst_bbl / .true., .true. /
+
+  public  ::  vscvel
+#ifdef OPT_BBL
+  public  ::  vscvlb
+#endif
 
 contains
 
