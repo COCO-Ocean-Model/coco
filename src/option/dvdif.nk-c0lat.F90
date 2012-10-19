@@ -123,7 +123,7 @@ subroutine vdiff( &
   real(8), save ::  ahvb = 0.1d0,  amvmax = 1000.0d0,  aflt = 1.0d0
   real(8), save ::  alsc = 999.0d0,  ritc = 1.0d0
   real(8), save ::  latal = 30.0d0,  lateq = 5.0d0,  al = 1.0d0,  aleq =0.1d0
-  real(8), save ::  latc0 = 5.0D0,  latceq = 5.0D0
+  real(8), save ::  latc0 = 15.0D0,  latceq = 5.0D0
   integer, save ::  mz = nz,  nitr = 1
   logical, save ::  oallat = .false.,  oc0lat = .false.
 
