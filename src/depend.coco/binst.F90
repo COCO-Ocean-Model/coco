@@ -38,13 +38,14 @@ contains
     use tovtr
     use dvlva
     use bchmk
+    use bstbc
 
     implicit none
 
     real(8),    intent(inout)  ::   uadv(nxyzdm),  vadv(nxyzdm)
     real(8),    intent(inout)  ::   wadv(nxyzdm),     r(nxyzdm)
     real(8),    intent(inout)  ::     ub(nxyzdm),    vb(nxyzdm)
-    real(8),    intent(in)     ::     tb(nxyzdm,ntdim)
+    real(8),    intent(inout)  ::     tb(nxyzdm,ntdim)
     real(8),    intent(in)     ::     hb(nxydim)
     real(8),    intent(in)     ::   ubtb(nxydim),  vbtb(nxydim)
     real(8),    intent(in)     ::      w(nxyzdm)

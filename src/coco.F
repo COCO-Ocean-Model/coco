@@ -1,9 +1,11 @@
       PROGRAM COCO4
+
       use zocdim
       use zocfil
       use atmct
       use ucloc
       use brstt
+      use bfrch
       use ufile
 
       IMPLICIT NONE

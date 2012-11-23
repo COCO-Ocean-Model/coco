@@ -6,6 +6,7 @@ OBJS.coco	= \
           bgs2d.o \
           bgs3d.o \
           bshfi.o \
+          bstbc.o \
           utrdg.o \
           utint.o \
           xprst.o \
@@ -31,7 +32,6 @@ OBJS.coco	= \
           ucaln.o \
           ucloc.o \
           bfrch.o \
-          bstbc.o \
           sfcng.o \
           tflxt.o \
           tslvt.o \
