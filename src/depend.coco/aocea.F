@@ -16,6 +16,7 @@
       use ufile
       use qckot
       use bfrch
+      use aprdc
 
       implicit none
 

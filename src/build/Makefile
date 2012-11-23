@@ -36,8 +36,8 @@ OBJS.coco	= \
           tflxt.o \
           tslvt.o \
           binst.o \
-          aocea.o \
-          aprdc.o
+          aprdc.o \
+          aocea.o 
 
 OBJS.icedcoco	= \
           ufile.o \
