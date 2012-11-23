@@ -223,57 +223,57 @@ contains
     end if
     call scatter_3d(w, g3d)
 
-!    if ( myrank == iroot ) then
-!       read(nfinit, end=169) chead
-!       read(nfinit) buf3
-!       do k = 1, nz
-!          do j = 1, nyg
-!             do i = 1, nxg
-!                g3d(igstr+i-1, jgstr+j-1, kstr+k-1) = buf3(i, j, k)
-!             end do
-!          end do
-!       end do
-!169    continue
-!    end if
-!    call scatter_3d(amv, g3d)
-!
-!    if ( myrank == iroot ) then
-!       read(nfinit, end=179) chead
-!       read(nfinit) buf3
-!       do k = 1, nz
-!          do j = 1, nyg
-!             do i = 1, nxg
-!                g3d(igstr+i-1, jgstr+j-1, kstr+k-1) = buf3(i, j, k)
-!             end do
-!          end do
-!       end do
-!179    continue
-!    end if
-!    call scatter_3d(ahv, g3d)
-!   
-!    if ( myrank == iroot ) then
-!       read(nfinit, end=189) chead
-!       read(nfinit) buf2
-!       do j = 1, nyg
-!          do i = 1, nxg
-!             g2d(igstr+i-1, jgstr+j-1) = buf2(i, j)
-!          end do
-!       end do
-!189    continue
-!    end if
-!    call scatter_2d(ft, g2d)
-!    
-!    if ( myrank == iroot ) then
-!       read(nfinit, end=199) chead
-!       read(nfinit) buf2
-!       do j = 1, nyg
-!          do i = 1, nxg
-!             g2d(igstr+i-1, jgstr+j-1) = buf2(i, j)
-!          end do
-!       end do
-!199    continue
-!    end if
-!    call scatter_2d(ft(1, 1, 2), g2d)
+    if ( myrank == iroot ) then
+       read(nfinit, end=169) chead
+       read(nfinit) buf3
+       do k = 1, nz
+          do j = 1, nyg
+             do i = 1, nxg
+                g3d(igstr+i-1, jgstr+j-1, kstr+k-1) = buf3(i, j, k)
+             end do
+          end do
+       end do
+169    continue
+    end if
+    call scatter_3d(amv, g3d)
+
+    if ( myrank == iroot ) then
+       read(nfinit, end=179) chead
+       read(nfinit) buf3
+       do k = 1, nz
+          do j = 1, nyg
+             do i = 1, nxg
+                g3d(igstr+i-1, jgstr+j-1, kstr+k-1) = buf3(i, j, k)
+             end do
+          end do
+       end do
+179    continue
+    end if
+    call scatter_3d(ahv, g3d)
+   
+    if ( myrank == iroot ) then
+       read(nfinit, end=189) chead
+       read(nfinit) buf2
+       do j = 1, nyg
+          do i = 1, nxg
+             g2d(igstr+i-1, jgstr+j-1) = buf2(i, j)
+          end do
+       end do
+189    continue
+    end if
+    call scatter_2d(ft, g2d)
+    
+    if ( myrank == iroot ) then
+       read(nfinit, end=199) chead
+       read(nfinit) buf2
+       do j = 1, nyg
+          do i = 1, nxg
+             g2d(igstr+i-1, jgstr+j-1) = buf2(i, j)
+          end do
+       end do
+199    continue
+    end if
+    call scatter_2d(ft(1, 1, 2), g2d)
     
     do l = 3, ntdim
        if ( myrank == iroot ) then
@@ -386,8 +386,6 @@ contains
 !---- local variables
     integer(4)   ::     i,     j,     k
     integer(4)   ::  ierr
-
-    return
 
     if ( clas(1:3) == 'OCN' ) then
        if ( myrank == iroot ) then
@@ -779,7 +777,6 @@ contains
 
 !---- local variables
     integer(4)   ::     i,     j,     k
-
     
     if ( clas(1:3) == 'OCN' ) then
        call gather_3d(g3d, additm)
