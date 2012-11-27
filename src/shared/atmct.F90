@@ -40,6 +40,7 @@ contains
   subroutine tmstup(                                                           &
    &             tstrt,   tend,    dtt)
   use zocnod, only : ierr
+  use ucaln
   use ufile
 
   implicit none
@@ -288,6 +289,9 @@ contains
    &                ntss,    tss,                                              &
    &              oflout, oflstk, orsout, orsrwd,                              &
    &                  nt,     tt)
+
+  use ucaln
+
   implicit none
 
   integer, intent(out) ::    its,   itst,   ntss

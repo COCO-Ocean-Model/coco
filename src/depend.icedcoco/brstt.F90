@@ -63,6 +63,7 @@ contains
     use bgsid
     use bgs2d
     use bgs3d
+    use ucaln
 
     implicit none
 
@@ -688,6 +689,7 @@ contains
     use bgsid
     use bgs2d
     use bgs3d
+    use ucaln
 
     implicit none
 

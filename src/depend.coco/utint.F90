@@ -33,6 +33,7 @@ contains
     use zocnod,  only  :  iroot,  myrank
     use ufile
     use bgs2d
+    use ucaln
     implicit none
 
 #include "mpif.h"
@@ -329,6 +330,7 @@ contains
     use zocnod,  only  :  iroot,  myrank
     use ufile
     use bgs3d
+    use ucaln
 
     implicit none
 

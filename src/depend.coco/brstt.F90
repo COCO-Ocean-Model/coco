@@ -57,6 +57,7 @@ contains
     use ufile
     use bgs2d
     use bgs3d
+    use uclan
 
     implicit none
 
@@ -460,6 +461,7 @@ contains
     use ufile
     use bgs2d
     use bgs3d
+    use uclan
 
     implicit none
 
@@ -777,6 +779,7 @@ contains
 
 !---- local variables
     integer(4)   ::     i,     j,     k
+
     
     if ( clas(1:3) == 'OCN' ) then
        call gather_3d(g3d, additm)

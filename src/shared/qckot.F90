@@ -49,6 +49,7 @@ contains
  use zocfil, only : nfomax
  use zocout, only : nwork, wrkout, dbloug, sngoug
  use ufile
+ use ucaln
  implicit none
  integer :: iitem, iohitm
  real(8) ::   tstrt, tostrt
@@ -247,6 +248,7 @@ contains
  use zocgrd, only : tt, nt
  use zocout, only : dbleou, dbloug, sngoug, wrkout
  use bgs3d
+ use ucaln
  implicit none
  logical, intent(in) :: oflout(nfomax)
  integer :: iitem
