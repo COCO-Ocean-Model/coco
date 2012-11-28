@@ -36,6 +36,7 @@ contains
    &             tstrt,   tend,    dtt)
   use zocnod, only : ierr
   use ufile
+  use ucaln
 
   implicit none
 #include "mpif.h"
@@ -254,6 +255,9 @@ contains
    &                ntss,    tss,                                              &
    &              oflout, oflstk, orsout, orsrwd,                              &
    &                  nt,     tt)
+
+  use ucaln
+
   implicit none
 
   integer, intent(out) ::    its,   itst,   ntss
