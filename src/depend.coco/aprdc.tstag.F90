@@ -72,6 +72,7 @@ contains
     use bstbc
     use qckot
     use bchmk
+    use bshft
     
     implicit none
 
@@ -234,7 +235,7 @@ contains
 #else
           call shift2(   gxx,    gyy,   nxdim,  nydim,      1 )
 #endif
-          call btavst( ubtav,  vbtav )
+          CALL BTAVST( ubtav,  vbtav )
           do itsplt = 1, ntss
 
              do ij = 1, nxydim
@@ -343,7 +344,7 @@ contains
              end do
           end do
        else
-          call flxtrc(   tmp,    xx,                                  &
+          call flxtrc(   tmp,     xx,                                 &
     &                    tx,     hx,                                  &
     &                    ty,     hz,                                  &
     &                  uadv,   vadv,   wadv,                          &

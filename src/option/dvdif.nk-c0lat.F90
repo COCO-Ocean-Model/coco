@@ -63,6 +63,7 @@ subroutine vdiff( &
   use xprst
   use brstt
   use ufile
+  use bshft
 
   real(8), intent(out) ::     amv(nxydim, nzdim),    ahv(nxydim, nzdim)
   real(8), intent(in)  ::      uy(nxydim, nzdim),     vy(nxydim, nzdim)

@@ -54,6 +54,7 @@ subroutine pmomnt( &
   &                tauaix, tauaiy, tauaox, tauaoy)
 
   use dvdif
+  use bshft
   use ufile
 
   real(8), intent(inout) ::    uix(nxydim),           vix(nxydim)

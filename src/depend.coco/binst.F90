@@ -12,7 +12,7 @@ module binst
 !                          bug fix (SHIFT UX/VX after STBBVT)
 !     '10.04.14  M.kurogi
 !     '10.04.14  M.Kurogi: (COCO4.4 tripolar code by Dr. Suzuki)
-!
+!     '12.09.20  H.Tatebe: for COCO5.0 in F90
 ! ---------------------------------------------------------------------
 
   implicit none
@@ -28,7 +28,7 @@ contains
     &       hb,   ubtb,   vbtb,                                       &
     &        w,    amv,    ahv,                                       &
     &     taux,   tauy,                                               &
-    &       ft)
+    &       ft  )
 
     use zocdim,  only  :                                              &
     &     nxdim,  nydim,  nxyzdm,  nxydim,  ntdim, nztdim
@@ -39,6 +39,7 @@ contains
     use dvlva
     use bchmk
     use bstbc
+    use bshft
 
     implicit none
 
@@ -46,12 +47,12 @@ contains
     real(8),    intent(inout)  ::   wadv(nxyzdm),     r(nxyzdm)
     real(8),    intent(inout)  ::     ub(nxyzdm),    vb(nxyzdm)
     real(8),    intent(inout)  ::     tb(nxyzdm,ntdim)
-    real(8),    intent(in)     ::     hb(nxydim)
-    real(8),    intent(in)     ::   ubtb(nxydim),  vbtb(nxydim)
-    real(8),    intent(in)     ::      w(nxyzdm)
-    real(8),    intent(in)     ::    amv(nxyzdm),   ahv(nxyzdm)
-    real(8),    intent(in)     ::   taux(nxydim),  tauy(nxydim)
-    real(8),    intent(in)     ::     ft(nxydim,ntdim)
+    real(8),    intent(inout)  ::     hb(nxydim)
+    real(8),    intent(inout)  ::   ubtb(nxydim),  vbtb(nxydim)
+    real(8),    intent(inout)  ::      w(nxyzdm)
+    real(8),    intent(inout)  ::    amv(nxyzdm),   ahv(nxyzdm)
+    real(8),    intent(inout)  ::   taux(nxydim),  tauy(nxydim)
+    real(8),    intent(inout)  ::     ft(nxydim,ntdim)
 
 !---- local variables    
     real(8)       ::   uz(nxydim),    vz(nxydim)

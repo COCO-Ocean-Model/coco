@@ -55,6 +55,8 @@ subroutine pmomnt( &
 
   use brstt
   use ufile
+  use bshft
+
   implicit none
 
   real(8), intent(inout) ::    uix(nxydim),           vix(nxydim)

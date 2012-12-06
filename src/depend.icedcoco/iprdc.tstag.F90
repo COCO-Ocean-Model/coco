@@ -55,6 +55,7 @@ subroutine predci( &
   use ucloc
   use brstt
   use qckot
+  use bshft
 
   real(8), intent(inout) ::     ax(nxydim, 0:nic)
   real(8), intent(inout) ::    hix(nxydim, 0:nic)

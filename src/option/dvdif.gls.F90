@@ -56,6 +56,7 @@ subroutine vdiff( &
   use ufile
   use bchmk
   use qckot
+  use bshft
 
   real(8), intent(out) ::     amv(nxydim, nzdim),    ahv(nxydim, nzdim)
   real(8), intent(in)  ::      uy(nxydim, nzdim),     vy(nxydim, nzdim)
@@ -972,6 +973,8 @@ end subroutine vdiff
 subroutine puttao( &
   &                 taox,   taoy, &
   &                 caic,   cais)
+
+  use bshft
 
   real(8), intent(in) ::   taox(nxydim),   taoy(nxydim)
   real(8), intent(in) ::   caic,   cais

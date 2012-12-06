@@ -6,6 +6,7 @@ OBJS.coco	= \
           ucaln.o \
           bgs2d.o \
           bgs3d.o \
+          bshft.o \
           bshfi.o \
           bstbc.o \
           utrdg.o \
@@ -14,7 +15,6 @@ OBJS.coco	= \
           atmct.o \
           bchmk.o \
           brdge.o \
-          bshft.o \
           brstt.o \
           cadvc.o \
           csrvl.o \
@@ -44,6 +44,7 @@ OBJS.icedcoco	= \
           ucaln.o \
           bgs2d.o \
           bgs3d.o \
+          bshft.o \
           bshfi.o \
           utrdg.o \
 	  utint.o \
@@ -52,7 +53,6 @@ OBJS.icedcoco	= \
           bchmk.o \
           bgsid.o \
           brdge.o \
-          bshft.o \
           brstt.o \
           cadvc.o \
           csrvl.o \

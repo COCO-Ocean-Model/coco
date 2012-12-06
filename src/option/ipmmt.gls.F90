@@ -55,6 +55,7 @@ subroutine pmomnt( &
 
   use dvdif
   use ufile
+  use bshft
 
   real(8), intent(inout) ::    uix(nxydim),           vix(nxydim)
   real(8), intent(out)   ::   taux(nxydim),          tauy(nxydim)

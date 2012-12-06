@@ -144,6 +144,7 @@ subroutine sfcflx( &
   use qckot
   use ufile
   use utint
+  use bshft
 
   real(8), parameter :: factm = 1.0d+1, facth = 1.0d+3, factw = 1.0d+2
 

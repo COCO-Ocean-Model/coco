@@ -57,6 +57,7 @@ contains
     use utint
     use ufile
     use qckot
+    use bshft
 
     implicit none
 

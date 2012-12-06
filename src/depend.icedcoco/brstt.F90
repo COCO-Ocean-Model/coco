@@ -64,6 +64,7 @@ contains
     use bgs2d
     use bgs3d
     use ucaln
+    use bshft
 
     implicit none
 
@@ -594,6 +595,7 @@ contains
     &     myrank,  iroot
     use bgs2d
     use bgs3d
+    use bshft
 
     implicit none
 

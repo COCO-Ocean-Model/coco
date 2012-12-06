@@ -69,6 +69,7 @@ contains
     use bstbc
     use brstt
     use bchmk
+    use bshft
 
     implicit none
 

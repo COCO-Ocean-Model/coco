@@ -70,6 +70,7 @@ contains
     use brstt
     use bchmk
     use qckot
+    use bshft
 
     implicit none
 

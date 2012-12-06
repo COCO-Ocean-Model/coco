@@ -65,6 +65,7 @@ subroutine flxtrc( &
   use ufile
   use bgs3d
   use qckot
+  use bshft
 
   real(8), intent(out)    ::    adt(nxydim, nzdim, ntdim)    
   real(8), intent(out)    ::  diffz(nxydim, nzdim)
