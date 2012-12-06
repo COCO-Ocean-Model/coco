@@ -63,10 +63,10 @@ program icedcoco
   real(8) ::   taux(nxdim, nydim),   tauy(nxdim, nydim)
   real(8) ::   ptop(nxdim, nydim)
 
-  real(8) ::      dt,     tt,     ts,    tss
+  real(8) ::     dt,     tt,     ts,    tss
   integer ::     nt,   itst,    its,   ntss
-  real(8) ::   tstrt,   tend
-  logical oflout(nfomax), oflstk(nfomax), orsout, orsrwd
+  real(8) ::  tstrt,   tend
+  logical :: oflout(nfomax), oflstk(nfomax), orsout, orsrwd
   integer ::    ijk
   integer ::  ifpar,  jfpar,  istat
 #ifdef OPT_PARALLEL
@@ -292,12 +292,21 @@ subroutine parset
 !
 ! ---------------------------------------------------------------------
 
-  use zocdim
+  use zocdim, only: &
+    & inodes, jnodes, &
+#ifdef OPT_TRIPOLE
+    &   jupe,   jupw, &
+#endif
+    & nprocs, myrank, ijnode,  iroot,   ierr, &
+    &  irank,    iup,  idown, &
+    &  jrank,    jup,  jdown
 
   use bgs2d
   use bgs3d
   use bgsid
   use ufile
+
+  implicit none
 
 #include "mpif.h"
 
@@ -426,7 +435,10 @@ subroutine parfin
 !
 ! ---------------------------------------------------------------------
 
-  use zocnod
+  use zocnod, only: &
+    &   ierr   
+
+  implicit none
 
 #include "mpif.h"
 
