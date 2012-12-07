@@ -21,7 +21,7 @@ module ucloc
   real(8),                    save  ::  cput,   vput        
   integer(4),                 save  ::  ifpar,  jfpar
   integer(4),                 save  ::  nclock
-  integer(4),                 save  ::  ofirst
+  logical,                    save  ::  ofirst
   character(16),              save  ::  htitle(nclmax)
                               
 !---- used in yclock

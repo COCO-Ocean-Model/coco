@@ -8,7 +8,7 @@ module ucloc
 !  HISTORY
 !     '97.03.18  H.Hasumi: From AGCM5.4 developed by A.Numaguti
 !     '07.04.23  H.Hasumi
-!     '12.06.15  H.Tatebe: for COCO5.0 in F90
+!     '12.12.07  H.Tatebe: for COCO5.0 in F90
 !
 ! ---------------------------------------------------------------------
 
@@ -53,7 +53,9 @@ contains
     end do
 !51  format(' ', a16, 2f15.6)
     
-    call yclock(cput, vput)
+!    call yclock(cput, vput)
+    call xclock(cput, 5)
+    vput = 0.0d0
     write(jfpar, '(1x,a16,2f15.6)') ' total time = ', cput, vput
     
   end subroutine clcout
@@ -70,10 +72,13 @@ contains
 
     if (ofirst) then
        ofirst = .false.
-       call yclocl
+!       call yclocl
+       call xclock(cput, 3)
     end if
 
-    call yclock( cput, vput )
+!    call yclock( cput, vput )
+    call xclock(cput, 5)
+    vput = 0.0d0
     do ic = 1, nclock
        if ( htitle(ic) == httl ) then
           cpuold(ic) = cput
@@ -100,7 +105,9 @@ contains
 
     integer(4)  ::  ic
 
-    call yclock( cput, vput )
+!    call yclock( cput, vput )
+    call xclock(cput, 5)
+    vput = 0.0d0
     do ic = 1, nclock
        if (htitle(ic) == httl) then
           cputim(ic) = cputim(ic) + cput - cpuold(ic)
@@ -117,13 +124,14 @@ contains
 
     implicit none
 
-    real(8),                intent(inout)  ::  cput2,   vput2
+    real(8),                intent(inout)  ::  cput2
+    real(8),                intent(in)     ::  vput2
 
     real(4)                                ::  etime
 
-    ticks = etime( tarray )
-    cput2 = ticks - tick0
-    vput2 = tarray(1) - tusr0
+
+    call xclock(cput2, 5)
+!    call vclock(vput2, 5)
 
   end subroutine yclock
 
@@ -133,10 +141,9 @@ contains
 
     implicit none
 
-    real(4)                                ::  etime
-
-    tick0 = etime( tarray )
-    tusr0 = tarray(1)
+    call xclock(cput2, 3)
+!    call vclock
+    vputim = 0.d0
 
   end subroutine yclocl
 
