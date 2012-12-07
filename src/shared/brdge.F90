@@ -48,6 +48,7 @@ contains
  use bgs2d
  use bgs3d
  use bshfi
+ use bshft
 
  implicit none
 #include "mpif.h"

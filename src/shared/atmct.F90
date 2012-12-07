@@ -49,7 +49,7 @@ contains
   real(8), intent(out) ::   tstrt,   tend,    dtt
   integer ::  i, iitem
   character (6) :: cunit(6) =                                                  &
-   & (/ 'year', 'month', 'day', 'hour', 'minute', 'second' /)
+   & (/ 'year  ', 'month ', 'day   ', 'hour  ', 'minute', 'second' /)
   integer   :: iohitm
   character (16) :: citem(nfomax)
 
