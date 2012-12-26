@@ -57,7 +57,7 @@ contains
     use ufile
     use bgs2d
     use bgs3d
-    use uclan
+    use ucaln
 
     implicit none
 
