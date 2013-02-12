@@ -12,15 +12,14 @@ module aocea
 !     '09.05.25  Y.Komuro: CMIP5 output code included
 !     '09.10.06  Y.Komuro: FORSTO before PREDCI
 !     '12.10.12  Y.Komuro: for COCO5.0
+!     '13.02.12  Y.Komuro: remove non-parallel code 
 !
 ! ---------------------------------------------------------------------
 
   use zocdim, only: &
     &     nx,     ny,     nz, &
     & nxydim, nxyzdm, nxyidm,  ntdim,    nic, &
-#ifdef OPT_PARALLEL
     & myrank, ijnode, &
-#endif
     &  oinit, ofinal
   use zocgrd, only: &
     &     dt, &
@@ -91,17 +90,13 @@ subroutine ocstup ( &
   call chkset
 
 ! *** Initialization for variables ***
-#ifdef OPT_PARALLEL
   if (myrank < ijnode) then
-#endif
      call iniset( &
        &             uadv,   vadv,   wadv,      r, &
        &               ub,     vb,     tb, &
        &               hb,   ubtb,   vbtb, &
        &                w,    amv,    ahv )
-#ifdef OPT_PARALLEL
   end if
-#endif
 
   do ij = 1, nxydim
      gxx(ij) = 0.d0
@@ -210,17 +205,13 @@ subroutine ocean ( &
   end if
 
   if (ofinal) then
-#ifdef OPT_PARALLEL
      if (myrank < ijnode) then
-#endif
         call iniset( &
           &            uadv,   vadv,   wadv,      r, &
           &              ub,     vb,     tb, &
           &              hb,   ubtb,   vbtb, &
           &               w,    amv,    ahv )
-#ifdef OPT_PARALLEL
      end if
-#endif
      call predci( &
        &               ab,    hib,    uib,    vib,    tib,    hsb, &
        &               ft,     fs,   taux,   tauy,   ptop, &

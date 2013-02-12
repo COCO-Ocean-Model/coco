@@ -42,10 +42,6 @@ subroutine ictrns( &
   &                    ft,     fs )
   use ufile
 
-!#ifdef OPT_PARALLEL
-!#include "mpif.h"
-!#endif
-
   real(8), intent(inout) ::     ax(nxydim, 0:nic)
   real(8), intent(inout) ::    hix(nxydim, 0:nic)
   real(8), intent(inout) ::    hsx(nxydim, 0:nic)

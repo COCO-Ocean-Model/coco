@@ -15,6 +15,7 @@ module iprdc
 !     '10.04.14  M.Kurogi: staggered time stepping
 !     '10.04.14  M.Kurogi: (COCO4.4 tripolar code by Dr. Suzuki)
 !     '12.07.30  Y.Komuro: for COCO5.0
+!     '13.02.12  Y.Komuro: remove non-parallel code 
 !
 ! ---------------------------------------------------------------------
 
@@ -116,10 +117,10 @@ subroutine predci( &
 
   call clcstr('ICE')
 
-#ifdef OPT_PARALLEL
   if (      (myrank .ge. ijnode) &
-    & .and. (.not. oinit) .and. (.not. ofinal)) return
-#endif
+    & .and. (.not. oinit) .and. (.not. ofinal)) then
+     return
+  end if
 
   if (oinit) then
 #ifdef OPT_TRIPOLE
@@ -192,7 +193,6 @@ subroutine predci( &
     &            uiy,    viy,   pice, &
     &             ux,     vx,     hy,   ptop, &
     &         tauaix, tauaiy, tauaox, tauaoy )
-#ifdef OPT_PARALLEL
 #ifdef OPT_TRIPOLE
   call shift2( &
     &           taux,    tauy, &
@@ -202,10 +202,6 @@ subroutine predci( &
   call shift2( &
     &           taux,   tauy, &
     &          nxdim,  nydim,      1 )
-#endif
-#else
-  call stbctu( &
-    &           taux,   tauy )
 #endif
   call clcend('ICEDYN')
 
@@ -239,7 +235,6 @@ subroutine predci( &
     &             ax,    hix,    hsx,    eix,    tix, &
     &             ft,     fs )
 
-#ifdef OPT_PARALLEL
 #ifdef OPT_TRIPOLE
   call shift3( &
     &             ax,    hix,    hsx, &
@@ -256,10 +251,6 @@ subroutine predci( &
   call shift2( &
     &            eix,    tix, &
     &          nxdim,  nydim,  nic+1 )
-#endif
-#else
-  call stbcsi( &
-    &             ax,    hix,    eix,    tix,    hsx )
 #endif
 
   call padvct( &
@@ -278,7 +269,6 @@ subroutine predci( &
   call ictrns( &
     &             ax,    hix,    hsx,    eix,    tix, &
     &             ft,     fs )
-#ifdef OPT_PARALLEL
 #ifdef OPT_TRIPOLE
   call shift3( &
     &             ax,    hix,    hsx, &
@@ -296,17 +286,11 @@ subroutine predci( &
     &            eix,    tix, &
     &          nxdim,  nydim,  nic+1 )
 #endif
-#else
-  call stbcsi( &
-    &             ax,    hix,    eix,    tix,    hsx )
-#endif
 
 
-#ifdef OPT_PARALLEL
   if (myrank .ge. ijnode) then
      return
   end if
-#endif
 
   do l = 1, nic
      do ij = 1, nxydim

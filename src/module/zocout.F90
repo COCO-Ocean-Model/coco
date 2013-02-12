@@ -13,9 +13,7 @@ module zocout
   real(8) ::  dbleou(nxyz)
   real(4) ::  snglou(nxyz)
 
-#ifdef OPT_PARALLEL
   real(8), allocatable ::  dbloug(:, :, :)
   real(4), allocatable ::  sngoug(:, :, :)
-#endif
 
 end module zocout
