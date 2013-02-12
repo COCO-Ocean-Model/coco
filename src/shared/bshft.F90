@@ -10,6 +10,7 @@ module bshft
 !     '07.04.23  H.Hasumi
 !     '10.04.14  M.Kurogi: (COCO4.4 tripolar code by Dr. Suzuki)
 !     '12.11.28  H.Tatebe: for COCO5.0 in F90
+!     '13.02.12  Y.Komuro: bug fix (for non-tripole code)
 ! ---------------------------------------------------------------------
 
 !  use zocdim,  only  :                                                &
@@ -65,8 +66,10 @@ contains
 
     real(8),                  intent(inout)  ::    q1(1:idim,1:jdim,1:kdim)
     integer(4),               intent(in)     ::  idim,  jdim,  kdim
+#ifdef OPT_TRIPOLE    
     real(8),                  intent(in)     ::  fact
     integer(4),               intent(in)     ::  ioff,  joff
+#endif
 
     if (idown /= mpi_proc_null) then
        do k = 1, kdim
@@ -313,8 +316,10 @@ contains
     real(8),                  intent(inout)  ::    q1(1:idim,1:jdim,1:kdim)
     real(8),                  intent(inout)  ::    q2(1:idim,1:jdim,1:kdim)
     integer(4),               intent(in)     ::  idim,  jdim,  kdim
+#ifdef OPT_TRIPOLE
     real(8),                  intent(in)     ::  fact
     integer(4),               intent(in)     ::  ioff,  joff
+#endif
 
     if (idown /= mpi_proc_null) then
        do k = 1, kdim
@@ -581,8 +586,10 @@ contains
     real(8),                  intent(inout)  ::    q2(1:idim,1:jdim,1:kdim)
     real(8),                  intent(inout)  ::    q3(1:idim,1:jdim,1:kdim)
     integer(4),               intent(in)     ::  idim,  jdim,  kdim
+#ifdef OPT_TRIPOLE
     real(8),                  intent(in)     ::  fact
     integer(4),               intent(in)     ::  ioff,  joff
+#endif
 
     if (idown /= mpi_proc_null) then
        do k = 1, kdim
