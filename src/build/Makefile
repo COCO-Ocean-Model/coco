@@ -8,6 +8,7 @@ OBJS.coco	= \
           bgs3d.o \
           bshft.o \
           bshfi.o \
+          qckot.o \
           bstbc.o \
           utrdg.o \
           utint.o \
@@ -28,7 +29,6 @@ OBJS.coco	= \
           fbtav.o \
           fshdf.o \
           fshlw.o \
-          qckot.o \
           tovtr.o \
           ucloc.o \
           bfrch.o \
@@ -46,6 +46,7 @@ OBJS.icedcoco	= \
           bgs3d.o \
           bshft.o \
           bshfi.o \
+          qckot.o \
           utrdg.o \
 	  utint.o \
           xprst.o \
@@ -66,7 +67,6 @@ OBJS.icedcoco	= \
           fbtav.o \
           fshdf.o \
           fshlw.o \
-          qckot.o \
           tovtr.o \
           ucloc.o \
           bfrch.o \
