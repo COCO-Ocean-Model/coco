@@ -13,14 +13,13 @@ program coco
 !     '09.09.02  Y.Komuro: STDOUT filename format changed
 !     '10.04.14  M.Kurogi: (COCO4.4 tripolar code by Dr. Suzuki)
 !     '12.12.06  Y.Komuro: for COCO5.0
+!     '13.02.13  Y.Komuro: remove non-parallel code 
 !
 ! ---------------------------------------------------------------------
 
   use zocdim, only: &
     &  nxdim,  nydim,  nzdim,  ntdim, &
-#ifdef OPT_PARALLEL
     & myrank,   ierr, &
-#endif
     & ofinal,  oinit
   use zocfil, only: &
     & nfstdo, nfomax,    ncf
@@ -34,9 +33,7 @@ program coco
 
   implicit none
 
-#ifdef OPT_PARALLEL
 #include "mpif.h"
-#endif
 
   real(8) ::     ta(nxdim, nydim, nzdim, ntdim)
   real(8) ::     tb(nxdim, nydim, nzdim, ntdim)
@@ -55,9 +52,7 @@ program coco
   logical ::  oflout(nfomax), oflstk(nfomax), orsout, orsrwd
   integer ::     ijk
   integer ::   ifpar,  jfpar,  istat
-#ifdef OPT_PARALLEL
   integer ::  lenstd
-#endif
 
   character(len=ncf) :: crun = '(RUN NAME WAS NOT SET)'
   character(len=ncf) :: cstdo = 'STDOUT'
@@ -67,34 +62,24 @@ program coco
 
 ! *** Initial setup ***
 
-#ifdef OPT_PARALLEL
   call mpi_init(ierr)
-#endif
   call clcstr('SETUP')
   call rewnml(ifpar, jfpar)
   open(unit=ifpar, file='PARAMET', status='old', &
     &  access='sequential', form='formatted')
-#ifdef OPT_PARALLEL
   call parset
-#endif
   call rewnml(ifpar, jfpar)
   read (ifpar, nmstdo, iostat=istat)
   call cstnml(jfpar, 'coco', 'nmstdo', istat)
-!  write(jfpar, nmstdo)
-#ifdef OPT_PARALLEL
   lenstd = index(cstdo, ' ')
   write(cstdo(lenstd:lenstd+3), '(a1,i3.3)') '.', myrank
-#endif
   call rewnml(ifpar, jfpar)
   open(unit=jfpar, file=cstdo, &
     &  access='sequential', form='formatted')
-#ifdef OPT_PARALLEL
   write(jfpar, *) 'MESSAGE OUTPUT FOR RANK', myrank
-#endif
   call rewnml(ifpar, jfpar)
   read (ifpar, nmrun, iostat=istat)
   call cstnml(jfpar, 'coco', 'nmrun', istat)
-!  write(jfpar, nmrun)
   write(nfstdo, *) 'Run name :'//crun
 
   oinit = .false.
@@ -226,13 +211,10 @@ program coco
     &             oflout, oflstk )
   call clcend('FINOUT')
   call clcout
-#ifdef OPT_PARALLEL
   call parfin
-#endif
 
 end program coco
 
-#ifdef OPT_PARALLEL
 ! *********************************************************************
 
 subroutine parset
@@ -399,5 +381,4 @@ subroutine parfin
 
   return
 end subroutine parfin
-#endif
 

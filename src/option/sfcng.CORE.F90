@@ -18,6 +18,7 @@ module sfcng
 !     '10.04.14  M.kurogi
 !     '10.04.14  M.Kurogi: for tripolar grid
 !     '12.10.11  Y.Komuro: for COCO5.0
+!     '13.02.13  Y.Komuro: remove non-parallel code 
 !
 ! ---------------------------------------------------------------------
 
@@ -297,7 +298,6 @@ subroutine sfcflx( &
 #endif
 
 !!!!!! kurogi 2009.11.27
-#ifdef OPT_PARALLEL
 #ifdef OPT_TRIPOLE
   call shift1( &
     &            psfc, &
@@ -307,10 +307,6 @@ subroutine sfcflx( &
   call shift1( &
     &            psfc, &
     &           nxdim,  nydim,      1 )
-#endif
-#else
-  call stbcsh( &
-    &            psfc )
 #endif
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
@@ -374,7 +370,6 @@ subroutine sfcflx( &
        &                 swnt,   dwlw, &
        &                gricr,  grsnw,    tmi )
 
-#ifdef OPT_PARALLEL
 #ifdef OPT_TRIPOLE
      call shift2( &
        &            taux,   tauy, &
@@ -388,12 +383,6 @@ subroutine sfcflx( &
      call shift3( &
        &            taux,   tauy,    fm, &
        &           nxdim,  nydim,     1 )
-#endif
-#else
-     call stbctu( &
-       &            taux,   tauy )
-     call stbcsh( &
-       &              fm )
 #endif
 
      if (l > 0) then
@@ -452,7 +441,6 @@ subroutine sfcflx( &
      endif
   enddo
 
-#ifdef OPT_PARALLEL
 #ifdef OPT_TRIPOLE
   call shift2( tauaox,   tauaoy, &
     &           nxdim,    nydim,    1, &
@@ -468,12 +456,6 @@ subroutine sfcflx( &
   call shift2( &
     &          tauaix,   tauaiy, &
     &           nxdim,    nydim,     1 )
-#endif
-#else
-  call stbctu( &
-    &          tauaox,   tauaoy )
-  call stbctu( &
-    &          tauaix,   tauaiy )
 #endif
 
   call chekin(   wsbg,  'wsbg', &

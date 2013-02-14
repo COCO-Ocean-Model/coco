@@ -17,6 +17,7 @@ module ipmmt
 !     '09.02.20  Y.Komuro: parallel forward time march
 !     '10.04.14  M.Kurogi: (COCO4.4 tripolar code by Dr. Suzuki)
 !     '12.07.11  Y.Komuro: for COCO5.0
+!     '13.02.13  Y.Komuro: remove non-parallel code 
 !
 ! ---------------------------------------------------------------------
 
@@ -280,7 +281,6 @@ subroutine pmomnt( &
         end if
      end do
 
-#ifdef OPT_PARALLEL
 #ifdef OPT_TRIPOLE
      call shift3( sgmxx,  sgmyy,  sgmxy, &
        &          nxdim,  nydim,      1, &
@@ -289,7 +289,6 @@ subroutine pmomnt( &
      call shift3( &
        &          sgmxx,  sgmyy,  sgmxy, &
        &          nxdim,  nydim,      1)
-#endif
 #endif
 
      do ij = ijvstr, ijvend
@@ -353,7 +352,6 @@ subroutine pmomnt( &
         end if
      end do
 
-#ifdef OPT_PARALLEL
 #ifdef OPT_TRIPOLE
      call shift2(   uix,    vix, &
        &          nxdim,  nydim,      1, &
@@ -362,10 +360,6 @@ subroutine pmomnt( &
      call shift2( &
        &            uix,    vix, &
        &          nxdim,  nydim,      1)
-#endif
-#else
-     call stbcvi( &
-       &            uix,    vix)
 #endif
 
      call strain( &

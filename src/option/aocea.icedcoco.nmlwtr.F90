@@ -14,6 +14,7 @@ module aocea
 !     '09.10.06  Y.Komuro: FORSTO before PREDCI
 !     '11.12.13  Y.Komuro: time scale for water normalization
 !     '12.10.12  Y.Komuro: for COCO5.0
+!     '13.02.13  Y.Komuro: remove non-parallel code 
 !
 ! ---------------------------------------------------------------------
 
@@ -22,9 +23,7 @@ module aocea
     &   istr,   iend,   jstr,   jend,   kstr, &
     &  nxdim, nxydim, nxyzdm, nxyidm,  ntdim,    nic, &
     & ijtstr, ijtend, &
-#ifdef OPT_PARALLEL
     & myrank, ijnode,   ierr, &
-#endif
     &  oinit, ofinal
   use zocgrd, only: &
     &     dx,     dy, &
@@ -101,17 +100,13 @@ subroutine ocstup ( &
   call chkset
 
 ! *** Initialization for variables ***
-#ifdef OPT_PARALLEL
   if (myrank < ijnode) then
-#endif
      call iniset( &
        &             uadv,   vadv,   wadv,      r, &
        &               ub,     vb,     tb, &
        &               hb,   ubtb,   vbtb, &
        &                w,    amv,    ahv )
-#ifdef OPT_PARALLEL
   end if
-#endif
 
   do ij = 1, nxydim
      gxx(ij) = 0.d0
@@ -220,17 +215,13 @@ subroutine ocean ( &
   end if
 
   if (ofinal) then
-#ifdef OPT_PARALLEL
      if (myrank < ijnode) then
-#endif
         call iniset( &
           &            uadv,   vadv,   wadv,      r, &
           &              ub,     vb,     tb, &
           &              hb,   ubtb,   vbtb, &
           &               w,    amv,    ahv )
-#ifdef OPT_PARALLEL
      end if
-#endif
      call predci( &
        &               ab,    hib,    uib,    vib,    tib,    hsb, &
        &               ft,     fs,   taux,   tauy,   ptop, &
@@ -616,9 +607,7 @@ subroutine nmlwtr( &
   use qckot
   use ufile
 
-#ifdef OPT_PARALLEL
 #include "mpif.h"
-#endif
 
   real(8), intent(inout) ::   prec(nxydim),    wev(nxydim)
   real(8), intent(in)    ::     sh(nxydim)
@@ -666,13 +655,9 @@ subroutine nmlwtr( &
               vwteqt = vwteqt + garea(ij)
            end do
         end do
-#ifdef OPT_PARALLEL
         call mpi_allreduce( &
           &                vwteqt, tarea, 1, mpi_real8, &
           &               mpi_sum, mpi_comm_world, ierr)
-#else
-        tarea = vwteqt
-#endif
         rtardt = 1.0d0 / tarea / (8.64d4 * wdmp)
      endif
   end if
@@ -690,13 +675,9 @@ subroutine nmlwtr( &
      end do
      vwteqt = vwteqt + vwtreq * garea(ij)
   end do
-#ifdef OPT_PARALLEL
   call mpi_allreduce( &
     &                vwteqt, fwnml, 1, mpi_real8, &
     &               mpi_sum, mpi_comm_world, ierr)
-#else
-  fwnml = vwteqt
-#endif
   fwnml = fwnml * rtardt
 
   do ij = ijtstr, ijtend

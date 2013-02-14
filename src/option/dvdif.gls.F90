@@ -13,6 +13,7 @@ module dvdif
 !     '10.04.13  Y.Komuro: bug fix (for non-BBL use etc.)
 !     '12.01.19  Y.Komuro: bug fix (GH in unstable situation)
 !     '12.07.11  Y.Komuro: for COCO5.0
+!     '13.02.13  Y.Komuro: remove non-parallel code 
 !
 ! ---------------------------------------------------------------------
 
@@ -990,7 +991,6 @@ subroutine puttao( &
        &          amskv(ij, kstr)
   end do
 
-#ifdef OPT_PARALLEL
 #ifdef OPT_TRIPOLE
   call shift2( &
     &          tauaox, tauaoy, &
@@ -1000,10 +1000,6 @@ subroutine puttao( &
   call shift2( &
     &          tauaox,   tauaoy, &
     &           nxdim,    nydim,     1)
-#endif
-#else
-  call stbctu( &
-    &          tauaox,   tauaoy)
 #endif
 
   return

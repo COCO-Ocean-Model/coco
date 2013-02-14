@@ -520,9 +520,10 @@ subroutine dnsgrd( &
   &  zpsix,  zpsiy, &
   &     ty,     tx,     hz )
 
-  use xprst
-  use ufile
+  use bshft
   use qckot
+  use ufile
+  use xprst
 
   real(8), intent(out) ::  xdzdx(nxydim, nzdim),  ydzdy(nxydim, nzdim)
   real(8), intent(out) ::  zdzdx(nxydim, nzdim),  zdzdy(nxydim, nzdim)
@@ -909,13 +910,15 @@ subroutine dnsgrd( &
   end do
 
   if (ofltdm) then
-#ifdef OPT_PARALLEL
+#ifdef OPT_TRIPOLE
+     call shift1( &
+       &            hmld, &
+       &           nxdim,  nydim,      1, &
+       &           1.0d0,      0,      0 )
+#else
      call shift1( &
        &            hmld, &
        &           nxdim,  nydim,      1)
-#else
-     call stbcsh( &
-       &            hmld)
 #endif
      do n = 1, nfltdm
 !        do ij = ijtstr-nxdim, ijtend+nxdim
@@ -937,25 +940,29 @@ subroutine dnsgrd( &
         do ij = ijstr, ijend
            hmld(ij) = hmld1(ij)
         end do
-#ifdef OPT_PARALLEL
-        call shift1( &
-          &            hmld, &
-          &           nxdim,  nydim,      1)
+#ifdef OPT_TRIPOLE
+     call shift1( &
+       &            hmld, &
+       &           nxdim,  nydim,      1, &
+       &           1.0d0,      0,      0 )
 #else
-        call stbcsh( &
-          &            hmld)
+     call shift1( &
+       &            hmld, &
+       &           nxdim,  nydim,      1)
 #endif
      end do
   end if
 
   if (ofltrm) then
-#ifdef OPT_PARALLEL
+#ifdef OPT_TRIPOLE
+     call shift1( &
+       &          rmavez, &
+       &           nxdim,  nydim,      1, &
+       &           1.0d0,      0,      0 )
+#else
      call shift1( &
        &          rmavez, &
        &           nxdim,  nydim,      1)
-#else
-     call stbcsh( &
-       &          rmavez)
 #endif
      do n = 1, nfltrm
 !        do ij = ijtstr-nxdim, ijtend+nxdim
@@ -977,13 +984,15 @@ subroutine dnsgrd( &
         do ij = ijstr, ijend
            rmavez(ij) = rmav1(ij)
         end do
-#ifdef OPT_PARALLEL
+#ifdef OPT_TRIPOLE
+        call shift1( &
+          &          rmavez, &
+          &           nxdim,  nydim,      1, &
+          &           1.0d0,      0,      0 )
+#else
         call shift1( &
           &          rmavez, &
           &           nxdim,  nydim,      1)
-#else
-        call stbcsh( &
-          &          rmavez)
 #endif
      end do
   end if
@@ -1114,19 +1123,9 @@ subroutine dnsgrd( &
 !  end do
 
   if (ofltps) then
-#ifdef OPT_PARALLEL
      call shift2( &
        &           xpsiy,  ypsix, &
        &           nxdim,  nydim,  nzdim)
-!     call shift2( &
-!       &           zpsix,  zpsiy, &
-!       &           nxdim,  nydim,  nzdim)
-#else
-     call stbcav( &
-       &           xpsiy,  ypsix)
-!     call stbcav(
-!       &           zpsix,  zpsiy)
-#endif
      do n = 1, nfltps
 !        do ij = ijtstr-nxdim, ijtend+nxdim
         do k = kstr, kend
@@ -1191,19 +1190,9 @@ subroutine dnsgrd( &
 !              zpsiy(ij, k) = zpsiy1(ij, k)
            end do
         end do
-#ifdef OPT_PARALLEL
         call shift2( &
           &           xpsiy,  ypsix, &
           &           nxdim,  nydim,  nzdim)
-!        call shift2( &
-!          &           zpsix,  zpsiy,
-!          &           nxdim,  nydim,  nzdim)
-#else
-        call stbcav( &
-          &           xpsiy,  ypsix)
-!        call stbcav( &
-!          &           zpsix,  zpsiy)
-#endif
      end do
   end if
         

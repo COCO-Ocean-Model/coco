@@ -15,6 +15,7 @@ module ipthm
 !     '09.05.25  Y.Komuro: CMIP5 output code included
 !                          (basal/lateral melting processes separated)
 !     '12.08.01  Y.Komuro: for COCO5.0
+!     '13.02.13  Y.Komuro: remove non-parallel code 
 !
 ! ---------------------------------------------------------------------
 
@@ -50,9 +51,7 @@ subroutine ptherm( &
   use ufile
   use qckot
 
-#ifdef OPT_PARALLEL
 #include "mpif.h"
-#endif
 
   real(8), intent(inout) ::     ax(nxydim, 0:nic),    hix(nxydim, 0:nic)
   real(8), intent(inout) ::    hsx(nxydim, 0:nic)

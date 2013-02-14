@@ -12,6 +12,7 @@ module tflxt
 !     '09.04.08  H.Tatebe: bug fix 2
 !     '10.04.14  M.Kurogi: (COCO4.4 tripolar code by Dr. Suzuki)
 !     '12.08.02  Y.Komuro: for COCO5.0
+!     '13.02.13  Y.Komuro: remove non-parallel code 
 !
 ! ---------------------------------------------------------------------
 
@@ -131,14 +132,8 @@ subroutine flxtrc( &
   namelist /nmdifg/ ahg
 
 !---- 
-#ifdef OPT_PARALLEL
   real(8) ::  buf3(nxg, nyg, nz)
   real(8) ::  g3d(nxgdim, nygdim, nzdim)
-!  equivalence(ftx(1, 1, 1), g3d(1, 1, 1))
-#else
-  real(8) ::  buf3(nx, ny, nz)
-!   equivalence(ftx(1, 1, 1), buf3(1, 1, 1))
-#endif
 
 !---- file name of isotropic diffusion and thickness diffusion
   character(len=ncf) ::  cfahi = 'not-specified'
@@ -350,8 +345,6 @@ subroutine flxtrc( &
         write(jfpar, *) '  file name of ahg: ', cfahg
 
 !       ---- reading diffusion coefficient
-#ifdef OPT_PARALLEL
-
 !       ---- ahi
         if ( myrank .eq. iroot ) then
 
@@ -395,44 +388,6 @@ subroutine flxtrc( &
 
         end if
         call scatter_3d( ahg3d, g3d )
-
-#else
-
-!       ---- ahi
-        call filopn( nfahi, cfahi, 'READ' ) 
-        rewind( nfahi )
-        read( nfahi ) chead
-        read( nfahi ) buf3
-        do k = kstr, kend
-           do j = jstr, jend
-              do i = istr, iend
-
-                 ij = ( j - 1 ) * nxdim + i
-                 ahi3d(ij,k) = buf3(i-istr+1, j-jstr+1, k-kstr+1)
-            
-              end do
-           end do
-        end do
-        call filcls( nfahi )
-
-!---- ahg
-        call filopn( nfahg, cfahg, 'READ' ) 
-        rewind( nfahg )
-        read( nfahg ) chead
-        read( nfahg ) buf3
-        do k = kstr, kend
-           do j = jstr, jend
-              do i = istr, iend
-
-                 ij = ( j - 1 ) * nxdim + i
-                 ahg3d(ij,k) = buf3(i-istr+1, j-jstr+1, k-kstr+1)
-            
-              end do
-           end do
-        end do
-        call filcls( nfahg )
-
-#endif
 
      end if
 
@@ -747,12 +702,10 @@ subroutine flxtrc( &
      end do
 
 !---- bug fix 2
-!#ifdef OPT_PARALLEL
 !     call shift1( sx (:,:,n), nxdim, nydim, nzdim )
 !     call shift1( sxx(:,:,n), nxdim, nydim, nzdim )
 !     call shift1( sxy(:,:,n), nxdim, nydim, nzdim )
 !     call shift1( sxz(:,:,n), nxdim, nydim, nzdim )
-!#endif
 
 !    ---- calculating ALF and MASS between box (i-1,j,k) <---> (i,j,k)
      do k = kstr, kend
@@ -1113,7 +1066,6 @@ subroutine flxtrc( &
      end do
 
 !---- bug fix 2
-#ifdef OPT_PARALLEL
 #ifdef OPT_TRIPOLE
      call shift1( sy(:,:,n), &
        &           nxdim,  nydim,  nzdim, &
@@ -1132,7 +1084,6 @@ subroutine flxtrc( &
      call shift1( syy(:,:,n), nxdim, nydim, nzdim )
      call shift1( sxy(:,:,n), nxdim, nydim, nzdim )
      call shift1( syz(:,:,n), nxdim, nydim, nzdim )
-#endif
 #endif
 
 !    ---- calculating ALF  and MASS between box (i,j-1,k) <---> (i,j,k)
@@ -1796,7 +1747,6 @@ subroutine flxtrc( &
   call stbbtr( syz )
 #endif
 
-#ifdef OPT_PARALLEL
 #ifdef OPT_TRIPOLE
   call shift1(    sx, &
     &          nxdim, nydim, nztdim, &
@@ -1836,18 +1786,6 @@ subroutine flxtrc( &
   call shift1( sxy, nxdim, nydim, nztdim )
   call shift1( sxz, nxdim, nydim, nztdim )
   call shift1( syz, nxdim, nydim, nztdim )
-#endif
-#else
-!  call stbctr( s0 , r )
-  call stbctr( sx , r )
-  call stbctr( sy , r )
-  call stbctr( sz , r )
-  call stbctr( sxx, r )
-  call stbctr( syy, r )
-  call stbctr( szz, r )
-  call stbctr( sxy, r )
-  call stbctr( sxz, r )
-  call stbctr( syz, r )
 #endif
 
   return
