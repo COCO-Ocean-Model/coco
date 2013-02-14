@@ -14,6 +14,8 @@ module tflxt
 !     '10.11.29  Y.Komuro: Coarse-resolution modification applied
 !                          following Fox-Kemper et al. (2011, OM).
 !     '12.08.01  Y.Komuro: for COCO5.0
+!     '13.02.14  Y.Komuro: remove non-parallel code,
+!                          for tripolar coordinate
 !
 ! ---------------------------------------------------------------------
 
@@ -1123,9 +1125,20 @@ subroutine dnsgrd( &
 !  end do
 
   if (ofltps) then
+#ifdef OPT_TRIPOLE
+     call shift1( &
+       &           xpsiy, &
+       &           nxdim,  nydim,  nzdim, &
+       &          -1.0d0,      1,      0 )
+     call shift1( &
+       &           ypsix, &
+       &           nxdim,  nydim,  nzdim, &
+       &          -1.0d0,      0,      1 )
+#else
      call shift2( &
        &           xpsiy,  ypsix, &
        &           nxdim,  nydim,  nzdim)
+#endif
      do n = 1, nfltps
 !        do ij = ijtstr-nxdim, ijtend+nxdim
         do k = kstr, kend
@@ -1190,9 +1203,20 @@ subroutine dnsgrd( &
 !              zpsiy(ij, k) = zpsiy1(ij, k)
            end do
         end do
-        call shift2( &
-          &           xpsiy,  ypsix, &
-          &           nxdim,  nydim,  nzdim)
+#ifdef OPT_TRIPOLE
+     call shift1( &
+       &           xpsiy, &
+       &           nxdim,  nydim,  nzdim, &
+       &          -1.0d0,      1,      0 )
+     call shift1( &
+       &           ypsix, &
+       &           nxdim,  nydim,  nzdim, &
+       &          -1.0d0,      0,      1 )
+#else
+     call shift2( &
+       &           xpsiy,  ypsix, &
+       &           nxdim,  nydim,  nzdim)
+#endif
      end do
   end if
         
