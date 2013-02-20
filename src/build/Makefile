@@ -1,5 +1,5 @@
 include ../Mkinclude
-include $(OGCMDIR)/src/Sysdep.$(SYSTEM)$(PARALLEL)
+include $(OGCMDIR)/src/Sysdep.$(SYSTEM)
 
 OBJS.coco	= \
           ufile.o \

@@ -6,13 +6,12 @@ SYSTEM	= ifort
 #MODEL = coco
 MODEL = icedcoco
 
-PARALLEL = .par
-OPTBDY  = -DOPT_BODY
+#OPTBDY  = -DOPT_BODY
 OPTSRST = -DOPT_SRST
 OPTBBL  = -DOPT_BBL
-#OPTTRIPOLE = -DOPT_TRIPOLE
+OPTTRIPOLE = -DOPT_TRIPOLE
 
-#TSTAG=.tstag
+TSTAG=.tstag
 
 # coco default
 #SRCOPT  = tflxt.iso-ut dvdif.nk
@@ -28,5 +27,5 @@ SRCOPT	= tflxt.iso-ut dvdif.nk sfcng.CORE utint.CORE
 SRCENS  = 
 #SRCENS	= aocea.$(MODEL) aprdc.$(MODEL)$(TSTAG) binst.$(MODEL) bstbc.$(MODEL) cadvc$(TSTAG) ctnuv$(TSTAG) dvlva
 
-TARGET	= $(OGCMDIR)/bin/$(MODEL)$(PARALLEL)
-LIBOGCM	= $(OGCMDIR)/lib/lib$(MODEL)$(PARALLEL).a
+TARGET	= $(OGCMDIR)/bin/$(MODEL)
+LIBOGCM	= $(OGCMDIR)/lib/lib$(MODEL).a

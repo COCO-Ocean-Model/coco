@@ -1,5 +1,5 @@
 include Mkinclude
-include Sysdep.$(SYSTEM)$(PARALLEL)
+include Sysdep.$(SYSTEM)
 MAIN	= $(MODEL).o
 
 SRCSHR	= \
