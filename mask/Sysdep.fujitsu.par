@@ -1,0 +1,9 @@
+FC	= frt
+FFLAGS	= -fw -NRtrap -Kfast -DOPT_PARALLEL
+#FFLAGS	= -NRtrap -Haesux -DOPT_PARALLEL
+FOPTION = $(FFLAGS)
+UNIT22	= fort.22
+RUNOPT	= -Wl,-T
+
+.F.o:
+	$(FC) $(FOPTION) -c $<

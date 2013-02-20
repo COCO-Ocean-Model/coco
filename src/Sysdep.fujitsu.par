@@ -1,0 +1,20 @@
+FC	= mpif90
+
+# standard options for aspen@yes.jamstec.go.jp 
+FFLAGS	= -fw -NRtrap -Kfast  -Am -DOPT_PARALLEL
+
+#debug options 
+#FFLAGS	= -NRtrap -Haesux -Am -DOPT_PARALLEL
+
+FOPTION = $(FFLAGS) -I$(OGCMDIR)/src/include -I$(OGCMDIR)/src/module -I$(OGCMDIR)/src/build $(OPTBDY) $(OPTSRST) $(OPTBBL) $(OPTTRIPOLE)
+
+AR	= ar r
+RANLIB	= ranlib
+#RANLIB	= touch
+
+.SUFFIXES: .F90
+ 
+.F.o:
+	$(FC) $(FOPTION) -c $<
+.F90.o:
+	$(FC) $(FOPTION) -c $<
