@@ -271,9 +271,15 @@ contains
     end do
     
     do ij = ijstr, ijend
+!       adt(ij, kstr, 1) = adt(ij, kstr, 1)                            &
+!    &                   + tx(ij, kstr, 1) * ft(ij, 2) / zbot          &
+!    &                    * amskt(ij, kstr)
        adt(ij, kstr, 1) = adt(ij, kstr, 1)                            &
-    &                   + tx(ij, kstr, 1) * ft(ij, 2) / zbot          &
-    &                    * amskt(ij, kstr)
+    &                   - tx(ij, kstr, 1) *ft(ij, 2)                  &
+    &                     /dz(ij, kstr) * amskt(ij, kstr)         
+       adt(ij, kstr, 2) = adt(ij, kstr, 2)                            &
+    &                    - fs(ij)                                     &
+    &                     /dz(ij, kstr) * amskt(ij, kstr) 
     end do
 
     call thomas( adt, ac, aa, ab )
@@ -390,10 +396,10 @@ contains
        end do
     end do
 
-    do ij = ijtstr, ijtend
-       tx(ij, kstr, 2) = tx(ij, kstr, 2)                             &
-    &                  - ts * fs(ij) / hxbot(ij) / ds(kstr)
-    end do
+!    do ij = ijtstr, ijtend
+!       tx(ij, kstr, 2) = tx(ij, kstr, 2)                             &
+!    &                  - ts * fs(ij) / hxbot(ij) / ds(kstr)
+!    end do
 
     do n = 3, ntdim
        do ij = ijtstr, ijtend

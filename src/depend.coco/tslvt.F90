@@ -12,6 +12,7 @@ module tslvt
 !     '08.07.10  H.Hasumi: initial/final processing
 !     '12.01.30  Y.Komuro: (change surface water flux by T. Suzuki)
 !     '12.09.20  H.Tatebe: for COCO5.0 in F90
+!     '13.04.22  T.Suzuki: bug fix (change surface water)
 ! ---------------------------------------------------------------------
 
   use zocdim, only :                                   &
@@ -158,9 +159,12 @@ contains
     end do
     
     do ij = ijstr, ijend
+!       adt(ij, kstr, 1) = adt(ij, kstr, 1)                            &
+!    &                   + tx(ij, kstr, 1) * ft(ij, 2) / zbot          &
+!    &                    * amskt(ij, kstr)
        adt(ij, kstr, 1) = adt(ij, kstr, 1)                            &
-    &                   + tx(ij, kstr, 1) * ft(ij, 2) / zbot          &
-    &                    * amskt(ij, kstr)
+    &                   - tx(ij, kstr, 1) *ft(ij, 2)                  &
+    &                     /dz(ij, kstr) * amskt(ij, kstr)             &
     end do
 
     call thomas( adt, ac, aa, ab )

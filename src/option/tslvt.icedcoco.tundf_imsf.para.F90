@@ -269,9 +269,12 @@ contains
     end do
     
     do ij = ijstr, ijend
+!       adt(ij, kstr, 1) = adt(ij, kstr, 1)                            &
+!    &                   + tx(ij, kstr, 1) * ft(ij, 2) / zbot          &
+!    &                    * amskt(ij, kstr)
        adt(ij, kstr, 1) = adt(ij, kstr, 1)                            &
-    &                   + tx(ij, kstr, 1) * ft(ij, 2) / zbot          &
-    &                    * amskt(ij, kstr)
+    &                   - tx(ij, kstr, 1) *ft(ij, 2)                  &
+    &                     /dz(ij, kstr) * amskt(ij, kstr)         
     end do
 
 !---- for implicit surface flux
