@@ -768,7 +768,6 @@ contains
     integer(4)                ::     ij,     k,      n,     m
     integer(4)                ::     lg,     l
     integer(4)                ::    ijk
-    integer(4)                ::  ntnis
     integer(4)                :: iranks,  nbuf,   ierr
 
     if ( oinit .or. ofinal ) then
