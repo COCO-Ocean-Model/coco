@@ -12,6 +12,7 @@ c     '07.12.20  H.Hasumi: output file format is modified
 c     '09.04.01  T.Suzuki: for tri-pole 
 c     '10.04.14  M.kurogi (xmkmsk-tri.mod5 by Dr. Suzuki)
 c     '12.04.18  Y.Komuro: bug fix (argument inconsistency)
+c     '16.04.18  T.Suzuki: small bug fix (Thanks for Kurogi-san)
 c
 c ---------------------------------------------------------------------
 
@@ -661,8 +662,8 @@ C         DO 100 I = 1, NXDIM
 C            DYY(I, J) = DY(J)
 C  100 CONTINUE
 C      FACTY = (90.0D0 - PLAT) / 90.0D0
-      FACTY = 1.0D0
-!      FACTY=COS(PLAT*RAD)
+!      FACTY = 1.0D0
+      FACTY=COS(PLAT*RAD)
       DO 100 J = 1, NYDIM
          DO 100 I = 1, NXDIM
             IF( J .GE. JSTR+NY1 ) THEN
@@ -1166,12 +1167,15 @@ cx      ALONE = ALONE * RAD
       QLON =   0.0D0 * RAD
       QLAT = -90.0D0 * RAD
       W3 = (1.D0, 0.D0)
-      CX = COS(PLON) * COS(PLAT) + COS(QLON) * COS(QLAT)
-      CY = SIN(PLON) * COS(PLAT) + SIN(QLON) * COS(QLAT)
-      CZ = SIN(PLAT) + SIN(QLAT)
-      ELON = ATAN2(CY, CX)
-      CX = SQRT(CX * CX + CY * CY)
-      ELAT = ATAN2(CZ, CX)
+C      CX = COS(PLON) * COS(PLAT) + COS(QLON) * COS(QLAT)
+C      CY = SIN(PLON) * COS(PLAT) + SIN(QLON) * COS(QLAT)
+C      CZ = SIN(PLAT) + SIN(QLAT)
+C      ELON = ATAN2(CY, CX)
+C      CX = SQRT(CX * CX + CY * CY)
+C      ELAT = ATAN2(CZ, CX)
+      ELON = ALONW
+      ELAT = 0.0D0
+
       Z1 = TAN(PI * 0.25D0 - PLAT * 0.5D0) * EXP(PLON * CUNITI)
       Z2 = TAN(PI * 0.25D0 - QLAT * 0.5D0) * EXP(QLON * CUNITI)
       Z3 = TAN(PI * 0.25D0 - ELAT * 0.5D0) * EXP(ELON * CUNITI)
