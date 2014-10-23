@@ -13,6 +13,7 @@ module tflxt
 !     '10.04.14  M.Kurogi: (COCO4.4 tripolar code by Dr. Suzuki)
 !     '12.08.02  Y.Komuro: for COCO5.0
 !     '13.02.13  Y.Komuro: remove non-parallel code 
+!     '13.09.24  s.urakawa: bug fix (overshoot limiter)
 !
 ! ---------------------------------------------------------------------
 
@@ -62,7 +63,6 @@ subroutine flxtrc( &
   &     uy,     vy,      w,    ahv )
 
   use bstbc
-  use ufile
   use ufile
   use bgs3d
   use qckot
@@ -684,15 +684,20 @@ subroutine flxtrc( &
           
            if ( abs( sx(ij, k, n) ) < 1.5d0 * s0m ) then
              
-              sxx(ij, k, n) = min( s0m + sxp, &
-                &                  max( abs( sx(ij, k, n) ) - s0m, &
+!             sxx(ij, k, n) = min( s0m + sxp, &
+!               &                  max( abs( sx(ij, k, n) ) - s0m, &
+!               &                       sxx(ij, k, n) ) )
+              sxx(ij, k, n) = min( s0m - abs( sx(ij, k, n) ), &
+                &                  max( - s0m - sxp,          &
                 &                       sxx(ij, k, n) ) )
 
            else
                   
-              sxx(ij, k, n) = min( s0m + sxp, &
-                &                  max( s0m - sxp, sxx(ij, k, n) ) )
-             
+!             sxx(ij, k, n) = min( s0m + sxp, &
+!               &                  max( s0m - sxp, sxx(ij, k, n) ) )
+              sxx(ij, k, n) = min( - s0m + sxp,       &
+                &                  max( - s0m - sxp,  &
+                &                        sxx(ij, k, n) ) )            
            end if
 
            sxy(ij, k, n) = min( s0m, max( - s0m, sxy(ij, k, n) ) )
@@ -1048,14 +1053,20 @@ subroutine flxtrc( &
                
            if ( abs( sy(ij, k, n) ) < 1.5d0 * s0m ) then
 
-              syy(ij, k, n) = min( s0m + sxp, &
-                &                  max( abs( sy(ij, k, n) ) - s0m, &
+!             syy(ij, k, n) = min( s0m + sxp, &
+!               &                  max( abs( sy(ij, k, n) ) - s0m, &
+!               &                       syy(ij, k, n) ) )
+              syy(ij, k, n) = min( s0m - abs( sy(ij, k, n) ),  &
+                &                  max( - s0m - sxp,           &
                 &                       syy(ij, k, n) ) )
 
            else
                   
-              syy(ij, k, n) = min( s0m + sxp, &
-                &                  max( s0m - sxp, syy(ij, k, n) ) )
+!             syy(ij, k, n) = min( s0m + sxp, &
+!               &                  max( s0m - sxp, syy(ij, k, n) ) )
+              syy(ij, k, n) = min( - s0m + sxp,           &
+                &                  max( - s0m - sxp,      &
+                &                       syy(ij, k, n) ) )
 
            end if
              
@@ -1441,14 +1452,20 @@ subroutine flxtrc( &
                
            if ( abs( sz(ij, k, n) ) < 1.5d0 * s0m ) then
 
-              szz(ij, k, n) = min( s0m + sxp, &
-                &                  max( abs( sz(ij, k, n) ) - s0m, &
+!             szz(ij, k, n) = min( s0m + sxp, &
+!               &                  max( abs( sz(ij, k, n) ) - s0m, &
+!               &                       szz(ij, k, n) ) )
+              szz(ij, k, n) = min( s0m - abs( sz(ij, k, n) ),  &
+                &                  max( - s0m - sxp,           &
                 &                       szz(ij, k, n) ) )
 
            else
                   
-              szz(ij, k, n) = min( s0m + sxp, &
-                &                  max( s0m - sxp, szz(ij, k, n) ) )
+!             szz(ij, k, n) = min( s0m + sxp, &
+!               &                  max( s0m - sxp, szz(ij, k, n) ) )
+              szz(ij, k, n) = min( - s0m + sxp,          &
+     &                             max( - s0m - sxp,     &
+     &                                  szz(ij, k, n) ) )
 
            end if
              
