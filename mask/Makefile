@@ -1,5 +1,5 @@
 include ../src/Mkinclude
-include Sysdep.$(SYSTEM)$(PARALLEL)
+include Sysdep.$(SYSTEM)
 
 GEO	= GEO
 OUT	= zocdim.F90

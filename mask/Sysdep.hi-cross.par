@@ -1,8 +1,0 @@
-FC	= f90
-FFLAGS	= 
-FOPTION = -DOPT_PARALLEL
-UNIT22	= ftn22
-RUNOPT	= 
-
-.F.o:
-	$(FC) $(FOPTION) -c $<

@@ -1,8 +1,0 @@
-FC	= f77
-FFLAGS	= -u -convert big_endian -tune host 
-FOPTION = $(FFLAGS) -DOPT_PARALLEL
-UNIT22	= fort.22
-RUNOPT	=
-
-.F.o:
-	$(FC) $(FOPTION) -c $<

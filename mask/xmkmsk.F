@@ -348,17 +348,11 @@ c =====================================================================
          END DO
       END IF
 
-#ifdef OPT_PARALLEL
       WRITE(*, '(2X,A,A8,I7,A,A8,I7)')
      & 'integer, parameter :: ',
      & 'ijvgst =', IJVSTR, ', ',
      & 'ijvged =', IJVEND
-#else
-      WRITE(*, '(2X,A,A8,I7,A,A8,I7)')
-     & 'integer, parameter :: ',
-     & 'ijvstr =', IJVSTR, ', ',
-     & 'ijvend =', IJVEND
-#endif
+
 c      WRITE(JFILE) AMSKV, AMFVX, AMFVY, AMFVZ
       WRITE(JFILE) AMSKV
       WRITE(JFILE) AMFVX
@@ -502,17 +496,11 @@ c =====================================================================
          END DO
       END IF
 
-#ifdef OPT_PARALLEL
       WRITE(*, '(2X,A,A8,I7,A,A8,I7)')
      & 'integer, parameter :: ',
      & 'ijtgst =', IJTSTR, ', ',
      & 'ijtged =', IJTEND
-#else
-      WRITE(*, '(2X,A,A8,I7,A,A8,I7)')
-     & 'integer, parameter :: ',
-     & 'ijtstr =', IJTSTR, ', ',
-     & 'ijtend =', IJTEND
-#endif
+
 c      WRITE(JFILE) AMSKT, AMFTX, AMFTY, AMFTZ
       WRITE(JFILE) AMSKT
       WRITE(JFILE) AMFTX
@@ -595,10 +583,10 @@ c =====================================================================
       REAL*8     DEP
       REAL*8  FLGBBL
       INTEGER      I,      J,      K
-#ifdef OPT_PARALLEL
+
       INTEGER    NXS,    NYS, NXSDIM, NYSDIM
       INTEGER  ISEND,  JSEND, IJSSTR, IJSEND
-#endif
+
 
       REAL*8      PI,    RAD, RADIUS,  OMEGA
       COMPLEX*16 CUNITI
@@ -788,14 +776,13 @@ c     &     / ABS(DCONF(ZQ, ZA, ZB, ZC, WC))
 
       WRITE(*, '(A)') 'module zocdim'
       WRITE(*, *)
-#ifdef OPT_PARALLEL
+
       WRITE(*, '(2X,A)') 'use zocnod'
       WRITE(*, *)
-#endif
+
       WRITE(*, '(2X,A)') 'implicit none'
       WRITE(*, *)
 
-#ifdef OPT_PARALLEL
       WRITE(*, '(2X,A,2(A8,I7,A),A8,I7)')
      & 'integer, parameter :: ',
      & 'nxg    =', NX, ', ',
@@ -910,66 +897,6 @@ c     &     / ABS(DCONF(ZQ, ZA, ZB, ZC, WC))
       WRITE(*, '(2X,A)')
      & 'integer, parameter :: icomm = istr-1, jcomm = jstr-1'
       WRITE(*, *)
-#else
-      WRITE(*, '(2X,A,2(A8,I7,A),A8,I7)')
-     & 'integer, parameter :: ',
-     & 'nx     =', NX, ', ',
-     & 'ny     =', NY, ', ',
-     & 'nz     =', NZ
-      WRITE(*, '(2X,A,I7)')
-     & 'integer, parameter :: kz     =', KZ
-      WRITE(*, '(2X,A,I7)')
-     & 'integer, parameter :: nic    =', NIC
-      WRITE(*, '(2X,A,2(A8,I7,A),A8,I7)')
-     & 'integer, parameter :: ',
-     & 'nxdim  =', NXDIM, ', ',
-     & 'nydim  =', NYDIM, ', ',
-     & 'nzdim  =', NZDIM
-      WRITE(*, '(2X,A,2(A8,I7,A),A8,I7)')
-     & 'integer, parameter :: ',
-     & 'istr   =', ISTR, ', ',
-     & 'jstr   =', JSTR, ', ',
-     & 'kstr   =', KSTR
-      WRITE(*, '(2X,A,2(A8,I7,A),A8,I7)')
-     & 'integer, parameter :: ',
-     & 'iend   =', IEND, ', ',
-     & 'jend   =', JEND, ', ',
-     & 'kend   =', KEND
-      WRITE(*, '(2X,A,A8,I7,A,A8,I7)')
-     & 'integer, parameter :: ',
-     & 'ijstr  =', ISTR+(JSTR-1)*NXDIM, ', ',
-     & 'ijend  =', IEND+(JEND-1)*NXDIM
-      WRITE(*, *)
-
-      WRITE(*, '(2X,A,I7)')
-     & 'integer, parameter :: ntdim =', NTDIM
-      WRITE(*, *)
-
-      WRITE(*, '(2X,A)')
-     & 'integer, parameter :: nxy = nx*ny, nxyz = nxy*nz'
-      WRITE(*, '(2X,A,A)')
-     & 'integer, parameter :: nxydim = nxdim*nydim, ',
-     & 'nxyzdm = nxydim*nzdim'
-      WRITE(*, '(2X,A)')
-     & 'integer, parameter :: nztdim = nzdim*ntdim)'
-      WRITE(*, '(2X,A)')
-     & 'integer, parameter :: nxyidm = nxydim*(nic+1))'
-      WRITE(*, *)
-
-      WRITE(*, '(2X,A)')
-     & 'integer, parameter :: nwrk = nxyzdm*(ntdim*3+2)'
-      WRITE(*, *)
-
-      WRITE(*, '(2X,A)')
-     & 'integer, parameter :: le = 1, lw = -1, ln = nxdim, ls = -nxdim'
-      WRITE(*, '(2X,A)')
-     & 'integer, parameter :: lne = nxdim+1, lnw = nxdim-1'
-      WRITE(*, '(2X,A)')
-     & 'integer, parameter :: lse = -nxdim+1, lsw = -nxdim-1'
-      WRITE(*, '(2X,A)')
-     & 'integer, parameter :: lww = -2, lss = -2 * nxdim'
-      WRITE(*, *)
-#endif
 
       IF (ITHIRD .EQ. 0) THEN
          W3 = (-1.D0, 0.D0)
@@ -1241,14 +1168,14 @@ c =====================================================================
          STOP
       END IF
       READ(IGFILE, *) INODES, JNODES
-#ifdef OPT_PARALLEL
+
       IF (     (MOD(NX, INODES) .NE. 0)
      &    .OR. (MOD(NY, JNODES) .NE. 0)) THEN
          WRITE(*, *) ' #### NODE NUMBER ERROR #### '
          WRITE(*, *) ' The size of sub-regions must be identical. '
          STOP
       END IF
-#endif
+
       READ(IGFILE, *) ALONW, ALONE
       READ(IGFILE, *) ALATS, ALATN
       READ(IGFILE, *) IMERC
