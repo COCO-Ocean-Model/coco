@@ -1173,7 +1173,8 @@ C      CZ = SIN(PLAT) + SIN(QLAT)
 C      ELON = ATAN2(CY, CX)
 C      CX = SQRT(CX * CX + CY * CY)
 C      ELAT = ATAN2(CZ, CX)
-      ELON = ALONW
+!      ELON = ALONW
+      ELON = 0.0D0
       ELAT = 0.0D0
 
       Z1 = TAN(PI * 0.25D0 - PLAT * 0.5D0) * EXP(PLON * CUNITI)
