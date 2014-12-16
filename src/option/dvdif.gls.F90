@@ -28,10 +28,10 @@ module dvdif
     &   zbot,    cor,   itst, ieuler
   use zocmsk,  only: &
 #ifdef OPT_BBL
-    &  amsktb, amskvb, &
+    &  amsktb, amskvb, nbotv, &
 #endif
     &  amskt,  amskv,  amskb,  amftz,  amfvz, &
-    &   nbot,  nbotv
+    &   nbot
   use zocphy, only: &
     & rhoo, gravit,  ckarm
 
