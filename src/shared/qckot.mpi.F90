@@ -307,104 +307,96 @@ contains
           end if
 
 
-                  ISTART=(/IRANK*NX, JRANK*NY, 0/)
-                  IGSIZE=(/NXG, NYG, KZDIM/)
-                  ISIZE =(/NX , NY , KZDIM/)
+                  istart=(/irank*nx, jrank*ny, 0/)
+                  igsize=(/nxg, nyg, kzdim/)
+                  isize =(/nx , ny , kzdim/)
 
 
-               IF (OSINGL(IITEM)) THEN
-                  INT1=NXG
-                  INT2=NYG
-                  INT3=KZDIM
-                  INT4=4
-                  NSIZE2=INT1*INT2*INT3*INT4
-                  NSIZE=NXG*NYG*KZDIM*4
+               if (osingl(iitem)) then
+                  int1=nxg
+                  int2=nyg
+                  int3=kzdim
+                  int4=4
+                  nsize2=int1*int2*int3*int4
+                  nsize=nxg*nyg*kzdim*4
 #ifdef OPT_IO_SEQUENTIAL
-                  CHEAD(38) = 'REAL4'
-                  CALL MPI_WRITE_HEADER(CHEAD, NFUNIT(IITEM), DISP(IITEM))
-                  CALL INFO_SEQ(NFUNIT(IITEM), DISP(IITEM), NSIZE)
+                  chead(38) = 'REAL4'
+                  call mpi_write_header(chead, nfunit(iitem), disp(iitem))
+                  call info_seq(nfunit(iitem), disp(iitem), nsize)
 #endif
                  ! swap endian
-                  DO K = KZSTR(IITEM), KZEND(IITEM)
-                  DO J = 1, NY
-                  DO I = 1, NX
-                       IJK = (K - KZSTR(IITEM)) * NXY + (J - 1) * NX + I
-                         SNGLOU(IJK) = DBLEOU(IJK)
-                         CALL REVERSE_REAL4(SNGLOU(IJK)) 
-                  END DO
-                  END DO
-                  END DO
+                  do k = kzstr(iitem), kzend(iitem)
+                  do j = 1, ny
+                  do i = 1, nx
+                       ijk = (k - kzstr(iitem)) * nxy + (j - 1) * nx + i
+                         snglou(ijk) = dbleou(ijk)
+                         call reverse_real4(snglou(ijk)) 
+                  end do
+                  end do
+                  end do
 
-                  CALL MPI_TYPE_CREATE_SUBARRAY( &
-     &                 3,      & !array dimension
-     &                 IGSIZE, & !global size 
-     &                 ISIZE,  & !subarray size
-     &                 ISTART, & !subarray start index (start from 0)
-     &                 MPI_ORDER_FORTRAN, &
-     &                 MPI_REAL4,         &
-     &                 IFILE,             &
-     &                 IERR)
-                  CALL MPI_TYPE_COMMIT(IFILE, IERR)
+                  call mpi_type_create_subarray( &
+     &                 3, igsize, isize, istart, &
+     &                 mpi_order_fortran,        &
+     &                 mpi_real4, ifile, ierr)
 
-                  CALL MPI_FILE_SET_VIEW(         &
-     &                 NFUNIT(IITEM),DISP(IITEM), &
-     &                 MPI_REAL4,IFILE,"native",  &
-     &                 MPI_INFO_NULL,IERR)
+                  call mpi_type_commit(ifile, ierr)
 
-                  CALL MPI_FILE_WRITE_ALL(                 &
-     &                 NFUNIT(IITEM), SNGLOU, NX*NY*KZDIM, &
-     &                 MPI_REAL4, MPI_STATUS_IGNORE, IERR)
+                  call mpi_file_set_view(         &
+     &                 nfunit(iitem),disp(iitem), &
+     &                 mpi_real4,ifile,"native",  &
+     &                 mpi_info_null,ierr)
 
-                  DISP(IITEM) = DISP(IITEM) + NSIZE2
+                  call mpi_file_write_all(                 &
+     &                 nfunit(iitem), snglou, nx*ny*kzdim, &
+     &                 mpi_real4, mpi_status_ignore, ierr)
+
+                  disp(iitem) = disp(iitem) + nsize2
 #ifdef OPT_IO_SEQUENTIAL
-                  CALL INFO_SEQ(NFUNIT(IITEM), DISP(IITEM), NSIZE)
+                  call info_seq(nfunit(iitem), disp(iitem), nsize)
 #endif
 
              else
 
-                  INT1=NXG
-                  INT2=NYG
-                  INT3=KZDIM
-                  INT4=8
-                  NSIZE2=INT1*INT2*INT3*INT4
-                  NSIZE=NXG*NYG*KZDIM*8
+                  int1=nxg
+                  int2=nyg
+                  int3=kzdim
+                  int4=8
+                  nsize2=int1*int2*int3*int4
+                  nsize=nxg*nyg*kzdim*8
 #ifdef OPT_IO_SEQUENTIAL
-                  CHEAD(38) = 'REAL8'
-                  CALL MPI_WRITE_HEADER(CHEAD, NFUNIT(IITEM), DISP(IITEM))                    
-                  CALL INFO_SEQ(NFUNIT(IITEM), DISP(IITEM), NSIZE)
+                  chead(38) = 'REAL8'
+                  call mpi_write_header(chead, nfunit(iitem), disp(iitem))                    
+                  call info_seq(nfunit(iitem), disp(iitem), nsize)
 #endif
                  ! swap endian
-                  DO K = KZSTR(IITEM), KZEND(IITEM)
-                  DO J = 1, NY
-                  DO I = 1, NX
-                       IJK = (K - KZSTR(IITEM)) * NXY  + (J - 1) * NX + I
-                         CALL REVERSE_REAL8(DBLEOU(IJK)) 
-                  END DO
-                  END DO
-                  END DO
+                  do k = kzstr(iitem), kzend(iitem)
+                  do j = 1, ny
+                  do i = 1, nx
+                       ijk = (k - kzstr(iitem)) * nxy  + (j - 1) * nx + i
+                         call reverse_real8(dbleou(ijk)) 
+                  end do
+                  end do
+                  end do
 
-                  CALL MPI_TYPE_CREATE_SUBARRAY( &
-     &                 3,      & !array dimension
-     &                 IGSIZE, & !global size 
-     &                 ISIZE,  & !subarray size
-     &                 ISTART, & !subarray start index (start from 0)
-     &                 MPI_ORDER_FORTRAN, &
-     &                 MPI_REAL8,         &
-     &                 IFILE,             &
-     &                 IERR)
-                  CALL MPI_TYPE_COMMIT(IFILE, IERR)
+                  call mpi_type_create_subarray( &
+     &                 3, igsize, isize, istart, &
+     &                 mpi_order_fortran,        &
+     &                 mpi_real8, ifile, ierr)
 
-                  CALL MPI_FILE_SET_VIEW(         &
-     &                 NFUNIT(IITEM),DISP(IITEM), &
-     &                 MPI_REAL8,IFILE,"native",  &
-     &                 MPI_INFO_NULL,IERR)
+                  call mpi_type_commit(ifile, ierr)
 
-                  CALL MPI_FILE_WRITE_ALL(                 &
-     &                 NFUNIT(IITEM), DBLEOU, NX*NY*KZDIM, &
-     &                 MPI_REAL8, MPI_STATUS_IGNORE, IERR)
-                  DISP(IITEM) = DISP(IITEM) + NSIZE2
+                  call mpi_file_set_view(         &
+     &                 nfunit(iitem),disp(iitem), &
+     &                 mpi_real8,ifile,"native",  &
+     &                 mpi_info_null,ierr)
+
+                  call mpi_file_write_all(                 &
+     &                 nfunit(iitem), dbleou, nx*ny*kzdim, &
+     &                 mpi_real8, mpi_status_ignore, ierr)
+                  disp(iitem) = disp(iitem) + nsize2
 #ifdef OPT_IO_SEQUENTIAL
-                  CALL INFO_SEQ(NFUNIT(IITEM), DISP(IITEM), NSIZE)
+                  call info_seq(nfunit(iitem), disp(iitem), nsize)
 #endif
           end if
 
