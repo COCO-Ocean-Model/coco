@@ -41,6 +41,7 @@ OBJS.coco	= \
 
 OBJS.icedcoco	= \
           ufile.o \
+          mpiio.o \
           ucaln.o \
           bgs2d.o \
           bgs3d.o \

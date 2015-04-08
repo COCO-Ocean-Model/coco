@@ -12,8 +12,8 @@ module zocout
   real(8) ::  wrkout(nwork)
   real(8) ::  dbleou(nxyz)
   real(4) ::  snglou(nxyz)
-
+#ifndef OPT_IO_COCOMPI
   real(8), allocatable ::  dbloug(:, :, :)
   real(4), allocatable ::  sngoug(:, :, :)
-
+#endif
 end module zocout

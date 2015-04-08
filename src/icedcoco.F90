@@ -285,9 +285,11 @@ subroutine parset
     &  irank,    iup,  idown, &
     &  jrank,    jup,  jdown
 
+#ifndef OPT_IO_COCOMPI
   use bgs2d
   use bgs3d
   use bgsid
+#endif
   use ufile
 
   implicit none
@@ -398,10 +400,11 @@ subroutine parset
      jdown = mpi_proc_null
   end if
 
+#ifndef OPT_IO_COCOMPI
   call gs2dst
   call gs3dst
   call gsidst
-
+#endif
   return
 end subroutine parset
 

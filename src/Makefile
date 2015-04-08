@@ -3,11 +3,12 @@ include Sysdep.$(SYSTEM)
 MAIN	= $(MODEL).o
 
 SRCSHR	= \
+          mpiio \
           atmct$(TSTAG) \
           bchmk \
-          bgs2d \
-          bgs3d \
-          brdge \
+          bgs2d$(MPI) \
+          bgs3d$(MPI) \
+          brdge$(MPI) \
           bshfi \
           bshft \
           cadvc$(TSTAG) \
@@ -22,7 +23,7 @@ SRCSHR	= \
           fbtav \
           fshdf \
           fshlw \
-          qckot \
+          qckot$(MPI) \
           tflxt \
           tovtr \
           ucaln \
@@ -47,8 +48,8 @@ SRCDPD.icedcoco	= \
           aprdc$(TSTAG) \
           bfrch \
           binst \
-          bgsid \
-          brstt \
+          bgsid$(MPI) \
+          brstt$(MPI) \
           bstbc \
           ictrn \
           ifhea \
@@ -61,7 +62,7 @@ SRCDPD.icedcoco	= \
           iptmp \
           sfcng \
           tslvt \
-          utint
+          utint$(MPI)
 
 all:lib $(TARGET)
 

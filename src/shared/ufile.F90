@@ -7,13 +7,19 @@ module ufile
 !     '01.12.06  H.Hasumi
 !     '07.04.23  H.Hasumi
 !     '12.10.06  M.kurogi: for COCO5.0
+!     '15.04.08  M.Kurogi: for MPI-IO
 !
 ! ---------------------------------------------------------------------
 
  use zocfil, only : nfmax
  implicit none
  private
- public :: filopn, filcls, rewnml, cstnml
+ public ::  &
+#ifdef OPT_IO_COCOMPI
+ & mpi_filopn, mpi_filcls, &
+#endif
+ & filopn, filcls, rewnml, cstnml
+
  logical, save   ::  opn(nfmax)
  data opn / nfmax*.false. /
 
@@ -61,6 +67,46 @@ contains
  return
  end subroutine filopn
 
+#ifdef OPT_IO_COCOMPI
+ subroutine mpi_filopn(                                                            &
+  &                      nf,                                                   &
+  &                      cf,   cact)
+ use zocfil
+ implicit none
+#include "mpif.h"
+ character,  intent(in ) ::    cf*(ncf),   cact*(*)
+ integer,    intent(out) ::    nf
+ logical   ::   oex
+ integer   ::     i,   ierr
+
+ if (cact .eq. 'READ') then
+    inquire(file=cf, exist=oex)
+    if (.not. oex) then
+       i = index(cf, ' ') - 1
+       write(nfstdo, *) '### FILE "', cf(1:i), '" DOES NOT EXIST ###'
+       call mpi_abort(mpi_comm_world, 1, ierr)
+    end if
+ else if (cf(1:13) .eq. 'not-specified') then
+    write(nfstdo, *) '### NAME NOT SPECIFIED FOR OUTPUT FILE ###'
+    call mpi_abort(mpi_comm_world, 1, ierr)
+ end if
+
+ if (cact == 'READ') then
+   call mpi_file_open(mpi_comm_world, cf, mpi_mode_rdonly, &
+  &   mpi_info_null, nf, ierr)
+ else
+!    inquire(file=cf, exist=oex)
+!    if (oex) call mpi_file_delete(cf,mpi_info_null)
+   call mpi_file_open(mpi_comm_world, cf, mpi_mode_create + mpi_mode_wronly, &
+  &   mpi_info_null, nf, ierr)
+ end if
+
+ i = index(cf, ' ') - 1
+ write(nfstdo, *) '*** FILE "', cf(1:i), '" OPENED BY MPI FOR UNIT', nf, '***'
+
+ return
+ end subroutine mpi_filopn
+#endif
 ! =====================================================================
 
  subroutine filcls(                                                            &
@@ -74,6 +120,18 @@ contains
 
  end subroutine filcls
 
+#ifdef OPT_IO_COCOMPI
+ subroutine mpi_filcls(                                                        &
+  &                    nf)
+ use zocfil, only : nfstdo
+ implicit none
+ integer, intent(in) :: nf       
+ integer :: ierr
+ call mpi_file_close(nf, ierr)
+ write(nfstdo, *) '*** FILE UNIT', nf, 'CLOSED BY MPI***'
+
+ end subroutine mpi_filcls
+#endif
 ! *********************************************************************
 
  subroutine rewnml(                                                            &
