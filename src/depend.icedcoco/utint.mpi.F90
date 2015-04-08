@@ -34,7 +34,7 @@ contains
     use zocnod,  only  :  iroot,  myrank
     use ufile
     use ucaln
-
+    use mpiio
     implicit none
 
 #include "mpif.h"
@@ -330,7 +330,7 @@ contains
     use zocnod,  only  :  iroot,  myrank
     use ufile
     use ucaln
-
+    use mpiio
     implicit none
 
 #include "mpif.h"

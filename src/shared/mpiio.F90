@@ -5,6 +5,16 @@
 !     '15.04.07  M.Kurogi: MPI-IO
 !
 ! ---------------------------------------------------------------------
+module mpiio
+  private
+  public :: info_seq, mpi_write_header, mpi_read_chead,  &
+       & mpi_read_sfc, mpi_read_bdy, mpi_read_root,      &
+       & mpi_read_2d_intx, mpi_read_2d_dimx,             &
+       & mpi_read_3d_dimx, mpi_read_2d, mpi_read_id,     &
+       & mpi_read_3d, mpi_write_2d, mpi_write_id,        &
+       & mpi_write_3d, reverse_real4, reverse_real8
+
+contains
 
   subroutine info_seq(fh, offset, nsize0)
   use zocdim
@@ -769,6 +779,7 @@
 #endif
   return
   end subroutine mpi_write_3d
+end module mpiio
 
 #else
   subroutine mpi_io

@@ -65,7 +65,7 @@ contains
     use ufile
     use ucaln
     use bshft
-
+    use mpiio
     implicit none
 
     real(8),   intent(in)     ::  tstrt
@@ -337,6 +337,7 @@ contains
     use zocnod,   only  :                                             &
     &     myrank,  iroot
     use bshft
+    use mpiio
 
     implicit none
 
@@ -411,6 +412,7 @@ contains
     &     myrank,  iroot
     use ufile
     use ucaln
+    use mpiio
 
     implicit none
 
@@ -705,7 +707,7 @@ contains
     &        nxg,    nyg,     nz,   nxyg,  nxyzg
     use zocnod,   only  :                                             &
     &     myrank,  iroot
-
+    use mpiio
     implicit none
 
     integer(4),   intent(in)     ::   ixdim,  jydim,  kzdim

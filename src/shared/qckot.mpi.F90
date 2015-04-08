@@ -239,6 +239,7 @@ contains
  use zocgrd, only : tt, nt
  use zocout, only :  dbleou, snglou, wrkout
  use ucaln
+ use mpiio
  implicit none
 
  logical, intent(in) :: oflout(nfomax)
