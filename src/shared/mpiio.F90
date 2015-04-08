@@ -6,827 +6,772 @@
 !
 ! ---------------------------------------------------------------------
 
-      SUBROUTINE INFO_SEQ(FH, OFFSET, NSIZE0)
-      use zocdim
-      IMPLICIT NONE
+  subroutine info_seq(fh, offset, nsize0)
+  use zocdim
+  implicit none
 #include "mpif.h"
-      INTEGER NSIZE0, NSIZE
-      INTEGER   FH
-      INTEGER   (KIND = MPI_OFFSET_KIND):: OFFSET
+  integer :: nsize0, nsize
+  integer :: fh
+  integer   (kind = mpi_offset_kind) :: offset
 
-      NSIZE=NSIZE0
-      CALL REVERSE_INT4(NSIZE) !swap endian
+  nsize=nsize0
+  call reverse_int4(nsize) !swap endian
 
-      CALL MPI_FILE_SET_VIEW(                     &
-     &     FH, OFFSET,                            &
-     &     MPI_INTEGER4, MPI_INTEGER4,"native",   &
-     &     MPI_INFO_NULL, IERR)
-      IF (MYRANK .EQ. IROOT) THEN
-         CALL MPI_FILE_WRITE(                     &
-     &     FH, NSIZE, 1, MPI_INTEGER4,            &
-     &     MPI_STATUS_IGNORE, IERR)
-      END IF
-      OFFSET = OFFSET + 4
-      END
+  call mpi_file_set_view(                       &
+   &     fh, offset,                            &
+   &     mpi_integer4, mpi_integer4,"native",   &
+   &     mpi_info_null, ierr)
+  if (myrank .eq. iroot) then
+     call mpi_file_write(                       &
+   &     fh, nsize, 1, mpi_integer4,            &
+   &     mpi_status_ignore, ierr)
+  end if
+  offset = offset + 4
 
+  end subroutine info_seq
 
-
-      SUBROUTINE MPI_WRITE_HEADER(CHEAD, FH, OFFSET)
-      use zocdim
-      IMPLICIT NONE
+  subroutine mpi_write_header(chead, fh, offset)
+  use zocdim
+  implicit none
 #include "mpif.h"
 
-      CHARACTER CHEAD(64)*16
-      INTEGER   FH
-      INTEGER   (KIND = MPI_OFFSET_KIND):: OFFSET
-      INTEGER NSIZE
-      NSIZE=64*16
+  character :: chead(64)*16
+  integer :: fh
+  integer (kind = mpi_offset_kind) :: offset
+  integer :: nsize
+  nsize=64*16
+
 #ifdef OPT_IO_SEQUENTIAL
-      CALL INFO_SEQ(FH, OFFSET, NSIZE)
+  call info_seq(fh, offset, nsize)
 #endif
 !========= header
-       CALL MPI_FILE_SET_VIEW(                   &
-     &     FH, OFFSET,                           &
-     &     MPI_CHARACTER,MPI_CHARACTER,"native", &
-     &     MPI_INFO_NULL,IERR)
+  call mpi_file_set_view(                      &
+   &     fh, offset,                           &
+   &     mpi_character,mpi_character,"native", &
+   &     mpi_info_null,ierr)
 
-       IF (MYRANK .EQ. IROOT) THEN
-       CALL MPI_FILE_WRITE(                      &
-     &     FH,CHEAD,  NSIZE, MPI_CHARACTER,      &
-     &     MPI_STATUS_IGNORE, IERR)
-       END IF
-      OFFSET = OFFSET + NSIZE
+  if (myrank .eq. iroot) then
+     call mpi_file_write(                      &
+     &     fh,chead,  nsize, mpi_character,    &
+     &     mpi_status_ignore, ierr)
+  end if
+  offset = offset + nsize
 #ifdef OPT_IO_SEQUENTIAL
-      CALL INFO_SEQ(FH, OFFSET, NSIZE)
+      call info_seq(fh, offset, nsize)
 #endif
 
-      RETURN
-      END SUBROUTINE MPI_WRITE_HEADER
-
-
+  return
+  end subroutine mpi_write_header
 
 !===============================================================
 !     REVERSE_REAL4
 !===============================================================
 
-      SUBROUTINE REVERSE_REAL4(REAL4)
-      IMPLICIT NONE
+  subroutine reverse_real4(real4)
+  implicit none
 
-      REAL(4) :: REAL4, VALUE
-      INTEGER(1) :: REVERSE(4), TMPVAL
-      EQUIVALENCE(VALUE, REVERSE)
+  real(4) :: real4, value
+  integer(1) :: reverse(4), tmpval
+  equivalence(value, reverse)
 
 #ifdef OPT_IO_BYTESWAP
-      REVERSE=0
-      VALUE = REAL4
+  reverse=0
+  value = real4
 
-      TMPVAL = REVERSE(1)
-      REVERSE(1) = REVERSE(4)
-      REVERSE(4) = TMPVAL
-      TMPVAL = REVERSE(2)
-      REVERSE(2) = REVERSE(3)
-      REVERSE(3) = TMPVAL
+  tmpval = reverse(1)
+  reverse(1) = reverse(4)
+  reverse(4) = tmpval
+  tmpval = reverse(2)
+  reverse(2) = reverse(3)
+  reverse(3) = tmpval
 
-      REAL4 = VALUE
+  real4 = value
 #endif
-      RETURN
-      END SUBROUTINE REVERSE_REAL4
+  return
+  end subroutine reverse_real4
 
 !===============================================================
 !     REVERSE_REAL8
 !===============================================================
 
-      SUBROUTINE REVERSE_REAL8(REAL8)
-      IMPLICIT NONE
+  subroutine reverse_real8(real8)
+  implicit none
 
-      real(8) :: REAL8, VALUE
-      INTEGER(1) :: REVERSE(8), TMPVAL
-      EQUIVALENCE(VALUE, REVERSE)
+  real(8) :: real8, value
+  integer(1) :: reverse(8), tmpval
+  equivalence(value, reverse)
 
 #ifdef OPT_IO_BYTESWAP
-      REVERSE=0
-      VALUE = REAL8
+  reverse=0
+  value = real8
 
-      TMPVAL = REVERSE(1)
-      REVERSE(1) = REVERSE(8)
-      REVERSE(8) = TMPVAL
-      TMPVAL = REVERSE(2)
-      REVERSE(2) = REVERSE(7)
-      REVERSE(7) = TMPVAL
-      TMPVAL = REVERSE(3)
-      REVERSE(3) = REVERSE(6)
-      REVERSE(6) = TMPVAL
-      TMPVAL = REVERSE(4)
-      REVERSE(4) = REVERSE(5)
-      REVERSE(5) = TMPVAL
+  tmpval = reverse(1)
+  reverse(1) = reverse(8)
+  reverse(8) = tmpval
+  tmpval = reverse(2)
+  reverse(2) = reverse(7)
+  reverse(7) = tmpval
+  tmpval = reverse(3)
+  reverse(3) = reverse(6)
+  reverse(6) = tmpval
+  tmpval = reverse(4)
+  reverse(4) = reverse(5)
+  reverse(5) = tmpval
 
-      REAL8 = VALUE
+  real8 = value
 #endif
-      RETURN
-      END SUBROUTINE REVERSE_REAL8
+  return
+  end subroutine reverse_real8
 
 !===============================================================
 !     REVERSE_INT4
 !===============================================================
 
-      SUBROUTINE REVERSE_INT4(INT4)
-      IMPLICIT NONE
+  subroutine reverse_int4(int4)
+  implicit none
 
-      INTEGER   INT4, VALUE
-      INTEGER(1) :: REVERSE(4), TMPVAL
-      EQUIVALENCE(VALUE, REVERSE)
+  integer :: int4, value
+  integer(1) :: reverse(4), tmpval
+  equivalence(value, reverse)
 #ifdef OPT_IO_BYTESWAP
-      REVERSE=0
-      VALUE = INT4
+  reverse=0
+  value = int4
 
-      TMPVAL = REVERSE(1)
-      REVERSE(1) = REVERSE(4)
-      REVERSE(4) = TMPVAL
-      TMPVAL = REVERSE(2)
-      REVERSE(2) = REVERSE(3)
-      REVERSE(3) = TMPVAL
+  tmpval = reverse(1)
+  reverse(1) = reverse(4)
+  reverse(4) = tmpval
+  tmpval = reverse(2)
+  reverse(2) = reverse(3)
+  reverse(3) = tmpval
 
-      INT4 = VALUE
+  int4 = value
 #endif
-      RETURN
-      END SUBROUTINE REVERSE_INT4
+  return
+  end subroutine reverse_int4
 
 
 
-      SUBROUTINE MPI_READ_CHEAD(CHEAD, FH, DISP, ICREAD)
-      use zocdim
-      IMPLICIT NONE
+  subroutine mpi_read_chead(chead, fh, disp, icread)
+  use zocdim
+  implicit none
 #include "mpif.h"
-      CHARACTER CHEAD(64)*16
-      INTEGER FH
-      INTEGER (KIND = MPI_OFFSET_KIND):: DISP
-      INTEGER :: MPISTAT(MPI_STATUS_SIZE)
-      INTEGER :: ICREAD
-      INTEGER IFPAR, JFPAR
+  character :: chead(64)*16
+  integer :: fh
+  integer (kind = mpi_offset_kind):: disp
+  integer :: mpistat(mpi_status_size)
+  integer :: icread
+  integer :: ifpar, jfpar
 
 #ifdef OPT_IO_SEQUENTIAL
-      DISP=DISP+4 
+  disp=disp+4 
 #endif
-      CALL MPI_FILE_SET_VIEW(                      &
-     &     FH, DISP,                               &
-     &     MPI_CHARACTER, MPI_CHARACTER,"native",  &
-     &     MPI_INFO_NULL,IERR)
+  call mpi_file_set_view(                            &
+       &     fh, disp,                               &
+       &     mpi_character, mpi_character,"native",  &
+       &     mpi_info_null,ierr)
 
-      IF (MYRANK .EQ. IROOT) THEN
-          CALL MPI_FILE_READ(                      &
-     &    FH, CHEAD, 1024,                         &
-     &    MPI_CHARACTER, MPISTAT, IERR)
-          CALL MPI_GET_COUNT(MPISTAT,MPI_CHARACTER, ICREAD,IERR)     
-      END IF
-         CALL MPI_BCAST(CHEAD, 1024, MPI_CHARACTER,  &
-     &                  IROOT, MPI_COMM_WORLD, IERR)
-         CALL MPI_BCAST(ICREAD, 1, MPI_INTEGER4,     &
-     &                  IROOT, MPI_COMM_WORLD, IERR)
-      DISP=DISP+ 1024
+  if (myrank .eq. iroot) then
+     call mpi_file_read(                            &
+          &    fh, chead, 1024,                     &
+          &    mpi_character, mpistat, ierr)
+
+     call mpi_get_count(mpistat,mpi_character, icread,ierr)     
+  end if
+  call mpi_bcast(chead, 1024, mpi_character,  &
+       &                  iroot, mpi_comm_world, ierr)
+  call mpi_bcast(icread, 1, mpi_integer4,     &
+       &                  iroot, mpi_comm_world, ierr)
+  disp=disp+ 1024
 #ifdef OPT_IO_SEQUENTIAL
-      DISP=DISP + 4
+  disp=disp + 4
 #endif
-      IF(ICREAD .NE. 1024) THEN
-      DISP=DISP-1024
+  if(icread .ne. 1024) then
+     disp=disp-1024
 #ifdef OPT_IO_SEQUENTIAL
-      DISP=DISP-8
+     disp=disp-8
 #endif
-      END IF
+  end if
 
-      RETURN
-      END SUBROUTINE MPI_READ_CHEAD
-
-
-
-      SUBROUTINE MPI_READ_SFC(BUF, FH, DISP)
-      use zocdim
-      IMPLICIT NONE
-
-#include "mpif.h"
-
-      real(8) ::  BUF(NX, NY)
-      INTEGER FH
-      INTEGER (KIND = MPI_OFFSET_KIND):: DISP
-      INTEGER   I, J, K
-      INTEGER :: IFILE
-      INTEGER ISTART(2), IGSIZE(2), ISIZE(2)
-      INTEGER IFPAR, JFPAR
-
-#ifdef OPT_IO_SEQUENTIAL
-      DISP=DISP+4 
-#endif
-                  ISTART=(/IRANK*NX, JRANK*NY/)
-                  IGSIZE=(/NXG, NYG/)
-                  ISIZE =(/NX , NY /)
-
-                  CALL MPI_TYPE_CREATE_SUBARRAY(  &
-     &                 2,      & !array dimension
-     &                 IGSIZE, & !global size 
-     &                 ISIZE,  & !subarray size
-     &                 ISTART, & !subarray start index (start from 0)
-     &                 MPI_ORDER_FORTRAN, &
-     &                 MPI_REAL8,         &
-     &                 IFILE,             &
-     &                 IERR)
-                  CALL MPI_TYPE_COMMIT(IFILE, IERR)
-
-                  CALL MPI_FILE_SET_VIEW(        &
-     &                 FH, DISP,                 &
-     &                 MPI_REAL8,IFILE,"native", &
-     &                 MPI_INFO_NULL,IERR)
-
-                  CALL MPI_FILE_READ_ALL(        &
-     &                 FH, BUF, NX*NY,           &
-     &                 MPI_REAL8, MPI_STATUS_IGNORE, IERR)
-
-
-      DO J=1,NY
-      DO I=1,NX
-            CALL REVERSE_REAL8(BUF(I,J))
-      END DO
-      END DO
-      DISP=DISP+ NXG*NYG*8
-#ifdef OPT_IO_SEQUENTIAL
-      DISP=DISP+4 
-#endif
-      RETURN
-      END SUBROUTINE MPI_READ_SFC
+  return
+  end subroutine mpi_read_chead
 
 
 
-      SUBROUTINE MPI_READ_BDY(BUF, FH, DISP)
-      use zocdim
-      IMPLICIT NONE
+  subroutine mpi_read_sfc(buf, fh, disp)
+  use zocdim
+  implicit none
+
 #include "mpif.h"
 
-      real(8) ::  BUF(NX, NY, NZ)
-      INTEGER FH
-      INTEGER (KIND = MPI_OFFSET_KIND):: DISP
-      INTEGER   I, J, K
-      INTEGER :: IFILE
-      INTEGER ISTART(3), IGSIZE(3), ISIZE(3)
-      INTEGER IFPAR, JFPAR
-      INTEGER(8) :: INT1, INT2, INT3, INT4
+  real(8) ::  buf(nx, ny)
+  integer :: fh
+  integer (kind = mpi_offset_kind):: disp
+  integer ::  i, j, k
+  integer :: ifile
+  integer :: istart(2), igsize(2), isize(2)
+  integer :: ifpar, jfpar
 
 #ifdef OPT_IO_SEQUENTIAL
-      DISP=DISP+4 
+  disp=disp+4 
 #endif
-                  ISTART=(/IRANK*NX, JRANK*NY, 0/)
-                  IGSIZE=(/NXG, NYG, NZ/)
-                  ISIZE =(/NX , NY , NZ /)
+  istart=(/irank*nx, jrank*ny/)
+  igsize=(/nxg, nyg/)
+  isize =(/nx , ny /)
 
-                  CALL MPI_TYPE_CREATE_SUBARRAY( &
-     &                 3,       & !array dimension
-     &                 IGSIZE,  & !global size 
-     &                 ISIZE,   & !subarray size
-     &                 ISTART,  & !subarray start index (start from 0)
-     &                 MPI_ORDER_FORTRAN, &
-     &                 MPI_REAL8, &
-     &                 IFILE, &
-     &                 IERR)
-                  CALL MPI_TYPE_COMMIT(IFILE, IERR)
+  call mpi_type_create_subarray(     &
+       &   2, igsize, isize, istart, &
+       &   mpi_order_fortran,        &
+       &   mpi_real8, ifile,  ierr)
+  call mpi_type_commit(ifile, ierr)
 
-                  CALL MPI_FILE_SET_VIEW(        &
-     &                 FH, DISP,                 &
-     &                 MPI_REAL8,IFILE,"native", &
-     &                 MPI_INFO_NULL,IERR)
+  call mpi_file_set_view(           &
+       &  fh, disp,                 &
+       &  mpi_real8,ifile,"native", &
+       &  mpi_info_null,ierr)
 
-                  CALL MPI_FILE_READ_ALL(        &
-     &                 FH, BUF, NX*NY*NZ,        &
-     &                 MPI_REAL8, MPI_STATUS_IGNORE, IERR)
+  call mpi_file_read_all(        &
+       &  fh, buf, nx*ny,        &
+       &   mpi_real8, mpi_status_ignore, ierr)
 
-      DO K=1,NZ
-      DO J=1,NY
-      DO I=1,NX
-            CALL REVERSE_REAL8(BUF(I,J,K))
-      END DO
-      END DO
-      END DO
 
+  do j=1,ny
+     do i=1,nx
+        call reverse_real8(buf(i,j))
+     end do
+  end do
+  disp=disp+ nxg*nyg*8
+#ifdef OPT_IO_SEQUENTIAL
+  disp=disp+4 
+#endif
+  return
+  end subroutine mpi_read_sfc
+
+
+
+  subroutine mpi_read_bdy(buf, fh, disp)
+  use zocdim
+  implicit none
+#include "mpif.h"
+
+  real(8) :: buf(nx, ny, nz)
+  integer :: fh
+  integer (kind = mpi_offset_kind):: disp
+  integer :: i, j, k
+  integer :: ifile
+  integer :: istart(3), igsize(3), isize(3)
+  integer :: ifpar, jfpar
+  integer(8) :: int1, int2, int3, int4
 
 #ifdef OPT_IO_SEQUENTIAL
-      DISP=DISP+ NXG*NYG*NZ*8
-      DISP=DISP+4 
+  disp=disp+4 
+#endif
+  istart=(/irank*nx, jrank*ny, 0/)
+  igsize=(/nxg, nyg, nz/)
+  isize =(/nx , ny , nz /)
+
+  call mpi_type_create_subarray(       &
+       &    3, igsize, isize, istart,  & 
+       &    mpi_order_fortran,         &
+       &    mpi_real8, ifile, ierr)
+  call mpi_type_commit(ifile, ierr)
+
+  call mpi_file_set_view(             &
+       &    fh, disp,                 &
+       &    mpi_real8,ifile,"native", &
+       &    mpi_info_null,ierr)
+
+  call mpi_file_read_all(             &
+       &    fh, buf, nx*ny*nz,        &
+       &    mpi_real8, mpi_status_ignore, ierr)
+
+  do k=1,nz
+     do j=1,ny
+        do i=1,nx
+           call reverse_real8(buf(i,j,k))
+        end do
+     end do
+  end do
+
+#ifdef OPT_IO_SEQUENTIAL
+  disp=disp+ nxg*nyg*nz*8
+  disp=disp+4 
 #else
-      INT1=NXG
-      INT2=NYG
-      INT3=NZ
-      INT4=8
-      DISP=DISP+ INT1*INT2*INT3*INT4
+  int1=nxg
+  int2=nyg
+  int3=nz
+  int4=8
+  disp=disp+ int1*int2*int3*int4
 #endif
 
-      RETURN
-      END SUBROUTINE MPI_READ_BDY
+  return
+  end subroutine mpi_read_bdy
 
 
-
-
-      SUBROUTINE MPI_READ_ROOT(BUF,NBUF, FH, DISP)
-      use zocdim
-      IMPLICIT NONE
+  subroutine mpi_read_root(buf,nbuf, fh, disp)
+  use zocdim
+  implicit none
 #include "mpif.h"
 
-      real(8) ::  BUF(NBUF)
-      INTEGER NBUF, FH, I
-      INTEGER (KIND = MPI_OFFSET_KIND):: DISP
+  real(8) :: buf(nbuf)
+  integer :: nbuf, fh, i
+  integer (kind = mpi_offset_kind):: disp
 #ifdef OPT_IO_SEQUENTIAL
-      DISP=DISP+4 
+  disp=disp+4 
 #endif
-      CALL MPI_FILE_SET_VIEW( FH, DISP,    &
-     &       MPI_REAL8,MPI_REAL8,"native", MPI_INFO_NULL,IERR)
+  call mpi_file_set_view( fh, disp,    &
+       &   mpi_real8,mpi_real8,"native", mpi_info_null,ierr)
 
-      IF (MYRANK .EQ. IROOT) THEN
-         call MPI_FILE_READ(FH, BUF, NBUF, &
-     &                      MPI_REAL8, MPI_STATUS_IGNORE, IERR)
-         DO I=1,NBUF
-         call REVERSE_REAL8(BUF(I))
-         END DO
-      END IF
+  if (myrank .eq. iroot) then
+     call mpi_file_read(fh, buf, nbuf, &
+          &  mpi_real8, mpi_status_ignore, ierr)
+     do i=1,nbuf
+        call reverse_real8(buf(i))
+     end do
+  end if
 #ifdef OPT_IO_SEQUENTIAL
-      DISP=DISP+ NBUF*8 + 4
+  disp=disp+ nbuf*8 + 4
 #else
-      DISP=DISP+ NBUF*8
+  disp=disp+ nbuf*8
 #endif
-      RETURN
-      END SUBROUTINE MPI_READ_ROOT
+  return
+  end subroutine mpi_read_root
 
 
-      SUBROUTINE MPI_READ_2D_INTX(BUF, FH, DISP)
-      use zocdim
-      IMPLICIT NONE
+  subroutine mpi_read_2d_intx(buf, fh, disp)
+  use zocdim
+  implicit none
 
 #include "mpif.h"
 
-      INTEGER  BUF(NXDIM, NYDIM)
-      INTEGER  TMP(NX, NY)
-      INTEGER FH
-      INTEGER (KIND = MPI_OFFSET_KIND):: DISP
-      INTEGER   I, J, K
-      INTEGER :: IFILE
-      INTEGER ISTART(2), IGSIZE(2), ISIZE(2)
+  integer :: buf(nxdim, nydim)
+  integer :: tmp(nx, ny)
+  integer :: fh
+  integer (kind = mpi_offset_kind):: disp
+  integer   i, j, k
+  integer :: ifile
+  integer :: istart(2), igsize(2), isize(2)
 #ifdef OPT_IO_SEQUENTIAL
-      DISP=DISP+4 
+  disp=disp+4 
 #endif
-                  ISTART=(/IRANK*NX +IGSTR-1, JRANK*NY+JGSTR-1/)
-                  IGSIZE=(/NXGDIM, NYGDIM/)
-                  ISIZE =(/NX    ,    NY /)
+  istart=(/irank*nx +igstr-1, jrank*ny+jgstr-1/)
+  igsize=(/nxgdim, nygdim/)
+  isize =(/nx    ,    ny /)
 
-                  CALL MPI_TYPE_CREATE_SUBARRAY( &
-     &                 2,      &   !array dimension
-     &                 IGSIZE, & !global size 
-     &                 ISIZE,  & !subarray size
-     &                 ISTART, &  !subarray start index (start from 0)
-     &                 MPI_ORDER_FORTRAN, &
-     &                 MPI_INTEGER4, &
-     &                 IFILE, &
-     &                 IERR)
-                  CALL MPI_TYPE_COMMIT(IFILE, IERR)
+  call mpi_type_create_subarray(   &
+       & 2, igsize, isize, istart, &
+       & mpi_order_fortran,        &
+       & mpi_integer4, ifile, ierr)
+  call mpi_type_commit(ifile, ierr)
+  
+  call mpi_file_set_view(fh, disp,        &
+       &     mpi_integer4,ifile,"native", &
+       &     mpi_info_null,ierr)
 
-                  CALL MPI_FILE_SET_VIEW( &
-     &                 FH, DISP,          &
-     &                 MPI_INTEGER4,IFILE,"native", &
-     &                 MPI_INFO_NULL,IERR)
+  call mpi_file_read_all(fh, tmp, nx*ny,    &
+       &  mpi_integer4, mpi_status_ignore, ierr)
 
-                  CALL MPI_FILE_READ_ALL( &
-     &                 FH, TMP, NX*NY,    &
-     &                 MPI_INTEGER4, MPI_STATUS_IGNORE, IERR)
-
-
-
-      DO J=1,NY
-      DO I=1,NX
-            CALL REVERSE_INT4(TMP(I,J))
-            BUF(I+ISTR-1,J+JSTR-1)=TMP(I,J)
-      END DO
-      END DO
+  do j=1,ny
+     do i=1,nx
+        call reverse_int4(tmp(i,j))
+        buf(i+istr-1,j+jstr-1)=tmp(i,j)
+     end do
+  end do
 #ifdef OPT_IO_SEQUENTIAL
-      DISP=DISP+ NXGDIM*NYGDIM*4 + 4
+  disp=disp+ nxgdim*nygdim*4 + 4
 #else
-      DISP=DISP+ NXGDIM*NYGDIM*4
+  disp=disp+ nxgdim*nygdim*4
 #endif
-      RETURN
-      END SUBROUTINE MPI_READ_2D_INTX
+  return
+  end subroutine mpi_read_2d_intx
 
 
-
-      SUBROUTINE MPI_READ_2D_DIMX(BUF, FH, DISP)
-      use zocdim
-      IMPLICIT NONE
+  subroutine mpi_read_2d_dimx(buf, fh, disp)
+  use zocdim
+  implicit none
 #include "mpif.h"
 
-      real(8) ::  BUF(NXDIM, NYDIM)
-      real(8) ::  TMP(NX, NY)
-      INTEGER FH
-      INTEGER (KIND = MPI_OFFSET_KIND):: DISP
-      INTEGER   I, J, K
-      INTEGER :: IFILE
-      INTEGER ISTART(2), IGSIZE(2), ISIZE(2)
+  real(8) ::  buf(nxdim, nydim)
+  real(8) ::  tmp(nx, ny)
+  integer :: fh
+  integer (kind = mpi_offset_kind):: disp
+  integer :: i, j, k
+  integer :: ifile
+  integer :: istart(2), igsize(2), isize(2)
 
 #ifdef OPT_IO_SEQUENTIAL
-      DISP=DISP+4 
+  disp=disp+4 
 #endif
-                  ISTART=(/IRANK*NX +IGSTR-1, JRANK*NY+JGSTR-1/)
-                  IGSIZE=(/NXGDIM, NYGDIM/)
-                  ISIZE =(/NX    ,    NY /)
+  istart=(/irank*nx +igstr-1, jrank*ny+jgstr-1/)
+  igsize=(/nxgdim, nygdim/)
+  isize =(/nx    ,    ny /)
 
-                  CALL MPI_TYPE_CREATE_SUBARRAY(  &
-     &                 2,      & !array dimension
-     &                 IGSIZE, &  !global size 
-     &                 ISIZE,  & !subarray size
-     &                 ISTART, & !subarray start index (start from 0)
-     &                 MPI_ORDER_FORTRAN, &
-     &                 MPI_REAL8,         &
-     &                 IFILE,             &
-     &                 IERR)
-                  CALL MPI_TYPE_COMMIT(IFILE, IERR)
+  call mpi_type_create_subarray(      &
+       &    2, igsize, isize, istart, & 
+       &    mpi_order_fortran,        &
+       &    mpi_real8, ifile, ierr)
+  call mpi_type_commit(ifile, ierr)
 
-                  CALL MPI_FILE_SET_VIEW( &
-     &                 FH, DISP,          &
-     &                 MPI_REAL8,IFILE,"native", &
-     &                 MPI_INFO_NULL,IERR)
+  call mpi_file_set_view(fh, disp,    &
+       &    mpi_real8,ifile,"native", &
+       &    mpi_info_null,ierr)
 
-                  CALL MPI_FILE_READ_ALL( &
-     &                 FH, TMP, NX*NY,    &
-     &                 MPI_REAL8, MPI_STATUS_IGNORE, IERR)
+  call mpi_file_read_all(fh, tmp, nx*ny,    &
+       & mpi_real8, mpi_status_ignore, ierr)
 
-
-
-      DO J=1,NY
-      DO I=1,NX
-            CALL REVERSE_REAL8(TMP(I,J))
-            BUF(I+ISTR-1,J+JSTR-1)=TMP(I,J)
-      END DO
-      END DO
+  do j=1,ny
+     do i=1,nx
+        call reverse_real8(tmp(i,j))
+        buf(i+istr-1,j+jstr-1)=tmp(i,j)
+     end do
+  end do
 
 #ifdef OPT_IO_SEQUENTIAL
-      DISP=DISP+ NXGDIM*NYGDIM*8 + 4
+  disp=disp+ nxgdim*nygdim*8 + 4
 #else
-      DISP=DISP+ NXGDIM*NYGDIM*8
+  disp=disp+ nxgdim*nygdim*8
 #endif
-      RETURN
-      END SUBROUTINE MPI_READ_2D_DIMX
+  return
+  end subroutine mpi_read_2d_dimx
 
 
-
-
-      SUBROUTINE MPI_READ_3D_DIMX(BUF, FH, DISP)
-      use zocdim
-      IMPLICIT NONE
+  subroutine mpi_read_3d_dimx(buf, fh, disp)
+  use zocdim
+  implicit none
 
 #include "mpif.h"
 
-      real(8) ::  BUF(NXDIM, NYDIM, NZDIM)
-      real(8) ::  TMP(NX, NY, NZDIM)
-      INTEGER FH
-      INTEGER (KIND = MPI_OFFSET_KIND):: DISP
-      INTEGER   I, J, K
-      INTEGER :: IFILE
-      INTEGER ISTART(3), IGSIZE(3), ISIZE(3)
-      INTEGER(8) :: INT1, INT2
+  real(8) ::  buf(nxdim, nydim, nzdim)
+  real(8) ::  tmp(nx, ny, nzdim)
+  integer :: fh
+  integer (kind = mpi_offset_kind):: disp
+  integer :: i, j, k
+  integer :: ifile
+  integer :: istart(3), igsize(3), isize(3)
+  integer(8) :: int1, int2
 #ifdef OPT_IO_SEQUENTIAL
-      DISP=DISP+4 
+  disp=disp+4 
 #endif
-                  ISTART=(/IRANK*NX +IGSTR-1, JRANK*NY+JGSTR-1, 0/)
-                  IGSIZE=(/NXGDIM, NYGDIM, NZDIM/)
-                  ISIZE =(/NX    ,    NY , NZDIM/)
+  istart=(/irank*nx +igstr-1, jrank*ny+jgstr-1, 0/)
+  igsize=(/nxgdim, nygdim, nzdim/)
+  isize =(/nx    ,    ny , nzdim/)
 
-                  CALL MPI_TYPE_CREATE_SUBARRAY( &
-     &                 3,       & !array dimension
-     &                 IGSIZE,  & !global size 
-     &                 ISIZE,   & !subarray size
-     &                 ISTART,  & !subarray start index (start from 0)
-     &                 MPI_ORDER_FORTRAN, &
-     &                 MPI_REAL8, &
-     &                 IFILE,     &
-     &                 IERR)
-                  CALL MPI_TYPE_COMMIT(IFILE, IERR)
+  call mpi_type_create_subarray(       &
+       &    3, igsize, isize, istart,  &
+       &    mpi_order_fortran,         &
+       &    mpi_real8, ifile, ierr)
+  call mpi_type_commit(ifile, ierr)
 
-                  CALL MPI_FILE_SET_VIEW( &
-     &                 FH, DISP,          &
-     &                 MPI_REAL8,IFILE,"native", &
-     &                 MPI_INFO_NULL,IERR)
+  call mpi_file_set_view(fh, disp,    &
+       &    mpi_real8,ifile,"native", &
+       &    mpi_info_null,ierr)
 
-                  CALL MPI_FILE_READ_ALL(    &
-     &                 FH, TMP, NX*NY*NZDIM, &
-     &                 MPI_REAL8, MPI_STATUS_IGNORE, IERR)
+  call mpi_file_read_all(fh, tmp, nx*ny*nzdim, &
+       &  mpi_real8, mpi_status_ignore, ierr)
 
-
-
-      DO K=1,NZDIM
-      DO J=1,NY
-      DO I=1,NX
-            CALL REVERSE_REAL8(TMP(I,J,K))
-            BUF(I+ISTR-1,J+JSTR-1,K)=TMP(I,J,K)
-      END DO
-      END DO
-      END DO
+  do k=1,nzdim
+     do j=1,ny
+        do i=1,nx
+           call reverse_real8(tmp(i,j,k))
+           buf(i+istr-1,j+jstr-1,k)=tmp(i,j,k)
+        end do
+     end do
+  end do
 #ifdef OPT_IO_SEQUENTIAL
-      DISP=DISP+ NXYZGD*8 + 4
+  disp=disp+ nxyzgd*8 + 4
 #else
-      INT1=NXYZGD
-      INT2=8
-      DISP=DISP+ INT1*INT2
+  int1=nxyzgd
+  int2=8
+  disp=disp+ int1*int2
 #endif
-      RETURN
-      END SUBROUTINE MPI_READ_3D_DIMX
+  return
+  end subroutine mpi_read_3d_dimx
 
 
 
-      SUBROUTINE MPI_READ_2D(BUF, FH, DISP)
-      use zocdim
-      IMPLICIT NONE
+  subroutine mpi_read_2d(buf, fh, disp)
+  use zocdim
+  implicit none
 #include "mpif.h"
 
-      real(8) ::  BUF(NXDIM, NYDIM)
-      real(8) ::  TMP(NX, NY)
-      INTEGER FH
-      INTEGER (KIND = MPI_OFFSET_KIND):: DISP
-      INTEGER   I, J, K
-      INTEGER :: IFILE
-      INTEGER ISTART(2), IGSIZE(2), ISIZE(2)
-      INTEGER  IFPAR,  JFPAR
+  real(8) ::  buf(nxdim, nydim)
+  real(8) ::  tmp(nx, ny)
+  integer :: fh
+  integer (kind = mpi_offset_kind):: disp
+  integer ::  i, j, k
+  integer :: ifile
+  integer :: istart(2), igsize(2), isize(2)
+  integer :: ifpar,  jfpar
 
 #ifdef OPT_IO_SEQUENTIAL
-      DISP=DISP+4 
+  disp=disp+4 
 #endif
-                  ISTART=(/IRANK*NX, JRANK*NY/)
-                  IGSIZE=(/NXG, NYG/)
-                  ISIZE =(/NX , NY /)
+  istart=(/irank*nx, jrank*ny/)
+  igsize=(/nxg, nyg/)
+  isize =(/nx , ny /)
 
-                  CALL MPI_TYPE_CREATE_SUBARRAY( &
-     &                 2,      &  !array dimension
-     &                 IGSIZE, & !global size 
-     &                 ISIZE,  & !subarray size
-     &                 ISTART, & !subarray start index (start from 0)
-     &                 MPI_ORDER_FORTRAN, &
-     &                 MPI_REAL8,         &
-     &                 IFILE,             &
-     &                 IERR)
-  CALL MPI_TYPE_COMMIT(IFILE, IERR)
-  CALL MPI_FILE_SET_VIEW(FH, DISP, MPI_REAL8,IFILE,"native", MPI_INFO_NULL,IERR)
-  CALL MPI_FILE_READ_ALL(FH, TMP, NX*NY, MPI_REAL8, MPI_STATUS_IGNORE, IERR)
+  call mpi_type_create_subarray(       &
+       &    2, igsize, isize, istart,  &
+       &    mpi_order_fortran,         &
+       &    mpi_real8, ifile, ierr)
+  call mpi_type_commit(ifile, ierr)
+  call mpi_file_set_view(fh, disp, mpi_real8,ifile,"native", mpi_info_null,ierr)
+  call mpi_file_read_all(fh, tmp, nx*ny, mpi_real8, mpi_status_ignore, ierr)
 
-      DO J=1,NY
-      DO I=1,NX
-            CALL REVERSE_REAL8(TMP(I,J))
-      END DO
-      END DO
-      BUF(ISTR:IEND,JSTR:JEND)=TMP(:,:)
+  do j=1,ny
+     do i=1,nx
+        call reverse_real8(tmp(i,j))
+     end do
+  end do
+  buf(istr:iend,jstr:jend)=tmp(:,:)
 
-      DISP=DISP+ NXG*NYG*8
+  disp=disp+ nxg*nyg*8
 #ifdef OPT_IO_SEQUENTIAL
-      DISP=DISP+4 
+  disp=disp+4 
 #endif
-      RETURN
-      END SUBROUTINE MPI_READ_2D
+  return
+  end subroutine mpi_read_2d
 
 
-      SUBROUTINE MPI_READ_ID(BUF, FH, DISP)
-      use zocdim
-      IMPLICIT NONE
+  subroutine mpi_read_id(buf, fh, disp)
+  use zocdim
+  implicit none
 #include "mpif.h"
 
-      real(8) ::  TMP(NX, NY, NIC)
-      real(8) ::  BUF(NXDIM, NYDIM, 0:NIC)
-      INTEGER FH
-      INTEGER (KIND = MPI_OFFSET_KIND):: DISP
-      INTEGER   I, J, K
-      INTEGER :: IFILE
-      INTEGER ISTART(3), IGSIZE(3), ISIZE(3)
+  real(8) ::  tmp(nx, ny, nic)
+  real(8) ::  buf(nxdim, nydim, 0:nic)
+  integer :: fh
+  integer (kind = mpi_offset_kind):: disp
+  integer :: i, j, k
+  integer :: ifile
+  integer :: istart(3), igsize(3), isize(3)
 
 #ifdef OPT_IO_SEQUENTIAL
-      DISP=DISP+4 
+  disp=disp+4 
 #endif
-                  ISTART=(/IRANK*NX, JRANK*NY, 0/)
-                  IGSIZE=(/NXG, NYG, NIC/)
-                  ISIZE =(/NX , NY , NIC/)
+  istart=(/irank*nx, jrank*ny, 0/)
+  igsize=(/nxg, nyg, nic/)
+  isize =(/nx , ny , nic/)
 
-  CALL MPI_TYPE_CREATE_SUBARRAY(3, IGSIZE, ISIZE, ISTART, &
-     &   MPI_ORDER_FORTRAN, MPI_REAL8, IFILE, IERR)
-  CALL MPI_TYPE_COMMIT(IFILE, IERR)
-  CALL MPI_FILE_SET_VIEW(FH, DISP, MPI_REAL8,IFILE,"native",MPI_INFO_NULL,IERR)
-  CALL MPI_FILE_READ_ALL(FH, TMP, NX*NY*NIC, MPI_REAL8, MPI_STATUS_IGNORE, IERR)
+  call mpi_type_create_subarray(3, igsize, isize, istart, &
+       &   mpi_order_fortran, mpi_real8, ifile, ierr)
+  call mpi_type_commit(ifile, ierr)
+  call mpi_file_set_view(fh, disp, mpi_real8,ifile,"native",mpi_info_null,ierr)
+  call mpi_file_read_all(fh, tmp, nx*ny*nic, mpi_real8, mpi_status_ignore, ierr)
 
-
-
-      DO K=1,NIC
-      DO J=1,NY
-      DO I=1,NX
-            CALL REVERSE_REAL8(TMP(I,J,K))
-            BUF(I+ISTR-1,J+JSTR-1,K)=TMP(I,J,K)
-      END DO
-      END DO
-      END DO
-      DISP=DISP+ NXG*NYG*NIC*8
+  do k=1,nic
+     do j=1,ny
+        do i=1,nx
+           call reverse_real8(tmp(i,j,k))
+           buf(i+istr-1,j+jstr-1,k)=tmp(i,j,k)
+        end do
+     end do
+  end do
+  disp=disp+ nxg*nyg*nic*8
 #ifdef OPT_IO_SEQUENTIAL
-      DISP=DISP+4 
+  disp=disp+4 
 #endif
-      RETURN
-      END SUBROUTINE MPI_READ_ID
+  return
+  end subroutine mpi_read_id
 
 
-
-      SUBROUTINE MPI_READ_3D(BUF, FH, DISP)
-      use zocdim
-      IMPLICIT NONE
+  subroutine mpi_read_3d(buf, fh, disp)
+  use zocdim
+  implicit none
 #include "mpif.h"
 
-      real(8) ::  BUF(NXDIM, NYDIM, NZDIM)
-      real(8) ::  TMP(NX, NY, NZ)
-      INTEGER FH
-      INTEGER (KIND = MPI_OFFSET_KIND):: DISP
-      INTEGER   I, J, K
-      INTEGER :: IFILE
-      INTEGER ISTART(3), IGSIZE(3), ISIZE(3)
-      INTEGER(8) :: INT1, INT2, INT3, INT4
+  real(8) ::  buf(nxdim, nydim, nzdim)
+  real(8) ::  tmp(nx, ny, nz)
+  integer :: fh
+  integer (kind = mpi_offset_kind):: disp
+  integer :: i, j, k
+  integer :: ifile
+  integer :: istart(3), igsize(3), isize(3)
+  integer(8) :: int1, int2, int3, int4
 
 #ifdef OPT_IO_SEQUENTIAL
-      DISP=DISP+4 
+  disp=disp+4 
 #endif
-                  ISTART=(/IRANK*NX, JRANK*NY, 0/)
-                  IGSIZE=(/NXG, NYG, NZ/)
-                  ISIZE =(/NX , NY , NZ/)
+  istart=(/irank*nx, jrank*ny, 0/)
+  igsize=(/nxg, nyg, nz/)
+  isize =(/nx , ny , nz/)
 
-  CALL MPI_TYPE_CREATE_SUBARRAY(3,IGSIZE, ISIZE, ISTART, &
-     &        MPI_ORDER_FORTRAN, MPI_REAL8, IFILE, IERR)
-  CALL MPI_TYPE_COMMIT(IFILE, IERR)
-  CALL MPI_FILE_SET_VIEW(FH, DISP, MPI_REAL8,IFILE,"native", MPI_INFO_NULL,IERR)
-  CALL MPI_FILE_READ_ALL(FH, TMP, NX*NY*NZ, MPI_REAL8, MPI_STATUS_IGNORE, IERR)
+  call mpi_type_create_subarray(3,igsize, isize, istart, &
+       &        mpi_order_fortran, mpi_real8, ifile, ierr)
+  call mpi_type_commit(ifile, ierr)
+  call mpi_file_set_view(fh, disp, mpi_real8,ifile,"native", mpi_info_null,ierr)
+  call mpi_file_read_all(fh, tmp, nx*ny*nz, mpi_real8, mpi_status_ignore, ierr)
 
-      DO K=1,NZ
-      DO J=1,NY
-      DO I=1,NX
-            CALL REVERSE_REAL8(TMP(I,J,K))
-            BUF(I+ISTR-1, J+JSTR-1, K+KSTR-1)=TMP(I,J,K)
-      END DO
-      END DO
-      END DO
+  do k=1,nz
+     do j=1,ny
+        do i=1,nx
+           call reverse_real8(tmp(i,j,k))
+           buf(i+istr-1, j+jstr-1, k+kstr-1)=tmp(i,j,k)
+        end do
+     end do
+  end do
 
 #ifdef OPT_IO_SEQUENTIAL
-      DISP=DISP+ NXG*NYG*NZ*8
-      DISP=DISP+4 
+  disp=disp+ nxg*nyg*nz*8
+  disp=disp+4 
 #else
-      INT1=NXG
-      INT2=NYG
-      INT3=NZ
-      INT4=8
-      DISP=DISP+ INT1*INT2*INT3*INT4
+  int1=nxg
+  int2=nyg
+  int3=nz
+  int4=8
+  disp=disp+ int1*int2*int3*int4
 #endif
-      RETURN
-      END SUBROUTINE MPI_READ_3D
+  return
+  end subroutine mpi_read_3d
 
 
-
-
-
-      SUBROUTINE MPI_WRITE_2D(BUF, FH, DISP)
-      use zocdim
-      IMPLICIT NONE
+  subroutine mpi_write_2d(buf, fh, disp)
+  use zocdim
+  implicit none
 #include "mpif.h"
 
-      real(8) ::  BUF(NXDIM, NYDIM)
-      real(8) ::  TMP(NX, NY)
-      INTEGER FH
-      INTEGER (KIND = MPI_OFFSET_KIND):: DISP
-      INTEGER   I, J, K, KDIM
-      INTEGER :: IFILE
-      INTEGER ISTART(2), IGSIZE(2), ISIZE(2)
-      INTEGER NSIZE
+  real(8) :: buf(nxdim, nydim)
+  real(8) :: tmp(nx, ny)
+  integer :: fh
+  integer (kind = mpi_offset_kind):: disp
+  integer :: i, j, k, kdim
+  integer :: ifile
+  integer :: istart(2), igsize(2), isize(2)
+  integer :: nsize
 
-      NSIZE=8*NXG*NYG
+  nsize=8*nxg*nyg
 #ifdef OPT_IO_SEQUENTIAL
-      CALL INFO_SEQ(FH, DISP, NSIZE)
+  call info_seq(fh, disp, nsize)
 #endif
 
-      DO J=1,NY
-      DO I=1,NX
-            TMP(I,J)=BUF(I+ISTR-1,J+JSTR-1)
-            CALL REVERSE_REAL8(TMP(I,J))
-      END DO
-      END DO
+  do j=1,ny
+     do i=1,nx
+        tmp(i,j)=buf(i+istr-1,j+jstr-1)
+        call reverse_real8(tmp(i,j))
+     end do
+  end do
 
-                  ISTART=(/IRANK*NX, JRANK*NY/)
-                  IGSIZE=(/NXG, NYG/)
-                  ISIZE =(/NX , NY /)
+  istart=(/irank*nx, jrank*ny/)
+  igsize=(/nxg, nyg/)
+  isize =(/nx , ny /)
 
-  CALL MPI_TYPE_CREATE_SUBARRAY(2, IGSIZE, ISIZE, ISTART, &
-     &       MPI_ORDER_FORTRAN, MPI_REAL8, IFILE, IERR)
-  CALL MPI_TYPE_COMMIT(IFILE, IERR)
-  CALL MPI_FILE_SET_VIEW(FH, DISP, MPI_REAL8, IFILE, "native", MPI_INFO_NULL, IERR)
-  CALL MPI_FILE_WRITE_ALL(FH, TMP, NX*NY, MPI_REAL8, MPI_STATUS_IGNORE, IERR)
+  call mpi_type_create_subarray(2, igsize, isize, istart, &
+       &       mpi_order_fortran, mpi_real8, ifile, ierr)
+  call mpi_type_commit(ifile, ierr)
+  call mpi_file_set_view(fh, disp, mpi_real8, ifile, "native", mpi_info_null, ierr)
+  call mpi_file_write_all(fh, tmp, nx*ny, mpi_real8, mpi_status_ignore, ierr)
 
-      DISP=DISP+NSIZE
+  disp=disp+nsize
 #ifdef OPT_IO_SEQUENTIAL
-      CALL INFO_SEQ(FH, DISP, NSIZE)
+  call info_seq(fh, disp, nsize)
 #endif
-      RETURN
-      END SUBROUTINE MPI_WRITE_2D
+  return
+  end subroutine mpi_write_2d
 
 
-      SUBROUTINE MPI_WRITE_ID(BUF, FH, DISP)
-      use zocdim
-      IMPLICIT NONE
+  subroutine mpi_write_id(buf, fh, disp)
+  use zocdim
+  implicit none
 #include "mpif.h"
 
-      real(8) ::  BUF(NXDIM, NYDIM, 0:NIC)
-      real(8) ::  TMP(NX, NY, NIC)
-      INTEGER FH
-      INTEGER (KIND = MPI_OFFSET_KIND):: DISP
-      INTEGER   I, J, K, KDIM
-      INTEGER :: IFILE
-      INTEGER ISTART(3), IGSIZE(3), ISIZE(3)
-      INTEGER NSIZE
-      INTEGER(8) :: INT1, INT2, INT3, INT4,  NSIZE2
+  real(8) ::  buf(nxdim, nydim, 0:nic)
+  real(8) ::  tmp(nx, ny, nic)
+  integer :: fh
+  integer (kind = mpi_offset_kind):: disp
+  integer :: i, j, k, kdim
+  integer :: ifile
+  integer :: istart(3), igsize(3), isize(3)
+  integer :: nsize
+  integer(8) :: int1, int2, int3, int4,  nsize2
 
-      INT1=8
-      INT2=NXG
-      INT3=NYG
-      INT4=NIC
-      NSIZE2=INT1*INT2*INT3*INT4      
+  int1=8
+  int2=nxg
+  int3=nyg
+  int4=nic
+  nsize2=int1*int2*int3*int4      
 
-      NSIZE= 8*NXG*NYG*NIC
+  nsize= 8*nxg*nyg*nic
 #ifdef OPT_IO_SEQUENTIAL
-      CALL INFO_SEQ(FH, DISP, NSIZE)
+  call info_seq(fh, disp, nsize)
 #endif
-      DO K=1,NIC
-      DO J=1,NY
-      DO I=1,NX
-            TMP(I,J,K)=BUF(I+ISTR-1,J+JSTR-1,K)
-            CALL REVERSE_REAL8(TMP(I,J,K))
-      END DO
-      END DO
-      END DO
+  do k=1,nic
+     do j=1,ny
+        do i=1,nx
+           tmp(i,j,k)=buf(i+istr-1,j+jstr-1,k)
+           call reverse_real8(tmp(i,j,k))
+        end do
+     end do
+  end do
 
-                  ISTART=(/IRANK*NX, JRANK*NY, 0/)
-                  IGSIZE=(/NXG, NYG, NIC/)
-                  ISIZE =(/NX , NY , NIC/)
+  istart=(/irank*nx, jrank*ny, 0/)
+  igsize=(/nxg, nyg, nic/)
+  isize =(/nx , ny , nic/)
 
-  CALL MPI_TYPE_CREATE_SUBARRAY(3, IGSIZE, ISIZE, &
-     &    ISTART, MPI_ORDER_FORTRAN, MPI_REAL8, IFILE, IERR)
-  CALL MPI_TYPE_COMMIT(IFILE, IERR)
-  CALL MPI_FILE_SET_VIEW(FH, DISP,MPI_REAL8,IFILE,"native",MPI_INFO_NULL,IERR)
-  CALL MPI_FILE_WRITE_ALL(FH, TMP, NX*NY*NIC, MPI_REAL8, MPI_STATUS_IGNORE, IERR)
-      DISP=DISP+NSIZE2
+  call mpi_type_create_subarray(3, igsize, isize, &
+       &    istart, mpi_order_fortran, mpi_real8, ifile, ierr)
+  call mpi_type_commit(ifile, ierr)
+  call mpi_file_set_view(fh, disp,mpi_real8,ifile,"native",mpi_info_null,ierr)
+  call mpi_file_write_all(fh, tmp, nx*ny*nic, mpi_real8, mpi_status_ignore, ierr)
+  disp=disp+nsize2
 #ifdef OPT_IO_SEQUENTIAL
-      CALL INFO_SEQ(FH, DISP, NSIZE)
+  call info_seq(fh, disp, nsize)
 #endif
-      RETURN
-      END SUBROUTINE MPI_WRITE_ID
+  return
+  end subroutine mpi_write_id
 
 
-      SUBROUTINE MPI_WRITE_3D(BUF, FH, DISP)
-      use zocdim
-      IMPLICIT NONE
+  subroutine mpi_write_3d(buf, fh, disp)
+  use zocdim
+  implicit none
 #include "mpif.h"
 
-      real(8) ::  BUF(NXDIM, NYDIM, NZDIM)
-      real(8) ::  TMP(NX, NY, NZ)
-      INTEGER FH
-      INTEGER (KIND = MPI_OFFSET_KIND):: DISP
-      INTEGER   I, J, K, KDIM
-      INTEGER :: IFILE
-      INTEGER ISTART(3), IGSIZE(3), ISIZE(3)
-      INTEGER NSIZE
-      INTEGER(8) :: INT1, INT2, INT3, INT4,  NSIZE2
+  real(8) ::  buf(nxdim, nydim, nzdim)
+  real(8) ::  tmp(nx, ny, nz)
+  integer :: fh
+  integer (kind = mpi_offset_kind):: disp
+  integer :: i, j, k, kdim
+  integer :: ifile
+  integer :: istart(3), igsize(3), isize(3)
+  integer :: nsize
+  integer(8) :: int1, int2, int3, int4,  nsize2
 
-      INT1=8
-      INT2=NXG
-      INT3=NYG
-      INT4=NZ
-      NSIZE2=INT1*INT2*INT3*INT4
+  int1=8
+  int2=nxg
+  int3=nyg
+  int4=nz
+  nsize2=int1*int2*int3*int4
 
-      NSIZE=8*NXG*NYG*NZ
+  nsize=8*nxg*nyg*nz
 #ifdef OPT_IO_SEQUENTIAL
-      CALL INFO_SEQ(FH, DISP, NSIZE)
+  call info_seq(fh, disp, nsize)
 #endif
 
-      DO K=1,NZ
-      DO J=1,NY
-      DO I=1,NX
-            TMP(I,J,K)=BUF(I+ISTR-1,J+JSTR-1,K+KSTR-1)
-            CALL REVERSE_REAL8(TMP(I,J,K))
-      END DO
-      END DO
-      END DO
+  do k=1,nz
+     do j=1,ny
+        do i=1,nx
+           tmp(i,j,k)=buf(i+istr-1,j+jstr-1,k+kstr-1)
+           call reverse_real8(tmp(i,j,k))
+        end do
+     end do
+  end do
 
-                  ISTART=(/IRANK*NX, JRANK*NY, 0/)
-                  IGSIZE=(/NXG, NYG, NZ/)
-                  ISIZE =(/NX , NY , NZ/)
+  istart=(/irank*nx, jrank*ny, 0/)
+  igsize=(/nxg, nyg, nz/)
+  isize =(/nx , ny , nz/)
 
-  CALL MPI_TYPE_CREATE_SUBARRAY( 3, IGSIZE, ISIZE, ISTART, &
-     & MPI_ORDER_FORTRAN, MPI_REAL8, IFILE, IERR)
-  CALL MPI_TYPE_COMMIT(IFILE, IERR)
-  CALL MPI_FILE_SET_VIEW(FH, DISP, MPI_REAL8,IFILE,"native",MPI_INFO_NULL,IERR)
-  CALL MPI_FILE_WRITE_ALL(FH, TMP, NX*NY*NZ, MPI_REAL8, MPI_STATUS_IGNORE, IERR)
-      DISP=DISP+NSIZE2
+  call mpi_type_create_subarray( 3, igsize, isize, istart, &
+       & mpi_order_fortran, mpi_real8, ifile, ierr)
+  call mpi_type_commit(ifile, ierr)
+  call mpi_file_set_view(fh, disp, mpi_real8,ifile,"native",mpi_info_null,ierr)
+  call mpi_file_write_all(fh, tmp, nx*ny*nz, mpi_real8, mpi_status_ignore, ierr)
+  disp=disp+nsize2
 #ifdef OPT_IO_SEQUENTIAL
-      CALL INFO_SEQ(FH, DISP, NSIZE)
+  call info_seq(fh, disp, nsize)
 #endif
-      RETURN
-      END SUBROUTINE MPI_WRITE_3D
+  return
+  end subroutine mpi_write_3d
 
 #else
-      SUBROUTINE MPI_IO
-      RETURN
-      END
+  subroutine mpi_io
+  return
+  end subroutine mpi_io
 #endif
