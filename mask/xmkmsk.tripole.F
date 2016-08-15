@@ -352,11 +352,6 @@ c =====================================================================
          END DO
       END IF
 
-      WRITE(*, '(2X,A,A8,I7,A,A8,I7)')
-     & 'integer, parameter :: ',
-     & 'ijvgst =', IJVSTR, ', ',
-     & 'ijvged =', IJVEND
-
 c      WRITE(JFILE) AMSKV, AMFVX, AMFVY, AMFVZ
       WRITE(JFILE) AMSKV
       WRITE(JFILE) AMFVX
@@ -499,12 +494,6 @@ c =====================================================================
             END DO
          END DO
       END IF
-
-
-      WRITE(*, '(2X,A,A8,I7,A,A8,I7)')
-     & 'integer, parameter :: ',
-     & 'ijtgst =', IJTSTR, ', ',
-     & 'ijtged =', IJTEND
 
 c      WRITE(JFILE) AMSKT, AMFTX, AMFTY, AMFTZ
       WRITE(JFILE) AMSKT
@@ -807,10 +796,6 @@ C  120 CONTINUE
      & 'igend  =', IEND, ', ',
      & 'jgend  =', JEND, ', ',
      & 'kend   =', KEND
-      WRITE(*, '(2X,A,A8,I7,A,A8,I7)')
-     & 'integer, parameter :: ',
-     & 'ijgstr =', ISTR+(JSTR-1)*NXDIM, ', ',
-     & 'ijgend =', IEND+(JEND-1)*NXDIM
       WRITE(*, *)
 
       WRITE(*, '(2X,A)')
