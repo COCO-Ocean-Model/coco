@@ -788,9 +788,9 @@ C  120 CONTINUE
      & 'nxg    =', NX, ', ',
      & 'nyg    =', NY, ', ',
      & 'nz     =', NZ
-      WRITE(*, '(2X,A,I7,A)')
+      WRITE(*, '(2X,A,I7)')
      & 'integer, parameter :: kz     =', KZ
-      WRITE(*, '(2X,A,I7,A)')
+      WRITE(*, '(2X,A,I7)')
      & 'integer, parameter :: nic    =', NIC
       WRITE(*, '(2X,A,2(A8,I7,A),A8,I7)')
      & 'integer, parameter :: ',
@@ -851,7 +851,7 @@ C  120 CONTINUE
      & 'ijend  =', IJSEND
       WRITE(*, *)
 
-      WRITE(*, '(2X,A,I7,A)')
+      WRITE(*, '(2X,A,I7)')
      & 'integer, parameter :: ntdim =', NTDIM
       WRITE(*, *)
 
