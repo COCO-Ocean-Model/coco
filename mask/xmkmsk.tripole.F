@@ -132,7 +132,7 @@ c =====================================================================
      D             NXDIM,  NYDIM,  NZDIM,
      C              ISTR,   JSTR,   KSTR,   IEND,   JEND,   KEND,
      W             AMSKB)
-
+      IMPLICIT NONE
       INTEGER   JFILE
       PARAMETER(JFILE = 22)
 
@@ -177,7 +177,7 @@ c =====================================================================
      C              ISTR,   JSTR,   KSTR,   IEND,   JEND,   KEND,
      W             AMSKV,  AMFVX,  AMFVY,  AMFVZ,
      W            AMSKVB, AMSKV0, AMSKV1)
-
+      IMPLICIT NONE
       INTEGER   JFILE
       PARAMETER(JFILE = 22)
 
@@ -375,7 +375,7 @@ c =====================================================================
      C              ISTR,   JSTR,   KSTR,   IEND,   JEND,   KEND,
      W             AMSKT,  AMFTX,  AMFTY,  AMFTZ,
      W            AMSKTB, AMSKT0, AMSKT1)
-
+      IMPLICIT NONE
       INTEGER   JFILE
       PARAMETER(JFILE = 22)
 
@@ -1382,7 +1382,7 @@ c =====================================================================
      D             NXDIM,  NYDIM,  NZDIM,
      C              ISTR,   JSTR,   KSTR,   IEND,   JEND,   KEND,
      W              AGEO,   BGEO,   IGEO)
-
+      IMPLICIT NONE
       INTEGER   IGFILE
       PARAMETER(IGFILE = 5)
       INTEGER   NROUND
