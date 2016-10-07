@@ -293,6 +293,10 @@ subroutine sfcflx( &
   call tmintp(  swnt,      7)
   call tmintp(  dwlw,      8)
   call tmintp(  psfc,      9)
+
+  do ij=1,nxydim
+     ssfc(ij)=0.D0
+  end do
 #ifdef OPT_SRST
   call tmintp(  ssfc,     10)
 #endif

@@ -62,7 +62,7 @@ subroutine ocstup ( &
   real(8), intent(out) ::   vbtb(nxydim)
   real(8), intent(out) ::      w(nxyzdm),      r(nxyzdm)
   real(8), intent(out) ::    amv(nxyzdm),    ahv(nxyzdm)
-  real(8), intent(out) ::     ft(nxydim, ntdim)
+  real(8), intent(in)  ::     ft(nxydim, ntdim)
   real(8), intent(out) ::   ptop(nxydim)
   real(8), intent(in)  ::    dt1
 
