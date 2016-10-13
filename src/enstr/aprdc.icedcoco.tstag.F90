@@ -83,7 +83,7 @@ contains
     real(8),    intent(inout)  ::    amv(nxyzdm),    ahv(nxyzdm)
     real(8),    intent(in)     ::   taux(nxydim),   tauy(nxydim)
     real(8),    intent(in)     ::   ptop(nxydim)
-    real(8),    intent(in)     ::     ft(nxydim, ntdim)
+    real(8),    intent(inout)  ::     ft(nxydim, ntdim)
     real(8),    intent(in)     ::  swabs(nxydim),     fs(nxydim)
     real(8),    intent(in)     ::   ssfc(nxydim)
 #ifdef OPT_BODY
@@ -242,10 +242,15 @@ contains
           call shift2(   gxx,    gyy,                                 &
     &                  nxdim,  nydim,      1,                         &
     &                  -1.D0,     -1,     -1 )
+          call shift1(ft(1,2),                                        &
+    &                   nxdim,  nydim,      1,                        &
+    &                    1.d0,      0,      0 )
 #else
           call shift2(                                                &
     &                  gxx,    gyy,                                   &
     &                nxdim,  nydim,      1)
+          call shift1(ft(1,2),                                        &
+    &                   nxdim,  nydim,      1)
 #endif
           call btavst( ubtav,  vbtav )
           do itsplt = 1, ntss
