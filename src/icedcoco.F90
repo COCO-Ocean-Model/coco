@@ -428,7 +428,10 @@ subroutine parfin
   implicit none
 
 #include "mpif.h"
+
+#ifdef OPT_IO_COCOMPI
   call mpi_filcls_all
+#endif
   call mpi_finalize(ierr)
 
   return
