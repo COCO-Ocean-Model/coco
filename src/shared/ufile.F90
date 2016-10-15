@@ -16,13 +16,18 @@ module ufile
  private
  public ::  &
 #ifdef OPT_IO_COCOMPI
- & mpi_filopn, mpi_filcls, &
+ & mpi_filopn, mpi_filcls, mpi_filcls_all, &
 #endif
  & filopn, filcls, rewnml, cstnml
+
 
  logical, save   ::  opn(nfmax)
  data opn / nfmax*.false. /
 
+ integer, parameter :: mpfmax=1000
+ logical, save :: mpiopn(mpfmax)=.false.
+ integer, save :: mpifh(mpfmax) 
+ integer, save :: mpf=0
 contains
 ! =====================================================================
  subroutine filopn(                                                            &
@@ -104,6 +109,10 @@ contains
  i = index(cf, ' ') - 1
  write(nfstdo, *) '*** FILE "', cf(1:i), '" OPENED BY MPI FOR UNIT', nf, '***'
 
+  mpf=mpf+1
+  mpifh(mpf)=nf
+  mpiopn(mpf)=.true.
+
  return
  end subroutine mpi_filopn
 #endif
@@ -126,11 +135,34 @@ contains
  use zocfil, only : nfstdo
  implicit none
  integer, intent(in) :: nf       
- integer :: ierr
- call mpi_file_close(nf, ierr)
+ integer :: ierr, n
+
  write(nfstdo, *) '*** FILE UNIT', nf, 'CLOSED BY MPI***'
+ do n=1,mpf
+   if(mpifh(n) == nf ) mpiopn(n)=.false.
+ end do
+
+ call mpi_file_close(nf, ierr)
+
 
  end subroutine mpi_filcls
+
+
+ subroutine mpi_filcls_all
+ use zocfil, only : nfstdo
+ implicit none
+ integer :: ierr, n
+
+ do n=1,mpf
+    if(mpiopn(n)) then
+       write(nfstdo, *) '*** FILE UNIT', mpifh(n), 'CLOSED BY MPI***'
+       call mpi_file_close(mpifh(n), ierr)
+    else
+       write(nfstdo, *) '*** FILE UNIT', mpifh(n), 'already closed'
+    end if
+ end do
+
+ end subroutine mpi_filcls_all
 #endif
 ! *********************************************************************
 

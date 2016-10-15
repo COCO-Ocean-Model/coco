@@ -424,11 +424,11 @@ subroutine parfin
 
   use zocnod, only: &
     &   ierr   
-
+  use ufile
   implicit none
 
 #include "mpif.h"
-
+  call mpi_filcls_all
   call mpi_finalize(ierr)
 
   return
