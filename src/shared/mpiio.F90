@@ -12,7 +12,8 @@ module mpiio
        & mpi_read_2d_intx, mpi_read_2d_dimx,             &
        & mpi_read_3d_dimx, mpi_read_2d, mpi_read_id,     &
        & mpi_read_3d, mpi_write_2d, mpi_write_id,        &
-       & mpi_write_3d, reverse_real4, reverse_real8
+       & mpi_write_3d, reverse_real4, reverse_real8,     &
+       & reverse_int4
 
 contains
 
