@@ -15,6 +15,7 @@ module tflxt
 !     '13.02.13  Y.Komuro: remove non-parallel code 
 !     '13.09.24  s.urakawa: bug fix (overshoot limiter)
 !     '15.03.25  M.Kurogi: scalar tuning
+!     '15.04.08  M.Kurogi: for MPI-IO
 !
 ! ---------------------------------------------------------------------
 
@@ -65,10 +66,15 @@ subroutine flxtrc( &
 
   use bstbc
   use ufile
+#ifdef OPT_IO_COCOMPI
+  use mpiio
+#else
   use bgs3d
+#endif
   use qckot
   use bshft
   implicit none
+#include "mpif.h"
 
   real(8), intent(out)    ::    adt(nxydim, nzdim, ntdim)    
   real(8), intent(out)    ::  diffz(nxydim, nzdim)
@@ -148,8 +154,14 @@ subroutine flxtrc( &
   namelist /nmdifg/ ahg
 
 !---- 
+#ifdef OPT_IO_COCOMPI
+ integer :: mpi_fh
+ integer :: icread
+ integer (kind = mpi_offset_kind) :: disp
+#else
   real(8) ::  buf3(nxg, nyg, nz)
   real(8) ::  g3d(nxgdim, nygdim, nzdim)
+#endif
 
 !---- file name of isotropic diffusion and thickness diffusion
   character(len=ncf) ::  cfahi = 'not-specified'
@@ -339,6 +351,21 @@ subroutine flxtrc( &
         write(jfpar, *) '  file name of ahg: ', cfahg
 
 !       ---- reading diffusion coefficient
+#ifdef OPT_IO_COCOMPI
+!---- ahi                                                                                                                                        
+        call mpi_filopn(mpi_fh, cfahi, 'READ')
+        disp=0
+        call mpi_read_chead(chead, mpi_fh, disp, icread)
+        call mpi_read_3d(ahi3d, mpi_fh  , disp)
+        call mpi_filcls(mpi_fh)
+
+!---- ahg                                                                                                                                        
+        call mpi_filopn(mpi_fh, cfahg, 'READ')
+        disp=0
+        call mpi_read_chead(chead, mpi_fh, disp, icread)
+        call mpi_read_3d(ahg3d, mpi_fh  , disp)
+        call mpi_filcls(mpi_fh)
+#else
 !       ---- ahi
         if ( myrank .eq. iroot ) then
 
@@ -382,7 +409,7 @@ subroutine flxtrc( &
 
         end if
         call scatter_3d( ahg3d, g3d )
-
+#endif
      end if
 
 #ifdef OPT_BBL
@@ -539,15 +566,6 @@ subroutine flxtrc( &
           &   (hyu(ijlw) + hyu(ij+lsw)) / (hxt(ij) + hxt(ijlw)) * &
           &   amftx(ij, kend) 
      end do
-
-     do ij = ijtstr, ijtend
-        adt(ij, kend, n) = &
-          & (  (  (  ftx(ij+le, kend, n) - ftx(ij, kend, n)) * rx &
-          &     + (  fty(ij+ln, kend, n) - fty(ij, kend, n)) * ry(ij)) * &
-          &    rxt(ij) * ryt(ij) &
-          &  + ftz(ij, kend, n)) / dz(ij, kend)
-     end do
-
   end do
 
 #endif
@@ -1290,11 +1308,36 @@ subroutine flxtrc( &
      do k = kstr, kend
         do ij = ijtstr, ijtend
 
-           tx(ij, k, n) = s0(ij, k, n) / sm(ij, k, n)
+!           tx(ij, k, n) = s0(ij, k, n) / sm(ij, k, n)
+
+               adt(ij, k, n) =                                       &
+     &         (  (  (ftx(ij+le, k, n) - ftx(ij, k, n)) * rx         &
+     &             + (fty(ij+ln, k, n) - fty(ij, k, n)) * ry(ij)) *  &
+     &            rxt(ij) * ryt(ij)                                  &
+     &          + ftz(ij, k, n) - ftz(ij, k+1, n)) / dz(ij, k)
 
         end do
      end do
   end do
+
+#ifdef OPT_BBL
+  do n = 1, ntdim
+     do ij = ijtstr, ijtend
+        k = nbot(ij)
+        ftz(ij, kend, n) = ftz(ij, k, n)
+     end do
+  end do
+
+  do n = 1, ntdim
+     do ij = ijtstr, ijtend
+        adt(ij, kend, n) = &
+             & ( ( (ftx(ij+le, kend, n) - ftx(ij, kend, n)) * rx &
+             &   + (fty(ij+ln, kend, n) - fty(ij, kend, n)) * ry(ij)) * &
+             &  rxt(ij) * ryt(ij) &
+             & + ftz(ij, kend, n) ) / dz(ij, kend)
+     end do
+  end do
+#endif
 
 #ifdef OPT_BBL
 !---- keeping BBL variables consistent at two levels
