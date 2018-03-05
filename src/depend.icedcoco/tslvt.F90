@@ -74,7 +74,7 @@ contains
          &      ts
     use zocmsk,  only :                                &
 #ifdef OPT_BBL
-         & amsktb,
+         & amsktb,                                     &
 #endif
          &   amskt,  nbot
     use zocphy,  only :                                &
@@ -178,7 +178,7 @@ contains
          &      ts
     use zocmsk,  only :                                &
 #ifdef OPT_BBL
-         & amsktb,
+         & amsktb,                                     &
 #endif
          &   amskt,  nbot
     use utrdg
