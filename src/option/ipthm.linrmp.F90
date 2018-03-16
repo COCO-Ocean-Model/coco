@@ -50,6 +50,7 @@ subroutine ptherm( &
 
   use ufile
   use qckot
+  use zocite
 
 #include "mpif.h"
 
@@ -120,10 +121,6 @@ subroutine ptherm( &
 
   namelist /nmamin/ amin, amax, mic
   namelist /nmislt/ si
-
-!===== define statement function 
-#include "zocite.F90"
-!===== 
 
   if (oinit .or. ofinal) then
      return
