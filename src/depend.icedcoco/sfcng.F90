@@ -681,10 +681,6 @@ contains
     data za / 2.d0 /
     namelist /nmsair/ za
 
-!===== Define statement function 
-!#include        "zqsat.F"                /* saturate q */
-!===== 
-
     if ( ofirst ) then
 
        call rewnml(ifpar, jfpar)

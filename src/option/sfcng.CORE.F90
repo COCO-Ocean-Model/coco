@@ -721,7 +721,7 @@ subroutine sfcflx_core ( &
   &                        gdts,      l )
 
   use ufile
-
+  use zqsat
   real(8), intent(out) :: tfluxs( nxydim )      !! flux of T
   real(8), intent(out) :: qfluxs( nxydim )      !! flux of Q
   real(8), intent(out) ::   taux( nxydim )      !! flux of U
@@ -746,10 +746,6 @@ subroutine sfcflx_core ( &
   integer :: ij
   integer :: ifpar,  jfpar
   real(8) :: exi, rho, qsat, dqsat, cqsat, uabs
-
-!===== define statement function 
-#include "zqsat.F90"
-!===== 
 
   if ( ofirst ) then
      call rewnml(ifpar, jfpar)
@@ -805,6 +801,7 @@ subroutine blkcof_core ( &
   &                      usfc,   vsfc,   gdta,   gdqa,   gdts,   gdps,     l )
 
   use ufile
+  use zqsat
 
   real(8), intent(out) :: cmv   ( nxydim )   !! bulk transfer coeff.: u
   real(8), intent(out) :: chv   ( nxydim )   !! bulk transfer coeff.: T
@@ -832,10 +829,6 @@ subroutine blkcof_core ( &
   integer ::     ij,      n
   integer ::  ifpar,  jfpar
   integer ::  niter
-
-!===== define statement function 
-#include "zqsat.F90"
-!===== 
 
   if ( ofirst ) then
      call rewnml(ifpar, jfpar)
