@@ -88,7 +88,7 @@ program icedcoco
 !  write(jfpar, nmstdo)
 
   lenstd = index(cstdo, ' ')
-  write(cstdo(lenstd:lenstd+3), '(a1,i3.3)') '.', myrank
+  write(cstdo(lenstd:lenstd+5), '(a1,i5.5)') '.', myrank
   call rewnml(ifpar, jfpar)
   open(unit=jfpar, file=cstdo, &
     &  access='sequential', form='formatted')
