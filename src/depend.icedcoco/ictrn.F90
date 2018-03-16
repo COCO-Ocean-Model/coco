@@ -41,6 +41,7 @@ subroutine ictrns( &
   &                    ax,    hix,    hsx,    eix,    tix, &
   &                    ft,     fs )
   use ufile
+  use zocite
 
   real(8), intent(inout) ::     ax(nxydim, 0:nic)
   real(8), intent(inout) ::    hix(nxydim, 0:nic)
@@ -60,9 +61,6 @@ subroutine ictrns( &
   integer ::     ij,      k
   integer ::  ifpar,  jfpar,  istat
 
-!===== define statement function 
-#include "zocite.F90"
-!===== 
 
   if (oinit .or. ofinal) then
      return

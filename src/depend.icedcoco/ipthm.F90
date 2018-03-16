@@ -46,6 +46,7 @@ subroutine ptherm( &
   &                  evap,   subi,   roff, adjlat, &
   &                   qio )
   use ufile
+  use zocite
 
   real(8), intent(inout) ::     ax(nxydim, 0:nic),    hix(nxydim, 0:nic)
   real(8), intent(inout) ::    hsx(nxydim, 0:nic)
@@ -99,9 +100,6 @@ subroutine ptherm( &
   namelist /nmamin/ amin, amax, mic
   namelist /nmislt/ si
 
-!===== define statement function 
-#include "zocite.F90"
-!===== 
 
   if (oinit .or. ofinal) then
      return

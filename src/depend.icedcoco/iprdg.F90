@@ -40,6 +40,7 @@ subroutine pridge( &
   &                    az,    hiz,    eiz,    hsz, &
   &                    ui,     vi )
   use ufile
+  use zocite
 
   real(8), intent(out)   ::    pice(nxydim)
   real(8), intent(inout) ::      ax(nxydim, 0:nic)
@@ -88,9 +89,6 @@ subroutine pridge( &
   namelist /nmirdg/ cs, gridge, hridge
   namelist /nmislt/ si
 
-!===== define statement function 
-#include "zocite.F90"
-!===== 
 
   if (oinit .or. ofinal) then
      return
