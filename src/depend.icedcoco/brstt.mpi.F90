@@ -227,13 +227,13 @@ contains
     do l = 3, ntdim
        call mpi_read_chead(chead, mpi_fh_r, disp, icread)
        tb(:,:,:,l)=0.d0
-       if(icread == 1024) call mpi_read_id(tb(1,1,1,l), mpi_fh_r,disp)
+       if(icread == 1024) call mpi_read_3d(tb(1,1,1,l), mpi_fh_r,disp)
     end do
 
     do l = 3, ntdim
        call mpi_read_chead(chead, mpi_fh_r, disp, icread)
        ft(:,:,l)=0.d0
-       if(icread == 1024) call mpi_read_id(ft(1,1,l), mpi_fh_r,disp)
+       if(icread == 1024) call mpi_read_2d(ft(1,1,l), mpi_fh_r,disp)
     end do
 
 
