@@ -52,9 +52,16 @@ c ---------------------------------------------------------------------
       REAL*8  MSK3D4(NXYZDM)
       INTEGER IMS2D1(NXYDIM)
 
+#ifdef OPT_EXMASK
+      REAL*8  GLONT(NXYDIM), GLATT(NXYDIM), RANGT(NXYDIM)
+#endif
+
       REAL*8      PI,    RAD, RADIUS,  OMEGA
       COMPLEX*16 CUNITI
       COMMON /CONST/ PI, RAD, RADIUS, OMEGA, CUNITI
+
+      INTEGER   JFILE
+      PARAMETER(JFILE = 22)
 
       PI = ATAN(1.D0) * 4.D0
       RAD = PI / 1.8D2
@@ -90,7 +97,11 @@ c ---------------------------------------------------------------------
      W            MSK2D1, MSK2D2, MSK2D3, MSK2D4, MSK2D5,
      W            MSK2D6, MSK2D7, MSK2D8, MSK2D9,
      W            MSK2DA, MSK2DB, MSK2DC, MSK2DD,
+#ifndef OPT_EXMASK
      W            MSK3D1)
+#else
+     W            MSK3D1, GLONT, GLATT, RANGT)
+#endif
 
       CALL TMASK (
      I               ALD,    BLD,    DZZ,   NBOT,   IBBL,
@@ -118,7 +129,11 @@ c ---------------------------------------------------------------------
 
       WRITE(*, *)
       WRITE(*, '(A)') 'end module zocdim'
-
+#ifdef OPT_EXMASK
+      WRITE(JFILE) GLONT
+      WRITE(JFILE) GLATT
+      WRITE(JFILE) RANGT
+#endif
       END
 
 c =====================================================================
@@ -534,7 +549,11 @@ c =====================================================================
      W               COR,   DEPT,  RDEPV,    DYY,   DYYM,
      W               HXT,    HXU,    HYT,    HYU,
      W              HXYT,   HXYU,   HYXT,   HYXU,
+#ifndef OPT_EXMASK
      W              DZZM)
+#else
+     W              DZZM, GLONT, GLATT, RANGT)
+#endif
       IMPLICIT NONE
 
       INTEGER   JFILE
@@ -561,6 +580,13 @@ c =====================================================================
       REAL*8     DZZ(NXDIM, NYDIM, NZDIM)
       REAL*8     DZV(NXDIM, NYDIM, NZDIM)
       REAL*8    DZZM(NXDIM, NYDIM, NZDIM)
+
+#ifdef OPT_EXMASK
+      REAL*8  GLONT(NXDIM, NYDIM)
+      REAL*8  GLATT(NXDIM, NYDIM)
+      REAL*8  RANGT(NXDIM, NYDIM)
+      COMPLEX*16    DFQ
+#endif
 
       REAL*8    ZBOT
       REAL*8     COR(NXDIM, NYDIM)
@@ -929,6 +955,16 @@ ccc         DO I = ISTR, IEND
             ZPV = CONF(ZQV, Z1, Z2, Z3, W3)
             GLATV = ZTOLAT(ZPV)
 
+#ifdef OPT_EXMASK
+            GLONT(I,J) = ZTOLON(ZPT)
+            GLATT(I,J) = ZTOLAT(ZPT)
+            DFQ=DCONF(ZQT, Z1, Z2, Z3, W3)
+            RANGT(I,J) =  -(
+     &          ATAN2(DIMAG(ZQT), DREAL(ZQT) )
+     &        - ATAN2(DIMAG(ZPT), DREAL(ZPT) )
+     &        + ATAN2(DIMAG(DFQ), DREAL(DFQ) ) )
+#endif
+
             COR(I, J) = 2.D0 * OMEGA * SIN(GLATV)
             HYT(I, J) = RADIUS * FMTRC(ZPT, ZQT, Z1, Z2, Z3, W3)
             HXT(I, J) = HYT(I, J) * COS(RLATT)
@@ -994,6 +1030,11 @@ ccc         DO I = ISTR, IEND
             HXYU(I, J) = HXYU(I, JSTR)
             HYXT(I, J) = HYXT(I, JSTR)
             HYXU(I, J) = HYXU(I, JSTR)
+#ifdef OPT_EXMASK
+            GLONT(I, J) = GLONT(I, JSTR)
+            GLATT(I, J) = GLATT(I, JSTR)
+            RANGT(I, J) = RANGT(I, JSTR)
+#endif
          END DO
       END DO
       DO J = JEND+1, NYDIM
@@ -1007,6 +1048,11 @@ ccc         DO I = ISTR, IEND
             HXYU(I, J) = HXYU(I, JEND)
             HYXT(I, J) = HYXT(I, JEND)
             HYXU(I, J) = HYXU(I, JEND)
+#ifdef OPT_EXMASK
+            GLONT(I, J) = GLONT(I, JEND)
+            GLATT(I, J) = GLATT(I, JEND)
+            RANGT(I, J) = RANGT(I, JEND)
+#endif
          END DO
       END DO
 
