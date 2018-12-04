@@ -232,7 +232,8 @@ contains
           ileap  = 1
        endif
     else if ( .not. oideal ) then
-       iyear = (idays-1)/365
+!       iyear = (idays-1)/365
+       iyear = floor(dble(idays-1)/365.d0)
        idy   = idays - iyear*365
        ileap = 1
     end if
