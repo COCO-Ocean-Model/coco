@@ -39,6 +39,8 @@ module brstt
   integer(kind=mpi_offset_kind), save :: disp, dispw=0
   integer :: icread
 
+  character(len=16),        save  ::  cheadtx, cheadty, cnz
+
   public  ::  restrt,  rstadd,  finadd, finout
 
 contains
@@ -446,6 +448,8 @@ contains
     integer(4)        ::      i,      j,      k,     l
     integer(4), save  ::  ifpar,  jfpar,  istat
     integer(4)        ::   ierr
+    character(16)     ::  cheadvx, cheadvy, cnx, cny
+
     namelist /nmfrst/ cfrest
 
     if ( ofirst ) then
@@ -465,76 +469,114 @@ contains
           dispw=0
        end if
        call css2yh(  idate, tt)
-       write(chead(50), '(i6.6,5i2.2)') idate
+       write(chead(1), '(i16)') 9010
+       write(chead(14), '(16x)') ! title
+       write(chead(15), '(16x)') ! title (cont.)
+       write(chead(16), '(16x)') ! unit
+       write(chead(25), '(i16)') nint(tt / 3.6d3)
+       chead(26) = 'HOUR'
+       chead(38) = 'UR8'
        write(chead(27), '(i4.4,2i2.2,a1,3i2.2,a1)')                   &
     &        idate(1), idate(2), idate(3), ' ',                       &
     &        idate(4), idate(5), idate(6), ' '
-       write(chead(29), '(i15,a1)') nxg, 'X'
+       write(chead(48), '(i4.4,2i2.2,a1,3i2.2,a1)')                   &
+    &        idate(1), idate(2), idate(3), ' ',                       &
+    &        idate(4), idate(5), idate(6), ' '
+       write(chead(49), '(i4.4,2i2.2,a1,3i2.2,a1)')                   &
+    &        idate(1), idate(2), idate(3), ' ',                       &
+    &        idate(4), idate(5), idate(6), ' '
+       write(chead(50), '(i6.6,5i2.2)') idate
        write(chead(30), '(i16)') 1
        write(chead(31), '(i16)') nxg
-       write(chead(32), '(i15,a1)') nyg, 'Y'
        write(chead(33), '(i16)') 1
        write(chead(34), '(i16)') nyg
        write(chead(36), '(i16)') 1
-       chead(38) = 'REAL8'
+#ifdef OPT_TRIPOLE
+       write(cnx, '(i16)') nxg
+       write(cny, '(i16)') nyg
+       write(cheadtx, '(a)') 'OCLONTPT'//trim(adjustl(cnx))
+       write(cheadty, '(a)') 'OCLATTPT'//trim(adjustl(cny))
+       write(cheadvx, '(a)') 'OCLONTPV'//trim(adjustl(cnx))
+       write(cheadvy, '(a)') 'OCLATTPV'//trim(adjustl(cny))
+#else
+       write(chead(29), '(i15,a1)') nxg, 'X'
+       write(chead(32), '(i15,a1)') nyg, 'Y'
+#endif
 
-       chead(3) = 'U'
-       write(chead(35), '(i15,a1)') nz, 'Z'
+       chead(3) = 'UO'
+       chead(29) = cheadvx
+       chead(32) = cheadvy
+       write(cnz, '(i16)') nz
+       write(chead(35), '(a)') 'OCDEPT'//trim(adjustl(cnz))
        write(chead(37), '(i16)') nz
        write(chead(64), '(i16)') nxyzg
     call mpi_write_header(chead, mpi_fh_w, dispw)
     call mpi_write_3d(ub, mpi_fh_w,dispw)    
 
 
-       chead(3) = 'V'
-       write(chead(35), '(i15,a1)') nz, 'Z'
+       chead(3) = 'VO'
+       chead(29) = cheadvx
+       chead(32) = cheadvy
+       write(chead(35), '(a)') 'OCDEPT'//trim(adjustl(cnz))
        write(chead(37), '(i16)') nz
        write(chead(64), '(i16)') nxyzg
     call mpi_write_header(chead, mpi_fh_w, dispw)
     call mpi_write_3d(vb, mpi_fh_w,dispw)    
 
 
-       chead(3) = 'T'
-       write(chead(35), '(i15,a1)') nz, 'Z'
+       chead(3) = 'TO'
+       chead(29) = cheadtx
+       chead(32) = cheadty
+       write(chead(35), '(a)') 'OCDEPT'//trim(adjustl(cnz))
        write(chead(37), '(i16)') nz
        write(chead(64), '(i16)') nxyzg
     call mpi_write_header(chead, mpi_fh_w, dispw)
     call mpi_write_3d(tb, mpi_fh_w,dispw)    
 
 
-       chead(3) = 'S'
-       write(chead(35), '(i15,a1)') nz, 'Z'
+       chead(3) = 'SO'
+       chead(29) = cheadtx
+       chead(32) = cheadty
+       write(chead(35), '(a)') 'OCDEPT'//trim(adjustl(cnz))
        write(chead(37), '(i16)') nz
        write(chead(64), '(i16)') nxyzg
     call mpi_write_header(chead, mpi_fh_w, dispw)
     call mpi_write_3d(tb(1,1,1,2), mpi_fh_w,dispw)    
 
 
-       chead(3) = 'SH'
-       write(chead(35), '(i15,a1)') 1, 'Z'
+       chead(3) = 'SHO'
+       chead(29) = cheadtx
+       chead(32) = cheadty
+       write(chead(35), '(a)') 'SFC1'
        write(chead(37), '(i16)') 1
        write(chead(64), '(i16)') nxyg
     call mpi_write_header(chead, mpi_fh_w, dispw)
     call mpi_write_2d(hb, mpi_fh_w,dispw)    
 
 
-       chead(3) = 'UBT'
-       write(chead(35), '(i15,a1)') 1, 'Z'
+       chead(3) = 'UBTO'
+       chead(29) = cheadvx
+       chead(32) = cheadvy
+       write(chead(35), '(a)') 'SFC1'
        write(chead(37), '(i16)') 1
        write(chead(64), '(i16)') nxyg
     call mpi_write_header(chead, mpi_fh_w, dispw)
     call mpi_write_2d(ubtb, mpi_fh_w,dispw)    
 
-       chead(3) = 'VBT'
-       write(chead(35), '(i15,a1)') 1, 'Z'
+       chead(3) = 'VBTO'
+       chead(29) = cheadvx
+       chead(32) = cheadvy
+       write(chead(35), '(a)') 'SFC1'
        write(chead(37), '(i16)') 1
        write(chead(64), '(i16)') nxyg
     call mpi_write_header(chead, mpi_fh_w, dispw)
     call mpi_write_2d(vbtb, mpi_fh_w,dispw)    
 
 
-       chead(3) = 'W'
-       write(chead(35), '(i15,a1)') nz, 'Z'
+       chead(3) = 'WO'
+       chead(29) = cheadtx
+       chead(32) = cheadty
+       write(chead(35), '(a)') 'OCDEPM'//trim(adjustl(cnz))
        write(chead(37), '(i16)') nz
        write(chead(64), '(i16)') nxyzg
     call mpi_write_header(chead, mpi_fh_w, dispw)
@@ -542,7 +584,9 @@ contains
 
 
        chead(3) = 'AI'
-       write(chead(35), '(i15,a1)') nic, 'Z'
+       chead(29) = cheadtx
+       chead(32) = cheadty
+       write(chead(35), '(a)') 'NUMBER1000'
        write(chead(37), '(i16)') nic
        write(chead(64), '(i16)') nxyg*nic
     call mpi_write_header(chead, mpi_fh_w, dispw)
@@ -550,7 +594,9 @@ contains
 
 
        chead(3) = 'HI'
-       write(chead(35), '(i15,a1)') nic, 'Z'
+       chead(29) = cheadtx
+       chead(32) = cheadty
+       write(chead(35), '(a)') 'NUMBER1000'
        write(chead(37), '(i16)') nic
        write(chead(64), '(i16)') nxyg*nic
     call mpi_write_header(chead, mpi_fh_w, dispw)
@@ -558,7 +604,9 @@ contains
 
    
        chead(3) = 'UI'
-       write(chead(35), '(i15,a1)') 1, 'Z'
+       chead(29) = cheadvx
+       chead(32) = cheadvy
+       write(chead(35), '(a)') 'SFC1'
        write(chead(37), '(i16)') 1
        write(chead(64), '(i16)') nxyg
     call mpi_write_header(chead, mpi_fh_w, dispw)
@@ -566,14 +614,18 @@ contains
 
    
        chead(3) = 'VI'
-       write(chead(35), '(i15,a1)') 1, 'Z'
+       chead(29) = cheadvx
+       chead(32) = cheadvy
+       write(chead(35), '(a)') 'SFC1'
        write(chead(37), '(i16)') 1
        write(chead(64), '(i16)') nxyg
     call mpi_write_header(chead, mpi_fh_w, dispw)
     call mpi_write_2d(vib, mpi_fh_w,dispw)    
 
        chead(3) = 'TI'
-       write(chead(35), '(i15,a1)') nic, 'Z'
+       chead(29) = cheadtx
+       chead(32) = cheadty
+       write(chead(35), '(a)') 'NUMBER1000'
        write(chead(37), '(i16)') nic
        write(chead(64), '(i16)') nxyg*nic
     call mpi_write_header(chead, mpi_fh_w, dispw)
@@ -581,7 +633,9 @@ contains
 
 
        chead(3) = 'HS'
-       write(chead(35), '(i15,a1)') nic, 'Z'
+       chead(29) = cheadtx
+       chead(32) = cheadty
+       write(chead(35), '(a)') 'NUMBER1000'
        write(chead(37), '(i16)') nic
        write(chead(64), '(i16)') nxyg*nic
     call mpi_write_header(chead, mpi_fh_w, dispw)
@@ -589,7 +643,9 @@ contains
 
 
        chead(3) = 'FT'
-       write(chead(35), '(i15,a1)') 1, 'Z'
+       chead(29) = cheadtx
+       chead(32) = cheadty
+       write(chead(35), '(a)') 'SFC1'
        write(chead(37), '(i16)') 1
        write(chead(64), '(i16)') nxyg
     call mpi_write_header(chead, mpi_fh_w, dispw)
@@ -597,7 +653,9 @@ contains
 
 
        chead(3) = 'SWABS'
-       write(chead(35), '(i15,a1)') 1, 'Z'
+       chead(29) = cheadtx
+       chead(32) = cheadty
+       write(chead(35), '(a)') 'SFC1'
        write(chead(37), '(i16)') 1
        write(chead(64), '(i16)') nxyg
     call mpi_write_header(chead, mpi_fh_w, dispw)
@@ -605,7 +663,9 @@ contains
 
 
        chead(3) = 'FW'
-       write(chead(35), '(i15,a1)') 1, 'Z'
+       chead(29) = cheadtx
+       chead(32) = cheadty
+       write(chead(35), '(a)') 'SFC1'
        write(chead(37), '(i16)') 1
        write(chead(64), '(i16)') nxyg
     call mpi_write_header(chead, mpi_fh_w, dispw)
@@ -613,7 +673,9 @@ contains
 
     
        chead(3) = 'FS'
-       write(chead(35), '(i15,a1)') 1, 'Z'
+       chead(29) = cheadtx
+       chead(32) = cheadty
+       write(chead(35), '(a)') 'SFC1'
        write(chead(37), '(i16)') 1
        write(chead(64), '(i16)') nxyg
     call mpi_write_header(chead, mpi_fh_w, dispw)
@@ -621,7 +683,9 @@ contains
 
 
        chead(3) = 'TAUX'
-       write(chead(35), '(i15,a1)') 1, 'Z'
+       chead(29) = cheadvx
+       chead(32) = cheadvy
+       write(chead(35), '(a)') 'SFC1'
        write(chead(37), '(i16)') 1
        write(chead(64), '(i16)') nxyg
     call mpi_write_header(chead, mpi_fh_w, dispw)
@@ -629,7 +693,9 @@ contains
 
 
        chead(3) = 'TAUY'
-       write(chead(35), '(i15,a1)') 1, 'Z'
+       chead(29) = cheadvx
+       chead(32) = cheadvy
+       write(chead(35), '(a)') 'SFC1'
        write(chead(37), '(i16)') 1
        write(chead(64), '(i16)') nxyg
     call mpi_write_header(chead, mpi_fh_w, dispw)
@@ -637,7 +703,9 @@ contains
 
     
        chead(3) = 'AMV'
-       write(chead(35), '(i15,a1)') nz, 'Z'
+       chead(29) = cheadtx
+       chead(32) = cheadty
+       write(chead(35), '(a)') 'OCDEPM'//trim(adjustl(cnz))
        write(chead(37), '(i16)') nz
        write(chead(64), '(i16)') nxyzg
     call mpi_write_header(chead, mpi_fh_w, dispw)
@@ -645,7 +713,9 @@ contains
 
 
        chead(3) = 'AHV'
-       write(chead(35), '(i15,a1)') nz, 'Z'
+       chead(29) = cheadtx
+       chead(32) = cheadty
+       write(chead(35), '(a)') 'OCDEPM'//trim(adjustl(cnz))
        write(chead(37), '(i16)') nz
        write(chead(64), '(i16)') nxyzg
     call mpi_write_header(chead, mpi_fh_w, dispw)
@@ -654,7 +724,9 @@ contains
 
 
        chead(3) = 'PTOP'
-       write(chead(35), '(i15,a1)') 1, 'Z'
+       chead(29) = cheadtx
+       chead(32) = cheadty
+       write(chead(35), '(a)') 'SFC1'
        write(chead(37), '(i16)') 1
        write(chead(64), '(i16)') nxyg
     call mpi_write_header(chead, mpi_fh_w, dispw)
@@ -662,7 +734,9 @@ contains
 
 
        chead(3) = 'TSI'
-       write(chead(35), '(i15,a1)') nic, 'Z'
+       chead(29) = cheadtx
+       chead(32) = cheadty
+       write(chead(35), '(a)') 'NUMBER1000'
        write(chead(37), '(i16)') nic
        write(chead(64), '(i16)') nxyg*nic
     call mpi_write_header(chead, mpi_fh_w, dispw)
@@ -671,7 +745,9 @@ contains
     
     do l = 3, ntdim
           write(chead(3), '(a6,i2.2)') 'TRACER', l
-          write(chead(35), '(i15,a1)') nz, 'Z'
+          chead(29) = cheadtx
+          chead(32) = cheadty
+          write(chead(35), '(a)') 'OCDEPT'//trim(adjustl(cnz))
           write(chead(37), '(i16)') nz
           write(chead(64), '(i16)') nxyzg
        call mpi_write_header(chead, mpi_fh_w, dispw)
@@ -680,7 +756,9 @@ contains
       
     do l = 3, ntdim
           write(chead(3), '(a6,i2.2)') 'TRCFLX', l
-          write(chead(35), '(i15,a1)') 1, 'Z'
+          chead(29) = cheadtx
+          chead(32) = cheadty
+          write(chead(35), '(a)') 'SFC1'
           write(chead(37), '(i16)') 1
           write(chead(64), '(i16)') nxyg
        call mpi_write_header(chead, mpi_fh_w, dispw)
@@ -720,14 +798,18 @@ contains
     
     if ( clas(1:3) == 'OCN' ) then
           chead(3) = ccitem
-          write(chead(35), '(i15,a1)') nz, 'Z'
+          chead(29) = cheadtx
+          chead(32) = cheadty
+          write(chead(35), '(a)') 'OCDEPT'//trim(adjustl(cnz))
           write(chead(37), '(i16)') nz
           write(chead(64), '(i16)') nxyzg
          call mpi_write_header(chead, mpi_fh_w, dispw)
          call mpi_write_3d(additm, mpi_fh_w,dispw)    
     else
           chead(3) = ccitem
-          write(chead(35), '(i15,a1)') 1, 'Z'
+          chead(29) = cheadtx
+          chead(32) = cheadty
+          write(chead(35), '(a)') 'SFC1'
           write(chead(37), '(i16)') 1
           write(chead(64), '(i16)') nxyg
          call mpi_write_header(chead, mpi_fh_w, dispw)

@@ -234,7 +234,8 @@ contains
  subroutine chkout(        &
      &             oflout)
  use zocdim, only : nx, ny, nxy, nxg, nyg, nxdim, nxydim, &
-  &  istr, jstr, myrank, ijnode, iroot, irank, jrank, ierr
+  &  istr, jstr, myrank, ijnode, iroot, irank, jrank, ierr, &
+  &  nic, nz
  use zocfil, only : nfomax
  use zocgrd, only : tt, nt
  use zocout, only :  dbleou, snglou, wrkout
@@ -258,6 +259,8 @@ contains
  integer :: nsize
  integer(8) :: int1, int2, int3, int4, nsize2
 
+ character(16) :: cnx, cny, cnz
+
  do iitem = 1, nohitm
     if (oflout(iitem)) then
        if (iflout(iitem) == 1) then
@@ -273,22 +276,67 @@ contains
           ixdim = ixend(iitem) - ixstr(iitem) + 1
           jydim = jyend(iitem) - jystr(iitem) + 1
           kzdim = kzend(iitem) - kzstr(iitem) + 1
+
+! for GTOOL3 header
+          write(chead(1), '(i16)') 9010
           chead(3) = citem(iitem)
+          write(chead(14), '(16x)') ! title
+          write(chead(15), '(16x)') ! title (cont.)
+          write(chead(16), '(16x)') ! unit
+          write(chead(25), '(i16)') nint(tout / 3.6d3)
+          chead(26) = 'HOUR'
           write(chead(27), '(i4.4,2i2.2,a1,3i2.2,a1)')   &
   &              idate(1), idate(2), idate(3), ' ',      &
   &              idate(4), idate(5), idate(6), ' '
           write(chead(50), '(i6.6,5i2.2)') idate
+#ifdef OPT_TRIPOLE
+          write(cnx, '(i16)') nxitm(iitem)
+          write(cny, '(i16)') nyitm(iitem)
+          write(chead(29), '(a)') 'OCLONTPT'//trim(adjustl(cnx))
+          write(chead(32), '(a)') 'OCLATTPT'//trim(adjustl(cny))
+#else
           write(chead(29), '(i15,a1)') nxitm(iitem), 'X'
+          write(chead(32), '(i15,a1)') nyitm(iitem), 'Y'
+#endif
           write(chead(30), '(i16)') ixstr(iitem)
           write(chead(31), '(i16)') ixend(iitem)
-          write(chead(32), '(i15,a1)') nyitm(iitem), 'Y'
           write(chead(33), '(i16)') jystr(iitem)
           write(chead(34), '(i16)') jyend(iitem)
-          write(chead(35), '(i15,a1)') nzitm(iitem), 'Z'
+          if ( nzitm(iitem) == 1 ) then
+             write(chead(35), '(a)' ) 'SFC1'
+          else if ( nzitm(iitem) == nic ) then
+             write(chead(35), '(a)' ) 'NUMBER1000'
+          else
+!             write(cnz, '(i16)') nzitm(iitem)
+             write(cnz, '(i16)') nz
+             write(chead(35), '(a)') 'OCDEPT'//trim(adjustl(cnz))
+          end if
           write(chead(36), '(i16)') kzstr(iitem)
           write(chead(37), '(i16)') kzend(iitem)
           write(chead(64), '(i16)') ixdim*jydim*kzdim
 
+          if (ioavrg(iitem) == 1) then
+             tout = ttold(iitem)
+             call css2yh( idate, tout )
+             write(chead(48), '(i4.4,2i2.2,a1,3i2.2,a1)')   &
+                  &  idate(1), idate(2), idate(3), ' ',     &
+                  &  idate(4), idate(5), idate(6), ' '
+             tout = tt
+             call css2yh( idate, tout )
+             write(chead(49), '(i4.4,2i2.2,a1,3i2.2,a1)')   &
+                  &  idate(1), idate(2), idate(3), ' ',     &
+                  &  idate(4), idate(5), idate(6), ' '
+             tout = (tt + ttold(iitem)) * 0.5d0
+             write(chead(28), '(i16)') nint((tt-ttold(iitem)) / 3.6d3)
+             call css2yh( idate, tout )
+          else
+             write(chead(48), '(i4.4,2i2.2,a1,3i2.2,a1)')   &
+                  &  idate(1), idate(2), idate(3), ' ',     &
+                  &  idate(4), idate(5), idate(6), ' '
+             write(chead(49), '(i4.4,2i2.2,a1,3i2.2,a1)')   &
+                  &  idate(1), idate(2), idate(3), ' ',     &
+                  &  idate(4), idate(5), idate(6), ' '
+          end if
 
           if (myrank < ijnode) then
              do k = kzstr(iitem), kzend(iitem)
@@ -321,7 +369,7 @@ contains
                   nsize2=int1*int2*int3*int4
                   nsize=nxg*nyg*kzdim*4
 #ifdef OPT_IO_SEQUENTIAL
-                  chead(38) = 'REAL4'
+                  chead(38) = 'UR4'
                   call mpi_write_header(chead, nfunit(iitem), disp(iitem))
                   call info_seq(nfunit(iitem), disp(iitem), nsize)
 #endif
@@ -366,7 +414,7 @@ contains
                   nsize2=int1*int2*int3*int4
                   nsize=nxg*nyg*kzdim*8
 #ifdef OPT_IO_SEQUENTIAL
-                  chead(38) = 'REAL8'
+                  chead(38) = 'UR8'
                   call mpi_write_header(chead, nfunit(iitem), disp(iitem))                    
                   call info_seq(nfunit(iitem), disp(iitem), nsize)
 #endif
