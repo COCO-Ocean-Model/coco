@@ -31,7 +31,7 @@ module brstt
   integer(4),               save  ::   idate(1:6)
   logical,                  save  ::  ofirst
   character(len=ncf)              ::  cfinit,      cfrest
-  character(len=16)               ::   chead(64)='                '
+  character(len=16),        save  ::  chead(1:64)
   data ofirst / .true. /
   data cfinit, cfrest / 'not-specified', 'not-specified' /
 
@@ -39,8 +39,11 @@ module brstt
   integer(kind=mpi_offset_kind), save :: disp, dispw=0
   integer :: icread
 
-  character(len=16),        save  ::  cheadtx, cheadty, cnz
-
+!  character(len=16),        save  ::  cheadtx, cheadty
+!  character(len=16),        save  ::  cheadvx, cheadvy
+  character(len=16),        save  ::   chrnum
+  real(8), save  ::  dundef = -1.d20
+ 
   public  ::  restrt,  rstadd,  finadd, finout
 
 contains
@@ -448,319 +451,178 @@ contains
     integer(4)        ::      i,      j,      k,     l
     integer(4), save  ::  ifpar,  jfpar,  istat
     integer(4)        ::   ierr
-    character(16)     ::  cheadvx, cheadvy, cnx, cny
+    character(len=ncf) :: crun = '(RUN NAME WAS NOT SET)'
+
+    character(len=8)  :: hdate
+    character(len=10) :: htime
+    character(len=5)  :: hzone
+    integer :: ivalues(1:8)
+    character(len=16) :: citem
 
     namelist /nmfrst/ cfrest
+    namelist /nmrun/ crun
 
     if ( ofirst ) then
        call rewnml(ifpar, jfpar)
        read(ifpar, nmfrst, iostat=istat)
        call cstnml( jfpar, 'finout', 'nmfrst', istat )
        write(jfpar, nmfrst)
-      
+       call rewnml(ifpar, jfpar)
+       read(ifpar, nmrun, iostat=istat)
+       call cstnml( jfpar, 'finout', 'nmrun', istat )
        call mpi_filopn(mpi_fh_w, cfrest, 'WRITE')      
        ofirst = .false.
     end if
 
+    if (crun(1:1) == '(') then
+       chrnum = 'COCO stand-alone'
+    else
+       chrnum = crun(1:16)
+    end if
+
     if ( .not. orsout ) return
 
+    do i = 1, 64
+       write(chead(i),'(16x)')
+    end do
+    if (orsrwd) then
+       dispw=0
+    end if
+    call css2yh(  idate, tt)
+    write(chead(1), '(i16)') 9010
+    chead(2) = chrnum
+    write(chead(25), '(i16)') nint(tt / 3.6d3)
+    chead(26) = 'HOUR'
+    chead(38) = 'UR8'
+    write(chead(27), '(i4.4,2i2.2,1x,3i2.2,1x)') idate(1:6)
+    write(chead(48), '(i4.4,2i2.2,1x,3i2.2,1x)') idate(1:6)
+    write(chead(49), '(i4.4,2i2.2,1x,3i2.2,1x)') idate(1:6)
+    write(chead(50), '(i6.6,5i2.2)') idate(1:6)
+    write(chead(30), '(i16)') 1
+    write(chead(31), '(i16)') nxg
+    write(chead(33), '(i16)') 1
+    write(chead(34), '(i16)') nyg
+    write(chead(36), '(i16)') 1
+    write(chead(39), '(e16.7)') dundef
+    chead(40) = chead(39)
+    chead(41) = chead(39)
+    chead(42) = chead(39)
+    chead(43) = chead(39)
+    write(chead(44), '(i16)') 1
+    write(chead(46), '(i16)') 0
+    write(chead(47), '(e16.7)') 0.d0
+    chead(61) = 'COCO'
+    chead(63) = 'COCO'
+    call date_and_time(hdate, htime, hzone, ivalues)
+    write(chead(60), '(i4.4,2i2.2,1x,3i2.2,1x)') ivalues(1:3), ivalues(5:7)
+    chead(62) = chead(60)
 
-       if (orsrwd) then
-          dispw=0
-       end if
-       call css2yh(  idate, tt)
-       write(chead(1), '(i16)') 9010
-       write(chead(14), '(16x)') ! title
-       write(chead(15), '(16x)') ! title (cont.)
-       write(chead(16), '(16x)') ! unit
-       write(chead(25), '(i16)') nint(tt / 3.6d3)
-       chead(26) = 'HOUR'
-       chead(38) = 'UR8'
-       write(chead(27), '(i4.4,2i2.2,a1,3i2.2,a1)')                   &
-    &        idate(1), idate(2), idate(3), ' ',                       &
-    &        idate(4), idate(5), idate(6), ' '
-       write(chead(48), '(i4.4,2i2.2,a1,3i2.2,a1)')                   &
-    &        idate(1), idate(2), idate(3), ' ',                       &
-    &        idate(4), idate(5), idate(6), ' '
-       write(chead(49), '(i4.4,2i2.2,a1,3i2.2,a1)')                   &
-    &        idate(1), idate(2), idate(3), ' ',                       &
-    &        idate(4), idate(5), idate(6), ' '
-       write(chead(50), '(i6.6,5i2.2)') idate
-       write(chead(30), '(i16)') 1
-       write(chead(31), '(i16)') nxg
-       write(chead(33), '(i16)') 1
-       write(chead(34), '(i16)') nyg
-       write(chead(36), '(i16)') 1
-#ifdef OPT_TRIPOLE
-       write(cnx, '(i16)') nxg
-       write(cny, '(i16)') nyg
-       write(cheadtx, '(a)') 'OCLONTPT'//trim(adjustl(cnx))
-       write(cheadty, '(a)') 'OCLATTPT'//trim(adjustl(cny))
-       write(cheadvx, '(a)') 'OCLONTPV'//trim(adjustl(cnx))
-       write(cheadvy, '(a)') 'OCLATTPV'//trim(adjustl(cny))
-#else
-       write(chead(29), '(i15,a1)') nxg, 'X'
-       write(chead(32), '(i15,a1)') nyg, 'Y'
-#endif
-
-       chead(3) = 'UO'
-       chead(29) = cheadvx
-       chead(32) = cheadvy
-       write(cnz, '(i16)') nz
-       write(chead(35), '(a)') 'OCDEPT'//trim(adjustl(cnz))
-       write(chead(37), '(i16)') nz
-       write(chead(64), '(i16)') nxyzg
+    call edhead('UO', 'ocean zonal velocity', 'cm/s', 'OCLVTV')
     call mpi_write_header(chead, mpi_fh_w, dispw)
     call mpi_write_3d(ub, mpi_fh_w,dispw)    
-
-
-       chead(3) = 'VO'
-       chead(29) = cheadvx
-       chead(32) = cheadvy
-       write(chead(35), '(a)') 'OCDEPT'//trim(adjustl(cnz))
-       write(chead(37), '(i16)') nz
-       write(chead(64), '(i16)') nxyzg
+    
+    call edhead('VO', 'ocean meridional velocity', 'cm/s', 'OCLVTV')
     call mpi_write_header(chead, mpi_fh_w, dispw)
     call mpi_write_3d(vb, mpi_fh_w,dispw)    
 
-
-       chead(3) = 'TO'
-       chead(29) = cheadtx
-       chead(32) = cheadty
-       write(chead(35), '(a)') 'OCDEPT'//trim(adjustl(cnz))
-       write(chead(37), '(i16)') nz
-       write(chead(64), '(i16)') nxyzg
+    call edhead('TO', 'ocean temperature', 'degC', 'OCLVTT')
     call mpi_write_header(chead, mpi_fh_w, dispw)
     call mpi_write_3d(tb, mpi_fh_w,dispw)    
 
-
-       chead(3) = 'SO'
-       chead(29) = cheadtx
-       chead(32) = cheadty
-       write(chead(35), '(a)') 'OCDEPT'//trim(adjustl(cnz))
-       write(chead(37), '(i16)') nz
-       write(chead(64), '(i16)') nxyzg
+    call edhead('SO', 'ocean salinity', 'psu', 'OCLVTT')
     call mpi_write_header(chead, mpi_fh_w, dispw)
     call mpi_write_3d(tb(1,1,1,2), mpi_fh_w,dispw)    
 
-
-       chead(3) = 'SHO'
-       chead(29) = cheadtx
-       chead(32) = cheadty
-       write(chead(35), '(a)') 'SFC1'
-       write(chead(37), '(i16)') 1
-       write(chead(64), '(i16)') nxyg
+    call edhead('SHO', 'sea surface height', 'cm', 'OCSFCT' )
     call mpi_write_header(chead, mpi_fh_w, dispw)
     call mpi_write_2d(hb, mpi_fh_w,dispw)    
 
-
-       chead(3) = 'UBTO'
-       chead(29) = cheadvx
-       chead(32) = cheadvy
-       write(chead(35), '(a)') 'SFC1'
-       write(chead(37), '(i16)') 1
-       write(chead(64), '(i16)') nxyg
+    call edhead('UBTO', 'ocean zonal transport', 'cm^2/s', 'OCSFCV')
     call mpi_write_header(chead, mpi_fh_w, dispw)
     call mpi_write_2d(ubtb, mpi_fh_w,dispw)    
-
-       chead(3) = 'VBTO'
-       chead(29) = cheadvx
-       chead(32) = cheadvy
-       write(chead(35), '(a)') 'SFC1'
-       write(chead(37), '(i16)') 1
-       write(chead(64), '(i16)') nxyg
+       
+    call edhead('VBTO', 'ocean meridional transport', 'cm^2/s', 'OCSFCV')
     call mpi_write_header(chead, mpi_fh_w, dispw)
     call mpi_write_2d(vbtb, mpi_fh_w,dispw)    
 
-
-       chead(3) = 'WO'
-       chead(29) = cheadtx
-       chead(32) = cheadty
-       write(chead(35), '(a)') 'OCDEPM'//trim(adjustl(cnz))
-       write(chead(37), '(i16)') nz
-       write(chead(64), '(i16)') nxyzg
+    call edhead('WO', 'ocean vertical velocity', 'cm/s', 'OCLVMT')
     call mpi_write_header(chead, mpi_fh_w, dispw)
     call mpi_write_3d(w, mpi_fh_w,dispw)    
 
-
-       chead(3) = 'AI'
-       chead(29) = cheadtx
-       chead(32) = cheadty
-       write(chead(35), '(a)') 'NUMBER1000'
-       write(chead(37), '(i16)') nic
-       write(chead(64), '(i16)') nxyg*nic
+    call edhead('AI', 'ice concentration', 'N.D.', 'OCICET')
     call mpi_write_header(chead, mpi_fh_w, dispw)
     call mpi_write_id(ab, mpi_fh_w,dispw)    
-
-
-       chead(3) = 'HI'
-       chead(29) = cheadtx
-       chead(32) = cheadty
-       write(chead(35), '(a)') 'NUMBER1000'
-       write(chead(37), '(i16)') nic
-       write(chead(64), '(i16)') nxyg*nic
+       
+    call edhead('HI', 'ice thickness', 'cm', 'OCICET')
     call mpi_write_header(chead, mpi_fh_w, dispw)
     call mpi_write_id(hib, mpi_fh_w,dispw)    
-
    
-       chead(3) = 'UI'
-       chead(29) = cheadvx
-       chead(32) = cheadvy
-       write(chead(35), '(a)') 'SFC1'
-       write(chead(37), '(i16)') 1
-       write(chead(64), '(i16)') nxyg
+    call edhead('UI', 'ice zonal velocity', 'cm/s', 'OCSFCV')
     call mpi_write_header(chead, mpi_fh_w, dispw)
     call mpi_write_2d(uib, mpi_fh_w,dispw)    
-
    
-       chead(3) = 'VI'
-       chead(29) = cheadvx
-       chead(32) = cheadvy
-       write(chead(35), '(a)') 'SFC1'
-       write(chead(37), '(i16)') 1
-       write(chead(64), '(i16)') nxyg
+    call edhead('VI', 'ice meridional velocity', 'cm/s', 'OCSFCV')
     call mpi_write_header(chead, mpi_fh_w, dispw)
     call mpi_write_2d(vib, mpi_fh_w,dispw)    
 
-       chead(3) = 'TI'
-       chead(29) = cheadtx
-       chead(32) = cheadty
-       write(chead(35), '(a)') 'NUMBER1000'
-       write(chead(37), '(i16)') nic
-       write(chead(64), '(i16)') nxyg*nic
+    call edhead('TI', 'ice temperature', 'degC', 'OCICET')
     call mpi_write_header(chead, mpi_fh_w, dispw)
     call mpi_write_id(tib, mpi_fh_w,dispw)    
-
-
-       chead(3) = 'HS'
-       chead(29) = cheadtx
-       chead(32) = cheadty
-       write(chead(35), '(a)') 'NUMBER1000'
-       write(chead(37), '(i16)') nic
-       write(chead(64), '(i16)') nxyg*nic
+    
+    call edhead('HS', 'snow thickness', 'cm', 'OCICET')
     call mpi_write_header(chead, mpi_fh_w, dispw)
     call mpi_write_id(hsb, mpi_fh_w,dispw)    
 
-
-       chead(3) = 'FT'
-       chead(29) = cheadtx
-       chead(32) = cheadty
-       write(chead(35), '(a)') 'SFC1'
-       write(chead(37), '(i16)') 1
-       write(chead(64), '(i16)') nxyg
+    call edhead('FT', 'sea surface temperature flux', 'K cm/s', 'OCSFCT')
     call mpi_write_header(chead, mpi_fh_w, dispw)
     call mpi_write_2d(ft, mpi_fh_w,dispw)    
 
-
-       chead(3) = 'SWABS'
-       chead(29) = cheadtx
-       chead(32) = cheadty
-       write(chead(35), '(a)') 'SFC1'
-       write(chead(37), '(i16)') 1
-       write(chead(64), '(i16)') nxyg
+    call edhead('SWABS', 'absorbed shortwave', 'erg/cm^2/s', 'OCSFCT')
     call mpi_write_header(chead, mpi_fh_w, dispw)
     call mpi_write_2d(swabs, mpi_fh_w,dispw)    
 
-
-       chead(3) = 'FW'
-       chead(29) = cheadtx
-       chead(32) = cheadty
-       write(chead(35), '(a)') 'SFC1'
-       write(chead(37), '(i16)') 1
-       write(chead(64), '(i16)') nxyg
+    call edhead('FW', 'sea surface freshwater flux', 'cm/s', 'OCSFCT')
     call mpi_write_header(chead, mpi_fh_w, dispw)
     call mpi_write_2d(ft(1,1,2), mpi_fh_w,dispw)    
-
     
-       chead(3) = 'FS'
-       chead(29) = cheadtx
-       chead(32) = cheadty
-       write(chead(35), '(a)') 'SFC1'
-       write(chead(37), '(i16)') 1
-       write(chead(64), '(i16)') nxyg
+    call edhead('FS', 'sea surface salinity flux', 'psu cm/s', 'OCSFCT')
     call mpi_write_header(chead, mpi_fh_w, dispw)
     call mpi_write_2d(fs, mpi_fh_w,dispw)    
 
-
-       chead(3) = 'TAUX'
-       chead(29) = cheadvx
-       chead(32) = cheadvy
-       write(chead(35), '(a)') 'SFC1'
-       write(chead(37), '(i16)') 1
-       write(chead(64), '(i16)') nxyg
+    call edhead('TAUX', 'zonal wind stress', 'dyn/cm^2', 'OCSFCV')
     call mpi_write_header(chead, mpi_fh_w, dispw)
     call mpi_write_2d(taux, mpi_fh_w,dispw)    
 
-
-       chead(3) = 'TAUY'
-       chead(29) = cheadvx
-       chead(32) = cheadvy
-       write(chead(35), '(a)') 'SFC1'
-       write(chead(37), '(i16)') 1
-       write(chead(64), '(i16)') nxyg
+    call edhead('TAUY', 'meridional wind stress', 'dyn/cm^2', 'OCSFCV')
     call mpi_write_header(chead, mpi_fh_w, dispw)
     call mpi_write_2d(tauy, mpi_fh_w,dispw)    
-
     
-       chead(3) = 'AMV'
-       chead(29) = cheadtx
-       chead(32) = cheadty
-       write(chead(35), '(a)') 'OCDEPM'//trim(adjustl(cnz))
-       write(chead(37), '(i16)') nz
-       write(chead(64), '(i16)') nxyzg
+    call edhead('AMV', 'ocean vertical viscosity', 'cm^2/s', 'OCLVMV')
     call mpi_write_header(chead, mpi_fh_w, dispw)
     call mpi_write_3d(amv, mpi_fh_w,dispw)    
 
-
-       chead(3) = 'AHV'
-       chead(29) = cheadtx
-       chead(32) = cheadty
-       write(chead(35), '(a)') 'OCDEPM'//trim(adjustl(cnz))
-       write(chead(37), '(i16)') nz
-       write(chead(64), '(i16)') nxyzg
+    call edhead('AHV', 'ocean vertical diffusivity', 'cm^2/s', 'OCLVMT')
     call mpi_write_header(chead, mpi_fh_w, dispw)
     call mpi_write_3d(ahv, mpi_fh_w,dispw)    
 
-
-
-       chead(3) = 'PTOP'
-       chead(29) = cheadtx
-       chead(32) = cheadty
-       write(chead(35), '(a)') 'SFC1'
-       write(chead(37), '(i16)') 1
-       write(chead(64), '(i16)') nxyg
+    call edhead('PTOP', 'sea surface presssure (inc. sea ice)', 'dyn/cm^2', 'OCSFCT')
     call mpi_write_header(chead, mpi_fh_w, dispw)
     call mpi_write_2d(ptop, mpi_fh_w,dispw)    
 
-
-       chead(3) = 'TSI'
-       chead(29) = cheadtx
-       chead(32) = cheadty
-       write(chead(35), '(a)') 'NUMBER1000'
-       write(chead(37), '(i16)') nic
-       write(chead(64), '(i16)') nxyg*nic
+    call edhead('TSI', 'sea ice surface temperature', 'degC', 'OCICET')
     call mpi_write_header(chead, mpi_fh_w, dispw)
     call mpi_write_id(tsi, mpi_fh_w,dispw)    
-
     
     do l = 3, ntdim
-          write(chead(3), '(a6,i2.2)') 'TRACER', l
-          chead(29) = cheadtx
-          chead(32) = cheadty
-          write(chead(35), '(a)') 'OCDEPT'//trim(adjustl(cnz))
-          write(chead(37), '(i16)') nz
-          write(chead(64), '(i16)') nxyzg
+       write(citem, '(a,i2.2)') 'TRACER', l
+       call edhead(citem, '', '', 'OCLVTT')
        call mpi_write_header(chead, mpi_fh_w, dispw)
        call mpi_write_3d(tb(1,1,1,l), mpi_fh_w,dispw)    
     end do
-      
+       
     do l = 3, ntdim
-          write(chead(3), '(a6,i2.2)') 'TRCFLX', l
-          chead(29) = cheadtx
-          chead(32) = cheadty
-          write(chead(35), '(a)') 'SFC1'
-          write(chead(37), '(i16)') 1
-          write(chead(64), '(i16)') nxyg
+       write(citem, '(a,i2.2)') 'TRCFLX', l
+       call edhead(citem, '', '', 'OCSFCT')
        call mpi_write_header(chead, mpi_fh_w, dispw)
        call mpi_write_2d(ft(1,1,l), mpi_fh_w,dispw)    
     end do
@@ -782,7 +644,7 @@ contains
 
     use zocdim,   only  :                                             &
     &      igstr,  jgstr,   kstr,                                     &
-    &        nxg,    nyg,     nz,   nxyg,  nxyzg
+    &        nxg,    nyg,     nz,   nxyg,  nxyzg, nic
     use zocnod,   only  :                                             &
     &     myrank,  iroot
     use mpiio
@@ -792,30 +654,91 @@ contains
     real(8),      intent(inout)  ::  additm(ixdim, jydim, kzdim)
     character(*), intent(in)     ::  ccitem,   clas
 
-!---- local variables
-    integer(4)   ::     i,     j,     k
+    chead(3) = ccitem
+    write(chead(14), '(16x)')
+    write(chead(15), '(16x)')
+    write(chead(16), '(16x)')
 
-    
+#ifdef OPT_TRIPOLE
+    write(chead(29), '(a,i0)') 'OCLONTPT', nxg
+    write(chead(32), '(a,i0)') 'OCLATTPT', nyg
+#else
+    write(chead(29), '(i15,a1)') nxg, 'X'
+    write(chead(32), '(i15,a1)') nyg, 'Y'
+#endif
+
     if ( clas(1:3) == 'OCN' ) then
-          chead(3) = ccitem
-          chead(29) = cheadtx
-          chead(32) = cheadty
-          write(chead(35), '(a)') 'OCDEPT'//trim(adjustl(cnz))
-          write(chead(37), '(i16)') nz
-          write(chead(64), '(i16)') nxyzg
-         call mpi_write_header(chead, mpi_fh_w, dispw)
-         call mpi_write_3d(additm, mpi_fh_w,dispw)    
+       write(chead(35), '(a,i0)') 'OCDEPT', nz
+       write(chead(37), '(i16)') nz
+       write(chead(64), '(i16)') nxyzg
+       call mpi_write_header(chead, mpi_fh_w, dispw)
+       call mpi_write_3d(additm, mpi_fh_w,dispw)    
+    else if ( clas(1:3) == 'ICE' ) then
+       write(chead(35), '(a)') 'NUMBER1000'
+       write(chead(37), '(i16)') nic
+       write(chead(64), '(i16)') nxyg*nic
+       call mpi_write_header(chead, mpi_fh_w, dispw)
+       call mpi_write_id(additm, mpi_fh_w,dispw)    
     else
-          chead(3) = ccitem
-          chead(29) = cheadtx
-          chead(32) = cheadty
-          write(chead(35), '(a)') 'SFC1'
-          write(chead(37), '(i16)') 1
-          write(chead(64), '(i16)') nxyg
-         call mpi_write_header(chead, mpi_fh_w, dispw)
-         call mpi_write_2d(additm, mpi_fh_w,dispw)
+       write(chead(35), '(a)') 'SFC1'
+       write(chead(37), '(i16)') 1
+       write(chead(64), '(i16)') nxyg
+       call mpi_write_header(chead, mpi_fh_w, dispw)
+       call mpi_write_2d(additm, mpi_fh_w,dispw)
     end if
+
   end subroutine finadd
+
+! =====================================================================
+
+  subroutine edhead(                 &
+       &             ccitem,         &
+       &              htitl,  hunit, &
+       &              cclas)
+    use zocdim, only : nxg, nyg, nxyg, nxyzg, nic, nz
+
+    character(*), intent(in) :: ccitem,  cclas,  htitl,  hunit
+    character(len=32) ::  ctitl
+
+    ctitl = htitl
+
+    chead(3) = ccitem
+    chead(14) = ctitl(1:16)
+    chead(15) = ctitl(17:32)
+    chead(16) = hunit
+
+#ifdef OPT_TRIPOLE
+    if (cclas(6:6) == 'V') then
+       write(chead(29), '(a,i0)') 'OCLONTPV', nxg
+       write(chead(32), '(a,i0)') 'OCLATTPV', nyg
+    else
+       write(chead(29), '(a,i0)') 'OCLONTPT', nxg
+       write(chead(32), '(a,i0)') 'OCLATTPT', nyg
+    end if
+#else
+    write(chead(29), '(i15,a1)') nxg, 'X'
+    write(chead(32), '(i15,a1)') nyg, 'Y'
+#endif
+
+    if (cclas(3:5) == 'SFC') then
+       write(chead(35), '(a)') 'SFC1'
+       write(chead(37), '(i16)') 1
+       write(chead(64), '(i16)') nxyg
+    else if (cclas(3:5) == 'ICE') then
+       write(chead(35), '(a)') 'NUMBER1000'
+       write(chead(37), '(i16)') nic
+       write(chead(64), '(i16)') nxyg*nic
+    else if (cclas(3:5) == 'LVT' .or. cclas(3:5) == 'LVM') then
+       write(chead(35), '(2a,i0)') 'OCDEP', cclas(5:5), nz
+       write(chead(37), '(i16)') nz
+       write(chead(64), '(i16)') nxyzg
+    else
+       write(chead(35), '(a,i0)') 'OCDEPT', nz
+       write(chead(37), '(i16)') nz
+       write(chead(64), '(i16)') nxyzg
+    end if
+
+  end subroutine edhead
 
 end module brstt
 

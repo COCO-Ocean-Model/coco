@@ -32,11 +32,12 @@ module brstt
   integer(4),               save  ::   idate(1:6)
   logical,                  save  ::  ofirst
   character(len=ncf)              ::  cfinit,      cfrest
-  character(len=16)               ::   chead(64) 
+  character(len=16),        save  ::   chead(64) 
   data ofirst / .true. /
   data cfinit, cfrest / 'not-specified', 'not-specified' /
 
-  character(len=16),        save  ::   cheadtx, cheadty, cnz
+  character(len=16),        save  ::   chrnum
+  real(8), save  ::  dundef = -1.d20
 
   public  ::  restrt,  rstadd,  finadd, finout
 
@@ -727,61 +728,74 @@ contains
     integer(4)        ::      i,      j,      k,     l
     integer(4), save  ::  ifpar,  jfpar,  istat
     integer(4)        ::   ierr
-    character(16)     ::  cheadvx, cheadvy, cnx, cny
+    character(len=ncf) :: crun = '(RUN NAME WAS NOT SET)'
+
+    character(len=8)  :: hdate
+    character(len=10) :: htime
+    character(len=5)  :: hzone
+    integer :: ivalues(1:8)
+    character(len=16) :: citem
 
     namelist /nmfrst/ cfrest
+    namelist /nmrun/ crun
 
     if ( ofirst ) then
        call rewnml(ifpar, jfpar)
        read(ifpar, nmfrst, iostat=istat)
        call cstnml( jfpar, 'finout', 'nmfrst', istat )
        write(jfpar, nmfrst)
+       call rewnml(ifpar, jfpar)
+       read(ifpar, nmrun, iostat=istat)
+       call cstnml( jfpar, 'finout', 'nmrun', istat )
        if ( myrank == iroot ) then
           call filopn(nfrest, cfrest, 'WRITE')
        end if
        ofirst = .false.
     end if
 
+    if (crun(1:1) == '(') then
+       chrnum = 'COCO stand-alone'
+    else
+       chrnum = crun(1:16)
+    end if
+
     if ( .not. orsout ) return
 
     if ( myrank == iroot ) then
+       do i = 1, 64
+          write(chead(i),'(16x)')
+       end do
        if (orsrwd) then
           rewind(nfrest)
        end if
        call css2yh(  idate, tt)
        write(chead(1), '(i16)') 9010
-       write(chead(14), '(16x)') ! title
-       write(chead(15), '(16x)') ! title (cont.)
-       write(chead(16), '(16x)') ! unit
+       chead(2) = chrnum
        write(chead(25), '(i16)') nint(tt / 3.6d3)
        chead(26) = 'HOUR'
        chead(38) = 'UR8'
-       write(chead(27), '(i4.4,2i2.2,a1,3i2.2,a1)')                   &
-    &        idate(1), idate(2), idate(3), ' ',                       &
-    &        idate(4), idate(5), idate(6), ' '
-       write(chead(48), '(i4.4,2i2.2,a1,3i2.2,a1)')                   &
-    &        idate(1), idate(2), idate(3), ' ',                       &
-    &        idate(4), idate(5), idate(6), ' '
-       write(chead(49), '(i4.4,2i2.2,a1,3i2.2,a1)')                   &
-    &        idate(1), idate(2), idate(3), ' ',                       &
-    &        idate(4), idate(5), idate(6), ' '
-       write(chead(50), '(i6.6,5i2.2)') idate
+       write(chead(27), '(i4.4,2i2.2,1x,3i2.2,1x)') idate(1:6)
+       write(chead(48), '(i4.4,2i2.2,1x,3i2.2,1x)') idate(1:6)
+       write(chead(49), '(i4.4,2i2.2,1x,3i2.2,1x)') idate(1:6)
+       write(chead(50), '(i6.6,5i2.2)') idate(1:6)
        write(chead(30), '(i16)') 1
        write(chead(31), '(i16)') nxg
        write(chead(33), '(i16)') 1
        write(chead(34), '(i16)') nyg
        write(chead(36), '(i16)') 1
-#ifdef OPT_TRIPOLE
-       write(cnx, '(i16)') nxg
-       write(cny, '(i16)') nyg
-       write(cheadtx, '(a)') 'OCLONTPT'//trim(adjustl(cnx))
-       write(cheadty, '(a)') 'OCLATTPT'//trim(adjustl(cny))
-       write(cheadvx, '(a)') 'OCLONTPV'//trim(adjustl(cnx))
-       write(cheadvy, '(a)') 'OCLATTPV'//trim(adjustl(cny))
-#else
-       write(chead(29), '(i15,a1)') nxg, 'X'
-       write(chead(32), '(i15,a1)') nyg, 'Y'
-#endif
+       write(chead(39), '(e16.7)') dundef
+       chead(40) = chead(39)
+       chead(41) = chead(39)
+       chead(42) = chead(39)
+       chead(43) = chead(39)
+       write(chead(44), '(i16)') 1
+       write(chead(46), '(i16)') 0
+       write(chead(47), '(e16.7)') 0.d0
+       chead(61) = 'COCO'
+       chead(63) = 'COCO'
+       call date_and_time(hdate, htime, hzone, ivalues)
+       write(chead(60), '(i4.4,2i2.2,1x,3i2.2,1x)') ivalues(1:3), ivalues(5:7)
+       chead(62) = chead(60)
     end if
 
     call gather_3d(g3d, ub)
@@ -793,13 +807,7 @@ contains
              end do
           end do
        end do
-       chead(3) = 'UO'
-       chead(29) = cheadvx
-       chead(32) = cheadvy
-       write(cnz, '(i16)') nz
-       write(chead(35), '(a)') 'OCDEPT'//trim(adjustl(cnz))
-       write(chead(37), '(i16)') nz
-       write(chead(64), '(i16)') nxyzg
+       call edhead('UO', 'ocean zonal velocity', 'cm/s', 'OCLVTV')
        write(nfrest) chead
        write(nfrest) buf3
     end if
@@ -813,12 +821,7 @@ contains
              end do
           end do
        end do
-       chead(3) = 'VO'
-       chead(29) = cheadvx
-       chead(32) = cheadvy
-       write(chead(35), '(a)') 'OCDEPT'//trim(adjustl(cnz))
-       write(chead(37), '(i16)') nz
-       write(chead(64), '(i16)') nxyzg
+       call edhead('VO', 'ocean meridional velocity', 'cm/s', 'OCLVTV')
        write(nfrest) chead
        write(nfrest) buf3
     end if
@@ -832,12 +835,7 @@ contains
              end do
           end do
        end do
-       chead(3) = 'TO'
-       chead(29) = cheadtx
-       chead(32) = cheadty
-       write(chead(35), '(a)') 'OCDEPT'//trim(adjustl(cnz))
-       write(chead(37), '(i16)') nz
-       write(chead(64), '(i16)') nxyzg
+       call edhead('TO', 'ocean temperature', 'degC', 'OCLVTT')
        write(nfrest) chead
        write(nfrest) buf3
     end if
@@ -851,12 +849,7 @@ contains
              end do
           end do
        end do
-       chead(3) = 'SO'
-       chead(29) = cheadtx
-       chead(32) = cheadty
-       write(chead(35), '(a)') 'OCDEPT'//trim(adjustl(cnz))
-       write(chead(37), '(i16)') nz
-       write(chead(64), '(i16)') nxyzg
+       call edhead('SO', 'ocean salinity', 'psu', 'OCLVTT')
        write(nfrest) chead
        write(nfrest) buf3
     end if
@@ -868,12 +861,7 @@ contains
              buf2(i, j) = g2d(igstr+i-1, jgstr+j-1)
           end do
        end do
-       chead(3) = 'SHO'
-       chead(29) = cheadtx
-       chead(32) = cheadty
-       write(chead(35), '(a)') 'SFC1'
-       write(chead(37), '(i16)') 1
-       write(chead(64), '(i16)') nxyg
+       call edhead('SHO', 'sea surface height', 'cm', 'OCSFCT' )
        write(nfrest) chead
        write(nfrest) buf2
     end if
@@ -885,12 +873,7 @@ contains
              buf2(i, j) = g2d(igstr+i-1, jgstr+j-1)
           end do
        end do
-       chead(3) = 'UBTO'
-       chead(29) = cheadvx
-       chead(32) = cheadvy
-       write(chead(35), '(a)') 'SFC1'
-       write(chead(37), '(i16)') 1
-       write(chead(64), '(i16)') nxyg
+       call edhead('UBTO', 'ocean zonal transport', 'cm^2/s', 'OCSFCV')
        write(nfrest) chead
        write(nfrest) buf2
     end if
@@ -902,12 +885,7 @@ contains
              buf2(i, j) = g2d(igstr+i-1, jgstr+j-1)
           end do
        end do
-       chead(3) = 'VBTO'
-       chead(29) = cheadvx
-       chead(32) = cheadvy
-       write(chead(35), '(a)') 'SFC1'
-       write(chead(37), '(i16)') 1
-       write(chead(64), '(i16)') nxyg
+       call edhead('VBTO', 'ocean meridional transport', 'cm^2/s', 'OCSFCV')
        write(nfrest) chead
        write(nfrest) buf2
     end if
@@ -921,12 +899,7 @@ contains
              end do
           end do
        end do
-       chead(3) = 'WO'
-       chead(29) = cheadtx
-       chead(32) = cheadty
-       write(chead(35), '(a)') 'OCDEPM'//trim(adjustl(cnz))
-       write(chead(37), '(i16)') nz
-       write(chead(64), '(i16)') nxyzg
+       call edhead('WO', 'ocean vertical velocity', 'cm/s', 'OCLVMT')
        write(nfrest) chead
        write(nfrest) buf3
     end if
@@ -940,12 +913,7 @@ contains
              end do
           end do
        end do
-       chead(3) = 'AI'
-       chead(29) = cheadtx
-       chead(32) = cheadty
-       write(chead(35), '(a)') 'NUMBER1000'
-       write(chead(37), '(i16)') nic
-       write(chead(64), '(i16)') nxyg*nic
+       call edhead('AI', 'ice concentration', 'N.D.', 'OCICET')
        write(nfrest) chead
        write(nfrest) bufi
     end if
@@ -959,12 +927,7 @@ contains
              end do
           end do
        end do
-       chead(3) = 'HI'
-       chead(29) = cheadtx
-       chead(32) = cheadty
-       write(chead(35), '(a)') 'NUMBER1000'
-       write(chead(37), '(i16)') nic
-       write(chead(64), '(i16)') nxyg*nic
+       call edhead('HI', 'ice thickness', 'cm', 'OCICET')
        write(nfrest) chead
        write(nfrest) bufi
     end if
@@ -976,12 +939,7 @@ contains
              buf2(i, j) = g2d(igstr+i-1, jgstr+j-1)
           end do
        end do
-       chead(3) = 'UI'
-       chead(29) = cheadvx
-       chead(32) = cheadvy
-       write(chead(35), '(a)') 'SFC1'
-       write(chead(37), '(i16)') 1
-       write(chead(64), '(i16)') nxyg
+       call edhead('UI', 'ice zonal velocity', 'cm/s', 'OCSFCV')
        write(nfrest) chead
        write(nfrest) buf2
     end if
@@ -993,12 +951,7 @@ contains
              buf2(i, j) = g2d(igstr+i-1, jgstr+j-1)
           end do
        end do
-       chead(3) = 'VI'
-       chead(29) = cheadvx
-       chead(32) = cheadvy
-       write(chead(35), '(a)') 'SFC1'
-       write(chead(37), '(i16)') 1
-       write(chead(64), '(i16)') nxyg
+       call edhead('VI', 'ice meridional velocity', 'cm/s', 'OCSFCV')
        write(nfrest) chead
        write(nfrest) buf2
     end if
@@ -1012,12 +965,7 @@ contains
              end do
           end do
        end do
-       chead(3) = 'TI'
-       chead(29) = cheadtx
-       chead(32) = cheadty
-       write(chead(35), '(a)') 'NUMBER1000'
-       write(chead(37), '(i16)') nic
-       write(chead(64), '(i16)') nxyg*nic
+       call edhead('TI', 'ice temperature', 'degC', 'OCICET')
        write(nfrest) chead
        write(nfrest) bufi
     end if
@@ -1031,12 +979,7 @@ contains
              end do
           end do
        end do
-       chead(3) = 'HS'
-       chead(29) = cheadtx
-       chead(32) = cheadty
-       write(chead(35), '(a)') 'NUMBER1000'
-       write(chead(37), '(i16)') nic
-       write(chead(64), '(i16)') nxyg*nic
+       call edhead('HS', 'snow thickness', 'cm', 'OCICET')
        write(nfrest) chead
        write(nfrest) bufi
     end if
@@ -1048,12 +991,7 @@ contains
              buf2(i, j) = g2d(igstr+i-1, jgstr+j-1)
           end do
        end do
-       chead(3) = 'FT'
-       chead(29) = cheadtx
-       chead(32) = cheadty
-       write(chead(35), '(a)') 'SFC1'
-       write(chead(37), '(i16)') 1
-       write(chead(64), '(i16)') nxyg
+       call edhead('FT', 'sea surface temperature flux', 'K cm/s', 'OCSFCT')
        write(nfrest) chead
        write(nfrest) buf2
     end if
@@ -1065,12 +1003,7 @@ contains
              buf2(i, j) = g2d(igstr+i-1, jgstr+j-1)
           end do
        end do
-       chead(3) = 'SWABS'
-       chead(29) = cheadtx
-       chead(32) = cheadty
-       write(chead(35), '(a)') 'SFC1'
-       write(chead(37), '(i16)') 1
-       write(chead(64), '(i16)') nxyg
+       call edhead('SWABS', 'absorbed shortwave', 'erg/cm^2/s', 'OCSFCT')
        write(nfrest) chead
        write(nfrest) buf2
     end if
@@ -1082,12 +1015,7 @@ contains
              buf2(i, j) = g2d(igstr+i-1, jgstr+j-1)
           end do
        end do
-       chead(3) = 'FW'
-       chead(29) = cheadtx
-       chead(32) = cheadty
-       write(chead(35), '(a)') 'SFC1'
-       write(chead(37), '(i16)') 1
-       write(chead(64), '(i16)') nxyg
+       call edhead('FW', 'sea surface freshwater flux', 'cm/s', 'OCSFCT')
        write(nfrest) chead
        write(nfrest) buf2
     end if
@@ -1099,12 +1027,7 @@ contains
              buf2(i, j) = g2d(igstr+i-1, jgstr+j-1)
           end do
        end do
-       chead(3) = 'FS'
-       chead(29) = cheadtx
-       chead(32) = cheadty
-       write(chead(35), '(a)') 'SFC1'
-       write(chead(37), '(i16)') 1
-       write(chead(64), '(i16)') nxyg
+       call edhead('FS', 'sea surface salinity flux', 'psu cm/s', 'OCSFCT')
        write(nfrest) chead
        write(nfrest) buf2
     end if
@@ -1116,12 +1039,7 @@ contains
              buf2(i, j) = g2d(igstr+i-1, jgstr+j-1)
           end do
        end do
-       chead(3) = 'TAUX'
-       chead(29) = cheadvx
-       chead(32) = cheadvy
-       write(chead(35), '(a)') 'SFC1'
-       write(chead(37), '(i16)') 1
-       write(chead(64), '(i16)') nxyg
+       call edhead('TAUX', 'zonal wind stress', 'dyn/cm^2', 'OCSFCV')
        write(nfrest) chead
        write(nfrest) buf2
     end if
@@ -1133,12 +1051,7 @@ contains
              buf2(i, j) = g2d(igstr+i-1, jgstr+j-1)
           end do
        end do
-       chead(3) = 'TAUY'
-       chead(29) = cheadvx
-       chead(32) = cheadvy
-       write(chead(35), '(a)') 'SFC1'
-       write(chead(37), '(i16)') 1
-       write(chead(64), '(i16)') nxyg
+       call edhead('TAUY', 'meridional wind stress', 'dyn/cm^2', 'OCSFCV')
        write(nfrest) chead
        write(nfrest) buf2
     end if
@@ -1152,12 +1065,7 @@ contains
              end do
           end do
        end do
-       chead(3) = 'AMV'
-       chead(29) = cheadtx
-       chead(32) = cheadty
-       write(chead(35), '(a)') 'OCDEPM'//trim(adjustl(cnz))
-       write(chead(37), '(i16)') nz
-       write(chead(64), '(i16)') nxyzg
+       call edhead('AMV', 'ocean vertical viscosity', 'cm^2/s', 'OCLVMV')
        write(nfrest) chead
        write(nfrest) buf3
     end if
@@ -1171,12 +1079,7 @@ contains
              end do
           end do
        end do
-       chead(3) = 'AHV'
-       chead(29) = cheadtx
-       chead(32) = cheadty
-       write(chead(35), '(a)') 'OCDEPM'//trim(adjustl(cnz))
-       write(chead(37), '(i16)') nz
-       write(chead(64), '(i16)') nxyzg
+       call edhead('AHV', 'ocean vertical diffusivity', 'cm^2/s', 'OCLVMT')
        write(nfrest) chead
        write(nfrest) buf3
     end if
@@ -1188,12 +1091,7 @@ contains
              buf2(i, j) = g2d(igstr+i-1, jgstr+j-1)
           end do
        end do
-       chead(3) = 'PTOP'
-       chead(29) = cheadtx
-       chead(32) = cheadty
-       write(chead(35), '(a)') 'SFC1'
-       write(chead(37), '(i16)') 1
-       write(chead(64), '(i16)') nxyg
+       call edhead('PTOP', 'sea surface presssure (inc. sea ice)', 'dyn/cm^2', 'OCSFCT')
        write(nfrest) chead
        write(nfrest) buf2
     end if
@@ -1207,12 +1105,7 @@ contains
              end do
           end do
        end do
-       chead(3) = 'TSI'
-       chead(29) = cheadtx
-       chead(32) = cheadty
-       write(chead(35), '(a)') 'NUMBER1000'
-       write(chead(37), '(i16)') nic
-       write(chead(64), '(i16)') nxyg*nic
+       call edhead('TSI', 'sea ice surface temperature', 'degC', 'OCICET')
        write(nfrest) chead
        write(nfrest) bufi
     end if
@@ -1227,12 +1120,8 @@ contains
                 end do
              end do
           end do
-          write(chead(3), '(a6,i2.2)') 'TRACER', l
-          chead(29) = cheadtx
-          chead(32) = cheadty
-          write(chead(35), '(a)') 'OCDEPT'//trim(adjustl(cnz))
-          write(chead(37), '(i16)') nz
-          write(chead(64), '(i16)') nxyzg
+          write(citem, '(a,i2.2)') 'TRACER', l
+          call edhead(citem, '', '', 'OCLVTT')
           write(nfrest) chead
           write(nfrest) buf3
        end if
@@ -1246,12 +1135,8 @@ contains
                 buf2(i, j) = g2d(igstr+i-1, jgstr+j-1)
              end do
           end do
-          write(chead(3), '(a6,i2.2)') 'TRCFLX', l
-          chead(29) = cheadtx
-          chead(32) = cheadty
-          write(chead(35), '(a)') 'SFC1'
-          write(chead(37), '(i16)') 1
-          write(chead(64), '(i16)') nxyg
+          write(citem, '(a,i2.2)') 'TRCFLX', l
+          call edhead(citem, '', '', 'OCSFCT')
           write(nfrest) chead
           write(nfrest) buf2
        end if
@@ -1274,11 +1159,12 @@ contains
 
     use zocdim,   only  :                                             &
     &      igstr,  jgstr,   kstr,                                     &
-    &        nxg,    nyg,     nz,   nxyg,  nxyzg
+    &        nxg,    nyg,     nz,   nxyg,  nxyzg, nic
     use zocnod,   only  :                                             &
     &     myrank,  iroot
     use bgs2d
     use bgs3d
+    use bgsid
 
     implicit none
 
@@ -1288,8 +1174,20 @@ contains
 
 !---- local variables
     integer(4)   ::     i,     j,     k
-
     
+    chead(3) = ccitem
+    write(chead(14), '(16x)')
+    write(chead(15), '(16x)')
+    write(chead(16), '(16x)')
+
+#ifdef OPT_TRIPOLE
+    write(chead(29), '(a,i0)') 'OCLONTPT', nxg
+    write(chead(32), '(a,i0)') 'OCLATTPT', nyg
+#else
+    write(chead(29), '(i15,a1)') nxg, 'X'
+    write(chead(32), '(i15,a1)') nyg, 'Y'
+#endif
+
     if ( clas(1:3) == 'OCN' ) then
        call gather_3d(g3d, additm)
        if ( myrank == iroot ) then
@@ -1300,14 +1198,27 @@ contains
                 end do
              end do
           end do
-          chead(3) = ccitem
-          chead(29) = cheadtx
-          chead(32) = cheadty
-          write(chead(35), '(a)') 'OCDEPT'//trim(adjustl(cnz))
+          write(chead(35), '(a,i0)') 'OCDEPT', nz
           write(chead(37), '(i16)') nz
           write(chead(64), '(i16)') nxyzg
           write(nfrest) chead
           write(nfrest) buf3
+       end if
+    else if ( clas(1:3) == 'ICE' ) then
+       call gather_id(gid, additm)
+       if ( myrank == iroot ) then
+          do k = 1, nic
+             do j = 1, nyg
+                do i = 1, nxg
+                   bufi(i, j, k) = gid(igstr+i-1, jgstr+j-1, k)
+                end do
+             end do
+          end do
+          write(chead(35), '(a)') 'NUMBER1000'
+          write(chead(37), '(i16)') nic
+          write(chead(64), '(i16)') nxyg*nic
+          write(nfrest) chead
+          write(nfrest) bufi
        end if
     else
        call gather_2d(g2d, additm)
@@ -1317,18 +1228,64 @@ contains
                 buf2(i, j) = g2d(igstr+i-1, jgstr+j-1)
              end do
           end do
-          chead(3) = ccitem
-          chead(29) = cheadtx
-          chead(32) = cheadty
           write(chead(35), '(a)') 'SFC1'
           write(chead(37), '(i16)') 1
           write(chead(64), '(i16)') nxyg
           write(nfrest) chead
           write(nfrest) buf2
-       END IF
-    END IF
+       end if
+    end if
     
   end subroutine finadd
+
+  subroutine edhead(                 &
+       &             ccitem,         &
+       &              htitl,  hunit, &
+       &              cclas)
+    use zocdim, only : nxg, nyg, nxyg, nxyzg, nic, nz
+
+    character(*), intent(in) :: ccitem,  cclas,  htitl,  hunit
+    character(len=32) ::  ctitl
+
+    ctitl = htitl
+
+    chead(3) = ccitem
+    chead(14) = ctitl(1:16)
+    chead(15) = ctitl(17:32)
+    chead(16) = hunit
+
+#ifdef OPT_TRIPOLE
+    if (cclas(6:6) == 'V') then
+       write(chead(29), '(a,i0)') 'OCLONTPV', nxg
+       write(chead(32), '(a,i0)') 'OCLATTPV', nyg
+    else
+       write(chead(29), '(a,i0)') 'OCLONTPT', nxg
+       write(chead(32), '(a,i0)') 'OCLATTPT', nyg
+    end if
+#else
+    write(chead(29), '(i15,a1)') nxg, 'X'
+    write(chead(32), '(i15,a1)') nyg, 'Y'
+#endif
+
+    if (cclas(3:5) == 'SFC') then
+       write(chead(35), '(a)') 'SFC1'
+       write(chead(37), '(i16)') 1
+       write(chead(64), '(i16)') nxyg
+    else if (cclas(3:5) == 'ICE') then
+       write(chead(35), '(a)') 'NUMBER1000'
+       write(chead(37), '(i16)') nic
+       write(chead(64), '(i16)') nxyg*nic
+    else if (cclas(3:5) == 'LVT' .or. cclas(3:5) == 'LVM') then
+       write(chead(35), '(2a,i0)') 'OCDEP', cclas(5:5), nz
+       write(chead(37), '(i16)') nz
+       write(chead(64), '(i16)') nxyzg
+    else
+       write(chead(35), '(a,i0)') 'OCDEPT', nz
+       write(chead(37), '(i16)') nz
+       write(chead(64), '(i16)') nxyzg
+    end if
+
+  end subroutine edhead
 
 end module brstt
 
