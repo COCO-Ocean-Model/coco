@@ -306,50 +306,66 @@ subroutine predci( &
 ! FIX, FIY: eastward/northward sea ice transport
 !           unit [cm^3(ice)/s]
   call chekin(   fix,  'FIX', &
-    &             nx,     ny,    nic, nxyidm, 'ICE')
+       &            'eastward ice transport', 'cm^3(ice)/rad/s', &
+       &             nx,     ny,    nic, nxyidm, 'OCICET')
   call chekin(   fiy,  'FIY', &
-    &             nx,     ny,    nic, nxyidm, 'ICE')
+     &            'northward ice transport', 'cm^3(ice)/rad/s', &
+    &             nx,     ny,    nic, nxyidm, 'OCICET')
 ! FISX, FISY: eastward/northward snow transport
 !             unit [cm^3(snow)/s]
   call chekin(   fsx, 'FISX', &
-    &             nx,     ny,    nic, nxyidm, 'ICE')
+     &            'eastward snow transport', 'cm^3(snow)/rad/s', &
+    &             nx,     ny,    nic, nxyidm, 'OCICET')
   call chekin(   fsy, 'FISY', &
-    &             nx,     ny,    nic, nxyidm, 'ICE')
+     &            'northward snow transport', 'cm^3(snow)/rad/s', &
+    &             nx,     ny,    nic, nxyidm, 'OCICET')
 ! FTITD: heat flux into sea water due to sea ice thermodynamics
 !        unit [erg/cm^2/s]
   call chekin(  ftitd,  'FTITD', &
-    &              nx,     ny,      1, nxydim, 'SFC')
+     &     'heat flux into sea water due to sea ice thermodynamics', &
+     &                 'erg/cm^2/s', &
+    &              nx,     ny,      1, nxydim, 'OCSFCT')
 ! IGRFRA: frazil sea ice growth rate, unit [g/cm^2/s]
   call chekin( igrfra, 'IGRFRA', &
-    &              nx,     ny,      1, nxydim, 'SFC')
+     &            'frazil sea ice growth rate', 'g/cm^2/s', &
+    &              nx,     ny,      1, nxydim, 'OCSFCT')
 ! IGRCON: congelation sea ice growth rate, unit [g/cm^2/s]
   call chekin( igrcon, 'IGRCON', &
-    &              nx,     ny,      1, nxydim, 'SFC')
+     &            'congelation sea ice growth rate', 'g/cm^2/s', &
+    &              nx,     ny,      1, nxydim, 'OCSFCT')
 ! IGRSNI: snow-ice formation rate, unit [g/cm^2/s]
   call chekin( igrsni, 'IGRSNI', &
-    &              nx,     ny,      1, nxydim, 'SFC')
+     &            'snow-ice formation rate', 'g/cm^2/s', &
+    &              nx,     ny,      1, nxydim, 'OCSFCT')
 ! INRLAT: lateral sea ice net growth rate, unit [g/cm^2/s]
 !  (COCO4.4 represents lateral melting process but not freezing,
 !   thus this value will be zero or negative.)
   call chekin( inrlat, 'INRLAT', &
-    &              nx,     ny,      1, nxydim, 'SFC')
+     &            'lateral sea ice net growth rate', 'g/cm^2/s', &
+    &              nx,     ny,      1, nxydim, 'OCSFCT')
 ! IMRSNO: snow melt rate, unit [g/cm^2/s]
   call chekin( imrsno, 'IMRSNO', &
-    &              nx,     ny,      1, nxydim, 'SFC')
+     &            'snow melt rate', 'g/cm^2/s', &
+    &              nx,     ny,      1, nxydim, 'OCSFCT')
 ! IMRISF: rate of melt at upper surface of sea ice, unit [g/cm^2/s]
   call chekin( imrisf, 'IMRISF', &
-    &              nx,     ny,      1, nxydim, 'SFC')
+     &            'rate of melt at upper surface of sea ice', &
+     &                   'g/cm^2/s', &
+    &              nx,     ny,      1, nxydim, 'OCSFCT')
 ! IMRIBS: rate of melt at sea ice base, unit [g/cm^2/s]
   call chekin( imribs, 'IMRIBS', &
-    &              nx,     ny,      1, nxydim, 'SFC')
+     &            'rate of melt at sea ice base', 'g/cm^2/s', &
+    &              nx,     ny,      1, nxydim, 'OCSFCT')
 
 ! extra output section
 ! FEX, FEY: eastward/northward thermal transport by sea ice
 !           unit [(erg/g)*(cm^3(ice)/s)]
   call chekin(   fex,  'FIEX', &
-    &             nx,     ny,    nic, nxyidm, 'ICE')
+     &            'eastward ice heat transport', 'erg*cm^3/rad/g/s', &
+    &             nx,     ny,    nic, nxyidm, 'OCICET')
   call chekin(   fey,  'FIEY', &
-    &             nx,     ny,    nic, nxyidm, 'ICE')
+     &            'northward ice heat transport', 'erg*cm^3/rad/g/s', &
+    &             nx,     ny,    nic, nxyidm, 'OCICET')
 
 !!     for check: not necessary for CMIP5 output
 !  do ij = 1, nxydim

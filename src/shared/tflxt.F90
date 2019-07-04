@@ -317,17 +317,23 @@ subroutine chkftx
   end if
 
   call chekin(   ftx,  'FTX', &
-    &             nx,     ny,     nz, nxyzdm, 'OCN')
+     &            'ocean zonal heat flux', 'degC cm^3/rad/s', &
+     &            nx,     ny,     nz, nxyzdm, 'OCLVTT')
   call chekin(   fty,  'FTY', &
-    &             nx,     ny,     nz, nxyzdm, 'OCN')
+     &            'ocean meridional heat flux', 'degC cm^3/rad/s', &
+     &            nx,     ny,     nz, nxyzdm, 'OCLVTT')
   call chekin(   ftz,  'FTZ', &
-    &             nx,     ny,     nz, nxyzdm, 'OCN')
+     &            'ocean vertical heat flux', 'degC cm/s', &
+     &            nx,     ny,     nz, nxyzdm, 'OCLVTT')
   call chekin(   ftx(1, 1, 2),  'FSX', &
-    &             nx,     ny,     nz, nxyzdm, 'OCN')
+     &            'ocean zonal salt flux', 'psu cm^3/rad/s', &
+     &            nx,     ny,     nz, nxyzdm, 'OCLVTT')
   call chekin(   fty(1, 1, 2),  'FSY', &
-    &             nx,     ny,     nz, nxyzdm, 'OCN')
+     &            'ocean meridional salt flux', 'psu cm^3/rad/s', &
+     &            nx,     ny,     nz, nxyzdm, 'OCLVTT')
   call chekin(   ftz(1, 1, 2),  'FSZ', &
-    &             nx,     ny,     nz, nxyzdm, 'OCN')
+     &            'ocean vertical salt flux', 'psu cm/s', &
+     &            nx,     ny,     nz, nxyzdm, 'OCLVTT')
 
   return
 

@@ -42,6 +42,8 @@ module aocea
   implicit none
 
   character(len=16), save :: ctrnam(ntdim), cftnam(ntdim)
+  character(len=32), save :: ctrtit(ntdim), cfttit(ntdim)
+  character(len=16), save :: ctruni(ntdim), cftuni(ntdim)
   real(8), save ::    uadv(nxyzdm),   vadv(nxyzdm),   wadv(nxyzdm)
   real(8), save ::     gxx(nxydim),    gyy(nxydim)
 
@@ -90,6 +92,21 @@ subroutine ocstup ( &
   do l = 3, ntdim
      write(ctrnam(l), '(a6,i2.2)') 'TRACER', l
      write(cftnam(l), '(a6,i2.2)') 'TRCFLX', l
+  end do
+
+  ctrtit(1) = 'ocean temperature'
+  ctrtit(2) = 'ocean salinity'
+  ctruni(1) = 'degC'
+  ctruni(2) = 'psu'
+  cfttit(1) = 'sea surface temperature flux'
+  cfttit(2) = 'sea surface freshwater flux'
+  cftuni(1) = 'K cm/s'
+  cftuni(2) = 'cm/s'
+  do l = 3, ntdim
+     ctrtit(l) = ''
+     ctruni(l) = ''
+     cfttit(l) = ''
+     cftuni(l) = ''
   end do
 
   DT = DT1
@@ -482,31 +499,44 @@ subroutine ocean ( &
 
   if ( itst == 3 ) then
      call chekin(    ua,    'U', &
-       &             nx,     ny,     nz, nxyzdm, 'OCN' )
+          &      'ocean zonal velocity', 'cm/s', &
+          &          nx,     ny,     nz, nxyzdm, 'OCLVTV' )
      call chekin(    va,    'V', &
-       &             nx,     ny,     nz, nxyzdm, 'OCN' )
+          & 'ocean meridional velocity', 'cm/s', &
+          &          nx,     ny,     nz, nxyzdm, 'OCLVTV' )
      do l = 1, ntdim
         call chekin(     ta(1, l),      ctrnam(l), &
-          &              nx,     ny,     nz, nxyzdm, 'OCN' )
+             &          ctrtit(l),      ctruni(l), &
+             &         nx,     ny,     nz, nxyzdm, 'OCLVTT' )
      end do
      call chekin(    ha,   'SH', &
-       &             nx,     ny,      1, nxydim, 'SFC' )
+          &        'sea surface height',   'cm', &
+          &          nx,     ny,      1, nxydim, 'OCSFCT' )
      call chekin(  ubta,  'UBT', &
-       &             nx,     ny,      1, nxydim, 'SFC' )
+          &     'ocean zonal transport',         'cm^2/s', &
+          &          nx,     ny,      1, nxydim, 'OCSFCV' )
      call chekin(  vbta,  'VBT', &
-       &             nx,     ny,      1, nxydim, 'SFC' )
+          &'ocean meridional transport',         'cm^2/s', &
+          &          nx,     ny,      1, nxydim, 'OCSFCV' )
+
      call chekin(    aa,   'AI', &
-       &             nx,     ny,    nic, nxyidm, 'ICE' )
+          &         'ice concentration', 'N.D.', &
+          &          nx,     ny,    nic, nxyidm, 'OCICET')
      call chekin(   hia,   'HI', &
-       &             nx,     ny,    nic, nxyidm, 'ICE' )
+          &             'ice thickness', 'cm', &
+          &          nx,     ny,    nic, nxyidm, 'OCICET')
      call chekin(   uia,   'UI', &
-       &             nx,     ny,      1, nxydim, 'SFC' )
+          &        'ice zonal velocity', 'cm/s', &
+          &          nx,     ny,      1, nxydim, 'OCSFCV')
      call chekin(   via,   'VI', &
-       &             nx,     ny,      1, nxydim, 'SFC' )
+          &   'ice meridional velocity', 'cm/s', &
+          &          nx,     ny,      1, nxydim, 'OCSFCV')
      call chekin(   tia,   'TI', &
-       &             nx,     ny,    nic, nxyidm, 'ICE' )
+          &           'ice temperature', 'degC', &
+          &          nx,     ny,    nic, nxyidm, 'OCICET')
      call chekin(   hsa,   'HS', &
-       &             nx,     ny,    nic, nxyidm, 'ICE' )
+          &            'snow thickness',   'cm', &
+          &          nx,     ny,    nic, nxyidm, 'OCICET')
      do l = 1, nic
         do ij = 1, nxydim
            aig(ij) = aig(ij) + aa(ij, l)
@@ -516,31 +546,43 @@ subroutine ocean ( &
      end do
   else
      call chekin(    ub,    'U', &
-       &             nx,     ny,     nz, nxyzdm, 'OCN' )
+          &      'ocean zonal velocity', 'cm/s', &
+          &          nx,     ny,     nz, nxyzdm, 'OCLVTV')
      call chekin(    vb,    'V', &
-       &             nx,     ny,     nz, nxyzdm, 'OCN' )
+          & 'ocean meridional velocity', 'cm/s', &
+          &          nx,     ny,     nz, nxyzdm, 'OCLVTV')
      do l = 1, ntdim
         call chekin(     tb(1, l),      ctrnam(l), &
-          &              nx,     ny,     nz, nxyzdm, 'OCN' )
+             &          ctrtit(l),      ctruni(l), &
+             &                 nx,     ny,     nz, nxyzdm, 'OCLVTT')
      end do
      call chekin(    hb,   'SH', &
-       &             nx,     ny,      1, nxydim, 'SFC' )
+          &        'sea surface height', 'cm', &
+          &          nx,     ny,      1, nxydim, 'OCSFCT')
      call chekin(  ubtb,  'UBT', &
-       &             nx,     ny,      1, nxydim, 'SFC' )
+          &             'ocean zonal transport', 'cm^2/s', &
+          &          nx,     ny,      1, nxydim, 'OCSFCV')
      call chekin(  vbtb,  'VBT', &
-       &             nx,     ny,      1, nxydim, 'SFC' )
+          &        'ocean meridional transport', 'cm^2/s', &
+          &          nx,     ny,      1, nxydim, 'OCSFCV')
      call chekin(    ab,   'AI', &
-       &             nx,     ny,    nic, nxyidm, 'ICE' )
+          &         'ice concentration', 'N.D.', &
+          &          nx,     ny,    nic, nxyidm, 'OCICET')
      call chekin(   hib,   'HI', &
-       &             nx,     ny,    nic, nxyidm, 'ICE' )
+          &             'ice thickness',   'cm', &
+          &          nx,     ny,    nic, nxyidm, 'OCICET')
      call chekin(   uib,   'UI', &
-       &             nx,     ny,      1, nxydim, 'SFC' )
+          &        'ice zonal velocity', 'cm/s', &
+          &          nx,     ny,      1, nxydim, 'OCSFCV')
      call chekin(   vib,   'VI', &
-       &             nx,     ny,      1, nxydim, 'SFC' )
+          &   'ice meridional velocity', 'cm/s', &
+          &          nx,     ny,      1, nxydim, 'OCSFCV')
      call chekin(   tib,   'TI', &
-       &             nx,     ny,    nic, nxyidm, 'ICE' )
+          &           'ice temperature', 'degC', &
+          &          nx,     ny,    nic, nxyidm, 'OCICET')
      call chekin(   hsb,   'HS', &
-       &             nx,     ny,    nic, nxyidm, 'ICE' )
+          &            'snow thickness',   'cm', &
+          &          nx,     ny,    nic, nxyidm, 'OCICET')
      do l = 1, nic
         do ij = 1, nxydim
            aig(ij) = aig(ij) + ab(ij, l)
@@ -550,21 +592,28 @@ subroutine ocean ( &
      end do
   end if
   call chekin(     w,    'W', &
-    &             nx,     ny,     nz, nxyzdm, 'OCN' )
+       &               'ocean vertical velocity', 'cm/s', &
+       &          nx,     ny,     nz, nxyzdm, 'OCLVMT')
   call chekin(   amv,  'AMV', &
-    &             nx,     ny,     nz, nxyzdm, 'OCN' )
+       &               'ocean vertical viscosity', 'cm^2/s', &
+       &          nx,     ny,     nz, nxyzdm, 'OCLVMV')
   call chekin(   ahv,  'AHV', &
-    &             nx,     ny,     nz, nxyzdm, 'OCN' )
+       &               'ocean vertical diffusivity', 'cm^2/s', &
+       &          nx,     ny,     nz, nxyzdm, 'OCLVMT')
   do l = 1, ntdim
      call chekin(      ft(1, l),      cftnam(l), &
-       &               nx,     ny,      1, nxydim, 'SFC' )
+          &           cfttit(l),      cftuni(l), &
+          &          nx,     ny,      1, nxydim, 'OCSFCT')
   end do
   call chekin( swabs,'SWABS', &
-    &             nx,     ny,      1, nxydim, 'SFC' )
-  call chekin(    fs,    'FS', &
-    &             nx,     ny,      1, nxydim, 'SFC' )
-  call chekin(   tsi,   'TSI', &
-    &             nx,     ny,    nic, nxyidm, 'ICE' )
+       &        'absorbed shortwave',      'erg/cm^2/s', &
+       &          nx,     ny,      1, nxydim, 'OCSFCT')
+  call chekin(    fs,   'FS', &
+       &     'sea surface salt flux',       'psu cm/s', &
+       &          nx,     ny,      1, nxydim, 'OCSFCT')
+  call chekin(   tsi,  'TSI', &
+       &       'sea ice surface temperature',   'degC', &
+       &          nx,     ny,    nic, nxyidm, 'OCICET')
 
 ! chekin routine for ftx/y/z & fsx/y/z
   call chkftx
@@ -576,11 +625,16 @@ subroutine ocean ( &
 !  HSG: mean snow thickness averaged over the entire grid cell
 !       unit [cm]
   call chekin(   aig,  'AIG', &
-    &             nx,     ny,      1, nxydim, 'SFC' )
+       &          'total sea ice concentration', 'N.D.', &
+       &          nx,     ny,      1, nxydim, 'OCSFCT' )
   call chekin(   hig,  'HIG', &
-    &             nx,     ny,      1, nxydim, 'SFC' )
+       &    'sea ice thickness averaged over the entire grid cell', &
+       &                'cm', &
+       &          nx,     ny,      1, nxydim, 'OCSFCT' )
   call chekin(   hsg,  'HSG', &
-    &             nx,     ny,      1, nxydim, 'SFC' )
+       &  'mean snow thickness averaged over the entire grid cell', &
+       &                'cm', &
+       &          nx,     ny,      1, nxydim, 'OCSFCT' )
 
   call chkout( &
     &          oflout )

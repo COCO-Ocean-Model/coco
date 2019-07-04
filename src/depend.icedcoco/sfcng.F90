@@ -287,8 +287,9 @@ contains
 !     output section for CMIP5
 !     TISI: temperature at interface between sea ice and snow
 !           unit [C]
-    call chekin(tisi,   'TISI',                                       &
-    &            nx,     ny,    nic, nxyidm, 'ICE')
+    call chekin(tisi,   'TISI',                             &
+         &   'temperature at ice-snow interface', 'degC',   &
+         &            nx,     ny,    nic, nxyidm, 'OCICET')
 
     do ij = 1, nxydim
        ptop(ij) = psfc(ij) * factm

@@ -227,7 +227,8 @@ subroutine ovturn( &
   end do
 
   call chekin(  conv, 'CONV', &
-     &            nx,     ny,     nz, nxyzdm, 'OCN')
+     &            'ocean conv. adj. index', 'N.D.', &
+     &            nx,     ny,     nz, nxyzdm, 'OCLVMT')
 
   return
 

@@ -462,10 +462,12 @@ subroutine sfcflx( &
     &           nxdim,    nydim,     1 )
 #endif
 
-  call chekin(   wsbg,  'wsbg', &
-    &              nx,      ny,      1, nxydim, 'sfc')
-  call chekin(    wev,   'wev', &
-    &              nx,      ny,      1, nxydim, 'sfc')
+  call chekin(   wsbg,  'WSBG', &
+    &       'sublimation from sea-ice surface', 'cm/s',
+    &              nx,      ny,      1, nxydim, 'OCSFCT')
+  call chekin(    wev,   'WEV', &
+    &           'evaporation from sea surface', 'cm/s',
+    &              nx,      ny,      1, nxydim, 'OCSFCT')
 !  call chekin( tauaox,'tauaox', &
 !    &              nx,      ny,      1, nxydim, 'sfc')
 !  call chekin( tauaoy,'tauaoy', &
@@ -504,8 +506,9 @@ subroutine sfcflx( &
 ! output section for CMIP5
 ! tisi: temperature at interface between sea ice and snow
 !       unit [C]
-  call chekin(   tisi,   'tisi', &
-    &              nx,       ny,    nic, nxyidm, 'ice' )
+  call chekin(tisi,   'TISI',                                       &
+    &            'temperature at ice-snow interface', 'degC', &
+    &            nx,     ny,    nic, nxyidm, 'OCICET')
 
   do ij = 1, nxydim
 !     ptop(ij) = 0.d0
