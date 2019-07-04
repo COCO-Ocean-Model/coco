@@ -36,9 +36,6 @@ module fshlw
   character(len=64)  ::  chead(1:16)
   data ofirst / .true. /
 
-!---- temporary arrays
-  real(8),     allocatable,    dimension(:,:)     ::  buf2,    g2d
-
 contains
 
   subroutine modgxy(                                                  &
@@ -65,9 +62,14 @@ contains
     use zocnod,  only :  iroot,  myrank
     use zocfil,  only :  ncf
     use ufile
+#ifdef OPT_IO_COCOMPI
+    use mpiio
+#else
     use bgs2d
+#endif
 
     implicit none
+#include "mpif.h"
     
     real(8),   intent(inout)  ::    gxx(nxydim),   gyy(nxydim)
     real(8),   intent(in)     ::   ubtx(nxydim),  vbtx(nxydim)
@@ -86,6 +88,14 @@ contains
     character(len=ncf) ::  cfamh
     namelist /nmvish/ amh, iam, cfamh
     data amh, iam, cfamh / 0.d0, 0, 'not-specified' /
+
+#ifdef OPT_IO_COCOMPI
+    integer :: mpi_fh
+    integer :: icread
+    integer (kind = mpi_offset_kind) :: disp
+#else
+    real(8), allocatable :: buf2(:, :),  g2d(:, :)
+#endif
 
     if ( oinit .or. ofinal ) then
        return
@@ -122,7 +132,13 @@ contains
           end do
           
        else
-          
+#ifdef OPT_IO_COCOMPI
+          call mpi_filopn(mpi_fh, cfamh, 'read')
+          disp=0
+          call mpi_read_chead(chead, mpi_fh, disp, icread)
+          call mpi_read_2d(amhmod, mpi_fh  , disp)
+          call mpi_filcls(mpi_fh)
+#else
           allocate ( buf2(1:nxg,1:nyg) )
           allocate ( g2d(1:nxgdim,1:nygdim) )
           if ( myrank == iroot ) then
@@ -145,7 +161,7 @@ contains
           end if
           call scatter_2d( amhmod, g2d )
           deallocate ( buf2, g2d )
-
+#endif
        end if
 
     end if
