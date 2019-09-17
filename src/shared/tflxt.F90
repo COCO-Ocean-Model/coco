@@ -54,6 +54,8 @@ subroutine flxtrc( &
   &                    uy,     vy, &
   &                     w,    ahv )
 
+  use ufile
+
   real(8), intent(out) ::    adt(nxydim, nzdim, ntdim)
   real(8), intent(out) ::  diffz(nxydim, nzdim)
   real(8), intent(in)  ::     tx(nxydim, nzdim, ntdim)
@@ -215,7 +217,7 @@ subroutine flxtrb( &
 !     '12.08.01  Y.Komuro: for COCO5.0
 !
 ! ---------------------------------------------------------------------
-
+  use ufile
   real(8), intent(out) ::    adt(nxydim, nzdim, ntdim)
   real(8), intent(out) ::  diffz(nxydim, nzdim)
   real(8), intent(in)  ::     tx(nxydim, nzdim, ntdim)
