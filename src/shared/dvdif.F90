@@ -44,7 +44,7 @@ subroutine vdiff( &
   &                  amv,    ahv, &
   &                   uy,     vy,      r,   taux,   tauy, &
   &                   ty,     hy )
-
+  use ufile
   real(8), intent(out) ::     amv(nxydim, nzdim),    ahv(nxydim, nzdim)
   real(8), intent(in)  ::      uy(nxydim, nzdim),     vy(nxydim, nzdim)
   real(8), intent(in)  ::       r(nxydim, nzdim)
@@ -104,7 +104,7 @@ subroutine vdiffb( &
 !     '12.08.02  Y.Komuro: for COCO5.0
 !
 ! ---------------------------------------------------------------------
-
+  use ufile
   real(8), intent(inout) ::    amv(nxydim, nzdim),    ahv(nxydim, nzdim)
 
   integer ::     ij
