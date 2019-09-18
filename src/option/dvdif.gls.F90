@@ -205,6 +205,15 @@ subroutine vdiff( &
      call cstnml(jfpar, 'vdiff', 'nmdfre', istat)
      write(jfpar, nmdfre)
 
+     if (oeof) then
+        do k = 1, nzdim
+           do ij = 1, nxydim
+              tke(ij, k) = tkemin
+              psi(ij, k) = psimin
+           end do
+        end do
+     end if
+
      call secoef( &
        &          cc0(kstr), cc1(kstr), cc2(kstr), cc3(kstr), &
        &          cc4(kstr), cc5(kstr), cc6(kstr), &
