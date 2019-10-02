@@ -270,13 +270,18 @@ c =====================================================================
       DO 410 K = KSTR, KEND
          DO 410 J = JSTR, JEND
             DO 410 I = ISTR, IEND
-               AU = ALD(I, J, K-1) * ALD(I+1, J, K-1) *
+               AU = ALD(I, J  , K-1) * ALD(I+1, J  , K-1) *
      &              ALD(I, J+1, K-1) * ALD(I+1, J+1, K-1)
-               AL = (1.D0 - ALD(I, J, K)) *
-     &              (1.D0 - ALD(I+1, J, K)) *
-     &              (1.D0 - ALD(I, J+1, K)) *
-     &              (1.D0 - ALD(I+1, J+1, K))
-               AMFVZ(I, J, K) = AU * (1.D0 - AL)
+
+               AL = ALD(I, J  , K  ) * ALD(I+1, J  , K  ) *
+     &              ALD(I, J+1, K  ) * ALD(I+1, J+1, K  )
+
+               AMFVZ(I, J, K) = AU * AL
+!              AL = (1.D0 - ALD(I, J, K)) *
+!    &              (1.D0 - ALD(I+1, J, K)) *
+!    &              (1.D0 - ALD(I, J+1, K)) *
+!    &              (1.D0 - ALD(I+1, J+1, K))
+!              AMFVZ(I, J, K) = AU * (1.D0 - AL)
   410 CONTINUE
 
       DO 500 J = JSTR, JEND
@@ -337,13 +342,13 @@ c =====================================================================
          DO K = KSTR, KEND
             DO J = JSTR, JEND
                DO I = ISTR, IEND
-                  AU = ALD(I, J, K-1) * ALD(I+1, J, K-1) *
+                  AU = ALD(I, J  , K-1) * ALD(I+1, J  , K-1) *
      &                 ALD(I, J+1, K-1) * ALD(I+1, J+1, K-1)
-                  AL = (1.D0 - ALD(I, J, K) - BLD(I, J, K)) *
-     &                 (1.D0 - ALD(I+1, J, K) - BLD(I+1, J, K)) *
-     &                 (1.D0 - ALD(I, J+1, K) - BLD(I, J+1, K)) *
-     &                 (1.D0 - ALD(I+1, J+1, K) - BLD(I+1, J+1, K))
-                  AMFVZ(I, J, K) = AU * (1.D0 - AL)
+                  AL = (1.D0 - ALD(I,   J  , K) - BLD(I  , J  , K)) *  !check here
+     &                 (1.D0 - ALD(I+1, J  , K) - BLD(I+1, J  , K)) *  !check here
+     &                 (1.D0 - ALD(I  , J+1, K) - BLD(I  , J+1, K)) *  !check here
+     &                 (1.D0 - ALD(I+1, J+1, K) - BLD(I+1, J+1, K))    !check here
+                  AMFVZ(I, J, K) = AU * (1.D0 - AL)                    !check here
                END DO
             END DO
          END DO
