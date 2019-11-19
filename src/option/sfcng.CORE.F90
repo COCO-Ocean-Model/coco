@@ -463,10 +463,10 @@ subroutine sfcflx( &
 #endif
 
   call chekin(   wsbg,  'WSBG', &
-    &       'sublimation from sea-ice surface', 'cm/s',
+    &       'sublimation from sea-ice surface', 'cm/s', &
     &              nx,      ny,      1, nxydim, 'OCSFCT')
   call chekin(    wev,   'WEV', &
-    &           'evaporation from sea surface', 'cm/s',
+    &           'evaporation from sea surface', 'cm/s', &
     &              nx,      ny,      1, nxydim, 'OCSFCT')
 !  call chekin( tauaox,'tauaox', &
 !    &              nx,      ny,      1, nxydim, 'sfc')
