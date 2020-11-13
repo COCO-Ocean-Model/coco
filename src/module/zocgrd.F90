@@ -30,4 +30,8 @@ module zocgrd
   real(8) ::    rxt(nxydim),    rxu(nxydim)
   real(8) ::    ryt(nxydim),    ryu(nxydim)
 
+#ifdef OPT_EXMASK
+  real(8) ::  glont(nxydim),  glatt(nxydim),  rangt(nxydim)
+#endif
+
 end module zocgrd

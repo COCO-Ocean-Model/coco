@@ -3,7 +3,7 @@ CC = icc
 FFLAGS	= -xMIC-AVX512 -align array64byte -fp-model precise -vec-threshold50 -static_mpi -static_intel -convert big_endian -fpe0 -traceback -DOPT_PARALLEL
 #FFLAGS	= -xMIC-AVX512 -align array64byte -fp-model precise -vec-threshold50 -static_mpi -static_intel -convert big_endian -fpe0 -traceback -g -O0 -DOPT_PARALLEL
 
-FOPTION = $(FFLAGS) -I$(OGCMDIR)/src/include -I$(OGCMDIR)/src/module -I$(OGCMDIR)/src/build $(OPTBDY) $(OPTSRST) $(OPTBBL) $(OPTTRIPOLE) $(OPTIO)
+FOPTION = $(FFLAGS) -I$(OGCMDIR)/src/include -I$(OGCMDIR)/src/module -I$(OGCMDIR)/src/build $(OPTBDY) $(OPTSRST) $(OPTBBL) $(OPTTRIPOLE) $(OPTIO) $(OPTEXMASK)
 
 AR	= ar r
 RANLIB	= ranlib

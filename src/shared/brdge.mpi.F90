@@ -41,6 +41,9 @@ contains
  use zocgrd, only :                                                            &
   & dx, dy, dym, dz, dzm, dzv, dz0, ds, dsm, hic, rea, zbot, cor, dept, rdepv, &
   & hxt, hxu, hyt, hyu, hxyt, hxyu, hyxt, hyxu,                                &
+#ifdef OPT_EXMASK
+  & glont, glatt, rangt,                                                       &
+#endif
   & rx, ry, rym, rxt, rxu, ryt, ryu, rs, rsm
 
  use zocfil, only : ncf
@@ -472,6 +475,48 @@ contains
    &             nxdim,  nydim,      1)
 #endif
 #endif
+
+#ifdef OPT_EXMASK
+  call mpi_read_2d_dimx(glont, mpi_fh, disp)
+  call mpi_read_2d_dimx(glatt, mpi_fh, disp)
+  call mpi_read_2d_dimx(rangt, mpi_fh, disp)
+
+#ifdef OPT_TRIPOLE
+  call shift3(                                                                 &
+   &           glont,  glatt,  rangt,                                          &
+   &           nxdim,  nydim,      1,                                          &
+   &            1.d0,      0,      0 )
+#else
+  call shift3(                                                                 &
+   &           glont,  glatt,  rangt,                                          &
+   &           nxdim,  nydim,      1)
+  
+  if (jup .eq. mpi_proc_null) then
+     do j = jend+1, nydim
+        do i = 1, nxdim
+           ije = (jend - 1) * nxdim + i
+           ij  = (j - 1) * nxdim + i
+           glont(ij) = glont(ije)
+           glatt(ij) = glatt(ije)
+           rangt(ij) = rangt(ije)
+        end do
+     end do
+  end if
+#endif
+
+  if (jdown .eq. mpi_proc_null) then
+     do j = 1, jstr-1
+        do i = 1, nxdim
+           ijs = (jstr - 1) * nxdim + i
+           ij  = (j - 1) * nxdim + i
+           glont(ij) = glont(ijs)
+           glatt(ij) = glatt(ijs)
+           rangt(ij) = rangt(ijs)
+        end do
+     end do
+  end if
+#endif
+
 
   do ij = ijstr, ijend
      ijtstr = ij

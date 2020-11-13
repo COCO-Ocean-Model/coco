@@ -3,7 +3,7 @@ LINKOPT	= -parallel
 RUNOPT = -F'PORT(ENDIANINOUT)'
 
 FFLAGS	= -msg=w -Oss -autoinline -codemodel=medium  $(LINKOPT)
-FOPTION = $(FFLAGS) -I$(OGCMDIR)/src/include -I$(OGCMDIR)/src/module -I$(OGCMDIR)/src/build $(OPTBDY) $(OPTSRST) $(OPTBBL) $(OPTTRIPOLE) $(OPTIO)
+FOPTION = $(FFLAGS) -I$(OGCMDIR)/src/include -I$(OGCMDIR)/src/module -I$(OGCMDIR)/src/build $(OPTBDY) $(OPTSRST) $(OPTBBL) $(OPTTRIPOLE) $(OPTIO) $(OPTEXMASK)
 
 
 AR	= /usr/bin/ar -r 

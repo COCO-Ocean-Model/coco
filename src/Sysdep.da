@@ -2,7 +2,7 @@ FC	= mpiifort
 
 #FFLAGS	= -xCORE-AVX512 -convert big_endian -assume byterecl -fp-model precise -fpe0 -shared-intel -mcmodel=large
 FFLAGS	= -g -u -CB -C -traceback -xCORE-AVX512 -convert big_endian -assume byterecl -fp-model precise -fpe0 -shared-intel -mcmodel=large
-FOPTION = $(FFLAGS) -I$(OGCMDIR)/src/include -I$(OGCMDIR)/src/module -I$(OGCMDIR)/src/build $(OPTBDY) $(OPTSRST) $(OPTBBL) $(OPTTRIPOLE) $(OPTIO)
+FOPTION = $(FFLAGS) -I$(OGCMDIR)/src/include -I$(OGCMDIR)/src/module -I$(OGCMDIR)/src/build $(OPTBDY) $(OPTSRST) $(OPTBBL) $(OPTTRIPOLE) $(OPTIO) $(OPTEXMASK)
 
 AR	= ar r
 RANLIB	= ranlib
