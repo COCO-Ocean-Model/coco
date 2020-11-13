@@ -13,7 +13,8 @@ module mpiio
        & mpi_read_3d_dimx, mpi_read_2d, mpi_read_id,     &
        & mpi_read_3d, mpi_write_2d, mpi_write_id,        &
        & mpi_write_3d, reverse_real4, reverse_real8,     &
-       & reverse_int4
+       & reverse_int4, mpi_read_direct,                  &
+       & mpi_read_root_int, mpi_iseof
 
 contains
 
@@ -348,6 +349,35 @@ contains
   end subroutine mpi_read_root
 
 
+  subroutine mpi_read_root_int(buf,nbuf, fh, disp)
+    use zocdim
+    implicit none
+#include "mpif.h"
+
+    integer :: buf(nbuf)
+    integer :: nbuf, fh, i
+    integer (kind = mpi_offset_kind):: disp
+#ifdef OPT_IO_SEQUENTIAL
+    disp=disp+4 
+#endif
+    call mpi_file_set_view( fh, disp,    &
+         &   mpi_integer4,mpi_integer4,"native", mpi_info_null,ierr)
+
+    if (myrank .eq. iroot) then
+       call mpi_file_read(fh, buf, nbuf, &
+            &  mpi_integer4, mpi_status_ignore, ierr)
+       do i=1,nbuf
+          call reverse_int4(buf(i))
+       end do
+    end if
+#ifdef OPT_IO_SEQUENTIAL
+    disp=disp+ nbuf*4 + 4
+#else
+    disp=disp+ nbuf*4
+#endif
+    return
+  end subroutine mpi_read_root_int
+
   subroutine mpi_read_2d_intx(buf, fh, disp)
   use zocdim
   implicit none
@@ -634,6 +664,70 @@ contains
   return
   end subroutine mpi_read_3d
 
+  subroutine mpi_read_direct(chead, direct, fh, disp, icread)
+  use zocdim
+  use zocfil, only : nfstdo
+  implicit none
+#include "mpif.h"
+  character, intent(out) :: chead(64)*16
+  real(4), intent(out) :: direct(:,:)
+  integer :: nx0,ny0
+  integer :: fh
+  integer (kind = mpi_offset_kind):: disp
+  integer :: mpistat(mpi_status_size)
+  integer :: i,j
+  integer :: icread
+
+  nx0=size(direct,1)
+  ny0=size(direct,2)
+
+  !=== chead ====
+  disp=disp+4 
+  call mpi_file_set_view(                            &
+       &     fh, disp,                               &
+       &     mpi_character, mpi_character,"native",  &
+       &     mpi_info_null,ierr)
+
+  if (myrank .eq. iroot) then
+     call mpi_file_read(                            &
+          &    fh, chead, 1024,                     &
+          &    mpi_character, mpistat, ierr)
+
+     call mpi_get_count(mpistat,mpi_character, icread,ierr)     
+  end if
+  call mpi_bcast(chead, 1024, mpi_character,  &
+       &                  iroot, mpi_comm_world, ierr)
+  call mpi_bcast(icread, 1, mpi_integer4,     &
+       &                  iroot, mpi_comm_world, ierr)
+  disp=disp+ 1024
+  disp=disp + 4
+  if(icread .ne. 1024) then
+     write(nfstdo,*)'read error in mpi_read_direct'
+     call mpi_abort(mpi_comm_world, 1, ierr)
+  end if
+
+  !=== data ====
+  disp=disp+4
+  call mpi_file_set_view( fh, disp,    &
+       &   mpi_real4, mpi_real4,"native", mpi_info_null,ierr)
+
+  if (myrank .eq. iroot) then
+     call mpi_file_read(fh, direct, nx0*ny0, &
+          &  mpi_real4, mpi_status_ignore, ierr)
+
+     do j=1,ny0
+        do i=1,nx0
+           call reverse_real4(direct(i,j))
+        end do
+     end do
+  end if
+  disp=disp+ nx0*ny0*4 + 4
+
+  call mpi_bcast(direct, nx0*ny0, mpi_real4, iroot, mpi_comm_world, ierr)
+
+  return
+  end subroutine mpi_read_direct
+
 
   subroutine mpi_write_2d(buf, fh, disp)
   use zocdim
@@ -780,6 +874,26 @@ contains
 #endif
   return
   end subroutine mpi_write_3d
+
+  function mpi_iseof(fh, disp)
+    use zocdim
+    implicit none
+#include "mpif.h"
+
+    logical mpi_iseof
+    integer fh
+    integer (kind = mpi_offset_kind):: disp
+    integer siz
+
+    call mpi_file_get_size(fh, siz, ierr)
+    if (disp .ge. siz) then
+       mpi_iseof = .true.
+    else
+       mpi_iseof = .false.
+    end if
+    return
+  end function mpi_iseof
+
 end module mpiio
 
 #else
