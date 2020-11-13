@@ -274,7 +274,8 @@ subroutine ocean ( &
        &            prec,   snow,   roff,   soff, &
        &          tauaix, tauaiy, tauaox, tauaoy, &
        &              ft,   ptop,   ssfc, &
-       &              tb,     ab,    hib,    tib,    hsb )
+       &              tb,     ab,    hib,    tib,    hsb, &
+       &              ub,     vb )
 #ifdef OPT_BODY
      call bdyflx( &
        &              tq, &
@@ -313,7 +314,8 @@ subroutine ocean ( &
        &            prec,   snow,   roff,   soff, &
        &          tauaix, tauaiy, tauaox, tauaoy, &
        &              ft,   ptop,   ssfc, &
-       &              ta,     aa,    hia,    tia,    hsa )
+       &              ta,     aa,    hia,    tia,    hsa, &
+       &              ua,     va )
 #ifdef OPT_BODY
      call bdyflx( &
        &              tq, &
@@ -352,7 +354,8 @@ subroutine ocean ( &
        &            prec,   snow,   roff,   soff, &
        &          tauaix, tauaiy, tauaox, tauaoy, &
        &              ft,   ptop,   ssfc, &
-       &              tb,     ab,    hib,    tib,    hsb )
+       &              tb,     ab,    hib,    tib,    hsb, &
+       &              ub,     vb )
 #ifdef OPT_BODY
      call bdyflx( &
        &              tq, &
@@ -419,7 +422,8 @@ subroutine ocean ( &
        &            prec,   snow,   roff,   soff, &
        &          tauaix, tauaiy, tauaox, tauaoy, &
        &              ft,   ptop,   ssfc, &
-       &              tb,     ab,    hib,    tib,    hsb )
+       &              tb,     ab,    hib,    tib,    hsb, &
+       &              ub,     vb )
 #ifdef OPT_BODY
      call bdyflx( &
        &              tq, &

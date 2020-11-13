@@ -41,7 +41,8 @@ contains
     &        prec,   snow,   roff,   soff,                            &
     &      tauaix, tauaiy, tauaox, tauaoy,                            &
     &          ft,   ptop,   ssfc,                                    &
-    &           t,      a,     hi,     ti,    hsn )
+    &           t,      a,     hi,     ti,    hsn,                    &
+    &           u,      v )
 
     use zocdim,  only  :                                              &
     &     nxdim,   nydim,   nzdim,   ntdim,   nxydim,   nxyidm,       &
@@ -76,6 +77,7 @@ contains
     real(8),    intent(in)     ::      t(nxydim,nzdim,ntdim)
     real(8),    intent(in)     ::      a(nxydim,0:nic),  hi(nxydim,0:nic)
     real(8),    intent(in)     ::     ti(nxydim,0:nic), hsn(nxydim,0:nic)
+    real(8),    intent(in)     ::      u(nxydim,nzdim),   v(nxydim,nzdim) !! dummy
 
 !---- local variables
     real(8)        ::    taux(nxydim),   tauy(nxydim),   usfc(nxydim)

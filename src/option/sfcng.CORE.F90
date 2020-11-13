@@ -140,7 +140,8 @@ subroutine sfcflx( &
   &                  prec,   snow,   roff,   soff, &
   &                tauaix, tauaiy, tauaox, tauaoy, &
   &                    ft,   ptop,   ssfc, &
-  &                     t,      a,     hi,     ti,    hsn )
+  &                     t,      a,     hi,     ti,    hsn, &
+  &                     u,      v )
 
   use qckot
   use ufile
@@ -153,6 +154,7 @@ subroutine sfcflx( &
   real(8), intent(in)  ::       a(nxydim, 0:nic)
   real(8), intent(in)  ::      hi(nxydim, 0:nic),    hsn(nxydim, 0:nic)
   real(8), intent(in)  ::      ti(nxydim, 0:nic)
+  real(8), intent(in)  ::       u(nxydim, nzdim),      v(nxydim, nzdim)
 
   real(8), intent(out) ::     wev(nxydim),    wsb(nxydim, nic)
   real(8), intent(out) ::    prec(nxydim),   snow(nxydim)

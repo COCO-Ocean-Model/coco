@@ -285,7 +285,8 @@ subroutine ocean ( &
        &            prec,   snow,   roff,   soff, &
        &          tauaix, tauaiy, tauaox, tauaoy, &
        &              ft,   ptop,   ssfc, &
-       &              tb,     ab,    hib,    tib,    hsb )
+       &              tb,     ab,    hib,    tib,    hsb, &
+       &              ub,     vb )
      call nmlwtr( &
        &            prec,    wev, &
        &              hb,     ab,    hib,    hsb )
@@ -327,7 +328,8 @@ subroutine ocean ( &
        &            prec,   snow,   roff,   soff, &
        &          tauaix, tauaiy, tauaox, tauaoy, &
        &              ft,   ptop,   ssfc, &
-       &              ta,     aa,    hia,    tia,    hsa )
+       &              ta,     aa,    hia,    tia,    hsa, &
+       &              ua,     va )
      call nmlwtr( &
        &            prec,    wev, &
        &              ha,     aa,    hia,    hsa )
@@ -369,7 +371,8 @@ subroutine ocean ( &
        &            prec,   snow,   roff,   soff, &
        &          tauaix, tauaiy, tauaox, tauaoy, &
        &              ft,   ptop,   ssfc, &
-       &              tb,     ab,    hib,    tib,    hsb )
+       &              tb,     ab,    hib,    tib,    hsb, &
+       &              ub,     vb )
      call nmlwtr( &
        &            prec,    wev, &
        &              hb,     ab,    hib,    hsb )
@@ -439,7 +442,8 @@ subroutine ocean ( &
        &            prec,   snow,   roff,   soff, &
        &          tauaix, tauaiy, tauaox, tauaoy, &
        &              ft,   ptop,   ssfc, &
-       &              tb,     ab,    hib,    tib,    hsb )
+       &              tb,     ab,    hib,    tib,    hsb, &
+       &              ub,     vb )
      call nmlwtr( &
        &            prec,    wev, &
        &              hb,     ab,    hib,    hsb )
