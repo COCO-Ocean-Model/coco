@@ -1,0 +1,8 @@
+FC	= ifort
+FFLAGS  = -fp-model precise -convert big_endian -fpe0 -DOPT_PARALLEL -mcmodel=medium
+FOPTION = $(FFLAGS)
+UNIT22	= fort.22
+RUNOPT	=
+
+.F.o:
+	$(FC) $(FOPTION) -c $<
