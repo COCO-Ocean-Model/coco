@@ -105,7 +105,11 @@ module sfcng
 ! namelist nmsnit
   integer, save :: nitero = 2  !! n. of iteration for ocean surface
   integer, save :: niteri = 5  !! n. of iteration for ice surface
-
+! namelist nmrwnd
+  real(8), save :: alpha = 0.0d0  !! parameter for relative/absolute wind, 0.0: absolute -- 1.0: relative
+! namelist nmtrdb
+  logical, save :: trdbcp = .false.     !! trdbcp: True if PREC/SNOW/ROFF have traditional sign/unit (i.e., upward positive [m/s])
+ 
   namelist /nmsnow/  dfsnow, snwdmx, epssnw, snwmax, &
     &                albsnw, talsnw,  z0snw, &
     &                snwcrt, snwden  
@@ -124,6 +128,8 @@ module sfcng
     &                usminh, usmaxh, &
     &                usmine, usmaxe
   namelist /nmsnit/  nitero, niteri
+  namelist /nmrwnd/   alpha
+  namelist /nmtrdb/  trdbcp
 
   private
 
@@ -148,7 +154,7 @@ subroutine sfcflx( &
   use utint
   use bshft
 
-  real(8), parameter :: factm = 1.0d+1, facth = 1.0d+3, factw = 1.0d+2
+  real(8), parameter :: factm = 1.0d+1, facth = 1.0d+3, factw = 1.0d+2, factmv = 1.0d-3
 
   real(8), intent(in)  ::       t(nxydim, nzdim, ntdim)
   real(8), intent(in)  ::       a(nxydim, 0:nic)
@@ -186,7 +192,7 @@ subroutine sfcflx( &
   real(8) ::   dqfds(nxydim),   swdn(nxydim)
   real(8) ::      fm(nxydim)
 
-  real(8), save ::     tmi
+  real(8), save ::     tmi,      factfw
 
   real(8) ::     dufdu ( nxydim )              !! CMV
 ! real(8) ::     dtfds ( nxydim )              !! CHV
@@ -254,6 +260,14 @@ subroutine sfcflx( &
      read (ifpar, nmsnit, iostat=istat)
      call cstnml(jfpar, 'sfcflx', 'nmsnit', istat)
      write(jfpar, nmsnit)
+     call rewnml(ifpar, jfpar)
+     read (ifpar, nmrwnd, iostat=istat)
+     call cstnml(jfpar, 'sfcflx', 'nmrwnd', istat)
+     write(jfpar, nmrwnd)
+     call rewnml(ifpar, jfpar)
+     read (ifpar, nmtrdb, iostat=istat)
+     call cstnml(jfpar, 'sfcflx', 'nmtrdb', istat)
+     write(jfpar, nmtrdb)
 
      tmi = dtds * si         
      dirdsn = dfice / dfsnow
@@ -261,6 +275,11 @@ subroutine sfcflx( &
         tsfc(ij) = 300.0d0
         psfc(ij) = 1.0d5
      end do
+     if ( trdbcp ) then ! set conversion factor
+        factfw = -1.0d0 * factw ! upward positive [m/s] --> downward positive [cm/s]
+     else
+        factfw = factmv * factw ! downward positive [kg/m^2/s] --> downward positive [cm/s]
+     end if
      ofirst = .false.
   end if
 
@@ -320,11 +339,11 @@ subroutine sfcflx( &
   do ij = ijstr, ijend
      tauaix(ij) = 0.0d0
      tauaiy(ij) = 0.0d0
-     prec(ij) = - pplr(ij) * factw ! prec: downward is positive
-     snow(ij) = - sflx(ij) * factw ! sflx: downward is positive
+     prec(ij) = pplr(ij) * factfw ! prec: downward is positive
+     snow(ij) = sflx(ij) * factfw ! snow: downward is positive
      soff(ij) = 0.0d0
 !     roff(ij) = 0.0d0
-     roff(ij) = - roff(ij) * factw ! roff: downward is positive
+     roff(ij) = roff(ij) * factfw ! roff: downward is positive
   end do
 
   do ij = 1, nxydim
@@ -339,8 +358,8 @@ subroutine sfcflx( &
      vo = 0.01d0 * 0.25d0 &
           & * ( v(ij,    kstr) + v(ij+lw,  kstr) &
           & +   v(ij+ls, kstr) + v(ij+lsw, kstr) )
-     usfc(ij) = usfc(ij) - uo
-     vsfc(ij) = vsfc(ij) - vo
+     usfc(ij) = usfc(ij) - uo * a(ij, 0) * alpha
+     vsfc(ij) = vsfc(ij) - vo * a(ij, 0) * alpha
   end do
 
   do l = 0, nic
@@ -481,6 +500,16 @@ subroutine sfcflx( &
     &          tauaix,   tauaiy, &
     &           nxdim,    nydim,     1 )
 #endif
+
+  call chekin(   roff,  'ROFF', &
+    &       'river runoff', 'cm/s', &
+    &              nx,      ny,      1, nxydim, 'OCSFCT')
+  call chekin(   usfc,  'USFC', &
+    &       'zonal wind speed', 'm/s', &
+    &              nx,      ny,      1, nxydim, 'OCSFCT')
+  call chekin(   vsfc,  'VSFC', &
+    &       'meridional wind speed', 'm/s', &
+    &              nx,      ny,      1, nxydim, 'OCSFCT')
 
   call chekin(   wsbg,  'WSBG', &
     &       'sublimation from sea-ice surface', 'cm/s', &
