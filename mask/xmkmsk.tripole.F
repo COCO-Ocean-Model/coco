@@ -831,10 +831,17 @@ C  120 CONTINUE
       WRITE(*, *)
 
       WRITE(*, '(2X,A)')
-     & 'integer, parameter :: nxyg = nxg*nyg, nxyzg = nxyg*nz'
-      WRITE(*, '(2X,A,A)')
-     & 'integer, parameter :: nxygdm = nxgdim*nygdim, ',
-     & 'nxyzgd = nxygdm*nzdim'
+     & 'integer, parameter :: nxyg = nxg*nyg'
+      WRITE(*, '(2X,A)')
+     & 'integer, parameter :: nxygdm = nxgdim*nygdim'
+
+      WRITE(*,'(2X,A)')
+     &'integer(8), parameter :: iz = nz, izdim = nzdim'
+      WRITE(*,'(2X,A)')
+     &'integer(8), parameter :: ixyg = nxyg, ixygdm = nxygdm'
+      WRITE(*, '(2X,A)')
+     &'integer(8), parameter :: nxyzg = ixyg*iz, nxyzgd = ixygdm*izdim'
+
       WRITE(*, *)
 
       NXS = NX / INODES
