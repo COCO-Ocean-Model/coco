@@ -45,12 +45,17 @@ module tslvt
   real(8)           ::     rrr,  zeta1,  zeta2
   integer(4)        ::   ifpar,  jfpar,  istat
 
+  real(8),    save  ::    smin = 5.d0
+  integer(4), save  ::  mixsss = 0
+
   public  ::  slvtrc     !   aprdc.F
   public  ::  svtset     !   aocea.F
 
   namelist /nmacct/ gamma
   namelist /nmswab/   rrr,  zeta1,  zeta2
   namelist /nmsrst/  sdmp, osrstr, osrsti
+
+  namelist /nmmixsss/smin, mixsss
 
 !  data gamma / nz*1.d0 /
   data rrr, zeta1, zeta2 / 5.8d-1, 3.5d+1, 2.3d+3 /
@@ -154,6 +159,10 @@ contains
              swconv(ij, k) = swconv(ij, k) / rhoo / cpo
           end do
        end do
+
+       call rewnml(ifpar, jfpar)
+       read(ifpar, nmmixsss, iostat = istat )
+       write(jfpar, nmmixsss)
        
     end if
 
@@ -354,7 +363,6 @@ contains
     &                  + ts * ft(ij, 1) / hxbot(ij) / ds(kstr) 
     end do
 
-
     do k = kstr, kstr+kz-1
        do ij = ijtstr, ijtend
           tx(ij, k, 1) = tx(ij, k, 1)                                 &
@@ -403,7 +411,60 @@ contains
     end if
 #endif
 
+!---- mixing salinity in sigma-layers to avoid extremely low SSS
+    if ( mixsss > 0 ) then
+       call tmixss( tx(1, 1, 2) )
+    end if
+
   end subroutine slvtrc
+
+  subroutine tmixss(                                   & !! mix sea surface
+         &      tx  )
+
+    use zocdim,  only :                                &
+         &  nxydim,  nzdim,                            &
+         &    kstr,     kz
+    use zocgrd,  only :                                &
+         &     dz0
+    use zocmsk,  only :                                &
+         &   amskt
+
+    implicit none
+
+    real(8),    intent(inout) :: tx(nxydim, nzdim)
+
+    real(8)                   ::  smean(nxydim), ssum(nxydim)
+    integer(4)                ::   kmix(nxydim)
+    integer(4)                ::     ij,    k
+
+    depth = dz0(kstr)
+    do ij = 1, nxydim
+       ssum(ij) = tx(ij, kstr) * dz0(kstr)
+       smean(ij) = tx(ij, kstr)
+       kmix(ij) = kstr
+    end do
+
+    do k = kstr+1, kstr+kz-1
+       depth = depth + dz0(k)
+       do ij = 1, nxydim
+          if ( smean(ij) <= smin ) then
+             ssum(ij) = ssum(ij) + dz0(k) * tx(ij, k)
+             smean(ij) = ssum(ij) / depth
+             kmix(ij) = k
+          end if
+       end do
+    end do
+
+    do k = kstr, kstr+kz-1
+       do ij = 1, nxydim
+          if ( k <= kmix(ij) ) then
+             tx(ij, k) = smean(ij) * amskt(ij, k) &
+                  & + tx(ij, k) * (1.d0 - amskt(ij, k))
+          end if
+       end do
+    end do
+   
+  end subroutine tmixss
   
 end module tslvt
 
