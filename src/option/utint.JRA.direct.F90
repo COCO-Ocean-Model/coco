@@ -377,13 +377,14 @@ contains
         integer, save :: nrec=0
         integer(8) :: isize, iskip
 #endif
-
+        if ( ofirst(iitem) ) disp=0
         if (odirect) then !=====================================================
 #ifdef OPT_IO_COCOMPI
            call mpi_read_direct(chead, direct, mpi_fh(iitem), disp, icread)
            read(chead(50), '(i6.6,5i2.2)') (idatet(i), i = 1, 6)
 
            nrec=nrec+1
+           call rewnml( ifpar, jfpar )
            if (nrec == 1) write(jfpar,'(a, 6i6)')'    first record   :',idatet
            if (nrec == 2) write(jfpar,'(a, 6i6)')'    skipped to here:',idatet
 
