@@ -1,17 +1,17 @@
 c *** Write here the values for NX, NY, NZ, and KZ as you specified
 c *** in the geometry file
 c === the parameters for non-tripole (bipole) ===
-      INTEGER   NX, NY, NZ
-      PARAMETER(NX = 32, NY = 32, NZ = 28)
-      INTEGER   KZ
-      PARAMETER(KZ = 5)
+c      INTEGER   NX, NY, NZ
+c      PARAMETER(NX = 360, NY = 32, NZ = 28)
+c      INTEGER   KZ
+c      PARAMETER(KZ = 5)
 c === end of the parameters for non-tripole (bipole) ===
 c === the parameters for tripole ===
-c      INTEGER   NX, NY, NY1, NY2,  NZ
-c      PARAMETER(NX = 360, NY1 = 153, NY2=39,  NZ = 50)
-c      PARAMETER(NY = NY1 + NY2)
-c      INTEGER   KZ
-c      PARAMETER(KZ = 8)
+      INTEGER   NX, NY, NY1, NY2,  NZ
+      PARAMETER(NX = 360, NY1 = 208, NY2=48,  NZ = 63)
+      PARAMETER(NY = NY1 + NY2)
+      INTEGER   KZ
+      PARAMETER(KZ = 10)
 c === end of the parameters for tripole ===
 
 c *** Write here the number of thickness category for sea ice.
