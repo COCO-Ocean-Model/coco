@@ -1083,7 +1083,7 @@ subroutine flxtrc( &
 #ifdef OPT_BBL
   do ij = ijtstr, ijtend
      k = nbot(ij)
-     uv(ij, k) = - wzc(ij, k) * vlmz(ij) * amsktb(ij)
+     uv(ij, k) = - wzc(ij, k) * vlmz(ij)! * amsktb(ij)
   end do
 #endif
 
