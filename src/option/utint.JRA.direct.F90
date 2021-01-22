@@ -35,6 +35,7 @@ contains
     use zocgrd,  only  :     tt, dx,dy,hxt,hyt
     use zocfil,  only  :    ncf
     use zocnod,  only  :  iroot,  myrank, irank, jrank
+    use zocphy,  only  :  dwatr
     use ufile
     use ucaln
 #ifdef OPT_IO_COCOMPI
@@ -198,8 +199,9 @@ contains
                 wt(n) = 0.0d0
              else
                 iq(n) = i
-                jq(n) = j                           ! m^3/s -> m/s
-                wt(n) = wt(n)/(dx*dy(ij)*hxt(ij)*hyt(ij) *1.d-4)
+                jq(n) = j
+!                wt(n) = wt(n)/(dx*dy(ij)*hxt(ij)*hyt(ij) *1.d-4) ! m^3/s -> m/s
+                wt(n) = wt(n)/(dx*dy(ij)*hxt(ij)*hyt(ij) *1.d-4)/dwatr ! kg/s -> m/s
                 if (wt(n) > 0.0d0) then
                    imaxn = imaxn + 1
                 end if

@@ -33,7 +33,7 @@ module dvdif
 
   private
 
-  public :: vdiff
+  public :: vdiff, puttao
 #ifdef OPT_BBL
   public :: vdiffb
 #endif
@@ -88,6 +88,23 @@ subroutine vdiff( &
   return
 
 end subroutine vdiff
+! =====================================================================
+subroutine puttao( &
+  &                 taox,   taoy, &
+  &                 caic,   cais)
+
+  use bshft
+
+  real(8), intent(in) ::   taox(nxydim),   taoy(nxydim)
+  real(8), intent(in) ::   caic,   cais
+
+! dummy routine
+
+  return
+
+end subroutine puttao
+
+
 #ifdef OPT_BBL
 ! *********************************************************************
 

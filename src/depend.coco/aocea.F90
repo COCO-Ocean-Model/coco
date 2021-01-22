@@ -246,6 +246,9 @@ contains
     &                 taux,   tauy,                                   &
     &                nxdim,  nydim,    1)
 #endif
+       call puttao(                                                   &
+    &              taux,   tauy,
+    &             1.0d0,  0.0d0  )
        call predco(                                                   &
     &                hb,   ubtb,   vbtb,      w,      r,              &
     &                ub,     vb,     tb,                              &
@@ -277,6 +280,9 @@ contains
     &              taux,   tauy,                                      &
     &             nxdim,  nydim,      1)
 #endif
+       call puttao(                                                   &
+    &              taux,   tauy,
+    &             1.0d0,  0.0d0  )
        call predco(                                                   &
     &                ha,   ubta,   vbta,      w,      r,              &
     &                ua,     va,     ta,                              &
@@ -313,6 +319,9 @@ contains
     &              taux,   tauy,                                      &
     &             nxdim,  nydim,      1)
 #endif
+       call puttao(                                                   &
+    &              taux,   tauy,
+    &             1.0d0,  0.0d0  )
        ieuler = 1
        call predco(                                                   &
     &                ha,   ubta,   vbta,      w,      r,              &
@@ -364,6 +373,9 @@ contains
     &              taux,   tauy,                                      &
     &             nxdim,  nydim,      1)
 #endif
+       call puttao(                                                   &
+    &              taux,   tauy,
+    &             1.0d0,  0.0d0  )
        call predco(                                                   &
     &                ha,   ubta,   vbta,      w,      r,              &
     &                ua,     va,     ta,                              &

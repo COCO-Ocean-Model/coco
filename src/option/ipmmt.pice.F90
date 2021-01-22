@@ -22,6 +22,7 @@ module ipmmt
 ! ---------------------------------------------------------------------
 
   use zocdim, only: &
+    &     nx,     ny, &
     &  nxdim,  nydim,  nzdim, nxydim,   nic,   kstr, &
     & ijtstr, ijtend, ijvstr, ijvend, &
     &     le,     lw,     ln,     ls,    lne,    lsw, &
@@ -54,8 +55,10 @@ subroutine pmomnt( &
   &                    ux,     vx,     hy,   ptop, &
   &                tauaix, tauaiy, tauaox, tauaoy)
 
+  use dvdif
   use brstt
   use bshft
+  use qckot
   use ufile
 
   real(8), intent(inout) ::    uix(nxydim),           vix(nxydim)
@@ -85,6 +88,7 @@ subroutine pmomnt( &
   real(8) :: avrmsx(nxydim),   avra(nxydim)
   real(8) :: accelu(nxydim), accelv(nxydim)
   real(8) ::   ctau(nxydim),     hh(nxydim)
+  real(8) :: tauiox(nxydim), tauioy(nxydim)
 !      common /work/ zeta, eta, emz, epz, ecof, &
 !     &              exx, eyy, exy, &
 !     &              mice, aice, avrmsx, avra, &
@@ -198,6 +202,9 @@ subroutine pmomnt( &
      tauaiy(ij) = tauaiy(ij) * aice(ij)
      tauaox(ij) = tauaox(ij) * ax(ij, 0)
      tauaoy(ij) = tauaoy(ij) * ax(ij, 0)
+     tauiox(ij) = 0.d0
+     tauioy(ij) = 0.d0
+
 !     hh    (ij) = hy(ij) &
 !       &        + ay(ij) * (rhoi * hiy(ij) + rhos * hsy(ij)) / rhoo
      hh    (ij) = 0.d0
@@ -372,25 +379,51 @@ subroutine pmomnt( &
   end do
 
   do ij = ijvstr, ijvend
-     taux(ij) = (  ctau(ij) * &
+     tauiox(ij) =     ctau(ij) * &
        &           (  (uix(ij) &
-       &                - ux(ij, kglev)*amskv(ij, kglev)) * cioc &
+       &              - ux(ij, kglev)*amskv(ij, kglev)) * cioc &
        &            - (vix(ij) &
-       &                - vx(ij, kglev)*amskv(ij, kglev)) * &
-       &              sign(cios, cor(ij))) &
+       &              - vx(ij, kglev)*amskv(ij, kglev)) * &
+       &              sign(cios, cor(ij)))
+     tauioy(ij) =     ctau(ij) * &
+       &           (  (vix(ij) &
+       &              - vx(ij, kglev)*amskv(ij, kglev)) * cioc &
+       &            + (uix(ij) &
+       &              - ux(ij, kglev)*amskv(ij, kglev)) * &
+       &              sign(cios, cor(ij)))
+     taux(ij)  = ( tauiox(ij) &
        &         + tauaox(ij) * caic &
        &         - tauaoy(ij) * sign(cais, cor(ij))) * &
-       &        amskv(ij, kstr)
-     tauy(ij) = (  ctau(ij) * &
-       &           (  (vix(ij) &
-       &                - vx(ij, kglev)*amskv(ij, kglev)) * cioc &
-       &            + (uix(ij) &
-       &                - ux(ij, kglev)*amskv(ij, kglev)) * &
-       &              sign(cios, cor(ij))) &
+       &            amskv(ij, kstr)
+     tauy(ij)  = ( tauioy(ij) &
        &         + tauaoy(ij) * caic &
        &         + tauaox(ij) * sign(cais, cor(ij))) * &
-       &        amskv(ij, kstr)
+       &            amskv(ij, kstr)
+
   end do
+
+  call puttao( &
+    &            tauaox, tauaoy, &
+    &              caic,   cais )
+
+  call chekin(tauaox,'TAUAOX', &
+       &      'x-wind stress on ocean, *(1-ai)', 'dyn/cm2', &
+       &          nx,      ny,       1,  nxydim,  'OCSFCT')
+  call chekin(tauaoy,'TAUAOY', &
+       &      'y-wind stress on ocean, *(1-ai)', 'dyn/cm2', &
+       &          nx,      ny,       1,  nxydim,  'OCSFCT')
+  call chekin(tauaix,'TAUAIX', &
+       &            'x-wind stress on ice, *ai', 'dyn/cm2', &
+       &          nx,      ny,       1,  nxydim,  'OCSFCT')
+  call chekin(tauaiy,'TAUAIY', &
+       &            'y-wind stress on ice, *ai', 'dyn/cm2', &
+       &          nx,      ny,       1,  nxydim,  'OCSFCT')
+  call chekin(tauiox,'TAUIOX', &
+       &           'x-ice to ocean stress, *ai', 'dyn/cm2', &
+       &          nx,      ny,       1,  nxydim,  'OCSFCT')
+  call chekin(tauioy,'TAUIOY', &
+       &           'y-ice to ocean stress, *ai', 'dyn/cm2', &
+       &          nx,      ny,       1,  nxydim,  'OCSFCT')
 
   return
 end subroutine pmomnt

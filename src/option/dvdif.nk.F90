@@ -48,10 +48,12 @@ module dvdif
   implicit none
   private
 
-  public :: vdiff
+  public :: vdiff, puttao
 #ifdef OPT_BBL
   public :: vdiffb
 #endif
+
+  real(8), save :: tauaox(nxydim), tauaoy(nxydim)
 
 contains
 
@@ -125,6 +127,7 @@ subroutine vdiff( &
   real(8), save ::  latal = 30.0d0,  lateq = 5.0d0,  al = 1.0d0,  aleq =0.1d0
   integer, save ::  mz = nz,  nitr = 1
   logical, save ::  oallat = .false.
+  logical, save ::  oswnoi = .false.
 
   namelist /nmvisv/ amv0
   namelist /nmdifv/ ahv0
@@ -132,7 +135,7 @@ subroutine vdiff( &
   namelist /nmdvnk/ eps, z0, alph, alphc, beta, betac, &
     &               cftke, mz, nitr, pr0, pr1, prmax, &
     &               sm0, c0, sg, ahvb, amvmax, aflt, &
-    &               alsc, ritc, oallat, al, aleq, latal, lateq 
+    &               alsc, ritc, oallat, al, aleq, latal, lateq, oswnoi
 
   if (oinit) then
      do k = 1, nzdim
@@ -226,7 +229,7 @@ subroutine vdiff( &
         slats = -latal
         nlats = +lateq
         nlatn = +latal
-        do ij = ijstr, ijend
+        do ij = ijstr-nxdim-1, ijend+nxdim+1
            cort = (cor(ij)+cor(ij+lw)+cor(ij+lsw)+cor(ij+ls)) * 0.25d0
            lat = asin( cort/2.d0/omega ) * 180.d0 / pi
            if ( (lat >= nlatn) .or. (lat <= slats) ) then
@@ -244,7 +247,7 @@ subroutine vdiff( &
      else
         write(jfpar, *) &
           &  '   : DML is calculated following Noh et al.(2002)'
-        do ij=ijstr, ijend
+        do ij=ijstr-nxdim-1, ijend+nxdim+1
            alplat(ij) = al  !! dummy
         enddo
      endif
@@ -453,13 +456,21 @@ subroutine vdiff( &
         end do
      end do
      do ij = ijstr-nxdim-1, ijend+nxdim+1
-        avrtx = (  taux(ij)    + taux(ij+lw) &
-          &      + taux(ij+ls) + taux(ij+lsw)) * 0.25d0
-        avrty = (  tauy(ij)    + tauy(ij+lw) &
-          &      + tauy(ij+ls) + tauy(ij+lsw)) * 0.25d0
+        if ( oswnoi ) then
+           avrtx = (  tauaox(ij)    + tauaox(ij+lw) &
+                &   + tauaox(ij+ls) + tauaox(ij+lsw)) * 0.25d0
+           avrty = (  tauaoy(ij)    + tauaoy(ij+lw) &
+                &   + tauaoy(ij+ls) + tauaoy(ij+lsw)) * 0.25d0
+        else
+           avrtx = (  taux(ij)    + taux(ij+lw) &
+                &   + taux(ij+ls) + taux(ij+lsw)) * 0.25d0
+           avrty = (  tauy(ij)    + tauy(ij+lw) &
+                &   + tauy(ij+ls) + tauy(ij+lsw)) * 0.25d0
+        end if
         fez(ij, kstr+1) = ((avrtx * avrtx + avrty * avrty) &
           &               / rhoo / rhoo) ** 0.75d0 * cftke
      end do
+
      do k = kstr+2, kstr+mz-1
         do ij = ijstr-nxdim-1, ijend+nxdim+1
            diffz(ij, k) = (amv(ij, k-1) + amv(ij, k)) * &
@@ -571,6 +582,44 @@ subroutine vdiff( &
    
   return
 end subroutine vdiff
+! =====================================================================
+subroutine puttao( &
+  &                 taox,   taoy, &
+  &                 caic,   cais)
+
+  use bshft
+  use zocdim, only: ijvstr, ijvend
+  use zocmsk, only:  amskv
+
+  real(8), intent(in) ::   taox(nxydim),   taoy(nxydim)
+  real(8), intent(in) ::   caic,   cais
+
+  integer ::     ij
+
+  do ij = ijvstr, ijvend
+     tauaox(ij) = ( taox(ij) * caic &
+       &          - taoy(ij) * sign(cais, cor(ij))) * &
+       &          amskv(ij, kstr)
+     tauaoy(ij) = ( taoy(ij) * caic &
+       &          + taox(ij) * sign(cais, cor(ij))) * &
+       &          amskv(ij, kstr)
+  end do
+
+#ifdef OPT_TRIPOLE
+  call shift2( &
+    &          tauaox, tauaoy, &
+    &           nxdim,  nydim,      1, &
+    &           -1.d0,     -1,     -1 )
+#else
+  call shift2( &
+    &          tauaox,   tauaoy, &
+    &           nxdim,    nydim,     1)
+#endif
+
+  return
+
+end subroutine puttao
+
 #ifdef OPT_BBL
 ! *********************************************************************
 
