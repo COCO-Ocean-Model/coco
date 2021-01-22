@@ -61,9 +61,17 @@ module tslvt
   data crsti / ntigr*0.d0 /
 !----
 
+!---- for geothermal heating
+  real(8),        save  ::   gthm(nxydim)
+  logical,        save  ::  ogthm = .false.
+!----
+
   character(16),  save  :: ctxnam(ntdim)
   character(16),  save  :: ctynam(ntdim)
   character(16),  save  :: ctznam(ntdim)
+
+  real(8),    save  ::    smin = 5.d0
+  integer(4), save  ::  mixsss = 0
 
   public  ::  slvtrc     !   aprdc.F
   public  ::  svtset     !   aocea.F
@@ -72,6 +80,8 @@ module tslvt
   namelist /nmacct/ gamma
   namelist /nmswab/   rrr,  zeta1,  zeta2
   namelist /nmsrst/  sdmp, osrstr, osrsti
+
+  namelist /nmmixsss/smin, mixsss
 
 !  data gamma / nz*1.d0 /
   data rrr, zeta1, zeta2 / 5.8d-1, 3.5d+1, 2.3d+3 /
@@ -96,11 +106,33 @@ contains
 
     use ifhea
     use ufile
+    use zocfil,  only :                                &
+         &     ncf
+#ifdef OPT_IO_COCOMPI
+    use mpiio
+#endif
 
     implicit none
+#include "mpif.h"
 
     integer(4)        ::      ij,      k,      n,     l
     logical,   save   ::  ofirst = .true.
+
+!---- for geothermal heating
+    character(len = ncf)  :: cfgthm
+    character(len = 16)   :: chead(64) 
+#ifdef OPT_IO_COCOMPI
+    integer :: mpi_fh
+    integer :: icread
+    integer (kind = mpi_offset_kind) :: disp
+#else
+    integer ::  nfgthm
+    real(8) ::  buf2(nxg, nyg)
+    real(8) ::  g2d(nxgdim, nygdim)
+#endif
+    data cfgthm /'not-specified'/
+    namelist /nmgthm/ ogthm, cfgthm
+!----
 
     if ( ofirst ) then
 
@@ -117,9 +149,11 @@ contains
        end do
        call rewnml(ifpar, jfpar)
        read(ifpar, nmswab, iostat = istat )
+       call cstnml(jfpar, 'svtset', 'nmswab', istat )
        write(jfpar, nmswab)
        call rewnml(ifpar, jfpar)
        read(ifpar, nmsrst, iostat = istat )
+       call cstnml(jfpar, 'svtset', 'nmsrst', istat )
        write(jfpar, nmsrst)
 
        if ( osrstr ) then
@@ -177,6 +211,45 @@ contains
           write(ctynam(l), '(a5,i2.2)') 'ftrcy', l
           write(ctznam(l), '(a5,i2.2)') 'ftrcz', l
        end do
+
+!---- for geothermal heating
+       call rewnml(ifpar, jfpar)
+       read(ifpar, nmgthm, iostat=istat)
+       call cstnml(jfpar, 'svtset', 'nmgthm', istat)
+       write(jfpar, nmgthm)
+       write(jfpar, *) '  file name of gthm: ', cfgthm
+
+       if ( ogthm ) then
+#ifdef OPT_IO_COCOMPI
+          call mpi_filopn(mpi_fh, cfgthm, 'READ')
+          disp=0
+          call mpi_read_chead(chead, mpi_fh, disp, icread)
+          call mpi_read_2d(gthm, mpi_fh  , disp)
+          call mpi_filcls(mpi_fh)
+#else
+
+          if ( myrank .eq. iroot ) then
+
+             call filopn( nfgthm, cfgthm, 'READ' )
+             rewind( nfgthm )
+             read( nfgthm ) chead
+             read( nfgthm ) buf2
+             do j = 1, nyg
+                do i = 1, nxg
+                   g2d(igstr+i-1, jgstr+j-1) = buf2(i, j)
+                end do
+             end do
+             call filcls( nfgthm )
+             
+          end if
+          call scatter_2d( gthm, g2d )
+#endif
+       end if
+!----
+       call rewnml(ifpar, jfpar)
+       read(ifpar, nmmixsss, iostat = istat )
+       call cstnml(jfpar, 'svtset', 'nmmixsss', istat )
+       write(jfpar, nmmixsss)
        
     end if
 
@@ -204,6 +277,8 @@ contains
          &   amsktb,                                   &
 #endif
          &   amskt,  nbot
+    use zocphy,  only :                                &
+         &     cpo,    rhoo
     use utrdg
 
     implicit none
@@ -430,7 +505,68 @@ contains
     end if
 #endif
 
+    if (ogthm) then
+       do ij = ijtstr, ijtend
+          k = nbot(ij)
+          tx(ij, k, 1) = tx(ij, k, 1) &
+               & + ts * gthm(ij) / dz(ij, k) / rhoo / cpo
+       end do
+    end if
+
+!---- mixing salinity in sigma-layers to avoid extremely low SSS
+    if ( mixsss > 0 ) then
+       call tmixss( tx(1, 1, 2) )
+    end if
+
   end subroutine slvtrc
+
+  subroutine tmixss(                                   & !! mix sea surface
+         &      tx  )
+
+    use zocdim,  only :                                &
+         &  nxydim,  nzdim,                            &
+         &    kstr,     kz
+    use zocgrd,  only :                                &
+         &     dz0
+    use zocmsk,  only :                                &
+         &   amskt
+
+    implicit none
+
+    real(8),    intent(inout) :: tx(nxydim, nzdim)
+
+    real(8)                   ::  smean(nxydim), ssum(nxydim)
+    integer(4)                ::   kmix(nxydim)
+    integer(4)                ::     ij,    k
+
+    depth = dz0(kstr)
+    do ij = 1, nxydim
+       ssum(ij) = tx(ij, kstr) * dz0(kstr)
+       smean(ij) = tx(ij, kstr)
+       kmix(ij) = kstr
+    end do
+
+    do k = kstr+1, kstr+kz-1
+       depth = depth + dz0(k)
+       do ij = 1, nxydim
+          if ( smean(ij) <= smin ) then
+             ssum(ij) = ssum(ij) + dz0(k) * tx(ij, k)
+             smean(ij) = ssum(ij) / depth
+             kmix(ij) = k
+          end if
+       end do
+    end do
+
+    do k = kstr, kstr+kz-1
+       do ij = 1, nxydim
+          if ( k <= kmix(ij) ) then
+             tx(ij, k) = smean(ij) * amskt(ij, k) &
+                  & + tx(ij, k) * (1.d0 - amskt(ij, k))
+          end if
+       end do
+    end do
+   
+  end subroutine tmixss
 
 ! --- information -----------------------------------------------------
 !
