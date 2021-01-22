@@ -379,6 +379,16 @@ subroutine flxtrc( &
         endif
      end do
 
+#ifdef OPT_TRIPOLE
+     call shift2( ahi3d,  ahg3d, &
+          &       nxdim,  nydim,  nzdim, &
+          &        1.d0,      0,      0 )
+#else
+     call shift2( &
+          &       ahi3d,  ahg3d, &
+          &       nxdim,  nydim,  nzdim )
+#endif
+
 #ifdef OPT_BBL
      call rewnml(ifpar, jfpar)
      read(ifpar, nmbbdh, iostat=istat)
