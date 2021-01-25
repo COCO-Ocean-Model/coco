@@ -199,9 +199,8 @@ contains
                 wt(n) = 0.0d0
              else
                 iq(n) = i
-                jq(n) = j
-!                wt(n) = wt(n)/(dx*dy(ij)*hxt(ij)*hyt(ij) *1.d-4) ! m^3/s -> m/s
-                wt(n) = wt(n)/(dx*dy(ij)*hxt(ij)*hyt(ij) *1.d-4)/dwatr ! kg/s -> m/s
+                jq(n) = j   ! divided by the area of the cell [m^2]
+                wt(n) = wt(n)/(dx*dy(ij)*hxt(ij)*hyt(ij) *1.d-4)
                 if (wt(n) > 0.0d0) then
                    imaxn = imaxn + 1
                 end if
