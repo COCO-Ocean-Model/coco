@@ -53,6 +53,10 @@ module tflxt
   real(8), save :: ftx(nxydim, nzdim, ntdim)
   real(8), save :: fty(nxydim, nzdim, ntdim)
   real(8), save :: ftz(nxydim, nzdim, ntdim)
+! --- for diffusive flux
+  real(8), save :: ftxd(nxydim, nzdim, ntdim)
+  real(8), save :: ftyd(nxydim, nzdim, ntdim)
+  real(8), save :: ftzd(nxydim, nzdim, ntdim)
 
   public :: flxtrc, chkftx
 #ifdef OPT_BBL
@@ -88,15 +92,38 @@ subroutine flxtrc( &
 
   real(8) ::    wzc(nxydim, nzdim),    rzm(nxydim, nzdim)
   real(8) ::  hzbot(nxydim)
+  real(8) ::     dh(nxydim)
 
   real(8) ::  xdzdx(nxydim, nzdim),  ydzdy(nxydim, nzdim)
   real(8) ::  zdzdx(nxydim, nzdim),  zdzdy(nxydim, nzdim)
   real(8) ::  xdtdz(nxydim, nzdim, ntdim),  ydtdz(nxydim, nzdim, ntdim)
   real(8) ::  zdtdx(nxydim, nzdim, ntdim),  zdtdy(nxydim, nzdim, ntdim)
 
+! --- for flux output
+  real(8) ::   adt2(nxydim, nzdim, ntdim)    
+  real(8) ::   adtd(nxydim, nzdim, ntdim)    
+  real(8) ::  adtah(nxydim, nzdim, ntdim)    
+  real(8) ::  adtgm(nxydim, nzdim, ntdim)    
+  real(8) ::  adtis(nxydim, nzdim, ntdim)    
+  real(8) ::   ftx2(nxydim, nzdim, ntdim)
+  real(8) ::   fty2(nxydim, nzdim, ntdim)
+  real(8) ::   ftz2(nxydim, nzdim, ntdim)
+  real(8) ::  ftxah(nxydim, nzdim, ntdim)
+  real(8) ::  ftyah(nxydim, nzdim, ntdim)
+  real(8) ::  ftxgm(nxydim, nzdim, ntdim)
+  real(8) ::  ftygm(nxydim, nzdim, ntdim)
+  real(8) ::  ftzgm(nxydim, nzdim, ntdim)
+  real(8) ::  ftxis(nxydim, nzdim, ntdim)
+  real(8) ::  ftyis(nxydim, nzdim, ntdim)
+  real(8) ::  ftzis(nxydim, nzdim, ntdim)
+ 
 ! ---- spatially varying isopycnal diffusion coefficient
   real(8), save ::   ahh3d(nxydim, nzdim),  ahi3d(nxydim, nzdim)
   real(8), save ::   ahg3d(nxydim, nzdim) 
+
+!---- bolus velocity output (for CMIP6)
+  real(8) :: ublsx(nxydim, nzdim), vblsy(nxydim, nzdim)
+  real(8) :: ublsw(nxydim, nzdim), vblsw(nxydim, nzdim)
 
 !---- for second order moment
 !---- bug fix (save these variables)
@@ -448,40 +475,70 @@ subroutine flxtrc( &
      &  zpsix,  zpsiy, &
      &     ty,     tx,     hz )
 
+!$omp parallel private(k, n, ij, kuu, ku, kd, ijls, ijlw)
+!$omp do
+  do k = 1, nzdim
   do n = 1, ntdim
-     do k = 1, nzdim
-        do ij = 1, nxydim
-           adt (ij, k, n) = 0.d0
-           ftx (ij, k, n) = 0.d0
-           fty (ij, k, n) = 0.d0
-           ftz (ij, k, n) = 0.d0
-        end do
+     do ij = 1, nxydim
+        adt (ij, k, n) = 0.d0
+        ftx (ij, k, n) = 0.d0
+        fty (ij, k, n) = 0.d0
+        ftz (ij, k, n) = 0.d0
+        adt2 (ij, k, n) = 0.d0
+        ftx2 (ij, k, n) = 0.d0
+        fty2 (ij, k, n) = 0.d0
+        ftz2 (ij, k, n) = 0.d0
+        adtd (ij, k, n) = 0.d0
+        ftxd (ij, k, n) = 0.d0
+        ftyd (ij, k, n) = 0.d0
+        ftzd (ij, k, n) = 0.d0
+        ftxgm(ij, k, n) = 0.d0
+        ftygm(ij, k, n) = 0.d0
+        ftzgm(ij, k, n) = 0.d0
+        ftxis(ij, k, n) = 0.d0
+        ftyis(ij, k, n) = 0.d0
+        ftzis(ij, k, n) = 0.d0
+        ftxah(ij, k, n) = 0.d0
+        ftyah(ij, k, n) = 0.d0
+        adtgm(ij, k, n) = 0.d0
+        adtis(ij, k, n) = 0.d0
+        adtah(ij, k, n) = 0.d0
      end do
   end do
+  end do
+!$omp end do nowait
 
+!$omp do
   do k = 1, nzdim
      do ij = 1, nxydim
         diffz(ij, k) = 0.d0
      end do
   end do
+!$omp end do nowait
 
+!$omp do
   do ij = 1, nxydim
      hzbot(ij) = hz(ij) + zbot
   end do
+!$omp end do
 
 ! ---- vertical velocity on sigma coordinate
+!$omp do
   do k = kstr, kstr+kz-1
      do ij = 1, nxydim
         wzc(ij, k) = w(ij, k) * hzbot(ij)
         rzm(ij, k) = 1.d0 / dsm(k) / hzbot(ij)
      end do
   end do
+!$omp end do
+!$omp do
   do k = kstr+kz, kend
      do ij = 1, nxydim
         wzc(ij, k) = w(ij, k)
         rzm(ij, k) = 1.d0 / dzm(ij, k)
      end do
   end do
+!$omp end do
 
   call chekin(wzc, 'WZC', &
      &     'ocean vertical velocity on sigma coordinate', 'cm/s', &
@@ -489,88 +546,169 @@ subroutine flxtrc( &
 
 ! ======  GM  isopycnal and diapycnal diffusion  ======
 ! ---- z diffusion flux of GM
+!$omp do
+  do k = kstr+1, kend
   do n = 1, ntdim
-     do k = kstr+1, kend
-        kuu = k - 2
-        ku  = k - 1
-        kd  = k + 1
-        do ij = ijtstr, ijtend
+     kuu = k - 2
+     ku  = k - 1
+     kd  = k + 1
+     do ij = ijtstr, ijtend
 
-           diffz(ij, k) = &
+        diffz(ij, k) = &
              & (  ahv(ij, k) &
              &  + ahi3d(ij, k) * (  zdzdx(ij, k) * zdzdx(ij, k) &
              &                    + zdzdy(ij, k) * zdzdy(ij, k) ) ) * &
              & rzm(ij, k) * amftz(ij, k)
 
-           ftz(ij, k, n) =  &
+        ftz(ij, k, n) =  &
              & (  diffz(ij, k) * (tx(ij, ku, n) - tx(ij, k, n)) &
              &  - ( ( ahi3d(ij, k) + ahg3d(ij, k) ) * &
              &     zdzdx(ij, k) - zpsiy(ij, k) ) * zdtdx(ij, k, n) &
              &  - ( ( ahi3d(ij, k) + ahg3d(ij, k) ) * &
              &     zdzdy(ij, k) + zpsix(ij, k) ) * zdtdy(ij, k, n) &
              &  ) * amftz(ij, k)
+        ftzd(ij, k, n) = ftz(ij, k, n)
+        ftzgm(ij, k, n) =  &
+             &   - ahg3d(ij, k) * &
+             &   ( zdzdx(ij, k) * zdtdx(ij, k, n) &
+             &   + zdzdy(ij, k) * zdtdy(ij, k, n) ) &
+             &   * amftz(ij, k)
+        ftzis(ij, k, n) =  &
+             &  (  ahi3d(ij, k) * (  zdzdx(ij, k) * zdzdx(ij, k) &
+             &                     + zdzdy(ij, k) * zdzdy(ij, k) ) * &
+             &       rzm(ij, k) * (tx(ij, ku, n) - tx(ij, k, n)) &
+             &   - ahi3d(ij, k) * &
+             &   ( zdzdx(ij, k) * zdtdx(ij, k, n) &
+             &   + zdzdy(ij, k) * zdtdy(ij, k, n) ) ) &
+             &   * amftz(ij, k)
 
-        end do
      end do
   end do
+  end do
+!$omp end do
 
 ! ---- y diffusion flux of GM
+!$omp do
   do k = kstr, kend
   do n = 1, ntdim
-        do ij = ijtstr, ijtend+nxdim
+     do ij = ijtstr, ijtend+nxdim
 
-           ijls = ij + ls
+        ijls = ij + ls
 
-           fty(ij, k, n) = &
+        fty(ij, k, n) = &
              &     (  ( ahh3d(ij, k) + ahi3d(ij, k) ) * rym(ijls) &
              &      / ( hyt(ij) + hyt(ijls) ) * &
              &        ( tx(ij, k, n) - tx(ijls, k, n) ) * 2.d0 &
              &      - ( ( ahi3d(ij, k) - ahg3d(ij, k) ) &
              &        * ydzdy(ij, k) - ypsix(ij, k) ) * ydtdz(ij, k, n) ) &
              &      * ( hxu(ijls) + hxu(ij+lsw) ) * 0.5d0 * amfty(ij, k)
+        ftyd(ij, k, n) = fty(ij, k, n)
+        ftyah(ij, k, n) = &
+             &     (  ahh3d(ij, k) * rym(ijls) &
+             &      / ( hyt(ij) + hyt(ijls) ) * &
+             &        ( tx(ij, k, n) - tx(ijls, k, n) ) * 2.d0 ) &
+             &      * ( hxu(ijls) + hxu(ij+lsw) ) * 0.5d0 * amfty(ij, k)
+        ftygm(ij, k, n) = &
+             &       (  ahg3d(ij, k) &
+             &        * ydzdy(ij, k) * ydtdz(ij, k, n) ) &
+             &        * ( hxu(ijls) + hxu(ij+lsw) ) * 0.5d0 * amfty(ij, k)
+        ftyis(ij, k, n) = &
+             &     (  ahi3d(ij, k) * rym(ijls) &
+             &      / ( hyt(ij) + hyt(ijls) ) * &
+             &        ( tx(ij, k, n) - tx(ijls, k, n) ) * 2.d0 &
+             &      - ahi3d(ij, k) &
+             &      * ydzdy(ij, k) * ydtdz(ij, k, n) ) &
+             &      * ( hxu(ijls) + hxu(ij+lsw) ) * 0.5d0 * amfty(ij, k)
 
-        end do
+     end do
 
 ! ---- x diffusion flux of GM
 
-        do ij = ijtstr, ijtend+1
+     do ij = ijtstr, ijtend+1
 
-           ijlw = ij + lw
+        ijlw = ij + lw
            
-           ftx(ij, k, n) = &
+        ftx(ij, k, n) = &
              &     (  ( ahh3d(ij, k) + ahi3d(ij, k) ) * rx &
              &      / ( hxt(ij) + hxt(ijlw) ) &
              &      * ( tx(ij, k, n) - tx(ijlw, k, n) ) * 2.d0 &
              &      - ( ( ahi3d(ij, k) - ahg3d(ij, k) ) &
              &      * xdzdx(ij, k) + xpsiy(ij, k) ) * xdtdz(ij, k, n) ) &
              &      * ( hyu(ijlw) + hyu(ij+lsw) ) * 0.5d0 * amftx(ij, k)
+        ftxd(ij, k, n) = ftx(ij, k, n)
+        ftxah(ij, k, n) = &
+             &     (  ahh3d(ij, k) * rx &
+             &      / ( hxt(ij) + hxt(ijlw) ) &
+             &      * ( tx(ij, k, n) - tx(ijlw, k, n) ) * 2.d0 ) &
+             &      * ( hyu(ijlw) + hyu(ij+lsw) ) * 0.5d0 * amftx(ij, k)
+        ftxgm(ij, k, n) = &
+             &     (  ahg3d(ij, k) &
+             &      * xdzdx(ij, k) * xdtdz(ij, k, n) ) &
+             &      * ( hyu(ijlw) + hyu(ij+lsw) ) * 0.5d0 * amftx(ij, k)
+        ftxis(ij, k, n) = &
+             &     (  ahi3d(ij, k) * rx &
+             &      / ( hxt(ij) + hxt(ijlw) ) &
+             &      * ( tx(ij, k, n) - tx(ijlw, k, n) ) * 2.d0 &
+             &      - ahi3d(ij, k) &
+             &      * xdzdx(ij, k) * xdtdz(ij, k, n) ) &
+             &      * ( hyu(ijlw) + hyu(ij+lsw) ) * 0.5d0 * amftx(ij, k)
 
-        end do
+     end do
 
-! ---- divergence of diffusion fluxes
-
-        do ij = ijtstr, ijtend
-
-           adt(ij, k, n) = &
-             & (  (  (ftx(ij+le, k, n) - ftx(ij, k, n)) * rx &
-             &     + (fty(ij+ln, k, n) - fty(ij, k, n)) * ry(ij)) * &
-             &    rxt(ij) * ryt(ij) &
-             &  + ftz(ij, k, n) - ftz(ij, k+1, n)) / dz(ij, k)
-
-        end do
   end do
   end do
+!$omp end do
+
+!---- bolus velocity (for CMIP6 output)
+!$omp do
+  do k = 1, nzdim
+     do ij = 1, nxydim
+        ublsx(ij, k) = 0.0d0
+        ublsw(ij, k) = 0.0d0
+        vblsy(ij, k) = 0.0d0
+        vblsw(ij, k) = 0.0d0
+     end do
+  end do
+!$omp end do
+
+!$omp do
+  do k = kstr+1, kend
+     do ij = ijtstr, ijtend+nxdim
+        ublsw(ij, k) = ( ahg3d(ij, k-1) * xdzdx(ij, k-1) &
+             &         - ahg3d(ij, k  ) * xdzdx(ij, k  ) ) &
+             &       / dzm(ij, k) &
+             &       * (1.0d0- &
+             &         (1.0d0-amftz(ij,k))*(1.0d0-amftz(ij+lw,k)))
+        vblsw(ij, k) = ( ahg3d(ij, k-1) * ydzdy(ij, k-1) &
+             &         - ahg3d(ij, k  ) * ydzdy(ij, k  ) ) &
+             &       / dzm(ij, k) &
+             &       * (1.0d0- &
+             &         (1.0d0-amftz(ij,k))*(1.0d0-amftz(ij+ls,k)))
+     end do
+  end do
+!$omp end do
+!$omp do
+  do k = kstr, kend
+     do ij = ijtstr, ijtend+nxdim
+        ublsx(ij, k) = 0.5d0 * (ublsw(ij, k) + ublsw(ij, k+1))
+        vblsy(ij, k) = 0.5d0 * (vblsw(ij, k) + vblsw(ij, k+1))
+     end do
+  end do
+!$omp end do
 
 !---- diffusion in BBL
 #ifdef OPT_BBL
 
+!$omp do
   do n = 1, ntdim
      do ij = ijtstr, ijtend
         k = nbot(ij)
         ftz(ij, kend, n) = ftz(ij, k, n)
      end do
   end do
+!$omp end do
 
+!$omp do
   do n = 1, ntdim
 
      do ij = ijtstr, ijtend+nxdim
@@ -580,6 +718,7 @@ subroutine flxtrc( &
           &   rym(ij) * &
           &   (hxu(ijls) + hxu(ij+lsw)) / (hyt(ij) + hyt(ijls)) * &
           &   amfty(ij, kend)
+        ftyah(ij, kend, n) = fty(ij, kend, n)
      end do
      
      do ij = ijtstr, ijtend+1
@@ -588,34 +727,43 @@ subroutine flxtrc( &
           &   ahhbbl * (tx(ij, kend, n) - tx(ijlw, kend, n)) * rx * &
           &   (hyu(ijlw) + hyu(ij+lsw)) / (hxt(ij) + hxt(ijlw)) * &
           &   amftx(ij, kend) 
+        ftxah(ij, kend, n) = ftx(ij, kend, n)
      end do
 
   end do
+!$omp end do
 
 #endif
 
+!$omp do
   do k = kstr, kend
      do ij=1, nxydim
         igsx(ij, k) = ( ahi3d(ij, k) - ahg3d(ij, k) ) * xdzdx(ij, k)
         igsy(ij, k) = ( ahi3d(ij, k) - ahg3d(ij, k) ) * ydzdy(ij, k)
      end do
   end do
+!$omp end do
 !  call chekin(igsx, 'IGSX', nx, ny, nz, nxyzdm, 'OCN')
 !  call chekin(igsy, 'IGSY', nx, ny, nz, nxyzdm, 'OCN')
 
+!$omp do
   do k = 1, nzdim
      do ij = 1, nxydim
         psigmx(ij, k) = 0.0d0
         psigmy(ij, k) = 0.0d0
      end do
   end do
+!$omp end do
 
+!$omp do
   do k = kstr, kend
      do ij = ijtstr, ijtend+nxdim
         psigmx(ij, k) = ahg3d(ij, k) * ydzdy(ij, k)
         psigmy(ij, k) = - ahg3d(ij, k) * xdzdx(ij, k)
      end do
   end do
+!$omp end do
+!$omp end parallel
 
 !  call chekin(psigmx, 'PSIGMX', nx, ny, nz, nxyzdm, 'OCN')
 !  call chekin(psigmy, 'PSIGMY', nx, ny, nz, nxyzdm, 'OCN')
@@ -623,9 +771,17 @@ subroutine flxtrc( &
 !---- SOM 
 !---- mass contained in a tracer grid
 
+!!*POPTION PARALLEL
+!$omp parallel do &
+!$omp private( &
+!$omp ij, ijlw, ijlsw, ijle, ijls, ijln, k, n, s0m, s1m, s0p, sxp, &
+!$omp alfq, alf1, alf1q, tmp, &
+!$omp fm, alf, f0, fx, fy, fz, &
+!$omp fxx, fyy, fzz, fxy, fxz, fyz &
+!$omp )
   do k = kstr, kend
-!---- in X-direction
 
+!---- in X-direction
      do ij = ijtstr-nxdim-1, ijtend+nxdim+1
 
         ijlw  = ij + lw
@@ -774,8 +930,9 @@ subroutine flxtrc( &
            fzz(ijlw) = alf(ij) * szz(ij+l, k, n)
            fyz(ijlw) = alf(ij) * syz(ij+l, k, n)
 
-           ftx (ij, k, n) = ftx(ij, k, n) &
-             &            -ss*f0(ijlw) * tsiv * ry(ijlw)          
+           ftx2(ij, k, n) = - ss * f0(ijlw) * tsiv * ry(ijlw)          
+!           ftx (ij, k, n) = ftx(ij, k, n) + ftx2(ij, k, n) 
+           ftx (ij, k, n) = ftx(ij, k, n) - ss * f0(ijlw) * tsiv * ry(ijlw)          
         end do
 
 !---- calculating flux and moments between box (I-1,J,K) <---> (I,J,K)                  
@@ -944,6 +1101,7 @@ subroutine flxtrc( &
         end do
      end do ! n
   end do ! k
+!$omp end parallel do
 
 !---- bug fix 2
 #ifdef OPT_TRIPOLE
@@ -966,6 +1124,14 @@ subroutine flxtrc( &
      call shift1( syz, nxdim, nydim, nztdim )
 #endif
 
+!!*POPTION PARALLEL
+!$omp parallel do &
+!$omp private( &
+!$omp ij, ijls, k, n, &
+!$omp alfq, alf1, alf1q, tmp, &
+!$omp fm, alf, f0, fx, fy, fz, &
+!$omp fxx, fyy, fzz, fxy,fxz, fyz &
+!$omp )
   do k = kstr, kend
      do n=1, ntdim
 !---- calculating ALF  and MASS between box (I,J-1,K) <---> (I,J,K)
@@ -1014,8 +1180,9 @@ subroutine flxtrc( &
            fzz(ijls) = alf(ij)    * szz(ij+l, k, n)
            fxz(ijls) = alf(ij)    * sxz(ij+l, k, n)
 
-           fty (ij, k, n) = fty(ij, k, n) &
-     &             - ss * f0(ijls) * tsiv * rx
+           fty2(ij, k, n) = - ss * f0(ijls) * tsiv * rx
+!           fty (ij, k, n) = fty(ij, k, n) + fty2(ij, k, n)
+           fty (ij, k, n) = fty(ij, k, n) - ss * f0(ijls) * tsiv * rx
         end do
 
 !---- calculating moments
@@ -1101,6 +1268,7 @@ subroutine flxtrc( &
         end do
      end do ! n
   end do ! k
+!$omp end parallel do
 
 #ifdef OPT_BBL
 !---- keeping BBL variables consistent at two levels
@@ -1119,6 +1287,8 @@ subroutine flxtrc( &
 
 !---- Z-direction
 
+!$omp parallel
+!$omp do
   do k = kstr, kend
      do ij = ijtstr, ijtend
 
@@ -1127,6 +1297,7 @@ subroutine flxtrc( &
                
      end do
   end do
+!$omp end do
 
 #ifdef OPT_BBL
   do ij = ijtstr, ijtend
@@ -1135,15 +1306,26 @@ subroutine flxtrc( &
   end do
 #endif
 
+!$omp do
   do k = kstr, kend
      do ij = ijtstr, ijtend
           !if w>0 ll=-1, else l=0
            ll(ij,k)= - nint(0.5d0 +dsign(0.5d0, uv(ij,k))) 
      end do
   end do
-
+!$omp end do
+!$omp end parallel
 
   do n = 1, ntdim
+
+!!*POPTION PARALLEL
+!$omp parallel do &
+!$omp private( &
+!$omp ij1, ij2, ij, k, ku, kd, s0m, s1m, s0p, sxp, &
+!$omp alfq, alf1, alf1q, tmp, &
+!$omp zfm, zalf, zf0, zfx, zfy, zfz, &
+!$omp zfxx, zfyy, zfzz, zfxy,zfxz, zfyz &
+!$omp )
      do ij1 = ijtstr, ijtend, iblock       !cashe blocking
         ij2 =min(ij1 + iblock-1, ijtend) 
 !---- undershoot limiter (Method B) of Morales Maqueda and Holloway (2006)
@@ -1259,8 +1441,9 @@ subroutine flxtrc( &
               zfyy(ij-ij1+1, ku) = zalf(ij-ij1+1, k)*syy(ij, k+l, n)
               zfxy(ij-ij1+1, ku) = zalf(ij-ij1+1, k)*sxy(ij, k+l, n)
                   
-              ftz (ij, k, n) = ftz(ij, k, n)  &
-     &                   +ss* zf0(ij-ij1+1, ku) * tsiv / vlmz(ij)
+              ftz2(ij, k, n) = ss * zf0(ij-ij1+1, ku) * tsiv / vlmz(ij)
+              ftz (ij, k, n) = ftz(ij, k, n) + &
+                   & ss * zf0(ij-ij1+1, ku) * tsiv / vlmz(ij)
            end do
         end do
 !---- calculating flux between box (i,j,k-1) <---> (i,j,k)
@@ -1351,30 +1534,61 @@ subroutine flxtrc( &
            end do
         end do
      end do !blocking
+!$omp end parallel do
   end do
 
-!---- tx
+!----
+!$omp parallel
+!$omp do
+  do k = kstr, kend
   do n = 1, ntdim
-     do k = kstr, kend
-        do ij = ijtstr, ijtend
+     do ij = ijtstr, ijtend
 
-!           tx(ij, k, n) = s0(ij, k, n) / sm(ij, k, n)
+        adt(ij, k, n) = &
+             & ( ( (ftx(ij+le, k, n) - ftx(ij, k,   n)) * rx &
+             &   + (fty(ij+ln, k, n) - fty(ij, k,   n)) * ry(ij)) * &
+             &      rxt(ij) * ryt(ij) &
+             &    + ftz(ij,    k, n) - ftz(ij, k+1, n)) / dz(ij, k)
+        adt2(ij, k, n) = &
+             & ( ( (ftx2(ij+le, k, n) - ftx2(ij, k,   n)) * rx &
+             &   + (fty2(ij+ln, k, n) - fty2(ij, k,   n)) * ry(ij)) * &
+             &      rxt(ij) * ryt(ij) &
+             &    + ftz2(ij,    k, n) - ftz2(ij, k+1, n)) / dz(ij, k)
+        adtd(ij, k, n) = &
+             & ( ( (ftxd(ij+le, k, n) - ftxd(ij, k,   n)) * rx &
+             &   + (ftyd(ij+ln, k, n) - ftyd(ij, k,   n)) * ry(ij)) * &
+             &      rxt(ij) * ryt(ij) &
+             &    + ftzd(ij,    k, n) - ftzd(ij, k+1, n)) / dz(ij, k)
+        adtah(ij, k, n) = &
+             & ( ( (ftxah(ij+le, k, n) - ftxah(ij, k,   n)) * rx &
+             &   + (ftyah(ij+ln, k, n) - ftyah(ij, k,   n)) * ry(ij)) * &
+             &      rxt(ij) * ryt(ij) ) / dz(ij, k)
+        adtgm(ij, k, n) = &
+             & ( ( (ftxgm(ij+le, k, n) - ftxgm(ij, k,   n)) * rx &
+             &   + (ftygm(ij+ln, k, n) - ftygm(ij, k,   n)) * ry(ij)) * &
+             &      rxt(ij) * ryt(ij) &
+             &    + ftzgm(ij,    k, n) - ftzgm(ij, k+1, n)) / dz(ij, k)
+        adtis(ij, k, n) = &
+             & ( ( (ftxis(ij+le, k, n) - ftxis(ij, k,   n)) * rx &
+             &   + (ftyis(ij+ln, k, n) - ftyis(ij, k,   n)) * ry(ij)) * &
+             &      rxt(ij) * ryt(ij) &
+             &    + ftzis(ij,    k, n) - ftzis(ij, k+1, n)) / dz(ij, k)
 
-               adt(ij, k, n) =                                       &
-     &         (  (  (ftx(ij+le, k, n) - ftx(ij, k, n)) * rx         &
-     &             + (fty(ij+ln, k, n) - fty(ij, k, n)) * ry(ij)) *  &
-     &            rxt(ij) * ryt(ij)                                  &
-     &          + ftz(ij, k, n) - ftz(ij, k+1, n)) / dz(ij, k)
-
-        end do
      end do
   end do
+  end do
+!$omp end do
+!$omp end parallel
 
 #ifdef OPT_BBL
   do n = 1, ntdim
      do ij = ijtstr, ijtend
         k = nbot(ij)
         ftz(ij, kend, n) = ftz(ij, k, n)
+        ftz2 (ij, kend, n) = ftz2 (ij, k, n)
+        ftzd (ij, kend, n) = ftzd (ij, k, n)
+        ftzgm(ij, kend, n) = ftzgm(ij, k, n)
+        ftzis(ij, kend, n) = ftzis(ij, k, n)
      end do
   end do
 
@@ -1385,6 +1599,26 @@ subroutine flxtrc( &
              &   + (fty(ij+ln, kend, n) - fty(ij, kend, n)) * ry(ij)) * &
              &  rxt(ij) * ryt(ij) &
              & + ftz(ij, kend, n) ) / dz(ij, kend)
+        adt2(ij, kend, n) = &
+             & ( ( (ftx2(ij+le, kend, n) - ftx2(ij, kend, n)) * rx &
+             &   + (fty2(ij+ln, kend, n) - fty2(ij, kend, n)) * ry(ij)) * &
+             &  rxt(ij) * ryt(ij) &
+             & + ftz2(ij, kend, n) ) / dz(ij, kend)
+        adtd(ij, kend, n) = &
+             & ( ( (ftxd(ij+le, kend, n) - ftxd(ij, kend, n)) * rx &
+             &   + (ftyd(ij+ln, kend, n) - ftyd(ij, kend, n)) * ry(ij)) * &
+             &  rxt(ij) * ryt(ij) &
+             & + ftzd(ij, kend, n) ) / dz(ij, kend)
+        adtgm(ij, kend, n) = &
+             & ( ( (ftxgm(ij+le, kend, n) - ftxgm(ij, kend, n)) * rx &
+             &   + (ftygm(ij+ln, kend, n) - ftygm(ij, kend, n)) * ry(ij)) * &
+             &  rxt(ij) * ryt(ij) &
+             & + ftzgm(ij, kend, n) ) / dz(ij, kend)
+        adtis(ij, kend, n) = &
+             & ( ( (ftxis(ij+le, kend, n) - ftxis(ij, kend, n)) * rx &
+             &   + (ftyis(ij+ln, kend, n) - ftyis(ij, kend, n)) * ry(ij)) * &
+             &  rxt(ij) * ryt(ij) &
+             & + ftzis(ij, kend, n) ) / dz(ij, kend)
      end do
   end do
 #endif
@@ -1445,6 +1679,103 @@ subroutine flxtrc( &
   call shift1( sxz, nxdim, nydim, nztdim )
   call shift1( syz, nxdim, nydim, nztdim )
 #endif
+
+!---- for CMIP6 output
+  call chekin(  ublsx, 'UBOLUS', &
+  &            'G-M bolus velocity, x-dir.', 'cm/s', &
+  &                nx,     ny,     nz, nxyzdm, 'OCLVTT')
+  call chekin(  vblsy, 'VBOLUS', &
+  &            'G-M bolus velocity, y-dir.', 'cm/s', &
+  &                nx,     ny,     nz, nxyzdm, 'OCLVTT')
+
+  call chekin(ftxgm(1, 1, 1), 'FTXGM', &
+  &            'GM zonal heat flux', 'degC cm3/rad/s', &
+  &            nx, ny, nz, nxyzdm, 'OCLVTT')
+  call chekin(ftygm(1, 1, 1), 'FTYGM', &
+  &            'GM meridional heat flux', 'degC cm3/rad/s', &
+  &            nx, ny, nz, nxyzdm, 'OCLVTT')
+  call chekin(ftxis(1, 1, 1), 'FTXIS', &
+  &            'isopycnal zonal heat flux', 'degC cm3/rad/s', &
+  &            nx, ny, nz, nxyzdm, 'OCLVTT')
+  call chekin(ftyis(1, 1, 1), 'FTYIS', &
+  &            'isopycnal meridional heat flux','degC cm3/rad/s', &
+  &            nx, ny, nz, nxyzdm, 'OCLVTT')
+  call chekin(ftxgm(1, 1, 2), 'FSXGM', &
+  &            'GM zonal salt flux', 'psu cm3/rad/s', &
+  &            nx, ny, nz, nxyzdm, 'OCLVTT')
+  call chekin(ftygm(1, 1, 2), 'FSYGM', &
+  &            'GM meridional salt flux', 'psu cm3/rad/s', &
+  &            nx, ny, nz, nxyzdm, 'OCLVTT')
+  call chekin(ftxis(1, 1, 2), 'FSXIS', &
+  &            'isopycnal zonal salt flux', 'psu cm3/rad/s', &
+  &            nx, ny, nz, nxyzdm, 'OCLVTT')
+  call chekin(ftyis(1, 1, 2), 'FSYIS', &
+  &            'isopycnal meridional salt flux', 'psu cm3/rad/s', &
+  &            nx, ny, nz, nxyzdm, 'OCLVTT')
+  call chekin(ftx2(1, 1, 1), 'FTX2', &
+  &            'ocean zonal heat flux', 'degC cm3/rad/s', &
+  &            nx, ny, nz, nxyzdm, 'OCLVTT')
+  call chekin(fty2(1, 1, 1), 'FTY2', &
+  &            'ocean meridional heat flux', 'degC cm3/rad/s', &
+  &            nx, ny, nz, nxyzdm, 'OCLVTT')
+  call chekin(ftz2(1, 1, 1), 'FTZ2', &
+  &            'ocean vertical heat flux', 'degC cm3/rad/s', &
+  &            nx, ny, nz, nxyzdm, 'OCLVMT')
+  call chekin(ftx2(1, 1, 2), 'FSX2', &
+  &            'ocean zonal salt flux', 'psu cm3/rad/s', &
+  &            nx, ny, nz, nxyzdm, 'OCLVTT')
+  call chekin(fty2(1, 1, 2), 'FSY2', &
+  &            'ocean meridional salt flux', 'psu cm3/rad/s', &
+  &            nx, ny, nz, nxyzdm, 'OCLVTT')
+  call chekin(ftz2(1, 1, 2), 'FSZ2', &
+  &            'ocean vertical salt flux', 'psu cm3/rad/s', &
+  &            nx, ny, nz, nxyzdm, 'OCLVMT')
+
+  call chekin(adtah(1, 1, 1), 'DTDTAHH', &
+  &            'tendency of temp due to AHH', 'K/sec', &
+  &            nx, ny, nz, nxyzdm, 'OCLVTT')
+  call chekin(adtah(1, 1, 2), 'DSDTAHH', &
+  &            'tendency of salt due to AHH', 'psu/sec', &
+  &            nx, ny, nz, nxyzdm, 'OCLVTT')
+  
+  call chekin(adtgm(1, 1, 1), 'DTDTAHG', &
+  &            'tendency of temp due to GM', 'K/sec', &
+  &            nx, ny, nz, nxyzdm, 'OCLVTT')
+  call chekin(adtgm(1, 1, 2), 'DSDTAHG', &
+  &            'tendency of salt due to GM', 'psu/sec', &
+  &            nx, ny, nz, nxyzdm, 'OCLVTT')
+  call chekin(adtis(1, 1, 1), 'DTDTAHI', &
+  &           'tendency of temp due to isopycnal diff', 'K/sec', &
+  &            nx, ny, nz, nxyzdm, 'OCLVTT')
+  call chekin(adtis(1, 1, 2), 'DSDTAHI', &
+  &          'tendency of salt due to isopycnal diff', 'psu/sec', &
+  &            nx, ny, nz, nxyzdm, 'OCLVTT')
+
+  call chekin(adtd(1, 1, 1), 'DTDTD', &
+  &            'tendency of temp by diffusion', 'K/sec', &
+  &            nx, ny, nz, nxyzdm, 'OCLVTT')
+  call chekin(adtd(1, 1, 2), 'DSDTD', &
+  &            'tendency of salt by diffusion', 'psu/sec', &
+  &            nx, ny, nz, nxyzdm, 'OCLVTT')
+
+  do ij = ijtstr, ijtend
+     dh(ij) = hx(ij) - hz(ij)
+  end do
+  do n = 1, ntdim
+     do k = kstr, kstr+kz-1
+        do ij = ijtstr, ijtend
+           adt2(ij, k, n) = adt2(ij, k, n) &
+                &           - dh(ij) / zbot * tsiv * tx(ij, k, n)
+        end do
+     end do
+  end do
+  call chekin(adt2(1, 1, 1), 'DTDTV', &
+       &            'tendency of temp by advection', 'K/sec', &
+       &            nx, ny, nz, nxyzdm, 'OCLVTT')
+  call chekin(adt2(1, 1, 2), 'DSDTV', &
+       &            'tendency of salt by advection', 'psu/sec', &
+       &            nx, ny, nz, nxyzdm, 'OCLVTT')
+
 
   return
 
@@ -1614,16 +1945,20 @@ subroutine dnsgrd( &
      end do
   end if
 
+!$omp parallel private(n, k, ij, &
+!$omp tl, sl, p1, p2, rl, rlw, rls, rlu, dzdx, dzdy)
+!$omp do
+  do k = 1, nzdim
   do n = 1, ntdim
-     do k = 1, nzdim
-        do ij = 1, nxydim
-           dtdx(ij, k, n) = 0.d0
-           dtdy(ij, k, n) = 0.d0
-           dtfdz(ij, k, n) = 0.d0
-        end do
+     do ij = 1, nxydim
+        dtdx(ij, k, n) = 0.d0
+        dtdy(ij, k, n) = 0.d0
+        dtfdz(ij, k, n) = 0.d0
      end do
   end do
+  end do
 
+!$omp do
   do k = kstr, kend
      do ij = 1, nxydim
         tl = ty(ij, k, 1)
@@ -1648,6 +1983,7 @@ subroutine dnsgrd( &
      end do
   end do
 
+!$omp do
   do k = kstr, kend
      do ij = ijtstr, ijtend+nxdim
         tl = ty(ij, k, 1)
@@ -1691,7 +2027,9 @@ subroutine dnsgrd( &
           &              amskt(ij, k) * amskt(ij+ls, k)
      end do
   end do
+!$omp end do nowait
 
+!$omp do
   do k = kstr+1, kend
      do ij = ijtstr-nxdim, ijtend+nxdim
         tl = ty(ij, k, 1)
@@ -2113,6 +2451,7 @@ subroutine dnsgrd( &
 !  call chekin(   muzx,   'MUZX', nx, ny, nz, nxyzdm, 'OCN')
 !  call chekin(   muzy,   'MUZY', nx, ny, nz, nxyzdm, 'OCN')
 
+!$omp do
   do k = kstr, kend
      do ij = ijtstr, ijtend+nxdim
         dzdx = dtdx(ij, k, 1) * 4.d0 &
@@ -2127,6 +2466,7 @@ subroutine dnsgrd( &
      end do
   end do
 
+!$omp do
   do k = kstr+1, kend
      do ij = ijtstr, ijtend
         dzdx = ((dtdx(ij, k-1, 1)+dtdx(ij+le, k-1, 1))*dz(ij, k-1) &
@@ -2143,16 +2483,18 @@ subroutine dnsgrd( &
      end do
   end do
 
+!$omp do
+  do k = 1, nzdim
   do n = 1, ntdim
-     do k = 1, nzdim
-        do ij = 1, nxydim
-           dtdx(ij, k, n) = 0.d0
-           dtdy(ij, k, n) = 0.d0
-           dtfdz(ij, k, n) = 0.d0
-        end do
+     do ij = 1, nxydim
+        dtdx(ij, k, n) = 0.d0
+        dtdy(ij, k, n) = 0.d0
+        dtfdz(ij, k, n) = 0.d0
      end do
   end do
+  end do
 
+!$omp do
   do n = 1, ntdim
      do k = kstr, kend
         do ij = ijtstr, ijtend+nxdim
@@ -2166,7 +2508,9 @@ subroutine dnsgrd( &
         end do
      end do
   end do
+!$omp end do nowait
 
+!$omp do
   do n = 1, ntdim
      do k = kstr+1, kend
         do ij = ijtstr-nxdim, ijtend+nxdim
@@ -2176,6 +2520,7 @@ subroutine dnsgrd( &
      end do
   end do
 
+!$omp do
   do n = 1, ntdim
      do k = kstr, kend
         do ij = ijtstr, ijtend+nxdim
@@ -2191,7 +2536,9 @@ subroutine dnsgrd( &
         end do
      end do
   end do
+!$omp end do nowait
 
+!$omp do
   do n = 1, ntdim
      do k = kstr+1, kend
         do ij = ijtstr, ijtend
@@ -2210,6 +2557,7 @@ subroutine dnsgrd( &
         end do
      end do
   end do
+!$omp end parallel
 
   return
 
@@ -2255,7 +2603,7 @@ subroutine chkftx
      &            nx,     ny,     nz, nxyzdm, 'OCLVTT')
   call chekin(   ftz,  'FTZ', &
      &            'ocean vertical heat flux', 'degC cm/s', &
-     &            nx,     ny,     nz, nxyzdm, 'OCLVTT')
+     &            nx,     ny,     nz, nxyzdm, 'OCLVMT')
   call chekin(   ftx(1, 1, 2),  'FSX', &
      &            'ocean zonal salt flux', 'psu cm^3/rad/s', &
      &            nx,     ny,     nz, nxyzdm, 'OCLVTT')
@@ -2264,7 +2612,26 @@ subroutine chkftx
      &            nx,     ny,     nz, nxyzdm, 'OCLVTT')
   call chekin(   ftz(1, 1, 2),  'FSZ', &
      &            'ocean vertical salt flux', 'psu cm/s', &
+     &            nx,     ny,     nz, nxyzdm, 'OCLVMT')
+
+  call chekin(   ftxd,  'FTXD', &
+     &            'ocean zonal diffusive heat flux', 'degC cm^3/rad/s', &
      &            nx,     ny,     nz, nxyzdm, 'OCLVTT')
+  call chekin(   ftyd,  'FTYD', &
+     &            'ocean meridional diffusive heat flux', 'degC cm^3/rad/s', &
+     &            nx,     ny,     nz, nxyzdm, 'OCLVTT')
+  call chekin(   ftzd,  'FTZD', &
+     &            'ocean vertical diffusive heat flux', 'degC cm/s', &
+     &            nx,     ny,     nz, nxyzdm, 'OCLVMT')
+  call chekin(   ftxd(1, 1, 2),  'FSXD', &
+     &            'ocean zonal diffusive salt flux', 'psu cm^3/rad/s', &
+     &            nx,     ny,     nz, nxyzdm, 'OCLVTT')
+  call chekin(   ftyd(1, 1, 2),  'FSYD', &
+     &            'ocean meridional diffusive salt flux', 'psu cm^3/rad/s', &
+     &            nx,     ny,     nz, nxyzdm, 'OCLVTT')
+  call chekin(   ftzd(1, 1, 2),  'FSZD', &
+     &            'ocean vertical diffusive salt flux', 'psu cm/s', &
+     &            nx,     ny,     nz, nxyzdm, 'OCLVMT')
 
   return
 end subroutine chkftx

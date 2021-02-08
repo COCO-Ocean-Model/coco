@@ -24,8 +24,7 @@ module tflxt
     & nxgdim, nygdim, &
     &   kstr,   kend,     kz, &
     &     nx,     ny,     nz,    nxg,    nyg, &
-    & ijtstr, ijtend, &
-    &  igstr,  jgstr, &
+    & ijtstr, ijtend,  ijstr,  ijend, &
     &     le,     lw,     ln,     ls, &
     &    lsw, &
     &  oinit, ofinal, &
@@ -34,6 +33,9 @@ module tflxt
     &     dy,    dym,     dz,    dz0,    dzm,    dzv,     ds,    dsm, &
     &     dx,     rx,     ry,    rym, &
     &     ts,   zbot, &
+#ifdef OPT_EXMASK
+    &  glatt, &
+#endif
     &    hxt,    hxu,    hyt,    hyu,    rxt,    ryt
   use zocmsk, only: &
 #ifdef OPT_BBL
@@ -180,24 +182,17 @@ subroutine flxtrc( &
   namelist /nmdifi/ ahi
   namelist /nmdifg/ ahg
 
-!---- 
-#ifdef OPT_IO_COCOMPI
- integer :: mpi_fh
- integer :: icread
- integer (kind = mpi_offset_kind) :: disp
-#else
-  real(8) ::  buf3(nxg, nyg, nz)
-  real(8) ::  g3d(nxgdim, nygdim, nzdim)
+  integer :: isvgm = -1
+  real(8), save ::  ahgno = 1.d7, nlats =  40.d0, nlatn =  50.d0
+  real(8), save ::  ahgso = 1.d7, slatn = -40.d0, slats = -50.d0
+  real(8) :: pi, lat
+#ifndef OPT_EXMASK
+  real(8) :: cort, omega
 #endif
 
-!---- file name of isotropic diffusion and thickness diffusion
-  character(len=ncf) ::  cfahi = 'not-specified'
-  character(len=ncf) ::  cfahg = 'not-specified'
-  character(len= 16) ::  chead(64) 
-  integer :: iah = 0
-  integer :: nfahi, nfahg
-
-  namelist /nmcah/ cfahi, cfahg, iah
+  namelist /nmsvgm/ isvgm
+  namelist /nmdifn/ ahgno, nlats, nlatn
+  namelist /nmdifs/ ahgso, slatn, slats
 
 #ifdef OPT_BBL
   real(8), save :: ahhbbl = 0.0d0
@@ -290,6 +285,18 @@ subroutine flxtrc( &
      read(ifpar, nmdifg, iostat=istat)
      call cstnml(jfpar, 'flxtrc', 'nmdifg', istat)
      write(jfpar, nmdifg)
+     call rewnml(ifpar, jfpar)
+     read(ifpar, nmsvgm, iostat=istat)
+     call cstnml(jfpar, 'flxtrc', 'nmsvgm', istat)
+     write(jfpar, nmsvgm)
+     call rewnml(ifpar, jfpar)
+     read(ifpar, nmdifn, iostat=istat)
+     call cstnml(jfpar, 'flxtrc', 'nmdifn', istat)
+     write(jfpar, nmdifn)
+     call rewnml(ifpar, jfpar)
+     read(ifpar, nmdifs, iostat=istat)
+     call cstnml(jfpar, 'flxtrc', 'nmdifs', istat)
+     write(jfpar, nmdifs)
 
      eps = 1.d-20
      sq3 = sqrt( 3.d0 )
@@ -347,107 +354,46 @@ subroutine flxtrc( &
      end do
 
 !---- 
-     call rewnml(ifpar, jfpar)
-     read(ifpar, nmcah, iostat=istat)
-     call cstnml(jfpar, 'flxtrc', 'nmcah', istat)
-     write(jfpar, nmcah)
 
-     if ( iah .eq. 0 ) then
+     write(jfpar, *) 'Background horizontal diffusion :', ahh
+     write(jfpar, *) 'Isopycnal diffusion             :', ahi
+     write(jfpar, *) 'G-M thickness diffusion         :', ahg
 
-        write(jfpar, *) 'Background horizontal diffusion :', ahh
-        write(jfpar, *) 'Isopycnal diffusion             :', ahi
-        write(jfpar, *) 'G-M thickness diffusion         :', ahg
-
-        do k = 1, nzdim
-           do ij = 1, nxydim
-              ahi3d(ij, k) = ahi
-              ahg3d(ij, k) = ahg
-              ahh3d(ij, k) = ahh
-           end do
+     do k = 1, nzdim
+        do ij = 1, nxydim
+           ahi3d(ij, k) = ahi
+           ahg3d(ij, k) = ahg
+           ahh3d(ij, k) = ahh
         end do
+     end do
 
-     else
-
-        do k = 1, nzdim
-           do ij = 1, nxydim
-              ahh3d(ij, k) = ahh
-           end do
-        end do
-
-        write(jfpar, *) '  file name of ahi: ', cfahi
-        write(jfpar, *) '  file name of ahg: ', cfahg
-
-!       ---- reading diffusion coefficient
-#ifdef OPT_IO_COCOMPI
-!---- ahi                                                                                                                                        
-        call mpi_filopn(mpi_fh, cfahi, 'READ')
-        disp=0
-        call mpi_read_chead(chead, mpi_fh, disp, icread)
-        call mpi_read_3d(ahi3d, mpi_fh  , disp)
-        call mpi_filcls(mpi_fh)
-
-!---- ahg                                                                                                                                        
-        call mpi_filopn(mpi_fh, cfahg, 'READ')
-        disp=0
-        call mpi_read_chead(chead, mpi_fh, disp, icread)
-        call mpi_read_3d(ahg3d, mpi_fh  , disp)
-        call mpi_filcls(mpi_fh)
-#else
-!       ---- ahi
-        if ( myrank .eq. iroot ) then
-
-           call filopn( nfahi, cfahi, 'READ' )
-           rewind( nfahi )
-           read( nfahi ) chead
-           read( nfahi ) buf3
-
-           do k = 1, nz
-              do j = 1, nyg
-                 do i = 1, nxg
-
-                    g3d(igstr+i-1, jgstr+j-1, kstr+k-1) = buf3(i, j, k )
-
-                 end do
-              end do
-           end do
-           call filcls( nfahi )
-
-        end if
-        call scatter_3d( ahi3d, g3d )
-
-!       ---- ahg
-        if ( myrank .eq. iroot ) then
-
-           call filopn( nfahg, cfahg, 'READ' )
-           rewind( nfahg )
-           read( nfahg ) chead
-           read( nfahg ) buf3
-
-           do k = 1, nz
-              do j = 1, nyg
-                 do i = 1, nxg
-
-                    g3d(igstr+i-1, jgstr+j-1, kstr+k-1) = buf3(i, j, k )
-
-                 end do
-              end do
-           end do
-           call filcls( nfahg )
-
-        end if
-        call scatter_3d( ahg3d, g3d )
+     if ( isvgm > 0 ) then
+     write(jfpar, *) 'latitudinally varying GM diffusivity is used.'
+     pi = atan( 1.d0 )*4.d0
+#ifndef OPT_EXMASK
+     omega = 2.d0 * pi / 86400.d0
 #endif
-     end if
-
-#ifdef OPT_TRIPOLE
-     call shift2( ahi3d,  ahg3d, &
-          &       nxdim,  nydim,  nzdim, &
-          &        1.d0,      0,      0 )
+     do ij = ijstr, ijend
+#ifdef OPT_EXMASK
+        lat = glatt(ij) * 180.d0 / pi
 #else
-     call shift2( &
-          &       ahi3d,  ahg3d, &
-          &       nxdim,  nydim,  nzdim )
+        cort = (cor(ij) + cor(ij+lw) + cor(ij+lsw) + cor(ij+ls)) * 0.25d0
+        lat = asin( cort * 0.5d0 * omega ) * 180.d0 / pi
 #endif
+        if(lat .ge. slatn .and. lat .le. nlats) then
+           ahg3d(ij, :) = ahg
+        elseif(lat .ge. slats .and. lat .lt. slatn) then
+           ahg3d(ij, :) = (ahgso * (slatn - lat) + &
+                &            ahg * (lat - slats)) / (slatn - slats)
+        elseif(lat .gt. nlats .and. lat .le. nlatn) then
+           ahg3d(ij, :) = (ahgno * (lat - nlats) + &
+                &            ahg * (nlatn - lat)) / (nlatn - nlats)
+        elseif(lat .le. slats) then
+           ahg3d(ij, :) = ahgso
+        else
+           ahg3d(ij, :) = ahgno
+        endif
+     end do
 
 #ifdef OPT_BBL
      call rewnml(ifpar, jfpar)
@@ -734,8 +680,8 @@ subroutine flxtrc( &
 !$omp fxx, fyy, fzz, fxy, fxz, fyz &
 !$omp )
   do k = kstr, kend
-
 !---- in X-direction
+
      do ij = ijtstr-nxdim-1, ijtend+nxdim+1
 
         ijlw  = ij + lw
@@ -1262,7 +1208,6 @@ subroutine flxtrc( &
 
 !$omp do
   do k = kstr, kend
-
      do ij = ijtstr, ijtend
           !if w>0 ll=-1, else l=0
            ll(ij,k)= - nint(0.5d0 +dsign(0.5d0, uv(ij,k))) 
