@@ -5,46 +5,35 @@ module aocea
 !  HISTORY
 !     '02.10.10  H.Hasumi: from COCO3.4
 !     '07.04.23  H.Hasumi
-!     '07.09.25  H.Hasumi: multi-category sea ice
-!     '07.09.27  H.Hasumi: 1-layer sea ice thermodynamics
+!     '07.09.25  H.Hasumi: arguments of CHEKIN
+!     '07.10.04  H.Hasumi: 1-layer sea ice thermodynamics
 !     '08.06.11  H.Hasumi: initial/final processing
-!     '08.07.10  H.Hasumi: initial/final processing
-!     '08.08.28  Y.Komuro: normalization of water volume
 !     '09.05.25  Y.Komuro: CMIP5 output code included
 !     '09.10.06  Y.Komuro: FORSTO before PREDCI
-!     '11.12.13  Y.Komuro: time scale for water normalization
-!     '12.10.12  Y.Komuro: for COCO5.0
-!     '13.02.13  Y.Komuro: remove non-parallel code 
+!     '12.10.19  T.Suzuki: for COCO5.0 in F90
+!     '13.02.12  Y.Komuro: remove non-parallel code 
 !
 ! ---------------------------------------------------------------------
 
   use zocdim, only: &
     &     nx,     ny,     nz, &
-    &   istr,   iend,   jstr,   jend,   kstr, &
-    &  nxdim, nxydim, nxyzdm, nxyidm,  ntdim,    nic, &
-    & ijtstr, ijtend, &
-    & myrank, ijnode,   ierr, &
+    & nxydim, nxyzdm, nxyidm,  ntdim,    nic, &
+    & myrank, ijnode, &
     &  oinit, ofinal
   use zocgrd, only: &
-    &     dx,     dy, &
-    &    hxt,    hyt, &
     &     dt, &
     &     tt,     ts,    tss, &
     &     nt,    its,   itst,   ntss, &
     & ieuler
-  use zocmsk, only: &
-    &  amskt
   use zocfil, only: &
     & nfomax
-  use zocphy, only: &
-    &   rhoi,   rhos
       
   implicit none
 
   character(len=16), save :: ctrnam(ntdim), cftnam(ntdim)
   character(len=32), save :: ctrtit(ntdim), cfttit(ntdim)
   character(len=16), save :: ctruni(ntdim), cftuni(ntdim)
-  real(8), save ::    uadv(nxyzdm),   vadv(nxyzdm),   wadv(nxyzdm)
+  real(8), save ::    uadv(nxyzdm),   vadv(nxyzdm),   wadv(nxyzdm, 9)
   real(8), save ::     gxx(nxydim),    gyy(nxydim)
 
   private
@@ -75,7 +64,7 @@ subroutine ocstup ( &
   real(8), intent(out) ::   vbtb(nxydim)
   real(8), intent(out) ::      w(nxyzdm),      r(nxyzdm)
   real(8), intent(out) ::    amv(nxyzdm),    ahv(nxyzdm)
-  real(8), intent(out) ::     ft(nxydim, ntdim)
+  real(8), intent(in)  ::     ft(nxydim, ntdim)
   real(8), intent(out) ::   ptop(nxydim)
   real(8), intent(in)  ::    dt1
 
@@ -285,8 +274,7 @@ subroutine ocean ( &
        &            prec,   snow,   roff,   soff, &
        &          tauaix, tauaiy, tauaox, tauaoy, &
        &              ft,   ptop,   ssfc, &
-       &              tb,     ab,    hib,    tib,    hsb, &
-       &              ub,     vb )
+       &              tb,     ab,    hib,    tib,    hsb, ub, vb )
      call nmlwtr( &
        &            prec,    wev, &
        &              hb,     ab,    hib,    hsb )
@@ -328,8 +316,7 @@ subroutine ocean ( &
        &            prec,   snow,   roff,   soff, &
        &          tauaix, tauaiy, tauaox, tauaoy, &
        &              ft,   ptop,   ssfc, &
-       &              ta,     aa,    hia,    tia,    hsa, &
-       &              ua,     va )
+       &              ta,     aa,    hia,    tia,    hsa, ua, va )
      call nmlwtr( &
        &            prec,    wev, &
        &              ha,     aa,    hia,    hsa )
@@ -371,8 +358,7 @@ subroutine ocean ( &
        &            prec,   snow,   roff,   soff, &
        &          tauaix, tauaiy, tauaox, tauaoy, &
        &              ft,   ptop,   ssfc, &
-       &              tb,     ab,    hib,    tib,    hsb, &
-       &              ub,     vb )
+       &              tb,     ab,    hib,    tib,    hsb, ub, vb )
      call nmlwtr( &
        &            prec,    wev, &
        &              hb,     ab,    hib,    hsb )
@@ -436,15 +422,13 @@ subroutine ocean ( &
 
   else
      ieuler = 0
-
      call sfcflx( &
        &             qao,    qai,    qii,    qio,  swabs,    tsi, &
        &             wev,    wsb, &
        &            prec,   snow,   roff,   soff, &
        &          tauaix, tauaiy, tauaox, tauaoy, &
        &              ft,   ptop,   ssfc, &
-       &              tb,     ab,    hib,    tib,    hsb, &
-       &              ub,     vb )
+       &              tb,     ab,    hib,    tib,    hsb, ub, vb )
      call nmlwtr( &
        &            prec,    wev, &
        &              hb,     ab,    hib,    hsb )
@@ -665,6 +649,17 @@ subroutine nmlwtr( &
 
   use qckot
   use ufile
+  use zocphy, only: &
+    &   rhoi,   rhos
+  use zocmsk, only: &
+    &  amskt
+  use zocdim, only: &
+    &   istr,   iend,   jstr,   jend,   kstr, &
+    &  nxdim, ijtstr, ijtend, &
+    &   ierr
+  use zocgrd, only: &
+    &     dx,     dy, &
+    &    hxt,    hyt
 
 #include "mpif.h"
 
@@ -748,7 +743,7 @@ subroutine nmlwtr( &
   call chekin( fwnmd, 'FWNML', &
        &       'Fw for normalizing surface height', 'cm/s', &
        &          nx,     ny,      1, nxydim, 'OCSFCT' )
-
+  
   return
 end subroutine nmlwtr
 
