@@ -583,7 +583,8 @@ end subroutine intpsfc
   logical, save :: of=.true.
   real(8), save :: pi
 
-  real(8) :: dat(0:nx0+1,ny0), alonc(0:nx0+1), y2c(0:nx0+1,1:ny0)
+  real(8) :: dat(0:nx0+1,ny0), y2c(0:nx0+1,1:ny0)
+  real(8), save :: alonc(0:nx0+1)
   real(8) :: buf(nx0)
   real(8) :: fy(ny0), fy2(ny0), fyb(ny0,nx), fy2b(ny0,nx), xb(nx)
   real(8) :: data1(nx,ny), tmp(nx,ny)
@@ -659,7 +660,8 @@ end subroutine intpsfc
         fy2b(:,i)=fy2(:)
 
      else
-        if( abs(x-xb(i)) .le. 1.e-10 ) then
+!        if( abs(x-xb(i)) .le. 1.e-10 ) then
+        if( x == xb(i) ) then
            fy= fyb(:,i)
           fy2=fy2b(:,i)
         else
