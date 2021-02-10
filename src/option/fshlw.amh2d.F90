@@ -44,7 +44,7 @@ contains
 
     use zocdim,  only :                                               &
          &     nxg,    nyg, nxgdim, nygdim,                           &
-         &  nxydim,  nxdim,  nzdim,                                   &
+         &  nxydim,  nxdim,  nydim,  nzdim,                           &
          &    kstr,   kend,     kz,                                   &
          &   ijstr,  ijend, ijvstr, ijvend,                           &
          &   igstr,  jgstr,                                           &
@@ -67,6 +67,7 @@ contains
 #else
     use bgs2d
 #endif
+    use bshft
 
     implicit none
 #include "mpif.h"
@@ -133,7 +134,7 @@ contains
           
        else
 #ifdef OPT_IO_COCOMPI
-          call mpi_filopn(mpi_fh, cfamh, 'read')
+          call mpi_filopn(mpi_fh, cfamh, 'READ')
           disp=0
           call mpi_read_chead(chead, mpi_fh, disp, icread)
           call mpi_read_2d(amhmod, mpi_fh  , disp)
@@ -142,7 +143,7 @@ contains
           allocate ( buf2(1:nxg,1:nyg) )
           allocate ( g2d(1:nxgdim,1:nygdim) )
           if ( myrank == iroot ) then
-             call filopn( nfamh, cfamh, 'read' )
+             call filopn( nfamh, cfamh, 'READ' )
 !----- for MIROC
 !               CALL IFLOPN(
 !     O                     NFAMH,    IERR,
@@ -161,6 +162,16 @@ contains
           end if
           call scatter_2d( amhmod, g2d )
           deallocate ( buf2, g2d )
+#endif
+
+#ifdef OPT_TRIPOLE
+          call shift1(amhmod,                                      &
+    &                  nxdim,  nydim,      1,                      &
+    &                   1.d0,      0,      0 )
+#else
+          call shift1(                                             &
+    &                 amhmod,                                      &
+    &                  nxdim,  nydim,      1)
 #endif
        end if
 

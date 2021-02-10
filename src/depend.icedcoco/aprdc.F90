@@ -228,6 +228,18 @@ contains
     &                    htmp,  ubtmp,  vbtmp,                        &
     &                      hx,   ubtx,   vbtx,                        &
     &                     gxx,    gyy,   ptop,  ft(1,2))
+#ifdef OPT_TRIPOLE
+             call shift2( ubtmp,  vbtmp,                              &
+    &                     nxdim,  nydim,      1,                      &
+    &                     -1.D0,     -1,     -1 )
+             call shift1(  htmp,                                      &
+    &                     nxdim,  nydim,      1,                      &
+    &                      1.d0,      0,      0 )
+#else
+             call shift3(                                             &
+    &                     htmp,  ubtmp,  vbtmp,                       &
+    &                    nxdim,  nydim,      1)
+#endif
              call btavad(                                             &
     &                   ubtav,  vbtav,                                &
     &                   ubtmp,  vbtmp)
