@@ -1,3 +1,8 @@
+#ifdef OPT_TOUZA_CAL
+subroutine ucaln_dummy
+return
+end subroutine ucaln_dummy
+#else
 module ucaln
 
 ! --- information -----------------------------------------------------
@@ -416,5 +421,5 @@ contains
   end function ocleap
 
 end module ucaln
-
+#endif
 

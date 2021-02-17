@@ -1,6 +1,6 @@
 FC      = sxmpif90
 FFLAGS  = -Wf'-pvctl fullmsg noassume nodivloop noloopchg vr256 noverrchk novlchk -i noerrchk' -pi
-FOPTION = $(FFLAGS) -I$(OGCMDIR)/src/include -I$(OGCMDIR)/src/module -I$(OGCMDIR)/src/build -USX $(OPTBDY) $(OPTSRST) $(OPTBBL) $(OPTTRIPOLE) $(OPTIO) $(OPTEXMASK)
+FOPTION = $(FFLAGS) -I$(OGCMDIR)/src/include -I$(OGCMDIR)/src/module -I$(OGCMDIR)/src/touza -I$(OGCMDIR)/src/build -USX $(OPTBDY) $(OPTSRST) $(OPTBBL) $(OPTTRIPOLE) $(OPTIO) $(OPTEXMASK) $(OPTTOUZA)
 
 AR      = sxar r
 RANLIB  = touch

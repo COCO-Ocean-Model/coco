@@ -6,7 +6,7 @@ SRCSHR	= \
           mpiio \
           atmct$(TSTAG) \
           bchmk \
-          bgs2d$(MPI) \
+          bgs2d \
           bgs3d$(MPI) \
           brdge$(MPI) \
           bshfi \
@@ -108,10 +108,16 @@ lib:
 	    fi ) ; \
 	done
 	cd module; make
+ifeq "$(OPTTOUZA)" "-DOPT_TOUZA_CAL"
+	cd touza; make
+endif
 	cd build; make
 
 clean:
 	$(RM) *~ *.o *.mod *.trace core
 	cd module; make clean
+ifeq "$(OPTTOUZA)" "-DOPT_TOUZA_CAL"
+	cd touza; make clean
+endif
 	cd build; make clean
 	$(RM) ../lib/*
