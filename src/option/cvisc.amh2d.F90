@@ -26,7 +26,7 @@ module cvisc
   real(8),     save  ::    szx(nxydim),          szy(nxydim)
   real(8),     save  ::  hvbot(nxydim)
   logical,     save  ::  ofirst, ofirst_bbl       
-  character(len=64)  ::  chead(1:16)
+  character(len=16)  ::  chead(1:64)
   data ofirst, ofirst_bbl / .true., .true. /
   public  ::  vscvel
 

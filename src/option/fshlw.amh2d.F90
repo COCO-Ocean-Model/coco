@@ -33,7 +33,7 @@ module fshlw
   data accb, acc / -1.d0, 1.d0 /
 
   logical,     save  ::  ofirst
-  character(len=64)  ::  chead(1:16)
+  character(len=16)  ::  chead(1:64)
   data ofirst / .true. /
 
 contains
