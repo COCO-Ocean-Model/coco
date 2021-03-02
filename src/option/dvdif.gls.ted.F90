@@ -70,6 +70,7 @@ subroutine vdiff( &
   use mpiio
 #else
   use bgs2d
+  use zocnod,  only :  iroot,  myrank
 #endif
 
   real(8), intent(out) ::     amv(nxydim, nzdim),    ahv(nxydim, nzdim)
@@ -134,6 +135,7 @@ subroutine vdiff( &
   real(8) :: tketmp, dstwal,  dztmp,  rscnp
   real(8) ::  preps, preps0, alphcl
   integer ::     ij,      k,   iitr
+  integer ::      i,      j
   integer ::  ifpar,  jfpar,  istat
 
   real(8), save ::  amv0(nz) = 0.0d0,  ahv0(nz) = 0.0d0

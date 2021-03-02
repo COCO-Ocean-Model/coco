@@ -377,8 +377,8 @@ contains
         integer :: icread
         integer, save :: nrec=0
         integer(8) :: isize, iskip
-#endif
         if ( ofirst(iitem) ) disp=0
+#endif
         if (odirect) then !=====================================================
 #ifdef OPT_IO_COCOMPI
            call mpi_read_direct(chead, direct, mpi_fh(iitem), disp, icread)

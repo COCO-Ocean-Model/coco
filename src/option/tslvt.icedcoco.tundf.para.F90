@@ -98,6 +98,10 @@ contains
          &  nxydim,  nzdim,  ntdim,                    &
          &    kstr,   kend,     kz,                    &
          &   ijstr,  ijend, ijtstr,  ijtend,           &
+#ifndef OPT_IO_COCOMPI
+         &     nxg,    nyg, nxgdim,  nygdim,           &
+         &   igstr,  jgstr,                            &
+#endif
          &   oinit,  ofinal
     use zocgrd,  only :  dz0
     use zocmsk,  only :  nbot
@@ -110,12 +114,16 @@ contains
          &     ncf
 #ifdef OPT_IO_COCOMPI
     use mpiio
+#else
+    use bgs2d
+    use zocnod,  only :  iroot,  myrank
 #endif
 
     implicit none
 #include "mpif.h"
 
     integer(4)        ::      ij,      k,      n,     l
+    integer(4)        ::       i,      j
     logical,   save   ::  ofirst = .true.
 
 !---- for geothermal heating
