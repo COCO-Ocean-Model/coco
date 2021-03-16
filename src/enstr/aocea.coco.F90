@@ -191,6 +191,8 @@ contains
     &                gx,     gy,     xx,     yy,                      &
     &               gxx,    gyy,                                      &
     &              uadv,   vadv,   wadv  )
+       call putsig(                                                   &
+    &                tb )
        return
     end if
 
@@ -400,6 +402,8 @@ contains
 ! *** Output to file ***
 
     if ( itst == 3 ) then
+       call putsig(                                                   &
+    &                  ta )
        call chekin(    ua,    'U',                                    &
     &                  nx,     ny,     nz, nxyzdm, 'OCN')
        call chekin(    va,    'V',                                    &
@@ -415,6 +419,8 @@ contains
        call chekin(  vbta,  'VBT',                                    &
     &                  nx,     ny,      1, nxydim, 'SFC')
     else
+       call putsig(                                                   &
+    &                  tb )
        call chekin(    ub,    'U',                                    &
     &                  nx,     ny,     nz, nxyzdm, 'OCN')
        call chekin(    vb,    'V',                                    &
@@ -447,6 +453,3 @@ contains
   end subroutine ocean
 
 end module aocea
-
-
-

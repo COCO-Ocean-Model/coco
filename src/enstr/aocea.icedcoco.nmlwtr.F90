@@ -217,6 +217,8 @@ subroutine ocean ( &
        &               gx,     gy,     xx,     yy, &
        &              gxx,    gyy, &
        &             uadv,   vadv,   wadv )
+     call putsig( &
+       &               tb )
      return
   end if
 
@@ -487,6 +489,8 @@ subroutine ocean ( &
   end do
 
   if ( itst == 3 ) then
+     call putsig( &
+          &          ta )
      call chekin(    ua,    'U', &
           &      'ocean zonal velocity', 'cm/s', &
           &          nx,     ny,     nz, nxyzdm, 'OCLVTV' )
@@ -534,6 +538,8 @@ subroutine ocean ( &
         end do
      end do
   else
+     call putsig( &
+          &          tb )
      call chekin(    ub,    'U', &
           &      'ocean zonal velocity', 'cm/s', &
           &          nx,     ny,     nz, nxyzdm, 'OCLVTV')

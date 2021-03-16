@@ -13,7 +13,8 @@ module bgs3d
 use zocdim
 implicit none
 private
-public :: gs3dst, gather_3d, gather_chk, scatter_3d, scatter_bdy
+public :: gs3dst, gather_3d, gather_chk_sig, scatter_3d, scatter_bdy, &
+  &       gs3dst_sig
 
  integer, allocatable :: irstr(:), jrstr(:)
  integer, allocatable :: irend(:), jrend(:)
@@ -25,6 +26,11 @@ public :: gs3dst, gather_3d, gather_chk, scatter_3d, scatter_bdy
  real(8),  allocatable :: sndbuf(:, :, :), rcvbuf(:, :, :)
  real(8),  allocatable :: dummy(:)
       save sndbuf, rcvbuf, dummy
+
+ integer, allocatable, save :: nrcvcs(:), ndisps(:)
+ real*8, allocatable, save :: sndbus(:, :, :)
+ real*8, allocatable, save :: dummys(:)
+ integer, save :: ngsnds
 
 
 contains
@@ -89,6 +95,49 @@ contains
  return
  end subroutine gs3dst
 ! =====================================================================
+ subroutine gs3dst_sig( &
+   &                    nsigmx )
+ use zocdim, only : nprocs, nx, ny, nxg, nyg, &
+   &                myrank, inodes, jnodes, ijnode
+ implicit none
+ integer, intent(in) :: nsigmx
+ integer  ::   i, j, n
+    
+ allocate(nrcvcs(0:nprocs-1))
+ allocate(ndisps(0:nprocs-1))
+ allocate(dummys(nxg*nyg*nsigmx+nprocs))
+ if (myrank .ge. ijnode) then
+    allocate(sndbus(1, 1, 1))
+ else
+    allocate(sndbus(nx, ny, nsigmx))
+ end if
+
+ sndbus = 0.d0
+ dummys = 0.d0
+
+ do j = 0, jnodes-1
+    do i = 0, inodes-1
+       n = j * inodes + i
+       nrcvcs(n) = nx*ny*nsigmx
+    end do
+ end do
+ do n = ijnode, nprocs-1
+    nrcvcs(n) = 1
+ end do
+ ndisps(0) = 0
+ do n = 1, nprocs-1
+    ndisps(n) = ndisps(n-1) + nrcvcs(n-1)
+ end do
+
+ if (myrank .ge. ijnode) then
+    ngsnds = 1
+ else
+    ngsnds = nx*ny*nsigmx
+ end if
+
+ return
+ end subroutine gs3dst_sig
+! =====================================================================
 
  subroutine gather_3d(          &
      &                    qg,   &
@@ -134,40 +183,41 @@ contains
  end subroutine gather_3d
 ! =====================================================================
 
- subroutine gather_chk(         &
-     &                  qchkg,  &
-     &                   qchk)
- use zocdim, only : nprocs, nx, ny, kstr, kend,         &
+ subroutine gather_chk_sig(     &
+     &                  qchksg,  &
+     &                   qchks, nsigmx)
+ use zocdim, only : nprocs, nx, ny, &
   &   igstr, igend, jgstr, jgend, myrank, ijnode, iroot
  implicit none
 #include "mpif.h"
- real(8), intent(in ) ::  qchk(nx         , ny         , kstr:kend)
- real(8), intent(out) :: qchkg(igstr:igend, jgstr:jgend, kstr:kend)
+ real(8), intent(in ) ::  qchks(nx         , ny         , nsigmx)
+ real(8), intent(out) :: qchksg(igstr:igend, jgstr:jgend, nsigmx)
+ integer, intent(in) :: nsigmx
  integer  ::   i, j, ijkg, k,  n
 
  if (myrank < ijnode) then
-    do k = kstr, kend
+    do k = 1, nsigmx
        do j = 1, ny
           do i = 1, nx
-             sndbuf(i, j, k) = qchk(i, j, k)
+             sndbus(i, j, k) = qchks(i, j, k)
           end do
        end do
     end do
  end if
 
  call mpi_gatherv(                                      &
-  &                 sndbuf,  ngsnd,         mpi_real8,  &
-  &                  dummy,  nrcvc,  ndisp, mpi_real8,  &
+  &                 sndbus, ngsnds,         mpi_real8,  &
+  &                 dummys, nrcvcs, ndisps, mpi_real8,  &
   &                  iroot, mpi_comm_world, ierr)
 
  if (myrank == iroot) then
     do n = 0, nprocs-1
-       ijkg = ndisp(n)
-       do k = kstr, kend
+       ijkg = ndisps(n)
+       do k = 1, nsigmx
           do j = jrstr(n), jrend(n)
              do i = irstr(n), irend(n)
                 ijkg = ijkg + 1
-                qchkg(i, j, k) = dummy(ijkg)
+                qchksg(i, j, k) = dummys(ijkg)
              end do
           end do
        end do
@@ -175,7 +225,7 @@ contains
  end if
 
  return
- end subroutine gather_chk
+ end subroutine gather_chk_sig
 ! =====================================================================
 
  subroutine scatter_3d(         &

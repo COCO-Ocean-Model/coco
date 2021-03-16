@@ -65,12 +65,13 @@ contains
 
   integer :: iodstr(6)=(/ 0, 0, 0, 0, 0, 0 /)
   integer :: iodend(6)=(/ 0, 0, 0, 0, 0, 0 /)
-  integer :: iodint=1, iudint=1, iodavr=1, iodsng=1
+  integer :: iodint=1, iudint=1, iodavr=1, iodsng=1, iodsvi=0
 
   integer :: iohstr(6), iohend(6), iohint, iuhint, iohavr, iohsng
-  integer :: ioxstr, ioxend, ioystr, ioyend, iozstr, iozend
+  integer :: ioxstr, ioxend, ioystr, ioyend, iozstr, iozend, iosvin
   character (ncf) :: cohfil
   character (16) :: cohitm='   not-specified'
+  character (16) :: cohvco='   not-specified'
   integer :: ifpar,  jfpar
   integer :: istat 
 
@@ -78,10 +79,10 @@ contains
   namelist /nmtime/ itstrt, itend, tmstp, iutstp, ntsplt
   namelist /nmcaln/ icaln
   namelist /nmrstr/ irintv, iurint, irsrwd
-  namelist /nmdout/ iodstr, iodend, iodint, iudint, iodavr, iodsng
-  namelist /nmhist/ cohitm, cohfil,                                            &
+  namelist /nmdout/ iodstr, iodend, iodint, iudint, iodavr, iodsng, iodsvi
+  namelist /nmhist/ cohitm, cohfil, cohvco                                     &
    &                  iohstr, iohend, iohint, iuhint, iohavr, iohsng,          &
-   &                  ioxstr, ioxend, ioystr, ioyend, iozstr, iozend
+   &                  ioxstr, ioxend, ioystr, ioyend, iozstr, iozend, iosvin
 
   ileap  = ntscyc - ieb - 1
 

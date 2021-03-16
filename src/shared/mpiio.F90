@@ -14,7 +14,8 @@ module mpiio
        & mpi_read_3d, mpi_write_2d, mpi_write_id,        &
        & mpi_write_3d, reverse_real4, reverse_real8,     &
        & reverse_int4, mpi_read_direct,                  &
-       & mpi_read_root_int, mpi_iseof
+       & mpi_read_root_int, mpi_read_root_int_sgl,       &
+       & mpi_iseof, mpi_read_root_char
 
 contains
 
@@ -377,6 +378,69 @@ contains
 #endif
     return
   end subroutine mpi_read_root_int
+
+
+  subroutine mpi_read_root_int_sgl(buf, fh, disp)
+    use zocdim
+    implicit none
+#include "mpif.h"
+
+    integer, parameter :: nbuf = 1
+    integer :: buf
+    integer :: fh, i
+    integer (kind = mpi_offset_kind):: disp
+    integer :: abuf(nbuf)
+#ifdef OPT_IO_SEQUENTIAL
+    disp=disp+4 
+#endif
+    call mpi_file_set_view( fh, disp,    &
+         &   mpi_integer4,mpi_integer4,"native", mpi_info_null,ierr)
+
+    if (myrank .eq. iroot) then
+       call mpi_file_read(fh, abuf, nbuf, &
+            &  mpi_integer4, mpi_status_ignore, ierr)
+       call reverse_int4(abuf(1))
+       buf=abuf(1)
+    end if
+#ifdef OPT_IO_SEQUENTIAL
+    disp=disp+ nbuf*4 + 4
+#else
+    disp=disp+ nbuf*4
+#endif
+    return
+  end subroutine mpi_read_root_int_sgl
+
+
+  subroutine mpi_read_root_char(buf, nch, nelem, fh, disp)
+    use zocdim
+    implicit none
+#include "mpif.h"
+
+    character(len=nch) :: buf(nelem)
+    integer :: nch, nelem, fh, i
+    integer(kind=mpi_offset_kind) :: disp
+
+#ifdef OPT_IO_SEQUENTIAL
+    disp=disp+4 
+#endif
+    call mpi_file_set_view(                     &
+      &  fh, disp,                              &
+      &  mpi_character, mpi_character,"native", &
+      &  mpi_info_null,ierr)
+
+    if (myrank .eq. iroot) then
+        call mpi_file_read(                          &
+          &  fh, buf, nch*nelem,                     &
+          &  mpi_character, mpi_status_ignore, ierr)
+    end if
+
+    disp=disp+nch*nelem
+#ifdef OPT_IO_SEQUENTIAL
+    disp=disp + 4
+#endif
+    return
+    end subroutine mpi_read_root_char
+
 
   subroutine mpi_read_2d_intx(buf, fh, disp)
   use zocdim

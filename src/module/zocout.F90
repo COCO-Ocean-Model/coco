@@ -7,11 +7,15 @@ module zocout
   public
   save
 
-  integer, parameter :: nwork = 25*nxyzdm
+  integer, parameter :: cnwork = 60, cnwrks = 15
+  integer, parameter :: nncmax = 10, nchmax = 2
+  integer, parameter :: nwork = cnwork*nxyzdm
 
   real(8) ::  wrkout(nwork)
-  real(8) ::  dbleou(nxyz)
-  real(4) ::  snglou(nxyz)
+  logical, allocatable :: owrksg(:)
+  real(8), allocatable :: dbleou(:)
+  real(4), allocatable :: snglou(:)
+  integer :: nworks
 #ifndef OPT_IO_COCOMPI
   real(8), allocatable ::  dbloug(:, :, :)
   real(4), allocatable ::  sngoug(:, :, :)
