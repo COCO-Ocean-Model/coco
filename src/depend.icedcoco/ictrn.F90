@@ -14,7 +14,7 @@ module ictrn
 ! ---------------------------------------------------------------------
 
   use zocdim, only: &
-    & nxydim,  ntdim,    nic,    kstr, ijtstr, ijtend, &
+    &     nx,     ny, nxydim,  ntdim,    nic,    kstr, ijtstr, ijtend, &
     &  oinit, ofinal
   use zocgrd, only: &
     &    hic,     ts
@@ -25,15 +25,20 @@ module ictrn
 
   implicit none
 
+  real(8), save ::    tmi
+
   real(8), save ::  amin = 1.0d-6,  amax = 1.d0,  si = 5.d0
+  real(8), save :: hilmt = 1.0d4, hiref = 1.0d4
   integer, save ::  mic = nic
+  logical, save :: ohiflt = .false.
 
   namelist /nmamin/ amin, amax, mic
   namelist /nmislt/ si
+  namelist /nmhflt/ ohiflt, hilmt, hiref
 
   private
 
-  public :: ictrns, icadjs
+  public :: ictrns, icadjs, ichflt
 
 contains
 
@@ -55,7 +60,6 @@ subroutine ictrns( &
 !  common /work/ axhix, axhsx, axeix, ci
 
   real(8), save ::    rri,    rrs
-  real(8), save ::    tmi
   logical, save :: ofirst = .true.
 
   integer ::     ij,      k
@@ -76,6 +80,10 @@ subroutine ictrns( &
      read (ifpar, nmislt, iostat=istat)
      call cstnml(jfpar, 'ictrns', 'nmislt', istat)
      write(jfpar, nmislt)
+     call rewnml(ifpar, jfpar)
+     read (ifpar, nmhflt, iostat=istat)
+     call cstnml(jfpar, 'ictrns', 'nmhflt', istat)
+     write(jfpar, nmhflt)
 
      tmi = dtds * si
      rri = rhoo / rhoi
@@ -272,5 +280,108 @@ subroutine icadjs( &
   return
 
 end subroutine icadjs
+
+! =====================================================================
+
+subroutine ichflt( &
+  &                    ax,    hix,    hsx,    eix,    tix)
+
+  use qckot
+  use zocite
+
+  real(8), intent(inout) ::     ax(nxydim, 0:nic)
+  real(8), intent(inout) ::    hix(nxydim, 0:nic)
+  real(8), intent(inout) ::    hsx(nxydim, 0:nic)
+  real(8), intent(inout) ::    eix(nxydim, 0:nic)
+  real(8), intent(inout) ::    tix(nxydim, 0:nic)
+
+  real(8) ::  axhix(nxydim, 0:nic),  axhsx(nxydim, 0:nic)
+  real(8) ::  axeix(nxydim, 0:nic)
+  real(8) ::     ci(nxydim)
+  real(8) :: daxhix(nxydim)
+
+  real(8) ::    fax,    lax,  fdahi
+  real(8) ::   fahi,   fahs,   faei
+  real(8) :: rdaxhi(nxydim)
+  
+  integer ::     ij,      k
+
+  if (oinit .or. ofinal) then
+     return
+  end if
+
+  if (.not.ohiflt) return
+
+  do k = 1, nic
+     do ij = ijtstr, ijtend
+        axhix(ij, k) = ax(ij, k) * hix(ij, k)
+        axhsx(ij, k) = ax(ij, k) * hsx(ij, k)
+        axeix(ij, k) = ax(ij, k) * eix(ij, k)
+     end do
+  end do
+
+  do ij = 1, nxydim
+     rdaxhi(ij) = 0.0d0
+  end do
+
+  do ij = ijtstr, ijtend
+     daxhix(ij) = ax(ij, nic) * max((hix(ij, nic) - hilmt), 0.0d0)
+     rdaxhi(ij) = daxhix(ij)
+     lax = max((ax(ij,0) - (1.0d0-amax)), 0.0d0)
+     fax = min(lax, daxhix(ij) / hiref)
+     ax(ij, nic) = ax(ij, nic) + fax
+     daxhix(ij) = daxhix(ij) - fax * hiref
+  end do
+
+  do k = nic-1, 1, -1
+     do ij = ijtstr, ijtend
+        if (ax(ij, k) > 0.0d0) then
+           fax = min(ax(ij, k), daxhix(ij) / (hiref - hix(ij, k)))
+           fdahi = fax * (hiref - hix(ij, k))
+           daxhix(ij) = daxhix(ij) - fdahi
+           fahi = fax * hix(ij, k)
+           fahs = fax * hsx(ij, k)
+           faei = fax * eix(ij, k)
+           ax(ij, k) = ax(ij, k) - fax
+           axhix(ij, k) = axhix(ij, k) - fahi
+           axhsx(ij, k) = axhsx(ij, k) - fahs
+           axeix(ij, k) = axeix(ij, k) - faei
+           ax(ij, nic) = ax(ij, nic) + fax
+           axhix(ij, nic) = axhix(ij, nic) + fahi
+           axhsx(ij, nic) = axhsx(ij, nic) + fahs
+           axeix(ij, nic) = axeix(ij, nic) + faei
+        endif
+     end do
+  end do
+
+  do ij = ijtstr, ijtend
+     ax(ij, 0) = 1.d0
+  end do
+
+  do k = 1, nic
+     do ij = ijtstr, ijtend
+        ax(ij, 0) = ax(ij, 0) - ax(ij, k)
+        if (ax(ij, k) .le. 0.d0) then
+           ax(ij, k) = 0.d0
+           hix(ij, k) = hic(k)
+           hsx(ij, k) = 0.d0
+           tix(ij, k) = tmi
+           eix(ij, k) = 0.d0
+        else
+           hix(ij, k) = axhix(ij, k) / ax(ij, k)
+           hsx(ij, k) = axhsx(ij, k) / ax(ij, k)
+           eix(ij, k) = axeix(ij, k) / ax(ij, k)
+           tix(ij, k) = ti(eix(ij, k)/hix(ij, k), si)
+        endif
+     end do
+  end do
+
+  call chekin( rdaxhi, 'HLMAHI', &
+    &           '', '', &
+    &               nx,     ny,      1, nxydim, 'OCSFCT')
+
+  return
+
+end subroutine ichflt
 
 end module ictrn

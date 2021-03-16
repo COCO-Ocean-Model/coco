@@ -202,6 +202,8 @@ subroutine predci( &
     &            uix,    vix )
   call icadjs( &
     &             ax,    hix,    hsx,    eix )
+  call ichflt( &
+    &             ax,    hix,    hsx,    eix,    tix)
   call ictrns( &
     &             ax,    hix,    hsx,    eix,    tix, &
     &             ft,     fs )
