@@ -164,7 +164,7 @@ contains
 !    &                    * amskt(ij, kstr)
        adt(ij, kstr, 1) = adt(ij, kstr, 1)                            &
     &                   - tx(ij, kstr, 1) *ft(ij, 2)                  &
-    &                     /dz(ij, kstr) * amskt(ij, kstr)             &
+    &                     /dz(ij, kstr) * amskt(ij, kstr)
     end do
 
     call thomas( adt, ac, aa, ab )
@@ -212,6 +212,3 @@ contains
   end subroutine slvtrc
   
 end module tslvt
-
-
-

@@ -40,8 +40,9 @@ module aocea
   real(8),            save  ::    tq(1:nxyzdm,1:ntdim)
 #endif
 
-  character(len=16),  save  ::  ctrnam(1:ntdim)
-  character(len=16),  save  ::  cftnam(1:ntdim)
+  character(len=16), save :: ctrnam(ntdim), cftnam(ntdim)
+  character(len=32), save :: ctrtit(ntdim), cfttit(ntdim)
+  character(len=16), save :: ctruni(ntdim), cftuni(ntdim)
 
   public  ::  ocstup
   public  ::  ocean
@@ -96,6 +97,21 @@ contains
        write(cftnam(l), '(a6,i2.2)') 'TRCFLX', L
     end do
     
+    ctrtit(1) = 'ocean temperature'
+    ctrtit(2) = 'ocean salinity'
+    ctruni(1) = 'degC'
+    ctruni(2) = 'psu'
+    cfttit(1) = 'sea surface temperature flux'
+    cfttit(2) = 'sea surface freshwater flux'
+    cftuni(1) = 'K cm/s'
+    cftuni(2) = 'cm/s'
+    do l = 3, ntdim
+       ctrtit(l) = ''
+       ctruni(l) = ''
+       cfttit(l) = ''
+       cftuni(l) = ''
+    end do
+
     dt = dt1
 
     call rdgeo
@@ -146,6 +162,7 @@ contains
     use tslvt
     use tflxt
     use tovtr
+    use dvdif
     use brdge
     use binst
     use sfcng
@@ -249,7 +266,7 @@ contains
     &                nxdim,  nydim,    1)
 #endif
        call puttao(                                                   &
-    &              taux,   tauy,
+    &              taux,   tauy,                                      &
     &             1.0d0,  0.0d0  )
        call predco(                                                   &
     &                hb,   ubtb,   vbtb,      w,      r,              &
@@ -283,7 +300,7 @@ contains
     &             nxdim,  nydim,      1)
 #endif
        call puttao(                                                   &
-    &              taux,   tauy,
+    &              taux,   tauy,                                      &
     &             1.0d0,  0.0d0  )
        call predco(                                                   &
     &                ha,   ubta,   vbta,      w,      r,              &
@@ -322,7 +339,7 @@ contains
     &             nxdim,  nydim,      1)
 #endif
        call puttao(                                                   &
-    &              taux,   tauy,
+    &              taux,   tauy,                                      &
     &             1.0d0,  0.0d0  )
        ieuler = 1
        call predco(                                                   &
@@ -376,7 +393,7 @@ contains
     &             nxdim,  nydim,      1)
 #endif
        call puttao(                                                   &
-    &              taux,   tauy,
+    &              taux,   tauy,                                      &
     &             1.0d0,  0.0d0  )
        call predco(                                                   &
     &                ha,   ubta,   vbta,      w,      r,              &
@@ -403,47 +420,63 @@ contains
     if ( itst == 3 ) then
        call putsig(                                                   &
     &                  ta )
-       call chekin(    ua,    'U',                                    &
-    &                  nx,     ny,     nz, nxyzdm, 'OCN')
-       call chekin(    va,    'V',                                    &
-    &                  nx,     ny,     nz, nxyzdm, 'OCN')
+       call chekin(    ua,    'U', &
+            &      'ocean zonal velocity', 'cm/s', &
+            &          nx,     ny,     nz, nxyzdm, 'OCLVTV' )
+       call chekin(    va,    'V', &
+            & 'ocean meridional velocity', 'cm/s', &
+            &          nx,     ny,     nz, nxyzdm, 'OCLVTV' )
        do l = 1, ntdim
-          call chekin(     ta(1, l),      ctrnam(l),                  &
-    &                      nx,     ny,     nz, nxyzdm, 'OCN')
+          call chekin(     ta(1, l),      ctrnam(l), &
+               &          ctrtit(l),      ctruni(l), &
+               &         nx,     ny,     nz, nxyzdm, 'OCLVTT' )
        end do
-       call chekin(    ha,   'SH',                                    &
-    &                  nx,     ny,      1, nxydim, 'SFC')
-       call chekin(  ubta,  'UBT',                                    &
-    &                  nx,     ny,      1, nxydim, 'SFC')
-       call chekin(  vbta,  'VBT',                                    &
-    &                  nx,     ny,      1, nxydim, 'SFC')
+       call chekin(    ha,   'SH', &
+            &        'sea surface height',   'cm', &
+            &          nx,     ny,      1, nxydim, 'OCSFCT' )
+       call chekin(  ubta,  'UBT', &
+            &     'ocean zonal transport',         'cm^2/s', &
+            &          nx,     ny,      1, nxydim, 'OCSFCV' )
+       call chekin(  vbta,  'VBT', &
+            &'ocean meridional transport',         'cm^2/s', &
+            &          nx,     ny,      1, nxydim, 'OCSFCV' )
     else
        call putsig(                                                   &
     &                  tb )
-       call chekin(    ub,    'U',                                    &
-    &                  nx,     ny,     nz, nxyzdm, 'OCN')
-       call chekin(    vb,    'V',                                    &
-    &                  nx,     ny,     nz, nxyzdm, 'OCN')
+       call chekin(    ub,    'U', &
+            &      'ocean zonal velocity', 'cm/s', &
+            &          nx,     ny,     nz, nxyzdm, 'OCLVTV')
+       call chekin(    vb,    'V', &
+            & 'ocean meridional velocity', 'cm/s', &
+            &          nx,     ny,     nz, nxyzdm, 'OCLVTV')
        do l = 1, ntdim
-          call chekin( tb(1, l),      ctrnam(l),                      &
-    &                  nx,     ny,     nz, nxyzdm, 'OCN')
+          call chekin(     tb(1, l),      ctrnam(l), &
+               &          ctrtit(l),      ctruni(l), &
+               &                 nx,     ny,     nz, nxyzdm, 'OCLVTT')
        end do
-       call chekin(    hb,   'SH',                                    &
-    &                  nx,     ny,      1, nxydim, 'SFC')
-       call chekin(  ubtb,  'UBT',                                    &
-    &                  nx,     ny,      1, nxydim, 'SFC')
-       call chekin(  vbtb,  'VBT',                                    &
-    &                  nx,     ny,      1, nxydim, 'SFC')
+       call chekin(    hb,   'SH', &
+            &        'sea surface height', 'cm', &
+            &          nx,     ny,      1, nxydim, 'OCSFCT')
+       call chekin(  ubtb,  'UBT', &
+            &             'ocean zonal transport', 'cm^2/s', &
+            &          nx,     ny,      1, nxydim, 'OCSFCV')
+       call chekin(  vbtb,  'VBT', &
+            &        'ocean meridional transport', 'cm^2/s', &
+            &          nx,     ny,      1, nxydim, 'OCSFCV')
     end if
-    call chekin(     w,    'W',                                       &
-    &               nx,     ny,     nz, nxyzdm, 'OCN')
-    call chekin(   amv,  'AMV',                                       &
-    &               nx,     ny,     nz, nxyzdm, 'OCN')
-    call chekin(   ahv,  'AHV',                                       &
-    &               nx,     ny,     nz, nxyzdm, 'OCN')
+    call chekin(     w,    'W', &
+         &               'ocean vertical velocity', 'cm/s', &
+         &          nx,     ny,     nz, nxyzdm, 'OCLVMT')
+    call chekin(   amv,  'AMV', &
+         &               'ocean vertical viscosity', 'cm^2/s', &
+         &          nx,     ny,     nz, nxyzdm, 'OCLVMV')
+    call chekin(   ahv,  'AHV', &
+         &               'ocean vertical diffusivity', 'cm^2/s', &
+         &          nx,     ny,     nz, nxyzdm, 'OCLVMT')
     do l = 1, ntdim
-       call chekin( ft(1, l),      cftnam(l),                         &
-    &               nx,     ny,      1, nxydim, 'SFC')
+       call chekin(      ft(1, l),      cftnam(l), &
+            &           cfttit(l),      cftuni(l), &
+            &          nx,     ny,      1, nxydim, 'OCSFCT')
     end do
 
     call chkftx

@@ -483,10 +483,12 @@ contains
     call clcend('VDIAG')
 
     if ( ( .not. oinit ) .and. ( .not. ofinal) ) then
-       call chekin(  ubtav,  'UBTAV',                                &
-    &                   nx,     ny,      1, nxydim, 'SFC')
-       call chekin(  vbtav,  'VBTAV',                                &
-    &                   nx,     ny,      1, nxydim, 'SFC')
+       call chekin(  ubtav,  'UBTAV',                                 &
+            &      'ocean zonal transport', 'cm^2/s', &    
+            &           nx,     ny,      1, nxydim, 'OCSFCV')
+       call chekin(  vbtav,  'VBTAV',                                 &
+            & 'ocean meridional transport', 'cm^2/s', &    
+            &           nx,     ny,      1, nxydim, 'OCSFCV')
     end if
 
   end subroutine predco

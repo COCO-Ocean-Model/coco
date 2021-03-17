@@ -57,6 +57,7 @@ contains
     use ufile
     use bgs2d
     use bgs3d
+    use bshft
     use ucaln
 
     implicit none
@@ -370,6 +371,7 @@ contains
     &     myrank,  iroot
     use bgs2d
     use bgs3d
+    use bshft
 
     implicit none
 
@@ -461,7 +463,7 @@ contains
     use ufile
     use bgs2d
     use bgs3d
-    use uclan
+    use ucaln
 
     implicit none
 
@@ -818,4 +820,3 @@ contains
   end subroutine finadd
 
 end module brstt
-
