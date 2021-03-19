@@ -17,7 +17,9 @@ module tslvt
 
   use zocdim, only :                                   &
        &   nxyzdm,  nxydim,   nzdim,  ntdim,           &
-       &     nxyg,      nz                              
+       &     nxyg,      nz
+  use zocfil, only :                                   &
+       &      ncf
 
   implicit none
   private
@@ -33,8 +35,10 @@ module tslvt
   real(8),        save  ::   hzbot(nxydim),   hxbot(nxydim)
   real(8),        save  ::       gamma(nz),  swcnv1(nzdim)
                   
-  real(8),        save  ::    sdmp
-  logical,        save  ::  osrstr, osrsti
+  real(8),        save  ::   garea(nxydim),  sdmp2d(nxydim)
+  real(8),        save  ::    sdmp,  dsmax
+  logical,        save  ::  osrstr, osrsti, osrnml, ofsdmp
+  character(len=ncf)    ::  cfsdmp
                   
   real(8)               ::     dzb,    dzt
   real(8)               ::   radup,  raddn,  depth
@@ -62,9 +66,17 @@ module tslvt
   data crsti / ntigr*0.d0 /
 !----
 
+!---- for geothermal heating
+  real(8),        save  ::   gthm(nxydim)
+  logical,        save  ::  ogthm = .false.
+!----
+
   character(16),  save  :: ctxnam(ntdim)
   character(16),  save  :: ctynam(ntdim)
   character(16),  save  :: ctznam(ntdim)
+
+  real(8),    save  ::    smin = 5.d0
+  integer(4), save  ::  mixsss = 0
 
   public  ::  slvtrc     !   aprdc.F
   public  ::  svtset     !   aocea.F
@@ -72,12 +84,17 @@ module tslvt
 
   namelist /nmacct/ gamma
   namelist /nmswab/   rrr,  zeta1,  zeta2
-  namelist /nmsrst/  sdmp, osrstr, osrsti
+  namelist /nmsrst/  sdmp, osrstr, osrsti, osrnml, dsmax, &
+    &              ofsdmp, cfsdmp
+
+  namelist /nmmixsss/smin, mixsss
 
 !  data gamma / nz*1.d0 /
   data rrr, zeta1, zeta2 / 5.8d-1, 3.5d+1, 2.3d+3 /
-  data sdmp / 0.d0 /
-  data osrstr, osrsti / .false., .false. /
+  data sdmp, dsmax / 0.d0, 999.d0 /
+  data osrstr, osrsti, osrnml / .false., .false., .false. /
+  data ofsdmp / .false. /
+  data cfsdmp / 'not-specified' /
 
 contains
 
@@ -86,22 +103,56 @@ contains
   subroutine svtset
 
     use zocdim,  only :                                &
-         &  nxydim,  nzdim,  ntdim,                    &
+         &  nxydim,  nxdim,  nydim,  nzdim,  ntdim,    &
+         &    istr,   iend,   jstr,   jend,            &
          &    kstr,   kend,     kz,                    &
          &   ijstr,  ijend, ijtstr,  ijtend,           &
+#ifndef OPT_IO_COCOMPI
+         &     nxg,    nyg, nxgdim,  nygdim,           &
+         &   igstr,  jgstr,                            &
+#endif
          &   oinit,  ofinal
-    use zocgrd,  only :  dz0
-    use zocmsk,  only :  nbot
+    use zocgrd,  only :                                &
+         &      dx,     dy,    dz0,     hxt,    hyt
+    use zocmsk,  only :                                &
+         &   amskt,   nbot
     use zocphy,  only :                                &
          &     cpo,    rhoo
 
     use ifhea
+    use bshft
     use ufile
+    use zocfil,  only :                                &
+         &     ncf
+#ifdef OPT_IO_COCOMPI
+    use mpiio
+#else
+    use bgs2d
+    use zocnod,  only :  iroot,  myrank
+#endif
 
     implicit none
+#include "mpif.h"
 
     integer(4)        ::      ij,      k,      n,     l
+    integer(4)        ::       i,      j
     logical,   save   ::  ofirst = .true.
+
+!---- for geothermal heating
+    character(len = ncf)  :: cfgthm
+    character(len = 16)   :: chead(64) 
+#ifdef OPT_IO_COCOMPI
+    integer :: mpi_fh
+    integer :: icread
+    integer (kind = mpi_offset_kind) :: disp
+#else
+    integer ::  nfgthm, nfsdmp
+    real(8) ::  buf2(nxg, nyg)
+    real(8) ::  g2d(nxgdim, nygdim)
+#endif
+    data cfgthm /'not-specified'/
+    namelist /nmgthm/ ogthm, cfgthm
+!----
 
     if ( ofirst ) then
 
@@ -118,13 +169,68 @@ contains
        end do
        call rewnml(ifpar, jfpar)
        read(ifpar, nmswab, iostat = istat )
+       call cstnml(jfpar, 'svtset', 'nmswab', istat )
        write(jfpar, nmswab)
        call rewnml(ifpar, jfpar)
        read(ifpar, nmsrst, iostat = istat )
+       call cstnml(jfpar, 'svtset', 'nmsrst', istat )
        write(jfpar, nmsrst)
 
        if ( osrstr ) then
-          sdmp = 1.d0 / 86400.d0 / sdmp
+!----- extended SSS restoring
+         if ( .not.ofsdmp ) then
+            do ij = 1, nxydim
+               sdmp2d(ij) = 1.d0 / 8.64d4 / sdmp
+            end do
+         else
+!----- reading SDMP coefficient from file
+            write(jfpar, *) '  file name of gthm: ', cfsdmp
+#ifdef OPT_IO_COCOMPI
+            call mpi_filopn(mpi_fh, cfsdmp, 'READ')
+            disp=0
+            call mpi_read_chead(chead, mpi_fh, disp, icread)
+            call mpi_read_2d(sdmp2d, mpi_fh  , disp)
+            call mpi_filcls(mpi_fh)
+#else   
+            if ( myrank .eq. iroot ) then   
+               call filopn( nfsdmp, cfsdmp, 'READ' )
+               rewind( nfsdmp )
+               read( nfsdmp ) chead
+               read( nfsdmp ) buf2
+               do j = 1, nyg
+                  do i = 1, nxg
+                     g2d(igstr+i-1, jgstr+j-1) = buf2(i, j)
+                  end do
+               end do
+               call filcls( nfsdmp )               
+            end if
+            call scatter_2d( sdmp2d, g2d )
+#endif
+#ifdef OPT_TRIPOLE
+            call shift1(sdmp2d, &
+              &          nxdim,  nydim,      1, &
+              &           1.d0,      0,      0 )
+#else
+            call shift1( &
+              &         sdmp2d, &
+              &          nxdim,  nydim,      1)
+#endif
+         end if
+
+         do ij = 1, nxydim
+            garea(ij) = 0.0d0
+         end do
+         if (osrnml) then
+            write(jfpar, *) &
+         &  '*** Normalization of SSS-restoring flux is applied. ***'
+            do j=jstr, jend
+               do i=istr, iend
+                  ij = nxdim*(j-1) + i
+                  garea(ij) = dx * dy(ij) * hxt(ij) * hyt(ij) &
+                    &         * amskt(ij, kstr)
+               end do
+            end do
+         endif         
        end if
 
        do k = kstr, kend
@@ -178,6 +284,45 @@ contains
           write(ctynam(l), '(a5,i2.2)') 'ftrcy', l
           write(ctznam(l), '(a5,i2.2)') 'ftrcz', l
        end do
+
+!---- for geothermal heating
+       call rewnml(ifpar, jfpar)
+       read(ifpar, nmgthm, iostat=istat)
+       call cstnml(jfpar, 'svtset', 'nmgthm', istat)
+       write(jfpar, nmgthm)
+       write(jfpar, *) '  file name of gthm: ', cfgthm
+
+       if ( ogthm ) then
+#ifdef OPT_IO_COCOMPI
+          call mpi_filopn(mpi_fh, cfgthm, 'READ')
+          disp=0
+          call mpi_read_chead(chead, mpi_fh, disp, icread)
+          call mpi_read_2d(gthm, mpi_fh  , disp)
+          call mpi_filcls(mpi_fh)
+#else
+
+          if ( myrank .eq. iroot ) then
+
+             call filopn( nfgthm, cfgthm, 'READ' )
+             rewind( nfgthm )
+             read( nfgthm ) chead
+             read( nfgthm ) buf2
+             do j = 1, nyg
+                do i = 1, nxg
+                   g2d(igstr+i-1, jgstr+j-1) = buf2(i, j)
+                end do
+             end do
+             call filcls( nfgthm )
+             
+          end if
+          call scatter_2d( gthm, g2d )
+#endif
+       end if
+!----
+       call rewnml(ifpar, jfpar)
+       read(ifpar, nmmixsss, iostat = istat )
+       call cstnml(jfpar, 'svtset', 'nmmixsss', istat )
+       write(jfpar, nmmixsss)
        
     end if
 
@@ -192,10 +337,11 @@ contains
          &      ax  )
 
     use zocdim,  only :                                &
-         &  nxydim,  nzdim,  ntdim,                    &
+         &      nx,     ny, nxydim,  nzdim,  ntdim,    &
          &    kstr,   kend,     kz,                    &
          &   ijstr,  ijend, ijtstr,  ijtend,           &
          &     nic,                                    &
+         &  inodes, jnodes,                            &
          &   oinit,  ofinal
     use zocgrd,  only :                                &
          &      dz,    dz0,     ds,   zbot,            &
@@ -205,9 +351,16 @@ contains
          &   amsktb,                                   &
 #endif
          &   amskt,  nbot
+    use zocnod,  only :                                &
+         &   iroot,  ierr,  myrank
+    use zocphy,  only :                                &
+         &     cpo,    rhoo
     use utrdg
+    use qckot
 
     implicit none
+
+#include "mpif.h"
 
     real(8),   intent(inout)  ::     tx(nxydim, nzdim, ntdim)
     real(8),   intent(inout)  ::     hx(nxydim)
@@ -220,7 +373,12 @@ contains
     real(8),   intent(in)     ::   ssfc(nxydim)
     real(8),   intent(in)     ::     ax(nxydim, 0:nic)
 
-    integer(4)                ::     ij,    k,     n
+    real(8)                   ::  fsrst(nxydim)
+    real(8)                   :: vwteqg(inodes*jnodes)
+    real(8)                   :: vareag(inodes*jnodes)
+    real(8)                   :: vwteqt, vareat, tarea, dsss, fsnml
+
+    integer(4)                ::     ij,    k,     n,      i,     j
     
     if ( oinit .or. ofinal ) then
        return
@@ -410,28 +568,153 @@ contains
     end do
 
 #ifdef OPT_SRST
-    if ( osrstr ) then
-       if ( osrsti ) then
+    do ij = 1, nxydim
+       fsrst(ij) = 0.0d0
+    end do
+
+    if (osrstr) then
+!       call tmintp(ssfc, 10)
+       vwteqt = 0.0d0
+       vareat = 0.0d0
+       if (osrsti) then
           do ij = ijtstr, ijtend
-             tx(ij, kstr, 2)                                          &
-           &       = tx(ij, kstr, 2)                                  &
-           &       + ts * sdmp * (ssfc(ij) - tx(ij, kstr, 2))         &
-           &       * amskt(ij, kstr)
+             dsss = (ssfc(ij) - tx(ij, kstr, 2)) * amskt(ij, kstr)
+             fsrst(ij) = sdmp2d(ij) &
+               &       * sign(min(abs(dsss), dsmax), dsss)
+             vwteqt = vwteqt + fsrst(ij) * garea(ij)
+             vareat = vareat + garea(ij)
           end do
        else
           do ij = ijtstr, ijtend
-             if ( ax(ij, 0) == 1.d0 ) then
-                tx(ij, kstr, 2)                                       &
-          &           = tx(ij, kstr, 2)                               &
-          &           + ts * sdmp * (ssfc(ij) - tx(ij, kstr, 2))      &
-          &           * amskt(ij, kstr)
+             if (ax(ij, 0) .eq. 1.d0) then
+                dsss = (ssfc(ij) - tx(ij, kstr, 2)) * amskt(ij, kstr)
+                fsrst(ij) = sdmp2d(ij) &
+                  &       * sign(min(abs(dsss), dsmax), dsss)
+                vwteqt = vwteqt + fsrst(ij) * garea(ij)
+                vareat = vareat + garea(ij)
              end if
           end do
        end if
+
+       if (osrnml) then
+          fsnml = 0.0d0
+          tarea = 0.0d0
+          do i = 1, inodes*jnodes
+             vwteqg(i) = 0.0d0
+             vareag(i) = 0.0d0
+          end do
+
+          call mpi_gather( &
+            &    vwteqt, 1, mpi_real8, vwteqg(1), 1, mpi_real8, &
+            &    iroot, mpi_comm_world, ierr)
+          call mpi_gather( &
+            &    vareat, 1, mpi_real8, vareag(1), 1, mpi_real8, &
+            &    iroot, mpi_comm_world, ierr)
+          if (myrank .eq. iroot) then
+             do i = 1, inodes*jnodes
+                fsnml = fsnml + vwteqg(i)
+                tarea = tarea + vareag(i)
+             end do
+          end if
+          call mpi_bcast( &
+            &    fsnml, 1, mpi_real8, &
+            &    iroot, mpi_comm_world, ierr)
+          call mpi_bcast( &
+            &    tarea, 1, mpi_real8, &
+            &    iroot, mpi_comm_world, ierr)
+          fsnml = fsnml / tarea
+          if (osrsti) then
+             do ij = ijtstr, ijtend
+                fsrst(ij) = ( fsrst(ij) - fsnml ) * amskt(ij, kstr)
+             end do
+          else
+             do ij = ijtstr, ijtend
+                if (ax(ij, 0) .eq. 1.d0) then
+                   fsrst(ij) = ( fsrst(ij) - fsnml ) * amskt(ij, kstr)
+                end if
+             end do
+          end if
+       end if
+
+       do ij = ijtstr, ijtend
+          tx(ij, kstr, 2) = tx(ij, kstr, 2) + ts * fsrst(ij)
+       end do
+
+       do ij = ijtstr, ijtend
+          fsrst(ij) = fsrst(ij) * hxbot(ij) * ds(kstr)
+       end do
+
+!       call cofpsr( &
+!         &           fsrst)
+
+       call chekin( fsrst, 'FSRST', &
+         &          'SSS resotring flux', 'psu cm/s', &
+         &          nx,     ny,      1, nxydim, 'OCSFCT') 
     end if
 #endif
 
+    if (ogthm) then
+       do ij = ijtstr, ijtend
+          k = nbot(ij)
+          tx(ij, k, 1) = tx(ij, k, 1) &
+               & + ts * gthm(ij) / dz(ij, k) / rhoo / cpo
+       end do
+    end if
+
+!---- mixing salinity in sigma-layers to avoid extremely low SSS
+    if ( mixsss > 0 ) then
+       call tmixss( tx(1, 1, 2) )
+    end if
+
   end subroutine slvtrc
+
+  subroutine tmixss(                                   & !! mix sea surface
+         &      tx  )
+
+    use zocdim,  only :                                &
+         &  nxydim,  nzdim,                            &
+         &    kstr,     kz
+    use zocgrd,  only :                                &
+         &     dz0
+    use zocmsk,  only :                                &
+         &   amskt
+
+    implicit none
+
+    real(8),    intent(inout) :: tx(nxydim, nzdim)
+
+    real(8)                   ::  smean(nxydim), ssum(nxydim)
+    integer(4)                ::   kmix(nxydim)
+    integer(4)                ::     ij,    k
+
+    depth = dz0(kstr)
+    do ij = 1, nxydim
+       ssum(ij) = tx(ij, kstr) * dz0(kstr)
+       smean(ij) = tx(ij, kstr)
+       kmix(ij) = kstr
+    end do
+
+    do k = kstr+1, kstr+kz-1
+       depth = depth + dz0(k)
+       do ij = 1, nxydim
+          if ( smean(ij) <= smin ) then
+             ssum(ij) = ssum(ij) + dz0(k) * tx(ij, k)
+             smean(ij) = ssum(ij) / depth
+             kmix(ij) = k
+          end if
+       end do
+    end do
+
+    do k = kstr, kstr+kz-1
+       do ij = 1, nxydim
+          if ( k <= kmix(ij) ) then
+             tx(ij, k) = smean(ij) * amskt(ij, k) &
+                  & + tx(ij, k) * (1.d0 - amskt(ij, k))
+          end if
+       end do
+    end do
+   
+  end subroutine tmixss
 
 ! --- information -----------------------------------------------------
 !
