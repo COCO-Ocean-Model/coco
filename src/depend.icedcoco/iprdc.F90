@@ -19,10 +19,12 @@ module iprdc
 ! ---------------------------------------------------------------------
 
   use zocdim, only: &
-    & nxydim,  nxdim,  nydim,  nzdim,  ntdim,    nic, nxyidm, &
+    & nxydim,  nxdim,  nydim,  nzdim,  ntdim,    nic, nxyidm,   kstr, &
     &     nx,     ny, &
     &  oinit, ofinal, &
     & myrank, ijnode
+  use zocmsk, only: &
+    &  amskt,  amskv
   use zocphy, only: &
     & gravit,   rhoi,   rhos
 
@@ -105,6 +107,7 @@ subroutine predci( &
   real(8), save :: igrfra(nxydim), igrcon(nxydim), igrsni(nxydim)
   real(8), save :: inrlat(nxydim)
   real(8), save :: imrsno(nxydim), imrisf(nxydim), imribs(nxydim)
+  real(8), save :: sitfrc(nxydim), siuabs(nxydim)
 
 !! for check
 !  real(8) :: imrtot(nxydim), igrtot(nxydim), itrtot(nxydim)
@@ -326,6 +329,26 @@ subroutine predci( &
   call chekin(   fey,  'FIEY', &
        &       'northward ice heat transport', 'erg*cm^3/rad/g/s', &
        &          nx,      ny,    nic, nxyidm, 'OCICET')
+
+! output section for CMIP6 
+  do ij = 1, nxydim
+     if (ax(ij, 0) .lt. 1.0d0) then
+        sitfrc(ij) = 1.0d0 * amskt(ij, kstr)
+     else
+        sitfrc(ij) = 0.0d0
+     end if
+     siuabs(ij) = sqrt(uix(ij)*uix(ij) + vix(ij)*vix(ij)) &
+       &        * amskv(ij, kstr)
+  end do
+
+! ITFRAC: Fraction of time steps with sea ice (i.e., =1 if AI>0)
+  call chekin( sitfrc, 'ITFRAC', &
+    &          'fraction of time steps with sea ice', 'ND', &
+    &              nx,     ny,      1, nxydim, 'OCSFCT')
+! UIABS: Sea-ice speed
+  call chekin( siuabs, 'UIABS', &
+    &          'sea-ice speed', 'cm/s', &
+    &              nx,     ny,      1, nxydim, 'OCSFCV')
 
 !!     for check: not necessary for CMIP5 output
 !  do ij = 1, nxydim
