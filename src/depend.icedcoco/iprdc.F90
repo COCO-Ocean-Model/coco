@@ -55,6 +55,7 @@ subroutine predci( &
   use ipthm
   use iptmp
   use ucloc
+  use qckag
   use qckot
   use bshft
 
@@ -160,6 +161,11 @@ subroutine predci( &
     &           prec,   snow, &
     &           evap,   subi, adjlat, &
     &            wev,    wsb,   soff )
+
+  call cofpfw( &
+    &           prec,   snow,   roff,   soff,   evap, &
+    &             ax)
+
   call ptherm( &
     &             ax,    hix,    hsx, &
     &            eix,    tix, &

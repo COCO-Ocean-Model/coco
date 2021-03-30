@@ -154,6 +154,7 @@ subroutine ocean ( &
   use bfrch
   use binst
   use iprdc
+  use qckag
   use qckot
   use sfcng
   use tflxt
@@ -497,6 +498,9 @@ subroutine ocean ( &
 
   end if
 
+  call cofptu( &
+    &               taux,   tauy)
+
 ! *** Output to file ***
   do ij = 1, nxydim
      aig(ij) = 0.0d0
@@ -647,6 +651,9 @@ subroutine ocean ( &
        &                'cm', &
        &          nx,     ny,      1, nxydim, 'OCSFCT' )
 
+! surface flux output
+  call chksfx
+
   call chkout( &
     &          oflout )
 
@@ -669,6 +676,7 @@ subroutine nmlwtr( &
 !
 ! ---------------------------------------------------------------------
 
+  use qckag
   use qckot
   use ufile
 
@@ -750,6 +758,9 @@ subroutine nmlwtr( &
      wev(ij) = wev(ij) + max(fwnml, 0.0d0) * amskt(ij, kstr)
      fwnmd(ij) = fwnml
   end do
+
+  call cofpnw( &
+    &             fwnmd)
 
   call chekin( fwnmd, 'FWNML', &
        &       'Fw for normalizing surface height', 'cm/s', &

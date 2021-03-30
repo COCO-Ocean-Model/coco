@@ -49,6 +49,7 @@ subroutine ptherm( &
   &                   qio )
 
   use ufile
+  use qckag
   use qckot
   use zocite
 
@@ -793,6 +794,9 @@ subroutine ptherm( &
      imribs(ij) = imribs(ij) / ts
   end do
   
+  call cofpwi( &
+    &               ws,     wi)
+
   return
 end subroutine ptherm
 

@@ -168,6 +168,7 @@ contains
     use binst
     use sfcng
     use ufile
+    use qckag
     use qckot
     use bfrch
     use aprdc
@@ -416,6 +417,9 @@ contains
     &                hb,   ubtb,   vbtb  )
     end if
 
+    call cofptu( &
+    &               taux,   tauy)
+
 ! *** Output to file ***
     if ( itst == 3 ) then
        call putsig(                                                   &
@@ -480,6 +484,10 @@ contains
     end do
 
     call chkftx
+
+! surface flux output
+    call chksfx
+
     call chkout( oflout )
 
   end subroutine ocean

@@ -9,6 +9,7 @@ OBJS.coco	= \
           bshft.o \
           bshfi.o \
           qckot.o \
+          qckag.o \
           bstbc.o \
           utrdg.o \
           utint.o \
@@ -48,8 +49,9 @@ OBJS.icedcoco	= \
           bshft.o \
           bshfi.o \
           qckot.o \
+          qckag.o \
           utrdg.o \
-	  utint.o \
+          utint.o \
           xprst.o \
           atmct.o \
           bchmk.o \
@@ -85,7 +87,7 @@ OBJS.icedcoco	= \
           tflxt.o \
           tslvt.o \
           binst.o \
-	  aprdc.o \
+          aprdc.o \
           aocea.o 
 
 $(LIBOGCM):$(OBJS.$(MODEL))

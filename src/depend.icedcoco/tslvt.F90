@@ -99,6 +99,7 @@ contains
 
     use ifhea
     use bshft
+    use qckag
     use ufile
     use zocfil,  only :                                &
          &     ncf
@@ -243,6 +244,7 @@ contains
        end do
        
        call putswc( swconv(1, kstr) )
+       call copswc( swconv(1, kstr) )
        
        do ij = 1, nxydim
           swconv(ij, kstr) = 0.d0
@@ -325,6 +327,7 @@ contains
     use zocphy,  only :                                &
          &     cpo,    rhoo
     use utrdg
+    use qckag
     use qckot
 
     implicit none
@@ -500,6 +503,9 @@ contains
 !         END IF
 !      END DO
 
+    call cofpsf( &
+      &             tx,     ft,     fs,  swabs)
+
     do ij = ijtstr, ijtend
        tx(ij, kstr, 1) = tx(ij, kstr, 1)                              &
     &                  + ts * ft(ij, 1) / hxbot(ij) / ds(kstr) 
@@ -608,8 +614,8 @@ contains
           fsrst(ij) = fsrst(ij) * hxbot(ij) * ds(kstr)
        end do
 
-!       call cofpsr( &
-!         &           fsrst)
+       call cofpsr( &
+         &           fsrst)
 
        call chekin( fsrst, 'FSRST', &
          &          'SSS resotring flux', 'psu cm/s', &

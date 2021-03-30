@@ -143,6 +143,7 @@ subroutine ocean ( &
   use bfrch
   use binst
   use iprdc
+  use qckag
   use qckot
   use sfcng
   use tflxt
@@ -473,6 +474,9 @@ subroutine ocean ( &
 
   end if
 
+  call cofptu( &
+    &               taux,   tauy)
+
 ! *** Output to file ***
   do ij = 1, nxydim
      aig(ij) = 0.0d0
@@ -622,6 +626,9 @@ subroutine ocean ( &
        &  'mean snow thickness averaged over the entire grid cell', &
        &                'cm', &
        &          nx,     ny,      1, nxydim, 'OCSFCT' )
+
+! surface flux output
+  call chksfx
 
   call chkout( &
     &          oflout )

@@ -45,6 +45,7 @@ subroutine ptherm( &
   &                   wio,    wao,    was,    wil, &
   &                  evap,   subi,   roff, adjlat, &
   &                   qio )
+  use qckag
   use ufile
   use zocite
 
@@ -414,7 +415,10 @@ subroutine ptherm( &
      imrisf(ij) = imrisf(ij) / ts
      imribs(ij) = imribs(ij) / ts
   end do
-  
+
+  call cofpwi( &
+    &               ws,     wi)
+
   return
 end subroutine ptherm
 

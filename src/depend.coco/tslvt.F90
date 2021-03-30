@@ -99,6 +99,7 @@ contains
          &   amsktb,                                   &
 #endif
          &   amskt,  nbot
+    use qckag
     use utrdg
 
     implicit none
@@ -111,6 +112,9 @@ contains
     real(8),   intent(in)     ::     hz(nxydim)
 
     integer(4)                ::     ij,    k,     n
+
+    real(8), save             ::    fs(nxydim) = 0.0d0  ! dummy for cofpsf
+    real(8), save             :: swabs(nxydim) = 0.0d0  ! dummy for cofpsf
     
     if ( oinit .or. ofinal ) then
        return
@@ -195,6 +199,9 @@ contains
           end do
        end do
     end do
+
+    call cofpsf( &
+      &             tx,     ft,     fs,  swabs)
 
     do ij = ijtstr, ijtend
        tx(ij, kstr, 1) = tx(ij, kstr, 1)                              &
