@@ -1772,7 +1772,8 @@ subroutine dnsgrd( &
   real(8), save ::   slpz(nzdim)
   real(8) ::   dzm0(nzdim)
 
-  real(8), save :: slpmax = 1.d-2,  kslp = -999
+  real(8), save :: slpmax = 1.d-2
+  integer :: kslp = -999
 
   namelist /nmslpm/ slpmax, kslp
 
