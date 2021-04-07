@@ -15,8 +15,8 @@ module mpiio
        & mpi_write_3d, reverse_real4, reverse_real8,     &
        & reverse_int4, mpi_read_direct,                  &
        & mpi_read_root_int, mpi_read_root_int_sgl,       &
-       & mpi_iseof, mpi_read_root_char
-
+       & mpi_iseof, mpi_read_root_char,                  &
+       & info_seq8, reverse_int8
 contains
 
   subroutine info_seq(fh, offset, nsize0)
@@ -43,6 +43,30 @@ contains
 
   end subroutine info_seq
 
+  subroutine info_seq8(fh, offset, nsize0)
+  use zocdim
+  implicit none
+#include "mpif.h"
+  integer(8) :: nsize0, nsize
+  integer :: fh
+  integer   (kind = mpi_offset_kind) :: offset
+
+  nsize=nsize0
+  call reverse_int8(nsize) !swap endian
+
+  call mpi_file_set_view(                       &
+   &     fh, offset,                            &
+   &     mpi_integer8, mpi_integer8,"native",   &
+   &     mpi_info_null, ierr)
+  if (myrank .eq. iroot) then
+     call mpi_file_write(                       &
+   &     fh, nsize, 1, mpi_integer8,            &
+   &     mpi_status_ignore, ierr)
+  end if
+  offset = offset + 8
+
+  end subroutine info_seq8
+
   subroutine mpi_write_header(chead, fh, offset)
   use zocdim
   implicit none
@@ -52,10 +76,14 @@ contains
   integer :: fh
   integer (kind = mpi_offset_kind) :: offset
   integer :: nsize
+  integer(8) :: nsize2
   nsize=64*16
+  nsize2 = nsize
 
 #ifdef OPT_IO_SEQUENTIAL
   call info_seq(fh, offset, nsize)
+#elif defined(OPT_IO_SEQUENTIAL_H8)
+  call info_seq8(fh, offset, nsize2)
 #endif
 !========= header
   call mpi_file_set_view(                      &
@@ -70,7 +98,9 @@ contains
   end if
   offset = offset + nsize
 #ifdef OPT_IO_SEQUENTIAL
-      call info_seq(fh, offset, nsize)
+  call info_seq(fh, offset, nsize)
+#elif defined(OPT_IO_SEQUENTIAL_H8)
+  call info_seq8(fh, offset, nsize2)
 #endif
 
   return
@@ -162,7 +192,38 @@ contains
   return
   end subroutine reverse_int4
 
+!===============================================================
+!     REVERSE_INT8
+!===============================================================
 
+  subroutine reverse_int8(int8)
+  implicit none
+
+  integer(8) :: int8, value
+  integer(1) :: reverse(8), tmpval
+  equivalence(value, reverse)
+
+#ifdef OPT_IO_BYTESWAP
+  reverse=0
+  value = int8
+
+  tmpval = reverse(1)
+  reverse(1) = reverse(8)
+  reverse(8) = tmpval
+  tmpval = reverse(2)
+  reverse(2) = reverse(7)
+  reverse(7) = tmpval
+  tmpval = reverse(3)
+  reverse(3) = reverse(6)
+  reverse(6) = tmpval
+  tmpval = reverse(4)
+  reverse(4) = reverse(5)
+  reverse(5) = tmpval
+
+  int8 = value
+#endif
+  return
+  end subroutine reverse_int8
 
   subroutine mpi_read_chead(chead, fh, disp, icread)
   use zocdim
@@ -176,7 +237,9 @@ contains
   integer :: ifpar, jfpar
 
 #ifdef OPT_IO_SEQUENTIAL
-  disp=disp+4 
+  disp=disp+4
+#elif defined(OPT_IO_SEQUENTIAL_H8)
+  disp=disp+8
 #endif
   call mpi_file_set_view(                            &
        &     fh, disp,                               &
@@ -188,7 +251,7 @@ contains
           &    fh, chead, 1024,                     &
           &    mpi_character, mpistat, ierr)
 
-     call mpi_get_count(mpistat,mpi_character, icread,ierr)     
+     call mpi_get_count(mpistat,mpi_character, icread,ierr)
   end if
   call mpi_bcast(chead, 1024, mpi_character,  &
        &                  iroot, mpi_comm_world, ierr)
@@ -197,11 +260,15 @@ contains
   disp=disp+ 1024
 #ifdef OPT_IO_SEQUENTIAL
   disp=disp + 4
+#elif defined(OPT_IO_SEQUENTIAL_H8)
+  disp=disp + 8
 #endif
   if(icread .ne. 1024) then
      disp=disp-1024
 #ifdef OPT_IO_SEQUENTIAL
      disp=disp-8
+#elif defined(OPT_IO_SEQUENTIAL_H8)
+     disp=disp-16
 #endif
   end if
 
@@ -225,7 +292,9 @@ contains
   integer :: ifpar, jfpar
 
 #ifdef OPT_IO_SEQUENTIAL
-  disp=disp+4 
+  disp=disp+4
+#elif defined(OPT_IO_SEQUENTIAL_H8)
+  disp=disp+8
 #endif
   istart=(/irank*nx, jrank*ny/)
   igsize=(/nxg, nyg/)
@@ -254,7 +323,9 @@ contains
   end do
   disp=disp+ nxg*nyg*8
 #ifdef OPT_IO_SEQUENTIAL
-  disp=disp+4 
+  disp=disp+4
+#elif defined(OPT_IO_SEQUENTIAL_H8)
+  disp=disp+8
 #endif
   return
   end subroutine mpi_read_sfc
@@ -276,14 +347,16 @@ contains
   integer(8) :: int1, int2, int3, int4
 
 #ifdef OPT_IO_SEQUENTIAL
-  disp=disp+4 
+  disp=disp+4
+#elif defined(OPT_IO_SEQUENTIAL_H8)
+  disp=disp+8
 #endif
   istart=(/irank*nx, jrank*ny, 0/)
   igsize=(/nxg, nyg, nz/)
   isize =(/nx , ny , nz /)
 
   call mpi_type_create_subarray(       &
-       &    3, igsize, isize, istart,  & 
+       &    3, igsize, isize, istart,  &
        &    mpi_order_fortran,         &
        &    mpi_real8, ifile, ierr)
   call mpi_type_commit(ifile, ierr)
@@ -307,7 +380,14 @@ contains
 
 #ifdef OPT_IO_SEQUENTIAL
   disp=disp+ nxg*nyg*nz*8
-  disp=disp+4 
+  disp=disp+4
+#elif defined(OPT_IO_SEQUENTIAL_H8)
+  int1=nxg
+  int2=nyg
+  int3=nz
+  int4=8
+  disp=disp+ int1*int2*int3*int4
+  disp=disp+ 8
 #else
   int1=nxg
   int2=nyg
@@ -329,7 +409,9 @@ contains
   integer :: nbuf, fh, i
   integer (kind = mpi_offset_kind):: disp
 #ifdef OPT_IO_SEQUENTIAL
-  disp=disp+4 
+  disp=disp+4
+#elif defined(OPT_IO_SEQUENTIAL_H8)
+  disp=disp+8
 #endif
   call mpi_file_set_view( fh, disp,    &
        &   mpi_real8,mpi_real8,"native", mpi_info_null,ierr)
@@ -343,6 +425,8 @@ contains
   end if
 #ifdef OPT_IO_SEQUENTIAL
   disp=disp+ nbuf*8 + 4
+#elif defined(OPT_IO_SEQUENTIAL_H8)
+  disp=disp+ nbuf*8 + 8
 #else
   disp=disp+ nbuf*8
 #endif
@@ -360,6 +444,8 @@ contains
     integer (kind = mpi_offset_kind):: disp
 #ifdef OPT_IO_SEQUENTIAL
     disp=disp+4 
+#elif defined(OPT_IO_SEQUENTIAL_H8)
+    disp=disp+8
 #endif
     call mpi_file_set_view( fh, disp,    &
          &   mpi_integer4,mpi_integer4,"native", mpi_info_null,ierr)
@@ -373,6 +459,8 @@ contains
     end if
 #ifdef OPT_IO_SEQUENTIAL
     disp=disp+ nbuf*4 + 4
+#elif defined(OPT_IO_SEQUENTIAL_H8)
+    disp=disp+ nbuf*4 + 8
 #else
     disp=disp+ nbuf*4
 #endif
@@ -392,6 +480,8 @@ contains
     integer :: abuf(nbuf)
 #ifdef OPT_IO_SEQUENTIAL
     disp=disp+4 
+#elif defined(OPT_IO_SEQUENTIAL_H8)
+    disp=disp+8
 #endif
     call mpi_file_set_view( fh, disp,    &
          &   mpi_integer4,mpi_integer4,"native", mpi_info_null,ierr)
@@ -404,6 +494,8 @@ contains
     end if
 #ifdef OPT_IO_SEQUENTIAL
     disp=disp+ nbuf*4 + 4
+#elif defined(OPT_IO_SEQUENTIAL_H8)
+    disp=disp+ nbuf*4 + 8
 #else
     disp=disp+ nbuf*4
 #endif
@@ -422,6 +514,8 @@ contains
 
 #ifdef OPT_IO_SEQUENTIAL
     disp=disp+4 
+#elif defined(OPT_IO_SEQUENTIAL_H8)
+    disp=disp+8
 #endif
     call mpi_file_set_view(                     &
       &  fh, disp,                              &
@@ -437,6 +531,8 @@ contains
     disp=disp+nch*nelem
 #ifdef OPT_IO_SEQUENTIAL
     disp=disp + 4
+#elif defined(OPT_IO_SEQUENTIAL_H8)
+    disp=disp + 8
 #endif
     return
     end subroutine mpi_read_root_char
@@ -456,7 +552,9 @@ contains
   integer :: ifile
   integer :: istart(2), igsize(2), isize(2)
 #ifdef OPT_IO_SEQUENTIAL
-  disp=disp+4 
+  disp=disp+4
+#elif defined(OPT_IO_SEQUENTIAL_H8)
+  disp=disp+8
 #endif
   istart=(/irank*nx +igstr-1, jrank*ny+jgstr-1/)
   igsize=(/nxgdim, nygdim/)
@@ -467,7 +565,7 @@ contains
        & mpi_order_fortran,        &
        & mpi_integer4, ifile, ierr)
   call mpi_type_commit(ifile, ierr)
-  
+
   call mpi_file_set_view(fh, disp,        &
        &     mpi_integer4,ifile,"native", &
        &     mpi_info_null,ierr)
@@ -483,6 +581,8 @@ contains
   end do
 #ifdef OPT_IO_SEQUENTIAL
   disp=disp+ nxgdim*nygdim*4 + 4
+#elif defined(OPT_IO_SEQUENTIAL_H8)
+  disp=disp+ nxgdim*nygdim*4 + 8
 #else
   disp=disp+ nxgdim*nygdim*4
 #endif
@@ -504,14 +604,16 @@ contains
   integer :: istart(2), igsize(2), isize(2)
 
 #ifdef OPT_IO_SEQUENTIAL
-  disp=disp+4 
+  disp=disp+4
+#elif defined(OPT_IO_SEQUENTIAL_H8)
+  disp=disp+8
 #endif
   istart=(/irank*nx +igstr-1, jrank*ny+jgstr-1/)
   igsize=(/nxgdim, nygdim/)
   isize =(/nx    ,    ny /)
 
   call mpi_type_create_subarray(      &
-       &    2, igsize, isize, istart, & 
+       &    2, igsize, isize, istart, &
        &    mpi_order_fortran,        &
        &    mpi_real8, ifile, ierr)
   call mpi_type_commit(ifile, ierr)
@@ -532,6 +634,8 @@ contains
 
 #ifdef OPT_IO_SEQUENTIAL
   disp=disp+ nxgdim*nygdim*8 + 4
+#elif defined(OPT_IO_SEQUENTIAL_H8)
+  disp=disp+ nxgdim*nygdim*8 + 8
 #else
   disp=disp+ nxgdim*nygdim*8
 #endif
@@ -554,7 +658,9 @@ contains
   integer :: istart(3), igsize(3), isize(3)
   integer(8) :: int1, int2
 #ifdef OPT_IO_SEQUENTIAL
-  disp=disp+4 
+  disp=disp+4
+#elif defined(OPT_IO_SEQUENTIAL_H8)
+  disp=disp+8
 #endif
   istart=(/irank*nx +igstr-1, jrank*ny+jgstr-1, 0/)
   igsize=(/nxgdim, nygdim, nzdim/)
@@ -583,6 +689,11 @@ contains
   end do
 #ifdef OPT_IO_SEQUENTIAL
   disp=disp+ nxyzgd*8 + 4
+#elif defined(OPT_IO_SEQUENTIAL_H8)
+  int1=nxyzgd
+  int2=8
+  disp=disp+ int1*int2
+  disp=disp+8
 #else
   int1=nxyzgd
   int2=8
@@ -608,7 +719,9 @@ contains
   integer :: ifpar,  jfpar
 
 #ifdef OPT_IO_SEQUENTIAL
-  disp=disp+4 
+  disp=disp+4
+#elif defined(OPT_IO_SEQUENTIAL_H8)
+  disp=disp+8
 #endif
   istart=(/irank*nx, jrank*ny/)
   igsize=(/nxg, nyg/)
@@ -631,7 +744,9 @@ contains
 
   disp=disp+ nxg*nyg*8
 #ifdef OPT_IO_SEQUENTIAL
-  disp=disp+4 
+  disp=disp+4
+#elif defined(OPT_IO_SEQUENTIAL_H8)
+  disp=disp+8
 #endif
   return
   end subroutine mpi_read_2d
@@ -651,7 +766,9 @@ contains
   integer :: istart(3), igsize(3), isize(3)
 
 #ifdef OPT_IO_SEQUENTIAL
-  disp=disp+4 
+  disp=disp+4
+#elif defined(OPT_IO_SEQUENTIAL_H8)
+  disp=disp+8
 #endif
   istart=(/irank*nx, jrank*ny, 0/)
   igsize=(/nxg, nyg, nic/)
@@ -673,7 +790,9 @@ contains
   end do
   disp=disp+ nxg*nyg*nic*8
 #ifdef OPT_IO_SEQUENTIAL
-  disp=disp+4 
+  disp=disp+4
+#elif defined(OPT_IO_SEQUENTIAL_H8)
+  disp=disp+8
 #endif
   return
   end subroutine mpi_read_id
@@ -694,7 +813,9 @@ contains
   integer(8) :: int1, int2, int3, int4
 
 #ifdef OPT_IO_SEQUENTIAL
-  disp=disp+4 
+  disp=disp+4
+#elif defined(OPT_IO_SEQUENTIAL_H8)
+  disp=disp+8
 #endif
   istart=(/irank*nx, jrank*ny, 0/)
   igsize=(/nxg, nyg, nz/)
@@ -717,7 +838,14 @@ contains
 
 #ifdef OPT_IO_SEQUENTIAL
   disp=disp+ nxg*nyg*nz*8
-  disp=disp+4 
+  disp=disp+4
+#elif defined(OPT_IO_SEQUENTIAL_H8)
+  int1=nxg
+  int2=nyg
+  int3=nz
+  int4=8
+  disp=disp+ int1*int2*int3*int4
+  disp=disp+8
 #else
   int1=nxg
   int2=nyg
@@ -746,7 +874,11 @@ contains
   ny0=size(direct,2)
 
   !=== chead ====
-  disp=disp+4 
+#ifdef OPT_IO_SEQUENTIAL_H8
+  disp=disp+8
+#else
+  disp=disp+4
+#endif
   call mpi_file_set_view(                            &
        &     fh, disp,                               &
        &     mpi_character, mpi_character,"native",  &
@@ -764,14 +896,22 @@ contains
   call mpi_bcast(icread, 1, mpi_integer4,     &
        &                  iroot, mpi_comm_world, ierr)
   disp=disp+ 1024
-  disp=disp + 4
+#ifdef OPT_IO_SEQUENTIAL_H8
+  disp=disp+8
+#else
+  disp=disp+4
+#endif
   if(icread .ne. 1024) then
      write(nfstdo,*)'read error in mpi_read_direct'
      call mpi_abort(mpi_comm_world, 1, ierr)
   end if
 
   !=== data ====
+#ifdef OPT_IO_SEQUENTIAL_H8
+  disp=disp+8
+#else
   disp=disp+4
+#endif
   call mpi_file_set_view( fh, disp,    &
        &   mpi_real4, mpi_real4,"native", mpi_info_null,ierr)
 
@@ -785,7 +925,11 @@ contains
         end do
      end do
   end if
+#ifdef OPT_IO_SEQUENTIAL_H8
+  disp=disp+ nx0*ny0*4 + 8
+#else
   disp=disp+ nx0*ny0*4 + 4
+#endif
 
   call mpi_bcast(direct, nx0*ny0, mpi_real4, iroot, mpi_comm_world, ierr)
 
@@ -806,10 +950,14 @@ contains
   integer :: ifile
   integer :: istart(2), igsize(2), isize(2)
   integer :: nsize
+  integer(8) :: nsize2
 
   nsize=8*nxg*nyg
+  nsize2=nsize
 #ifdef OPT_IO_SEQUENTIAL
   call info_seq(fh, disp, nsize)
+#elif defined(OPT_IO_SEQUENTIAL_H8)
+  call info_seq8(fh, disp, nsize2)
 #endif
 
   do j=1,ny
@@ -832,6 +980,8 @@ contains
   disp=disp+nsize
 #ifdef OPT_IO_SEQUENTIAL
   call info_seq(fh, disp, nsize)
+#elif defined(OPT_IO_SEQUENTIAL_H8)
+  call info_seq8(fh, disp, nsize2)
 #endif
   return
   end subroutine mpi_write_2d
@@ -856,11 +1006,13 @@ contains
   int2=nxg
   int3=nyg
   int4=nic
-  nsize2=int1*int2*int3*int4      
+  nsize2=int1*int2*int3*int4
 
   nsize= 8*nxg*nyg*nic
 #ifdef OPT_IO_SEQUENTIAL
   call info_seq(fh, disp, nsize)
+#elif defined(OPT_IO_SEQUENTIAL_H8)
+  call info_seq8(fh, disp, nsize2)
 #endif
   do k=1,nic
      do j=1,ny
@@ -883,6 +1035,8 @@ contains
   disp=disp+nsize2
 #ifdef OPT_IO_SEQUENTIAL
   call info_seq(fh, disp, nsize)
+#elif defined(OPT_IO_SEQUENTIAL_H8)
+  call info_seq8(fh, disp, nsize2)
 #endif
   return
   end subroutine mpi_write_id
@@ -912,6 +1066,8 @@ contains
   nsize=8*nxg*nyg*nz
 #ifdef OPT_IO_SEQUENTIAL
   call info_seq(fh, disp, nsize)
+#elif defined(OPT_IO_SEQUENTIAL_H8)
+  call info_seq8(fh, disp, nsize2)
 #endif
 
   do k=1,nz
@@ -935,6 +1091,8 @@ contains
   disp=disp+nsize2
 #ifdef OPT_IO_SEQUENTIAL
   call info_seq(fh, disp, nsize)
+#elif defined(OPT_IO_SEQUENTIAL_H8)
+  call info_seq8(fh, disp, nsize2)
 #endif
   return
   end subroutine mpi_write_3d

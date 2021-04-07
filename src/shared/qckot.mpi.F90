@@ -499,10 +499,14 @@ contains
                 int4=4
                 nsize2=int1*int2*int3*int4
                 nsize=nxg*nyg*kzdim*4
-#ifdef OPT_IO_SEQUENTIAL
+#if defined(OPT_IO_SEQUENTIAL) || defined(OPT_IO_SEQUENTIAL_H8)
                 chead(38) = 'UR4'
                 call mpi_write_header(chead, nfunit(iitem), disp(iitem))
+#ifdef OPT_IO_SEQUENTIAL
                 call info_seq(nfunit(iitem), disp(iitem), nsize)
+#elif defined(OPT_IO_SEQUENTIAL_H8)
+                call info_seq8(nfunit(iitem), disp(iitem), nsize2)
+#endif
 #endif
                 ! swap endian
                 do k = kzstr(iitem), kzend(iitem)
@@ -534,6 +538,8 @@ contains
                 disp(iitem) = disp(iitem) + nsize2
 #ifdef OPT_IO_SEQUENTIAL
                 call info_seq(nfunit(iitem), disp(iitem), nsize)
+#elif defined(OPT_IO_SEQUENTIAL_H8)
+                call info_seq8(nfunit(iitem), disp(iitem), nsize2)
 #endif
 
              else
@@ -544,10 +550,14 @@ contains
                 int4=8
                 nsize2=int1*int2*int3*int4
                 nsize=nxg*nyg*kzdim*8
-#ifdef OPT_IO_SEQUENTIAL
+#if defined(OPT_IO_SEQUENTIAL) || defined(OPT_IO_SEQUENTIAL_H8)
                 chead(38) = 'UR8'
                 call mpi_write_header(chead, nfunit(iitem), disp(iitem))                    
+#ifdef OPT_IO_SEQUENTIAL
                 call info_seq(nfunit(iitem), disp(iitem), nsize)
+#elif defined(OPT_IO_SEQUENTIAL_H8)
+                call info_seq8(nfunit(iitem), disp(iitem), nsize2)
+#endif
 #endif
                 ! swap endian
                 do k = kzstr(iitem), kzend(iitem)
@@ -577,6 +587,8 @@ contains
                 disp(iitem) = disp(iitem) + nsize2
 #ifdef OPT_IO_SEQUENTIAL
                 call info_seq(nfunit(iitem), disp(iitem), nsize)
+#elif defined(OPT_IO_SEQUENTIAL_H8)
+                call info_seq8(nfunit(iitem), disp(iitem), nsize2)
 #endif
              end if
 
