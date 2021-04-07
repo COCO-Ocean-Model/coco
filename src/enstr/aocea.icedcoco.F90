@@ -17,14 +17,19 @@ module aocea
 
   use zocdim, only: &
     &     nx,     ny,     nz, &
-    & nxydim, nxyzdm, nxyidm,  ntdim,    nic, &
-    & myrank, ijnode, &
+    & nxydim, nxyzdm, nxyidm,  nxdim,  ntdim,    nic, &
+    &   istr,   iend,   jstr,   jend,   kstr, &
+    & ijtstr, ijtend, &
+    & myrank, inodes, jnodes, ijnode,  iroot,   ierr, &
     &  oinit, ofinal
   use zocgrd, only: &
+    &     dx,     dy,    hxt,    hyt, &
     &     dt, &
     &     tt,     ts,    tss, &
     &     nt,    its,   itst,   ntss, &
     & ieuler
+  use zocmsk, only: &
+    &  amskt
   use zocfil, only: &
     & nfomax
       
@@ -279,6 +284,9 @@ subroutine ocean ( &
        &              ft,   ptop,   ssfc, &
        &              tb,     ab,    hib,    tib,    hsb, &
        &              ub,     vb )
+     call nmlper( &
+       &             wev,   prec, &
+       &             wsb,   snow,   roff,   soff)
 #ifdef OPT_BODY
      call bdyflx( &
        &              tq, &
@@ -319,6 +327,9 @@ subroutine ocean ( &
        &              ft,   ptop,   ssfc, &
        &              ta,     aa,    hia,    tia,    hsa, &
        &              ua,     va )
+     call nmlper( &
+       &             wev,   prec, &
+       &             wsb,   snow,   roff,   soff)
 #ifdef OPT_BODY
      call bdyflx( &
        &              tq, &
@@ -359,6 +370,9 @@ subroutine ocean ( &
        &              ft,   ptop,   ssfc, &
        &              tb,     ab,    hib,    tib,    hsb, &
        &              ub,     vb )
+     call nmlper( &
+       &             wev,   prec, &
+       &             wsb,   snow,   roff,   soff)
 #ifdef OPT_BODY
      call bdyflx( &
        &              tq, &
@@ -427,6 +441,9 @@ subroutine ocean ( &
        &              ft,   ptop,   ssfc, &
        &              tb,     ab,    hib,    tib,    hsb, &
        &              ub,     vb )
+     call nmlper( &
+       &             wev,   prec, &
+       &             wsb,   snow,   roff,   soff)
 #ifdef OPT_BODY
      call bdyflx( &
        &              tq, &
@@ -635,5 +652,142 @@ subroutine ocean ( &
 
   return
 end subroutine ocean
+
+! *********************************************************************
+
+subroutine nmlper( &
+  &                  wev,   prec, &
+  &                  wsb,   snow,   roff,   soff)
+
+
+! --- information -----------------------------------------------------
+!
+!  normalize P-E+R
+!
+!  HISTORY
+!     '21.04.07  Y.Komuro: for coco5.0
+!
+! ---------------------------------------------------------------------
+
+  use qckag
+  use qckot
+  use ufile
+
+#include "mpif.h"
+
+  real(8), intent(inout) ::   prec(nxydim),    wev(nxydim)
+  real(8), intent(in)    ::   roff(nxydim),   soff(nxydim)
+  real(8), intent(in)    ::   snow(nxydim),    wsb(nxydim, nic)
+
+  real(8), save ::  garea(nxydim)
+  real(8), save ::  tarea, rtardt
+  
+  real(8) ::  fwnmd(nxydim)
+  real(8) :: vwteqg(inodes*jnodes)
+  real(8) :: vwtreq, vwteqt, fwnml
+
+  integer ::    ij,      i,      j,      l
+  integer :: ifpar,  jfpar,  istat
+  logical, save :: ofirst = .true.
+
+  logical, save :: onmper = .false.
+  namelist /nmnper/ onmper
+
+  if (ofirst) then
+     call rewnml(ifpar, jfpar)
+     read(ifpar, nmnper, iostat=istat)
+     call cstnml(jfpar, 'nmlper', 'nmnper', istat)
+     write(jfpar, nmnper)
+     do ij = 1, nxydim
+        garea(ij) = 0.0d0
+        fwnmd(ij) = 0.0d0
+     end do
+     ofirst = .false.
+
+     if (onmper) then
+        write(jfpar, *) &
+          &    '*** Normalization of P-E+R is applied. ***'
+        vwteqt = 0.0d0
+        tarea = 0.0d0
+        do i = 1, inodes*jnodes
+           vwteqg(i) = 0.0d0
+        end do
+        do j=jstr, jend
+           do i=istr, iend
+              ij = nxdim*(j-1) + i
+              garea(ij) = dx * dy(ij) * hxt(ij) * hyt(ij) &
+ &                        * amskt(ij, kstr)
+              vwteqt = vwteqt + garea(ij)
+           end do
+        end do
+!        write(jfpar, *) vwteqt
+        call mpi_gather( &
+          &  vwteqt, 1, mpi_real8, vwteqg(1), 1, mpi_real8, &
+          &  iroot, mpi_comm_world, ierr)
+        if (myrank == iroot) then
+           do i = 1, inodes*jnodes
+              tarea = tarea + vwteqg(i)
+           end do
+        end if
+        call mpi_bcast( &
+          &  tarea, 1, mpi_real8, &
+          &  iroot, mpi_comm_world, ierr)
+!        call mpi_allreduce( &
+!          &   vwteqt, tarea, 1, mpi_real8, &
+!          &   mpi_sum, mpi_comm_world, ierr)
+!        write(jfpar, *) tarea
+        rtardt = 1.0d0 / tarea
+     endif
+  end if
+
+  if (.not.onmper) then
+     return
+  endif
+
+  vwteqt = 0.0d0
+  fwnml = 0.0d0
+  do i = 1, inodes*jnodes
+     vwteqg(i) = 0.0d0
+  end do
+  do ij = ijtstr, ijtend
+     vwtreq = prec(ij) + snow(ij) + roff(ij) + soff(ij) - wev(ij)
+     do l = 1, nic
+        vwtreq = vwtreq - wsb(ij, l)
+     end do
+     vwteqt = vwteqt + vwtreq * garea(ij)
+  end do
+!  write(jfpar, *) vwteqt
+  call mpi_gather( &
+    &  vwteqt, 1, mpi_real8, vwteqg(1), 1, mpi_real8, &
+    &  iroot, mpi_comm_world, ierr)
+  if (myrank == iroot) then
+     do i = 1, inodes*jnodes
+        fwnml = fwnml + vwteqg(i)
+     end do
+  end if
+  call mpi_bcast( &
+    &  fwnml, 1, mpi_real8, &
+    &  iroot, mpi_comm_world, ierr)
+!  call mpi_allreduce( &
+!    &  vwteqt, fwnml, 1, mpi_real8, &
+!    &  mpi_sum, mpi_comm_world, ierr)
+!  write(jfpar, *) fwnml
+  fwnml = fwnml * rtardt
+
+  do ij = ijtstr, ijtend
+     prec(ij) = prec(ij) - min(fwnml, 0.0d0) * amskt(ij, kstr)
+     wev(ij) = wev(ij) + max(fwnml, 0.0d0) * amskt(ij, kstr)
+     fwnmd(ij) = fwnml
+  end do
+
+  call cofpnw( &
+    &           fwnmd )
+    
+  call chekin( fwnmd, 'FWNML', &
+    &         'Fw for normalizing surface height', 'cm/s', &
+    &             nx,     ny,      1, nxydim, 'OCSFCT')      
+
+  return
+end subroutine nmlper
 
 end module aocea
