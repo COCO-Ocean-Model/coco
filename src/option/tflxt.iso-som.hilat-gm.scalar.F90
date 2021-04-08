@@ -394,7 +394,7 @@ subroutine flxtrc( &
            ahg3d(ij, :) = ahgno
         endif
      end do
-
+     end if
 #ifdef OPT_BBL
      call rewnml(ifpar, jfpar)
      read(ifpar, nmbbdh, iostat=istat)
