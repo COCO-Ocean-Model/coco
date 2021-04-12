@@ -402,7 +402,6 @@ subroutine parset
 
   call gs2dst
 #ifndef OPT_IO_COCOMPI
-!  call gs2dst
   call gs3dst
   call gsidst
 #endif
