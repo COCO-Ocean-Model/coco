@@ -801,7 +801,7 @@ contains
       &      dz,    dzv
     use zocmsk, only: &
 #ifdef OPT_BBL
-      &  amsktb, amskvb,  nbotv
+      &  amsktb, amskvb,  nbotv, &
 #endif
       &  nbot
     use zocfil, only: &
@@ -987,7 +987,7 @@ contains
       &    kstr,   kend, ijtstr, ijtend,  oinit
     use zocmsk, only: &
 #ifdef OPT_BBL
-      &  amsktb,
+      &  amsktb, &
 #endif
       &   amskt,   nbot
 
