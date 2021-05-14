@@ -309,7 +309,7 @@ subroutine parset
   call mpi_comm_size(mpi_comm_world, nprocs, ierr)
   call mpi_comm_rank(mpi_comm_world, igrank, ierr)
   call mpi_comm_split(mpi_comm_world, 1, igrank, mpi_comm_ogcm, ierr)
-  call mpi_comm_rank(mpi_comm_world, myrank, ierr)
+  call mpi_comm_rank(mpi_comm_ogcm, myrank, ierr)
   
   call rewnml(ifpar, jfpar)
   read (ifpar, nmroot, iostat=istat)
