@@ -110,7 +110,7 @@ contains
   &            irvbx1, irvbx2,  &
   &            isdbx1, isdbx2,  &
   &            nbfdim)
- use zocdim, only : nydim, idown, iup,  icomm, ierr
+ use zocdim, only : nydim, idown, iup,  icomm, ierr, mpi_comm_ogcm
  implicit none
 #include "mpif.h"
 
@@ -124,19 +124,19 @@ contains
 
  call mpi_isend(                                   &
   &               isdbx1, nbfdim, mpi_integer,     &
-  &                idown,      1, mpi_comm_world,  &
+  &                idown,      1, mpi_comm_ogcm,  &
   &               isrqx1,   ierr)
  call mpi_isend(                                   &
   &               isdbx2, nbfdim, mpi_integer,     &
-  &                  iup,      2, mpi_comm_world,  &
+  &                  iup,      2, mpi_comm_ogcm,  &
   &               isrqx2,   ierr)
  call mpi_irecv(                                   &
   &               irvbx2, nbfdim, mpi_integer,     &
-  &                  iup,      1, mpi_comm_world,  &
+  &                  iup,      1, mpi_comm_ogcm,  &
   &               irrqx1,   ierr)
  call mpi_irecv(                                   &
   &               irvbx1, nbfdim, mpi_integer,     &
-  &                idown,      2, mpi_comm_world,  &
+  &                idown,      2, mpi_comm_ogcm,  &
   &               irrqx2,   ierr)
  call mpi_wait(isrqx1, istmpi,   ierr)
  call mpi_wait(isrqx2, istmpi,   ierr)
@@ -152,7 +152,7 @@ contains
   &            irvby1, irvby2,  &
   &            isdby1, isdby2,  &
   &            nbfdim)
- use zocdim, only : nxdim, jdown, jup,  jcomm, ierr
+ use zocdim, only : nxdim, jdown, jup,  jcomm, ierr, mpi_comm_ogcm
  implicit none
 #include "mpif.h"
 
@@ -166,19 +166,19 @@ contains
 
  call mpi_isend(                                   &
   &               isdby1, nbfdim, mpi_integer,     &
-  &                jdown,      3, mpi_comm_world,  &
+  &                jdown,      3, mpi_comm_ogcm,  &
   &               isrqy1,   ierr)
  call mpi_isend(                                   &
   &               isdby2, nbfdim, mpi_integer,     &
-  &                  jup,      4, mpi_comm_world,  &
+  &                  jup,      4, mpi_comm_ogcm,  &
   &               isrqy2,   ierr)
  call mpi_irecv(                                   &
   &               irvby2, nbfdim, mpi_integer,     &
-  &                  jup,      3, mpi_comm_world,  &
+  &                  jup,      3, mpi_comm_ogcm,  &
   &               irrqy1,   ierr)
  call mpi_irecv(                                   &
   &               irvby1, nbfdim, mpi_integer,     &
-  &                jdown,      4, mpi_comm_world,  &
+  &                jdown,      4, mpi_comm_ogcm,  &
   &               irrqy2,   ierr)
  call mpi_wait(isrqy1, istmpi,   ierr)
  call mpi_wait(isrqy2, istmpi,   ierr)
@@ -305,7 +305,7 @@ contains
   &            irvby1, irvby2,  &
   &            isdby1, isdby2,  &
   &            nbfdim)
- use zocdim, only : nxdim, jcomm, jupe, jupw, ierr
+ use zocdim, only : nxdim, jcomm, jupe, jupw, ierr, mpi_comm_ogcm
  implicit none
 #include "mpif.h"
 
@@ -319,19 +319,19 @@ contains
 
  call mpi_isend(                                    &
   &               isdby1, nbfdim, mpi_integer,      &
-  &                 jupe,      3, mpi_comm_world,   &
+  &                 jupe,      3, mpi_comm_ogcm,   &
   &               isrqy1,   ierr)
  call mpi_isend(                                    &
   &               isdby2, nbfdim, mpi_integer,      &
-  &                 jupw,      4, mpi_comm_world,   &
+  &                 jupw,      4, mpi_comm_ogcm,   &
   &               isrqy2,   ierr)
  call mpi_irecv(                                    &
   &               irvby2, nbfdim, mpi_integer,      &
-  &                 jupw,      3, mpi_comm_world,   &
+  &                 jupw,      3, mpi_comm_ogcm,   &
   &               irrqy1,   ierr)
  call mpi_irecv(                                    &
   &               irvby1, nbfdim, mpi_integer,      &
-  &                 jupe,      4, mpi_comm_world,   &
+  &                 jupe,      4, mpi_comm_ogcm,   &
   &               irrqy2,   ierr)
  call mpi_wait(isrqy1, istmpi,   ierr)
  call mpi_wait(isrqy2, istmpi,   ierr)
