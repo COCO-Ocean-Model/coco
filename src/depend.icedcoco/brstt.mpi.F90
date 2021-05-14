@@ -63,7 +63,7 @@ contains
     &     nxgdim, nygdim,  igstr,  jgstr,    kstr,                    &
     &        nxg,    nyg,     nz
     use zocnod,   only  :                                             &
-    &     myrank,  iroot
+    &     myrank,  iroot, mpi_comm_ogcm
     use zocphy,   only  :                                             &
     &       dtds
     use zocfil
@@ -317,7 +317,7 @@ contains
        if ( irstrt /= 0 ) then
           if ( ttt /= tstrt ) then
              write(jfpar, *) '*** start time error ***'
-             call mpi_abort(mpi_comm_world, 1, ierr)
+             call mpi_abort(mpi_comm_ogcm, 1, ierr)
           end if
        end if
     end if
@@ -414,7 +414,7 @@ contains
     &     nxgdim, nygdim,  igstr,  jgstr,    kstr,                    &
     &        nxg,    nyg,     nz,   nxyg,   nxyzg
     use zocnod,   only  :                                             &
-    &     myrank,  iroot
+    &     myrank,  iroot, mpi_comm_ogcm
     use ufile
     use ucaln
     use mpiio
@@ -632,7 +632,7 @@ contains
        write(jfpar, *) ' time :', idate
        write(jfpar, *) ' step :', ntstep
     end if
-    call mpi_barrier(mpi_comm_world, ierr)
+    call mpi_barrier(mpi_comm_ogcm, ierr)
 
   end subroutine finout
 
