@@ -61,13 +61,13 @@ contains
 ! **********************************************************************
 
   subroutine clcstr( httl )
-
+    use zocnod, only: mpi_comm_ogcm
     implicit none
     character(*),           intent(in)     ::  httl
 
     integer(4)  ::  ic
     integer :: ierr
-    call mpi_barrier(mpi_comm_world, ierr)
+    call mpi_barrier(mpi_comm_ogcm, ierr)
 
     if (ofirst) then
        ofirst = .false.

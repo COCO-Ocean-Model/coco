@@ -100,7 +100,7 @@ contains
      &                    qg,   &
      &                     q)
  use zocdim, only:  nx, ny, nxdim, nydim, nxgdim, nygdim, &
-  &  nprocs, myrank, iroot, ijnode, istr, jstr, ierr
+  &  nprocs, myrank, iroot, ijnode, istr, jstr, ierr, mpi_comm_ogcm
 
 
  implicit none
@@ -121,7 +121,7 @@ contains
  call mpi_gatherv(                                      &
   &                 sndbuf,  ngsnd,         mpi_real8,  &
   &                  dummy,  nrcvc,  ndisp, mpi_real8,  &
-  &                  iroot, mpi_comm_world, ierr)
+  &                  iroot, mpi_comm_ogcm, ierr)
 
  if (myrank .eq. iroot) then
     do n = 0, nprocs-1
@@ -143,7 +143,7 @@ contains
      &                      q,  &
      &                     qg)
  use zocdim, only:  nx, ny, nxdim, nydim, nxgdim, nygdim, &
-  &  nprocs, myrank, iroot, ijnode, istr, jstr, ierr
+  &  nprocs, myrank, iroot, ijnode, istr, jstr, ierr, mpi_comm_ogcm
 
  implicit none
 #include "mpif.h"
@@ -166,7 +166,7 @@ contains
  call mpi_scatterv(                                     &
   &                   dummy,  nsndc,  ndisp, mpi_real8, &
   &                  rcvbuf,  nsrcv,         mpi_real8, &
-  &                   iroot, mpi_comm_world, ierr)
+  &                   iroot, mpi_comm_ogcm, ierr)
 
  if (myrank .lt. ijnode) then
     do j = 1, ny
@@ -184,7 +184,7 @@ contains
      &                         iq,  &
      &                        iqg)
  use zocdim, only:  nx, ny, nxdim, nydim, nxgdim, nygdim, &
-  &  nprocs, myrank, iroot, ijnode, istr, jstr, ierr
+  &  nprocs, myrank, iroot, ijnode, istr, jstr, ierr, mpi_comm_ogcm
 
  implicit none
 #include "mpif.h"
@@ -207,7 +207,7 @@ contains
  call mpi_scatterv(                                       &
   &                   idumy,  nsndc,  ndisp, mpi_integer, &
   &                  ircbuf,  nsrcv,         mpi_integer, &
-  &                   iroot, mpi_comm_world, ierr)
+  &                   iroot, mpi_comm_ogcm, ierr)
 
  if (myrank .lt. ijnode) then
     do j = 1, ny
@@ -225,7 +225,7 @@ contains
      &                         qs,  &
      &                        qsg)
  use zocdim, only:  nx, ny, igstr, igend, jgstr, jgend, &
-  &  nprocs, myrank, iroot, ijnode, ierr
+  &  nprocs, myrank, iroot, ijnode, ierr, mpi_comm_ogcm
 
  implicit none
 #include "mpif.h"
@@ -248,7 +248,7 @@ contains
  call mpi_scatterv(                                     &
   &                   dummy,  nsndc,  ndisp, mpi_real8, &
   &                  rcvbuf,  nsrcv,         mpi_real8, &
-  &                   iroot, mpi_comm_world, ierr)
+  &                   iroot, mpi_comm_ogcm, ierr)
 
  if (myrank .lt. ijnode) then
     do j = 1, ny

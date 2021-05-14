@@ -143,7 +143,7 @@ contains
      &                    qg,   &
      &                     q)
  use zocdim, only : nprocs, nx, ny, istr, jstr, kstr, kend,      &
-  &   nxdim, nydim, nzdim, nxgdim, nygdim, myrank, ijnode, iroot
+  &   nxdim, nydim, nzdim, nxgdim, nygdim, myrank, ijnode, iroot, mpi_comm_ogcm
  implicit none
 #include "mpif.h"
  real(8), intent(in ) ::    q(nxdim , nydim , nzdim)
@@ -163,7 +163,7 @@ contains
  call mpi_gatherv(                                     &
   &                 sndbuf,  ngsnd,         mpi_real8, &
   &                  dummy,  nrcvc,  ndisp, mpi_real8, &
-  &                  iroot, mpi_comm_world, ierr)
+  &                  iroot, mpi_comm_ogcm, ierr)
 
  if (myrank == iroot) then
     do n = 0, nprocs-1
@@ -187,7 +187,7 @@ contains
      &                  qchksg,  &
      &                   qchks, nsigmx)
  use zocdim, only : nprocs, nx, ny, &
-  &   igstr, igend, jgstr, jgend, myrank, ijnode, iroot
+  &   igstr, igend, jgstr, jgend, myrank, ijnode, iroot, mpi_comm_ogcm
  implicit none
 #include "mpif.h"
  real(8), intent(in ) ::  qchks(nx         , ny         , nsigmx)
@@ -208,7 +208,7 @@ contains
  call mpi_gatherv(                                      &
   &                 sndbus, ngsnds,         mpi_real8,  &
   &                 dummys, nrcvcs, ndisps, mpi_real8,  &
-  &                  iroot, mpi_comm_world, ierr)
+  &                  iroot, mpi_comm_ogcm, ierr)
 
  if (myrank == iroot) then
     do n = 0, nprocs-1
@@ -232,7 +232,7 @@ contains
      &                      q,  &
      &                     qg)
  use zocdim, only : nprocs, nx, ny, istr, jstr, kstr, kend,      &
-  &   nxdim, nydim, nzdim, nxgdim, nygdim, myrank, ijnode, iroot
+  &   nxdim, nydim, nzdim, nxgdim, nygdim, myrank, ijnode, iroot, mpi_comm_ogcm
  implicit none
 #include "mpif.h"
  real(8), intent(out) ::    q(nxdim , nydim , nzdim)
@@ -256,7 +256,7 @@ contains
  call mpi_scatterv(                                      &
   &                   dummy,  nsndc,  ndisp, mpi_real8,  &
   &                  rcvbuf,  nsrcv,         mpi_real8,  &
-  &                   iroot, mpi_comm_world, ierr)
+  &                   iroot, mpi_comm_ogcm, ierr)
 
  if (myrank < ijnode) then
     do k = kstr, kend
@@ -276,7 +276,7 @@ contains
      &                    qchk, &
      &                   qchkg) 
  use zocdim, only : nprocs, nx, ny, kstr, kend,         &
-  &   igstr, igend, jgstr, jgend, myrank, ijnode, iroot
+  &   igstr, igend, jgstr, jgend, myrank, ijnode, iroot, mpi_comm_ogcm
  implicit none
 #include "mpif.h"
  real(8), intent(out) ::  qchk(nx         , ny         , kstr:kend)
@@ -300,7 +300,7 @@ contains
       call mpi_scatterv(                                    &
      &                   dummy,  nsndc,  ndisp, mpi_real8,  &
      &                  rcvbuf,  nsrcv,         mpi_real8,  &
-     &                   iroot, mpi_comm_world, ierr)
+     &                   iroot, mpi_comm_ogcm, ierr)
 
       if (myrank < ijnode) then
          do k = kstr, kend
