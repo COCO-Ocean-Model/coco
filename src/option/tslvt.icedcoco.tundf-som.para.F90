@@ -17,7 +17,7 @@ module tslvt
 
   use zocdim, only :                                   &
        &   nxyzdm,  nxydim,   nzdim,  ntdim,           &
-       &     nxyg,      nz
+       &     nxyg,      nz, mpi_comm_ogcm
   use zocfil, only :                                   &
        &      ncf
 
@@ -612,10 +612,10 @@ contains
 
           call mpi_gather( &
             &    vwteqt, 1, mpi_real8, vwteqg(1), 1, mpi_real8, &
-            &    iroot, mpi_comm_world, ierr)
+            &    iroot, mpi_comm_ogcm, ierr)
           call mpi_gather( &
             &    vareat, 1, mpi_real8, vareag(1), 1, mpi_real8, &
-            &    iroot, mpi_comm_world, ierr)
+            &    iroot, mpi_comm_ogcm, ierr)
           if (myrank .eq. iroot) then
              do i = 1, inodes*jnodes
                 fsnml = fsnml + vwteqg(i)
@@ -624,10 +624,10 @@ contains
           end if
           call mpi_bcast( &
             &    fsnml, 1, mpi_real8, &
-            &    iroot, mpi_comm_world, ierr)
+            &    iroot, mpi_comm_ogcm, ierr)
           call mpi_bcast( &
             &    tarea, 1, mpi_real8, &
-            &    iroot, mpi_comm_world, ierr)
+            &    iroot, mpi_comm_ogcm, ierr)
           fsnml = fsnml / tarea
           if (osrsti) then
              do ij = ijtstr, ijtend
@@ -863,20 +863,20 @@ contains
     end if
 
     n = 1
-    call mpi_bcast(ntni  ,n,mpi_integer,iroot,mpi_comm_world,ierr)
+    call mpi_bcast(ntni  ,n,mpi_integer,iroot,mpi_comm_ogcm,ierr)
     if ( ntni > 0 ) then
        n = ntni
-       call mpi_bcast(ltnig ,n,mpi_integer,iroot,mpi_comm_world,ierr)
-       call mpi_bcast(ltnigd,n,mpi_integer,iroot,mpi_comm_world,ierr)
-       call mpi_bcast(ltnigg,n,mpi_integer,iroot,mpi_comm_world,ierr)
+       call mpi_bcast(ltnig ,n,mpi_integer,iroot,mpi_comm_ogcm,ierr)
+       call mpi_bcast(ltnigd,n,mpi_integer,iroot,mpi_comm_ogcm,ierr)
+       call mpi_bcast(ltnigg,n,mpi_integer,iroot,mpi_comm_ogcm,ierr)
     end if
     n = 1
-    call mpi_bcast(ntn   ,n,mpi_integer,iroot,mpi_comm_world,ierr)
+    call mpi_bcast(ntn   ,n,mpi_integer,iroot,mpi_comm_ogcm,ierr)
     if ( ntn > 0 ) then
        n = ntn
-       call mpi_bcast(ltng  ,n,mpi_integer,iroot,mpi_comm_world,ierr)
-       call mpi_bcast(ltngd ,n,mpi_integer,iroot,mpi_comm_world,ierr)
-       call mpi_bcast(ltngg ,n,mpi_integer,iroot,mpi_comm_world,ierr)
+       call mpi_bcast(ltng  ,n,mpi_integer,iroot,mpi_comm_ogcm,ierr)
+       call mpi_bcast(ltngd ,n,mpi_integer,iroot,mpi_comm_ogcm,ierr)
+       call mpi_bcast(ltngg ,n,mpi_integer,iroot,mpi_comm_ogcm,ierr)
     end if
 
     do n = 1, ntn
@@ -1084,12 +1084,12 @@ contains
              call mpi_isend(                                          &
     &                        sndbfi(1, ntnist(iranks)),               &
     &                        ntdim*nbuf, mpi_double_precision,        &
-    &                         iranks,      1, mpi_comm_world,         &
+    &                         iranks,      1, mpi_comm_ogcm,         &
     &                         isreq(iranks),   ierr)
              call mpi_irecv(                                          &
     &                        rcvbfi(1, ntnist(iranks)),               &
     &                        ntdim*nbuf, mpi_double_precision,        &
-    &                         iranks,      1, mpi_comm_world,         &
+    &                         iranks,      1, mpi_comm_ogcm,         &
     &                         irreq(iranks),   ierr)
           end if
        end if
@@ -1143,12 +1143,12 @@ contains
                 call mpi_isend(                                       &
     &                       sndbfi(1, ntnist(iranks)),                &
     &                       ntdim*nbuf, mpi_double_precision,         &
-    &                        iranks,      1, mpi_comm_world,          &
+    &                        iranks,      1, mpi_comm_ogcm,          &
     &                        isreq(iranks),   ierr)
                 call mpi_irecv(                                       &
     &                       rcvbfi(1, ntnist(iranks)),                &
     &                       ntdim*nbuf, mpi_double_precision,         &
-    &                        iranks,      1, mpi_comm_world,          &
+    &                        iranks,      1, mpi_comm_ogcm,          &
     &                        irreq(iranks),   ierr)
              end if
           end if
@@ -1210,12 +1210,12 @@ contains
              call mpi_isend(                                          &
     &                        sndbuf(1, ntnsst(iranks)),               &
     &                        ntdim1*nbuf, mpi_double_precision,       &
-    &                         iranks,      1, mpi_comm_world,         &
+    &                         iranks,      1, mpi_comm_ogcm,         &
     &                         isreq(iranks),   ierr)
              call mpi_irecv(                                          &
     &                        rcvbuf(1, ntnsst(iranks)),               &
     &                        ntdim1*nbuf, mpi_double_precision,       &
-    &                         iranks,      1, mpi_comm_world,         &
+    &                         iranks,      1, mpi_comm_ogcm,         &
     &                         irreq(iranks),   ierr)
           end if
        end if
