@@ -33,7 +33,7 @@ contains
           istr,   jstr
     use zocgrd,  only  :     tt
     use zocfil,  only  :    ncf
-    use zocnod,  only  :  iroot,  myrank
+    use zocnod,  only  :  iroot,  myrank, mpi_comm_ogcm
     use ufile
     use bgs2d
     use ucaln
@@ -121,7 +121,7 @@ contains
        cfitem = cfssfc
     else if (iitem > nitem ) then
        write(jfpar, *) '*** TMINTP: NO SUCH ITEM ***'
-       call mpi_abort(mpi_comm_world, 1, ierr)
+       call mpi_abort(mpi_comm_ogcm, 1, ierr)
     else if ( mod(iitem, 2) == 1 ) then
        i = (iitem - 9) / 2
        cfitem = cftref(i)
@@ -152,7 +152,7 @@ contains
           read(nfitem(iitem)) ((datag(i, j), i = 1, nxg), j = 1, nyg)
        end if
        call mpi_bcast(chead, 1024, mpi_character,                     &
-    &                 iroot, mpi_comm_world, ierr)
+    &                 iroot, mpi_comm_ogcm, ierr)
        call scatter_sfc(data1(1, 1, iitem), datag)
        cdate = chead(50)
        read(cdate, '(i6.6,5i2.2)') (idate1(i, iitem), i = 1, 6)
@@ -177,10 +177,10 @@ contains
 298       continue
        end if
        call mpi_bcast                                                 &
-    &        (oeof, 1, mpi_logical, iroot, mpi_comm_world, ierr)
+    &        (oeof, 1, mpi_logical, iroot, mpi_comm_ogcm, ierr)
        if (oeof) go to 98
        call mpi_bcast(chead, 1024, mpi_character,                     &
-    &                 iroot, mpi_comm_world, ierr)
+    &                 iroot, mpi_comm_ogcm, ierr)
        call scatter_sfc(data2(1, 1, iitem), datag)
        cdate = chead(50)
        read(cdate, '(i6.6,5i2.2)') (idate2(i, iitem), i = 1, 6)
@@ -203,10 +203,10 @@ contains
 297       continue
        end if
        call mpi_bcast                                                 &
-    &        (oeof, 1, mpi_logical, iroot, mpi_comm_world, ierr)
+    &        (oeof, 1, mpi_logical, iroot, mpi_comm_ogcm, ierr)
        if (oeof) go to 97
        call mpi_bcast(chead, 1024, mpi_character,                     &
-    &                 iroot, mpi_comm_world, ierr)
+    &                 iroot, mpi_comm_ogcm, ierr)
        call scatter_sfc(data2(1, 1, iitem), datag)
        cdate = chead(50)
        read(cdate, '(i6.6,5i2.2)') (idate2(i, iitem), i = 1, 6)
@@ -227,7 +227,7 @@ contains
           read(nfitem(iitem)) ((datag(i, j), i = 1, nxg), j = 1, nyg)
        end if
        call mpi_bcast(chead, 1024, mpi_character,                     &
-    &                 iroot, mpi_comm_world, ierr)
+    &                 iroot, mpi_comm_ogcm, ierr)
        call scatter_sfc(data2(1, 1, iitem), datag)
        cdate = chead(50)
        read(cdate, '(i6.6,5i2.2)') (idate2(i, iitem), i = 1, 6)
@@ -248,7 +248,7 @@ contains
 
 96     write(jfpar, *) '*** TMINTP: UNEXPECTED ERROR ***'
        write(jfpar, *) '-> Please inform the developer of the situation.'
-       call mpi_abort(mpi_comm_world, 1, ierr)
+       call mpi_abort(mpi_comm_ogcm, 1, ierr)
 98     osngld(iitem) = .true.
 99     continue
        ofirst(iitem) = .false.
@@ -274,10 +274,10 @@ contains
 797          continue
           end if
           call mpi_bcast                                              &
-    &           (oeof, 1, mpi_logical, iroot, mpi_comm_world, ierr)
+    &           (oeof, 1, mpi_logical, iroot, mpi_comm_ogcm, ierr)
           if (oeof) go to 997
           call mpi_bcast(chead, 1024, mpi_character,                  &
-    &                    iroot, mpi_comm_world, ierr)
+    &                    iroot, mpi_comm_ogcm, ierr)
           call scatter_sfc( data2(1, 1, iitem), datag )
           cdate = chead(50)
           read(cdate, '(i6.6,5i2.2)') (idate2(i, iitem), i = 1, 6)
@@ -298,10 +298,10 @@ contains
 597          continue
           end if
           call mpi_bcast                                              &
-    &           (oeof, 1, mpi_logical, iroot, mpi_comm_world, ierr)
+    &           (oeof, 1, mpi_logical, iroot, mpi_comm_ogcm, ierr)
           if ( oeof ) go to 997
           call mpi_bcast(chead, 1024, mpi_character,                  &
-    &                    iroot, mpi_comm_world, ierr)
+    &                    iroot, mpi_comm_ogcm, ierr)
           call scatter_sfc(data2(1, 1, iitem), datag)
           cdate = chead(50)
           read(cdate, '(i6.6,5i2.2)') (idate2(i, iitem), i = 1, 6)
@@ -359,7 +359,7 @@ contains
           istr,   jstr,  kstr
     use zocgrd,  only  :     tt
     use zocfil,  only  :    ncf
-    use zocnod,  only  :  iroot,  myrank
+    use zocnod,  only  :  iroot,  myrank, mpi_comm_ogcm
     use ufile
     use bgs3d
     use ucaln
@@ -422,7 +422,7 @@ contains
        cfitem = cftdmb(2)
     else
        write(jfpar, *) '*** TMINTB: NO SUCH ITEM ***'
-       call mpi_abort(mpi_comm_world, 1, ierr)
+       call mpi_abort(mpi_comm_ogcm, 1, ierr)
     end if
 
     if ( ofirst(iitem) ) then
@@ -448,7 +448,7 @@ contains
     &                                            k = 1, nz)
        end if
        call mpi_bcast(chead, 1024, mpi_character,                     &
-    &                  iroot, mpi_comm_world, ierr)
+    &                  iroot, mpi_comm_ogcm, ierr)
        call scatter_bdy(data1(1, 1, 1, iitem), datag)
        cdate = chead(50)
        read(cdate, '(i6.6,5i2.2)') (idate1(i, iitem), i = 1, 6)
@@ -474,10 +474,10 @@ contains
 298       continue
        end if
        call mpi_bcast                                                 &
-    &        (oeof, 1, mpi_logical, iroot, mpi_comm_world, ierr)
+    &        (oeof, 1, mpi_logical, iroot, mpi_comm_ogcm, ierr)
        if (oeof) go to 98
        call mpi_bcast(chead, 1024, mpi_character,                     &
-    &                 iroot, mpi_comm_world, ierr)
+    &                 iroot, mpi_comm_ogcm, ierr)
        call scatter_bdy(data2(1, 1, 1, iitem), datag)
        cdate = chead(50)
        read(cdate, '(i6.6,5i2.2)') (idate2(i, iitem), i = 1, 6)
@@ -502,10 +502,10 @@ contains
 297       continue
        end if
        call mpi_bcast                                                 &
-    &        (oeof, 1, mpi_logical, iroot, mpi_comm_world, ierr)
+    &        (oeof, 1, mpi_logical, iroot, mpi_comm_ogcm, ierr)
        if ( oeof ) go to 97
        call mpi_bcast(chead, 1024, mpi_character,                     &
-    &                 iroot, mpi_comm_world, ierr)
+    &                 iroot, mpi_comm_ogcm, ierr)
        call scatter_bdy(data2(1, 1, 1, iitem), datag)
        cdate = chead(50)
        read(cdate, '(i6.6,5i2.2)') (idate2(i, iitem), i = 1, 6)
@@ -528,7 +528,7 @@ contains
     &                                            k = 1, nz)
        end if
        call mpi_bcast(chead, 1024, mpi_character,                     &
-    &                 iroot, mpi_comm_world, ierr)
+    &                 iroot, mpi_comm_ogcm, ierr)
        call scatter_bdy(data2(1, 1, 1, iitem), datag)
        cdate = chead(50)
        read(cdate, '(i6.6,5i2.2)') (idate2(i, iitem), i = 1, 6)
@@ -548,7 +548,7 @@ contains
     &      .and. (tt <= time2(iitem))) go to 99
 96     write(jfpar, *) '*** TMINTP: UNEXPECTED ERROR ***'
        write(jfpar, *) '-> Please inform the developer of the situation.'
-       call mpi_abort(mpi_comm_world, 1, ierr)
+       call mpi_abort(mpi_comm_ogcm, 1, ierr)
 98     osngld(iitem) = .true.
 99     continue
        ofirst(iitem) = .false.
@@ -579,10 +579,10 @@ contains
 797          continue
           end if
           call mpi_bcast                                              &
-    &           (oeof, 1, mpi_logical, iroot, mpi_comm_world, ierr)
+    &           (oeof, 1, mpi_logical, iroot, mpi_comm_ogcm, ierr)
           if (oeof) go to 997
           call mpi_bcast(chead, 1024, mpi_character,                  &
-   &                     iroot, mpi_comm_world, ierr)
+   &                     iroot, mpi_comm_ogcm, ierr)
           call scatter_bdy(data2(1, 1, 1, iitem), datag)
           cdate = chead(50)
           read(cdate, '(i6.6,5i2.2)') (idate2(i, iitem), i = 1, 6)
@@ -605,10 +605,10 @@ contains
 597          continue
           end if
           call mpi_bcast                                              &
-    &           (oeof, 1, mpi_logical, iroot, mpi_comm_world, ierr)
+    &           (oeof, 1, mpi_logical, iroot, mpi_comm_ogcm, ierr)
           if (oeof) go to 997
           call mpi_bcast(chead, 1024, mpi_character,                  &
-    &                    iroot, mpi_comm_world, ierr)
+    &                    iroot, mpi_comm_ogcm, ierr)
           call scatter_bdy(data2(1, 1, 1, iitem), datag)
           cdate = chead(50)
           read(cdate, '(i6.6,5i2.2)') (idate2(i, iitem), i = 1, 6)
