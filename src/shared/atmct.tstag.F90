@@ -34,7 +34,7 @@ module atmct
 contains
   subroutine tmstup(                                                           &
    &             tstrt,   tend,    dtt)
-  use zocnod, only : ierr
+  use zocnod, only : ierr, mpi_comm_ogcm
   use ufile
   use ucaln
 
@@ -185,7 +185,7 @@ contains
   else
      write(jfpar, *) '*** tmstup: no such unit of time ***'
 
-     call mpi_abort(mpi_comm_world, 1, ierr)
+     call mpi_abort(mpi_comm_ogcm, 1, ierr)
   end if
 
   do iitem = 1, nohitm
@@ -200,7 +200,7 @@ contains
    &             tonext(iitem))
      else if (iflout(iitem) == 1) then
         write(jfpar, *) '*** tmstup: no such unit of time ***'
-        call mpi_abort(mpi_comm_world, 1, ierr)
+        call mpi_abort(mpi_comm_ogcm, 1, ierr)
      end if
   end do
 
@@ -214,7 +214,7 @@ contains
    &             trnext)
   else
      write(jfpar, *) '*** tmstup: no such unit of time ***'
-     call mpi_abort(mpi_comm_world, 1, ierr)
+     call mpi_abort(mpi_comm_ogcm, 1, ierr)
   end if
 
   write(jfpar, *) '***** time control parameters *****'
@@ -244,7 +244,7 @@ contains
 
   if( mod(ntsplt,2) /= 0) then
      write(jfpar, *) "error: ntsplt mut be even number !"
-     call mpi_abort(mpi_comm_world, 1, ierr)
+     call mpi_abort(mpi_comm_ogcm, 1, ierr)
   end if
 
   return
