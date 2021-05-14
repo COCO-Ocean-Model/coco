@@ -323,7 +323,7 @@ contains
 #endif
          &   amskt,  nbot
     use zocnod,  only :                                &
-         &   iroot,  ierr,  myrank
+         &   iroot,  ierr,  myrank, mpi_comm_ogcm
     use zocphy,  only :                                &
          &     cpo,    rhoo
     use utrdg
@@ -576,10 +576,10 @@ contains
 
           call mpi_gather( &
             &    vwteqt, 1, mpi_real8, vwteqg(1), 1, mpi_real8, &
-            &    iroot, mpi_comm_world, ierr)
+            &    iroot, mpi_comm_ogcm, ierr)
           call mpi_gather( &
             &    vareat, 1, mpi_real8, vareag(1), 1, mpi_real8, &
-            &    iroot, mpi_comm_world, ierr)
+            &    iroot, mpi_comm_ogcm, ierr)
           if (myrank .eq. iroot) then
              do i = 1, inodes*jnodes
                 fsnml = fsnml + vwteqg(i)
@@ -588,10 +588,10 @@ contains
           end if
           call mpi_bcast( &
             &    fsnml, 1, mpi_real8, &
-            &    iroot, mpi_comm_world, ierr)
+            &    iroot, mpi_comm_ogcm, ierr)
           call mpi_bcast( &
             &    tarea, 1, mpi_real8, &
-            &    iroot, mpi_comm_world, ierr)
+            &    iroot, mpi_comm_ogcm, ierr)
           fsnml = fsnml / tarea
           if (osrsti) then
              do ij = ijtstr, ijtend
