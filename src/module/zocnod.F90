@@ -4,6 +4,7 @@ module zocnod
   public
   save
 
+  integer :: mpi_comm_ogcm
   integer :: nprocs, myrank
   integer :: ijnode,  iroot
   integer ::   ierr
