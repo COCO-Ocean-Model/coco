@@ -25,7 +25,7 @@ contains
 #ifdef OPT_TRIPOLE
   & jupe, jupw,                                                                &
 #endif
-  & iroot, ierr,  jup, jdown, myrank
+  & iroot, ierr,  jup, jdown, myrank, mpi_comm_ogcm
 
 
 #ifdef OPT_BBL
@@ -113,7 +113,7 @@ contains
   disp=0
   call mpi_read_root(dim1,1,mpi_fh, disp)
   dx=dim1(1)
-  call mpi_bcast(dx, 1, mpi_real8, iroot, mpi_comm_world, ierr)
+  call mpi_bcast(dx, 1, mpi_real8, iroot, mpi_comm_ogcm, ierr)
 
   call mpi_read_2d_dimx(dy , mpi_fh, disp)
   call mpi_read_2d_dimx(dym, mpi_fh, disp)
@@ -122,24 +122,24 @@ contains
   call mpi_read_3d_dimx(dzv, mpi_fh, disp)
 
   call mpi_read_root(dz0, nzdim, mpi_fh, disp)
-  call mpi_bcast(dz0, nzdim, mpi_real8, iroot, mpi_comm_world, ierr)
+  call mpi_bcast(dz0, nzdim, mpi_real8, iroot, mpi_comm_ogcm, ierr)
 
   call mpi_read_root(ds, nzdim, mpi_fh, disp)
-  call mpi_bcast(ds, nzdim, mpi_real8, iroot, mpi_comm_world, ierr)
+  call mpi_bcast(ds, nzdim, mpi_real8, iroot, mpi_comm_ogcm, ierr)
 
   call mpi_read_root(dsm, nzdim, mpi_fh, disp)
-  call mpi_bcast(dsm, nzdim, mpi_real8, iroot, mpi_comm_world, ierr)
+  call mpi_bcast(dsm, nzdim, mpi_real8, iroot, mpi_comm_ogcm, ierr)
 
   call mpi_read_root(hic, nic+1, mpi_fh, disp)
-  call mpi_bcast(hic, nic+1, mpi_real8, iroot, mpi_comm_world, ierr)
+  call mpi_bcast(hic, nic+1, mpi_real8, iroot, mpi_comm_ogcm, ierr)
 
   call mpi_read_root(dim1, 1, mpi_fh, disp)
   rea=dim1(1)
-  call mpi_bcast(rea, 1, mpi_real8, iroot, mpi_comm_world, ierr)
+  call mpi_bcast(rea, 1, mpi_real8, iroot, mpi_comm_ogcm, ierr)
 
   call mpi_read_root(dim1, 1, mpi_fh, disp)
   zbot=dim1(1)
-  call mpi_bcast(zbot, 1, mpi_real8, iroot, mpi_comm_world, ierr)
+  call mpi_bcast(zbot, 1, mpi_real8, iroot, mpi_comm_ogcm, ierr)
 
   call mpi_read_2d_dimx(  cor, mpi_fh, disp)
   call mpi_read_2d_dimx( dept, mpi_fh, disp)
