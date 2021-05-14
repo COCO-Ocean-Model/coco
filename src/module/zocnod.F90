@@ -5,7 +5,7 @@ module zocnod
   save
 
   integer :: mpi_comm_ogcm
-  integer :: nprocs, myrank
+  integer :: nprocs, myrank, igrank
   integer :: ijnode,  iroot
   integer ::   ierr
   integer ::  irank,    iup,  idown
