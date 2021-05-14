@@ -17,7 +17,7 @@ module qckot
 !     '21.03.05  Y.Komuro: Sigma coordinate output
 !
 ! ---------------------------------------------------------------------
-  use zocdim, only : nxydim, nzdim
+  use zocdim, only : nxydim, nzdim, mpi_comm_ogcm
   use zocfil, only : nfomax, ncf
   use zocout
 
@@ -830,7 +830,7 @@ contains
        inquire(file=trim(cfsgco), exist=oexist)
     end if
     call mpi_bcast( oexist, 1, mpi_logical, &
-      &             iroot, mpi_comm_world, ierr )
+      &             iroot, mpi_comm_ogcm, ierr )
     if (oexist) then
        call mpi_filopn(mpi_fh_t, cfsgco, 'READ')
        disp_t = 0
@@ -842,17 +842,17 @@ contains
          &  ' output sigma0 only. ***'
     end if
     call mpi_bcast( nnc, 1, mpi_integer, &
-      &             iroot, mpi_comm_world, ierr )
+      &             iroot, mpi_comm_ogcm, ierr )
     if (nnc > 0) then
        call mpi_read_root_char(cname(1:nnc), 16, nnc, mpi_fh_t, disp_t)
        call mpi_read_root(zref(1:nnc), nnc, mpi_fh_t, disp_t)
        call mpi_read_root_int(nsig(1:nnc), nnc, mpi_fh_t, disp_t)
        call mpi_bcast( cname, 16*nncmax, mpi_character, &
-         &             iroot, mpi_comm_world, ierr )
+         &             iroot, mpi_comm_ogcm, ierr )
        call mpi_bcast( zref, nncmax+1, mpi_real8, &
-         &             iroot, mpi_comm_world, ierr )
+         &             iroot, mpi_comm_ogcm, ierr )
        call mpi_bcast( nsig, nncmax+1, mpi_integer, &
-         &             iroot, mpi_comm_world, ierr )
+         &             iroot, mpi_comm_ogcm, ierr )
        nsigmx=maxval(nsig)
        allocate(lsig(nsigmx,nnc),lsigp(1:nsigmx+1,nnc),dsig(nsigmx,nnc))
        call mpi_read_root(lsig, nsigmx*nnc, mpi_fh_t, disp_t)
@@ -860,11 +860,11 @@ contains
        call mpi_read_root(dsig, nsigmx*nnc, mpi_fh_t, disp_t)
        call mpi_filcls(mpi_fh_t)
        call mpi_bcast( lsig, nsigmx*nnc, mpi_real8, &
-         &             iroot, mpi_comm_world, ierr )
+         &             iroot, mpi_comm_ogcm, ierr )
        call mpi_bcast( lsigp, (nsigmx+1)*nnc, mpi_real8, &
-         &             iroot, mpi_comm_world, ierr )
+         &             iroot, mpi_comm_ogcm, ierr )
        call mpi_bcast( dsig, nsigmx*nnc, mpi_real8, &
-         &             iroot, mpi_comm_world, ierr )
+         &             iroot, mpi_comm_ogcm, ierr )
        nlist = nsigmx + int(real(nzdim)*1.25)
        allocate(korg(nxydim,nlist,nnc,nchmax),  &
          &      ksdst(nxydim,nlist,nnc,nchmax), &
