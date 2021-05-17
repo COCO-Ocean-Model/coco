@@ -18,10 +18,15 @@ module bshft
 !           nx,      ny,      nz,                                      &
 !        icomm,   jcomm
   use zocdim
-
+  use ufile, only : rewnml 
   implicit none
+  integer, parameter :: max_num_packed = 32
+  
   logical, save :: pack_mode = .false.
-
+  integer, save :: koffset(max_num_packed +1)
+  integer, save :: num_packed = 0
+  logical, save :: is_tri_edge
+  
   private
 
   real(8)        ::   sdbfx1(1:icomm, 1:ny,    1:nztdim+nzdim)
@@ -47,10 +52,28 @@ module bshft
 
   integer(4)     ::        i,      j,      k,      n
   integer(4)     ::   nbfdim, nbfdm0,   istv
-
-  public  ::  shift1,  shift2,  shift3
+  integer(4)     :: ifpar, jfpar, ierr
+  
+  public  ::  shift1,  shift2,  shift3, shift_pack_begin
 
 contains
+
+  subroutine shift_pack_begin
+    implicit none
+#include "mpif.h"
+    if (pack_mode) then
+       call rewnml(ifpar, jfpar)
+       write(jfpar,*)' ### shift_pack_begin: Illegal call'
+       call mpi_abort(mpi_comm_ogcm, 1, ierr)
+    end if
+    pack_mode = .true.
+    num_packed = 0
+    koffset(1) = 0
+    is_tri_edge = jrank .eq. jnodes -1
+
+  end subroutine shift_pack_begin
+
+
 
   subroutine shift1(                                                  &
     &                 q1,                                             &
