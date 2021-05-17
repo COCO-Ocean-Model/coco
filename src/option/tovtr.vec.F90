@@ -99,8 +99,8 @@ subroutine ovtset( &
   end do
   do k = kstr, kend
      do ij = ijtstr, ijtend
-        tl = t(ij, k, 1)
-        sl = t(ij, k, 2)
+        tl = t(ij, k, 1) * amskt(ij, k)
+        sl = t(ij, k, 2) * amskt(ij, k)
         p1 = c0(k) &
            & + (c1(k) + (c2(k) + c3(k) * tl) * tl) * tl &
            & + (c4(k) + c5(k) * tl + c6(k) * sl) * sl
@@ -263,10 +263,10 @@ subroutine ovturn( &
 
   do k = kstr+1, kend
      do ij = ijtstr, ijtend
-        tu = t(ij, k-1, 1)
-        su = t(ij, k-1, 2)
-        tl = t(ij, k, 1)
-        sl = t(ij, k, 2)
+        tu = t(ij, k-1, 1) * amskt(ij, k-1)
+        su = t(ij, k-1, 2) * amskt(ij, k-1)
+        tl = t(ij, k, 1) * amskt(ij, k)
+        sl = t(ij, k, 2)* amskt(ij, k)
         p1 = c0(k) &
            & + (c1(k) + (c2(k) + c3(k) * tu) * tu) * tu &
            & + (c4(k) + c5(k) * tu + c6(k) * su) * su
@@ -413,8 +413,8 @@ subroutine ddenst( &
 
   do k = kstr, kend
      do ij = ijtstr, ijtend
-        tl = t(ij, k, 1)
-        sl = t(ij, k, 2)
+        tl = t(ij, k, 1) * amskt(ij, k)
+        sl = t(ij, k, 2) * amskt(ij, k)
         p1 = c0(k) &
            & + (c1(k) + (c2(k) + c3(k) * tl) * tl) * tl &
            & + (c4(k) + c5(k) * tl + c6(k) * sl) * sl
