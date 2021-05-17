@@ -20,6 +20,7 @@ module bshft
   use zocdim
 
   implicit none
+  logical, save :: pack_mode = .false.
 
   private
 
@@ -52,6 +53,96 @@ module bshft
 contains
 
   subroutine shift1(                                                  &
+    &                 q1,                                             &
+#ifndef OPT_TRIPOLE    
+    &               idim,   jdim,   kdim )
+#else
+    &               idim,   jdim,   kdim,                             & 
+    &               fact,   ioff,   joff )
+#endif
+    implicit none
+    real(8),                  intent(inout)  ::    q1(1:idim,1:jdim,1:kdim)
+    integer(4),               intent(in)     ::  idim,  jdim,  kdim
+#ifdef OPT_TRIPOLE    
+    real(8),                  intent(in)     ::  fact
+    integer(4),               intent(in)     ::  ioff,  joff
+#endif
+    
+    if (.not. pack_mode) then
+       call instant_shift1(                                           &
+    &                 q1,                                             &
+#ifndef OPT_TRIPOLE    
+    &               idim,   jdim,   kdim )
+#else
+    &               idim,   jdim,   kdim,                             & 
+    &               fact,   ioff,   joff )
+#endif
+
+    end if
+  end subroutine shift1
+
+  subroutine shift2(                                                  &
+    &                 q1,     q2,                                     &
+#ifndef OPT_TRIPOLE
+    &               idim,   jdim,   kdim )
+#else
+    &               idim,   jdim,   kdim,                             &
+    &               fact,   ioff,   joff )
+#endif
+    implicit none
+    real(8),                  intent(inout)  ::    q1(1:idim,1:jdim,1:kdim)
+    real(8),                  intent(inout)  ::    q2(1:idim,1:jdim,1:kdim)
+    integer(4),               intent(in)     ::  idim,  jdim,  kdim
+#ifdef OPT_TRIPOLE
+    real(8),                  intent(in)     ::  fact
+    integer(4),               intent(in)     ::  ioff,  joff
+#endif
+
+    if (.not. pack_mode) then
+       call instant_shift2(                                           &
+    &                 q1,     q2,                                     &
+#ifndef OPT_TRIPOLE
+    &               idim,   jdim,   kdim )
+#else
+    &               idim,   jdim,   kdim,                             &
+    &               fact,   ioff,   joff )
+#endif
+    end if
+  end subroutine shift2
+
+  subroutine shift3(                      &
+    &                 q1,     q2,     q3, &
+#ifndef OPT_TRIPOLE
+    &               idim,   jdim,   kdim )
+#else
+    &               idim,   jdim,   kdim, &
+    &               fact,   ioff,   joff )
+#endif
+    implicit none     
+    real(8),                  intent(inout)  ::    q1(1:idim,1:jdim,1:kdim)
+    real(8),                  intent(inout)  ::    q2(1:idim,1:jdim,1:kdim)
+    real(8),                  intent(inout)  ::    q3(1:idim,1:jdim,1:kdim)
+    integer(4),               intent(in)     ::  idim,  jdim,  kdim
+#ifdef OPT_TRIPOLE
+    real(8),                  intent(in)     ::  fact
+    integer(4),               intent(in)     ::  ioff,  joff
+#endif
+    if (.not. pack_mode) then
+       call instant_shift3(               &
+    &                 q1,     q2,     q3, &
+#ifndef OPT_TRIPOLE
+    &               idim,   jdim,   kdim )
+#else
+    &               idim,   jdim,   kdim, &
+    &               fact,   ioff,   joff )
+#endif
+    end if
+  end subroutine shift3
+
+
+!========================================================================================
+    
+  subroutine instant_shift1(                                          &
     &                 q1,                                             &
 #ifndef OPT_TRIPOLE    
     &               idim,   jdim,   kdim )
@@ -296,11 +387,11 @@ contains
 
 #endif
 
-  end subroutine shift1
+  end subroutine instant_shift1
 
 ! =====================================================================
 
-  subroutine shift2(                                                  &
+  subroutine instant_shift2(                                          &
     &                 q1,     q2,                                     &
 #ifndef OPT_TRIPOLE
     &               idim,   jdim,   kdim )
@@ -565,11 +656,11 @@ contains
 
 #endif
  
-  end subroutine shift2
+  end subroutine instant_shift2
 
 ! =====================================================================
 
-  subroutine shift3( &
+  subroutine instant_shift3(              &
     &                 q1,     q2,     q3, &
 #ifndef OPT_TRIPOLE
     &               idim,   jdim,   kdim )
@@ -854,7 +945,7 @@ contains
 
 #endif
 
-  end subroutine shift3
+  end subroutine instant_shift3
 
 ! *********************************************************************
 
