@@ -25,7 +25,7 @@ contains
 #ifdef OPT_TRIPOLE
   & jupe, jupw,                                                                &
 #endif
-  & iroot, ierr,  jup, jdown, myrank
+  & iroot, ierr,  jup, jdown, myrank, mpi_comm_ogcm
 
 
 #ifdef OPT_BBL
@@ -129,7 +129,7 @@ contains
   if (myrank .eq. iroot) then
      read(nfmask) dx
   end if
-  call mpi_bcast(dx, 1, mpi_real8, iroot, mpi_comm_world, ierr)
+  call mpi_bcast(dx, 1, mpi_real8, iroot, mpi_comm_ogcm, ierr)
 
   if (myrank .eq. iroot) then
      read(nfmask) g2d
@@ -159,32 +159,32 @@ contains
   if (myrank .eq. iroot) then
      read(nfmask) dz0
   end if
-  call mpi_bcast(dz0, nzdim, mpi_real8, iroot, mpi_comm_world, ierr)
+  call mpi_bcast(dz0, nzdim, mpi_real8, iroot, mpi_comm_ogcm, ierr)
 
   if (myrank .eq. iroot) then
      read(nfmask) ds
   end if
-  call mpi_bcast(ds, nzdim, mpi_real8, iroot, mpi_comm_world, ierr)
+  call mpi_bcast(ds, nzdim, mpi_real8, iroot, mpi_comm_ogcm, ierr)
 
   if (myrank .eq. iroot) then
      read(nfmask) dsm
   end if
-  call mpi_bcast(dsm, nzdim, mpi_real8, iroot, mpi_comm_world, ierr)
+  call mpi_bcast(dsm, nzdim, mpi_real8, iroot, mpi_comm_ogcm, ierr)
 
   if (myrank .eq. iroot) then
      read(nfmask) hic
   end if
-  call mpi_bcast(hic, nic+1, mpi_real8, iroot, mpi_comm_world, ierr)
+  call mpi_bcast(hic, nic+1, mpi_real8, iroot, mpi_comm_ogcm, ierr)
 
   if (myrank .eq. iroot) then
      read(nfmask) rea
   end if
-  call mpi_bcast(rea, 1, mpi_real8, iroot, mpi_comm_world, ierr)
+  call mpi_bcast(rea, 1, mpi_real8, iroot, mpi_comm_ogcm, ierr)
 
   if (myrank .eq. iroot) then
      read(nfmask) zbot
   end if
-  call mpi_bcast(zbot, 1, mpi_real8, iroot, mpi_comm_world, ierr)
+  call mpi_bcast(zbot, 1, mpi_real8, iroot, mpi_comm_ogcm, ierr)
 
   if (myrank .eq. iroot) then
      read(nfmask) g2d

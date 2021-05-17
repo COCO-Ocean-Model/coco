@@ -22,7 +22,7 @@ module aocea
     &   istr,   iend,   jstr,   jend,   kstr, &
     & ijtstr, ijtend, &
     & myrank, inodes, jnodes, ijnode,  iroot,   ierr, &
-    &  oinit, ofinal
+    &  oinit, ofinal, mpi_comm_ogcm
   use zocgrd, only: &
     &     dx,     dy,    hxt,    hyt, &
     &     dt, &
@@ -724,7 +724,7 @@ subroutine nmlper( &
 !        write(jfpar, *) vwteqt
         call mpi_gather( &
           &  vwteqt, 1, mpi_real8, vwteqg(1), 1, mpi_real8, &
-          &  iroot, mpi_comm_world, ierr)
+          &  iroot, mpi_comm_ogcm, ierr)
         if (myrank == iroot) then
            do i = 1, inodes*jnodes
               tarea = tarea + vwteqg(i)
@@ -732,10 +732,10 @@ subroutine nmlper( &
         end if
         call mpi_bcast( &
           &  tarea, 1, mpi_real8, &
-          &  iroot, mpi_comm_world, ierr)
+          &  iroot, mpi_comm_ogcm, ierr)
 !        call mpi_allreduce( &
 !          &   vwteqt, tarea, 1, mpi_real8, &
-!          &   mpi_sum, mpi_comm_world, ierr)
+!          &   mpi_sum, mpi_comm_ogcm, ierr)
 !        write(jfpar, *) tarea
         rtardt = 1.0d0 / tarea
      endif
@@ -760,7 +760,7 @@ subroutine nmlper( &
 !  write(jfpar, *) vwteqt
   call mpi_gather( &
     &  vwteqt, 1, mpi_real8, vwteqg(1), 1, mpi_real8, &
-    &  iroot, mpi_comm_world, ierr)
+    &  iroot, mpi_comm_ogcm, ierr)
   if (myrank == iroot) then
      do i = 1, inodes*jnodes
         fwnml = fwnml + vwteqg(i)
@@ -768,10 +768,10 @@ subroutine nmlper( &
   end if
   call mpi_bcast( &
     &  fwnml, 1, mpi_real8, &
-    &  iroot, mpi_comm_world, ierr)
+    &  iroot, mpi_comm_ogcm, ierr)
 !  call mpi_allreduce( &
 !    &  vwteqt, fwnml, 1, mpi_real8, &
-!    &  mpi_sum, mpi_comm_world, ierr)
+!    &  mpi_sum, mpi_comm_ogcm, ierr)
 !  write(jfpar, *) fwnml
   fwnml = fwnml * rtardt
 

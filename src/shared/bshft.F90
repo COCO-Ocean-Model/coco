@@ -880,19 +880,19 @@ contains
 
     call mpi_isend(                                                  &
     &              sdbfx1l, nbfdim, mpi_real8,                       &
-    &                idown,      1, mpi_comm_world,                  &
+    &                idown,      1, mpi_comm_ogcm,                  &
     &               isrqx1,   ierr)
     call mpi_isend(                                                  &
     &              sdbfx2l, nbfdim, mpi_real8,                       &
-    &                  iup,      2, mpi_comm_world,                  &
+    &                  iup,      2, mpi_comm_ogcm,                  &
     &               isrqx2,   ierr) 
     call mpi_irecv(                                                  &
     &              rvbfx2l, nbfdim, mpi_real8,                       &
-    &                  iup,      1, mpi_comm_world,                  &
+    &                  iup,      1, mpi_comm_ogcm,                  &
     &               irrqx1,   ierr)
     call mpi_irecv(                                                  &
     &              rvbfx1l, nbfdim, mpi_real8,                       &
-    &                idown,      2, mpi_comm_world,                  &
+    &                idown,      2, mpi_comm_ogcm,                  &
     &               irrqx2,   ierr)
 
     call mpi_wait( isrqx1, istmpi, ierr )
@@ -926,19 +926,19 @@ contains
 
     call mpi_isend(                                                   &
     &              sdbfy1l, nbfdim, mpi_real8,                        &
-    &                jdown,      3, mpi_comm_world,                   &
+    &                jdown,      3, mpi_comm_ogcm,                   &
     &               isrqy1,   ierr)
     call mpi_isend(                                                   &
     &              sdbfy2l, nbfdim, mpi_real8,                        &
-    &                  jup,      4, mpi_comm_world,                   &
+    &                  jup,      4, mpi_comm_ogcm,                   &
     &               isrqy2,   ierr)
     call mpi_irecv(                                                   &
     &              rvbfy2l, nbfdim, mpi_real8,                        &
-    &                  jup,      3, mpi_comm_world,                   &
+    &                  jup,      3, mpi_comm_ogcm,                   &
     &               irrqy1,   ierr)
     call mpi_irecv(                                                   &
     &              rvbfy1l, nbfdim, mpi_real8,                        &
-    &                jdown,      4, mpi_comm_world,                   &
+    &                jdown,      4, mpi_comm_ogcm,                   &
     &               irrqy2,   ierr)
 
     call mpi_wait( isrqy1, istmpi, ierr )
@@ -972,19 +972,19 @@ contains
 
     call mpi_isend(                                                   &
     &             sdbfy1l, nbfdim, mpi_real8,                         &
-    &                jupe,       3, mpi_comm_world,                   &
+    &                jupe,       3, mpi_comm_ogcm,                   &
     &               isrqy1,   ierr)
     call mpi_isend(                                                   &
     &              sdbfy2l, nbfdim, mpi_real8,                        &
-    &                 jupw,      4, mpi_comm_world,                   &
+    &                 jupw,      4, mpi_comm_ogcm,                   &
     &               isrqy2,   ierr) 
     call mpi_irecv(                                                   &
     &              rvbfy2l, nbfdim, mpi_real8,                        &
-    &                 jupw,      3, mpi_comm_world,                   &
+    &                 jupw,      3, mpi_comm_ogcm,                   &
     &               irrqy1,   ierr)
     call mpi_irecv(                                                   &
     &              rvbfy1l, nbfdim, mpi_real8,                        &
-    &                 jupe,      4, mpi_comm_world,                   &
+    &                 jupe,      4, mpi_comm_ogcm,                   &
     &               irrqy2,   ierr)
 
     call mpi_wait( isrqy1, istmpi, ierr )
@@ -1016,19 +1016,19 @@ contains
 
     call mpi_isend(                                                   &
     &              sdbfn1l, nbfdm0, mpi_real8,                        &
-    &                jupe,       3, mpi_comm_world,                   &
+    &                jupe,       3, mpi_comm_ogcm,                   &
     &               isrqy1,   ierr)
     call mpi_isend(                                                   &
     &              sdbfn2l, nbfdim, mpi_real8,                        &
-    &                 jupw,      4, mpi_comm_world,                   &
+    &                 jupw,      4, mpi_comm_ogcm,                   &
     &               isrqy2,   ierr) 
     call mpi_irecv(                                                   &
     &              rvbfn2l, nbfdm0, mpi_real8,                        &
-    &                 jupw,      3, mpi_comm_world,                   &
+    &                 jupw,      3, mpi_comm_ogcm,                   &
     &               irrqy1,   ierr)
     call mpi_irecv(                                                   &
     &              rvbfn1l, nbfdim, mpi_real8,                        &
-    &                 jupe,      4, mpi_comm_world,                   &
+    &                 jupe,      4, mpi_comm_ogcm,                   &
     &               irrqy2,   ierr)
 
     call mpi_wait( isrqy1, istmpi, ierr )

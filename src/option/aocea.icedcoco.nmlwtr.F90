@@ -24,7 +24,7 @@ module aocea
     &  nxdim, nxydim, nxyzdm, nxyidm,  ntdim,    nic, &
     & ijtstr, ijtend, &
     & myrank, ijnode,   ierr, &
-    &  oinit, ofinal
+    &  oinit, ofinal, mpi_comm_ogcm
   use zocgrd, only: &
     &     dx,     dy, &
     &    hxt,    hyt, &
@@ -730,7 +730,7 @@ subroutine nmlwtr( &
         end do
         call mpi_allreduce( &
           &                vwteqt, tarea, 1, mpi_real8, &
-          &               mpi_sum, mpi_comm_world, ierr)
+          &               mpi_sum, mpi_comm_ogcm, ierr)
         rtardt = 1.0d0 / tarea / (8.64d4 * wdmp)
      endif
   end if
@@ -750,7 +750,7 @@ subroutine nmlwtr( &
   end do
   call mpi_allreduce( &
     &                vwteqt, fwnml, 1, mpi_real8, &
-    &               mpi_sum, mpi_comm_world, ierr)
+    &               mpi_sum, mpi_comm_ogcm, ierr)
   fwnml = fwnml * rtardt
 
   do ij = ijtstr, ijtend

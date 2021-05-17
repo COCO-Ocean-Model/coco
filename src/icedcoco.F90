@@ -283,7 +283,8 @@ subroutine parset
 #endif
     & nprocs, myrank, ijnode,  iroot,   ierr, &
     &  irank,    iup,  idown, &
-    &  jrank,    jup,  jdown
+    &  jrank,    jup,  jdown, &
+    &  igrank, mpi_comm_ogcm
 
   use bgs2d
 #ifndef OPT_IO_COCOMPI
@@ -302,16 +303,19 @@ subroutine parset
 #endif
   integer :: ndroot = 0
   namelist /nmroot/ ndroot
-
+  integer :: key
+  
 !!!  call mpi_init(ierr)
   call mpi_comm_size(mpi_comm_world, nprocs, ierr)
-  call mpi_comm_rank(mpi_comm_world, myrank, ierr)
-
+  call mpi_comm_rank(mpi_comm_world, igrank, ierr)
+  call mpi_comm_split(mpi_comm_world, 1, igrank, mpi_comm_ogcm, ierr)
+  call mpi_comm_rank(mpi_comm_ogcm, myrank, ierr)
+  
   call rewnml(ifpar, jfpar)
   read (ifpar, nmroot, iostat=istat)
   call cstnml(jfpar, 'parset', 'nmroot', istat)
 !  write(jfpar, nmroot)
-
+  
   ijnode = inodes * jnodes
   iroot  = ndroot
 

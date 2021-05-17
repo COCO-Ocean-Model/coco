@@ -12,6 +12,7 @@ module ufile
 ! ---------------------------------------------------------------------
 
  use zocfil, only : nfmax
+ use zocnod, only : mpi_comm_ogcm
  implicit none
  private
  public ::  &
@@ -46,11 +47,11 @@ contains
     if (.not. oex) then
        i = index(cf, ' ') - 1
        write(nfstdo, *) '### FILE "', cf(1:i), '" DOES NOT EXIST ###'
-       call mpi_abort(mpi_comm_world, 1, ierr)
+       call mpi_abort(mpi_comm_ogcm, 1, ierr)
     end if
  else if (cf(1:13) .eq. 'not-specified') then
     write(nfstdo, *) '### NAME NOT SPECIFIED FOR OUTPUT FILE ###'
-    call mpi_abort(mpi_comm_world, 1, ierr)
+    call mpi_abort(mpi_comm_ogcm, 1, ierr)
  end if
 
  do i = nfmin, nfmax
@@ -61,7 +62,7 @@ contains
     end if
  end do
  write(nfstdo, *) '### MAXIMUM FILE NUMBER EXCEEDED ###'
- call mpi_abort(mpi_comm_world, 1, ierr)
+ call mpi_abort(mpi_comm_ogcm, 1, ierr)
 
  123  continue
  open(unit=nf, file=cf, form='unformatted', access='sequential')
@@ -89,20 +90,20 @@ contains
     if (.not. oex) then
        i = index(cf, ' ') - 1
        write(nfstdo, *) '### FILE "', cf(1:i), '" DOES NOT EXIST ###'
-       call mpi_abort(mpi_comm_world, 1, ierr)
+       call mpi_abort(mpi_comm_ogcm, 1, ierr)
     end if
  else if (cf(1:13) .eq. 'not-specified') then
     write(nfstdo, *) '### NAME NOT SPECIFIED FOR OUTPUT FILE ###'
-    call mpi_abort(mpi_comm_world, 1, ierr)
+    call mpi_abort(mpi_comm_ogcm, 1, ierr)
  end if
 
  if (cact == 'READ') then
-   call mpi_file_open(mpi_comm_world, cf, mpi_mode_rdonly, &
+   call mpi_file_open(mpi_comm_ogcm, cf, mpi_mode_rdonly, &
   &   mpi_info_null, nf, ierr)
  else
 !    inquire(file=cf, exist=oex)
 !    if (oex) call mpi_file_delete(cf,mpi_info_null)
-   call mpi_file_open(mpi_comm_world, cf, mpi_mode_create + mpi_mode_wronly, &
+   call mpi_file_open(mpi_comm_ogcm, cf, mpi_mode_create + mpi_mode_wronly, &
   &   mpi_info_null, nf, ierr)
  end if
 

@@ -91,7 +91,7 @@ contains
   subroutine gather_id(         &
      &                    qg,  &
      &                     q)
- use zocdim, only : nic, ny, nic, nprocs, ijnode, myrank, iroot, istr, jstr
+ use zocdim, only : nic, ny, nic, nprocs, ijnode, myrank, iroot, istr, jstr, mpi_comm_ogcm
  implicit none
 #include "mpif.h"
  real(8), intent(in ) ::    q(nxdim , nydim , 0:nic)
@@ -112,7 +112,7 @@ contains
  call mpi_gatherv(                                    &
   &                 sndbuf,  ngsnd,         mpi_real8,  &
   &                  dummy,  nrcvc,  ndisp, mpi_real8,  &
-  &                  iroot, mpi_comm_world, ierr)
+  &                  iroot, mpi_comm_ogcm, ierr)
 
  if (myrank == iroot) then
     do n = 0, nprocs-1
@@ -135,7 +135,7 @@ contains
  subroutine scatter_id(         &
   &                      q,     &
   &                     qg)
- use zocdim, only : nx, ny, nic, nprocs, ijnode, myrank, iroot, istr, jstr
+ use zocdim, only : nx, ny, nic, nprocs, ijnode, myrank, iroot, istr, jstr, mpi_comm_ogcm
  implicit none
 #include "mpif.h"
  real(8), intent(out) ::    q(nxdim , nydim , 0:nic)
@@ -160,7 +160,7 @@ contains
  call mpi_scatterv(                                     &
   &                   dummy,  nsndc,  ndisp, mpi_real8, &
   &                  rcvbuf,  nsrcv,         mpi_real8, &
-  &                   iroot, mpi_comm_world, ierr)
+  &                   iroot, mpi_comm_ogcm, ierr)
 
  if (myrank < ijnode) then
     do k = 1, nic

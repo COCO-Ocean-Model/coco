@@ -16,6 +16,7 @@ module atmct
 
 
  use zocfil, only : nfomax, ncf
+ use zocnod, only : mpi_comm_ogcm
  implicit none
 
  private
@@ -154,7 +155,7 @@ contains
   itscyc= ieb + 1 + ileap
   if ( itscyc .gt. ntscyc ) then
      write(jfpar, *) '### workspace over : ntscyc (tmstup) ###'
-     call mpi_abort(mpi_comm_world, 1, ierr)
+     call mpi_abort(mpi_comm_ogcm, 1, ierr)
   end if
 
 !     ***** making scheme table *****
@@ -221,7 +222,7 @@ contains
   else
      write(jfpar, *) '*** tmstup: no such unit of time ***'
 
-     call mpi_abort(mpi_comm_world, 1, ierr)
+     call mpi_abort(mpi_comm_ogcm, 1, ierr)
   end if
 
   do iitem = 1, nohitm
@@ -236,7 +237,7 @@ contains
    &             tonext(iitem))
      else if (iflout(iitem) == 1) then
         write(jfpar, *) '*** tmstup: no such unit of time ***'
-        call mpi_abort(mpi_comm_world, 1, ierr)
+        call mpi_abort(mpi_comm_ogcm, 1, ierr)
      end if
   end do
 
@@ -250,7 +251,7 @@ contains
    &             trnext)
   else
      write(jfpar, *) '*** tmstup: no such unit of time ***'
-     call mpi_abort(mpi_comm_world, 1, ierr)
+     call mpi_abort(mpi_comm_ogcm, 1, ierr)
   end if
 
   write(jfpar, *) '***** time control parameters *****'

@@ -58,7 +58,7 @@ contains
     &     nxgdim, nygdim,  igstr,  jgstr,    kstr,                    &
     &        nxg,    nyg,     nz
     use zocnod,   only  :                                             &
-    &     myrank,  iroot
+    &     myrank,  iroot, mpi_comm_ogcm
     use zocphy,   only  :                                             &
     &       dtds
     use zocfil
@@ -572,7 +572,7 @@ contains
        if ( irstrt /= 0 ) then
           if ( ttt /= tstrt ) then
              write(jfpar, *) '*** start time error ***'
-             call mpi_abort(mpi_comm_world, 1, ierr)
+             call mpi_abort(mpi_comm_ogcm, 1, ierr)
           end if
        end if
     end if
@@ -595,7 +595,7 @@ contains
     &      igstr,  jgstr,   kstr,                                     &
     &        nxg,    nyg,     nz
     use zocnod,   only  :                                             &
-    &     myrank,  iroot
+    &     myrank,  iroot, mpi_comm_ogcm
     use bgs2d
     use bgs3d
     use bshft
@@ -633,7 +633,7 @@ contains
 309       continue
        end if
        call mpi_bcast                                                 &
-    &        (oeof, 1, mpi_logical, iroot, mpi_comm_world, ierr)
+    &        (oeof, 1, mpi_logical, iroot, mpi_comm_ogcm, ierr)
        if ( .not. oeof ) then
           call scatter_3d(additm, g3d)
 #ifdef OPT_TRIPOLE
@@ -657,7 +657,7 @@ contains
 319       continue
        end if
        call mpi_bcast                                                 &
-    &        (oeof, 1, mpi_logical, iroot, mpi_comm_world, ierr)
+    &        (oeof, 1, mpi_logical, iroot, mpi_comm_ogcm, ierr)
        if ( .not. oeof ) then
           call scatter_2d(additm, g2d)
 #ifdef OPT_TRIPOLE
@@ -689,7 +689,7 @@ contains
     &     nxgdim, nygdim,  igstr,  jgstr,    kstr,                    &
     &        nxg,    nyg,     nz,   nxyg,   nxyzg
     use zocnod,   only  :                                             &
-    &     myrank,  iroot
+    &     myrank,  iroot, mpi_comm_ogcm
     use ufile
     use bgsid
     use bgs2d
@@ -1147,7 +1147,7 @@ contains
        write(jfpar, *) ' time :', idate
        write(jfpar, *) ' step :', ntstep
     end if
-    call mpi_barrier(mpi_comm_world, ierr)
+    call mpi_barrier(mpi_comm_ogcm, ierr)
 
   end subroutine finout
 

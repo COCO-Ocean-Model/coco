@@ -254,9 +254,9 @@ contains
      call mpi_get_count(mpistat,mpi_character, icread,ierr)
   end if
   call mpi_bcast(chead, 1024, mpi_character,  &
-       &                  iroot, mpi_comm_world, ierr)
+       &                  iroot, mpi_comm_ogcm, ierr)
   call mpi_bcast(icread, 1, mpi_integer4,     &
-       &                  iroot, mpi_comm_world, ierr)
+       &                  iroot, mpi_comm_ogcm, ierr)
   disp=disp+ 1024
 #ifdef OPT_IO_SEQUENTIAL
   disp=disp + 4
@@ -892,9 +892,9 @@ contains
      call mpi_get_count(mpistat,mpi_character, icread,ierr)     
   end if
   call mpi_bcast(chead, 1024, mpi_character,  &
-       &                  iroot, mpi_comm_world, ierr)
+       &                  iroot, mpi_comm_ogcm, ierr)
   call mpi_bcast(icread, 1, mpi_integer4,     &
-       &                  iroot, mpi_comm_world, ierr)
+       &                  iroot, mpi_comm_ogcm, ierr)
   disp=disp+ 1024
 #ifdef OPT_IO_SEQUENTIAL_H8
   disp=disp+8
@@ -903,7 +903,7 @@ contains
 #endif
   if(icread .ne. 1024) then
      write(nfstdo,*)'read error in mpi_read_direct'
-     call mpi_abort(mpi_comm_world, 1, ierr)
+     call mpi_abort(mpi_comm_ogcm, 1, ierr)
   end if
 
   !=== data ====
@@ -931,7 +931,7 @@ contains
   disp=disp+ nx0*ny0*4 + 4
 #endif
 
-  call mpi_bcast(direct, nx0*ny0, mpi_real4, iroot, mpi_comm_world, ierr)
+  call mpi_bcast(direct, nx0*ny0, mpi_real4, iroot, mpi_comm_ogcm, ierr)
 
   return
   end subroutine mpi_read_direct

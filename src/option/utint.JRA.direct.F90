@@ -1,5 +1,5 @@
 module utint
-    use zocdim,  only  : nxy
+    use zocdim,  only  : nxy, mpi_comm_ogcm
   implicit none
 
   private
@@ -134,9 +134,9 @@ contains
           call filcls(nf)
        end if
 #endif
-       call mpi_bcast(alon,   nx0,     mpi_real8, iroot, mpi_comm_world, ierr)
-       call mpi_bcast(alat,   ny0,     mpi_real8, iroot, mpi_comm_world, ierr)
-       call mpi_bcast(mask, nx0*ny0, mpi_integer, iroot, mpi_comm_world, ierr)
+       call mpi_bcast(alon,   nx0,     mpi_real8, iroot, mpi_comm_ogcm, ierr)
+       call mpi_bcast(alat,   ny0,     mpi_real8, iroot, mpi_comm_ogcm, ierr)
+       call mpi_bcast(mask, nx0*ny0, mpi_integer, iroot, mpi_comm_ogcm, ierr)
 
 
        if ( trim(roff_map) /= 'not-specified') odirect=.true.
@@ -157,7 +157,7 @@ contains
              read(nf)imax
           end if
 #endif
-          call mpi_bcast(imax,    1, mpi_integer, iroot, mpi_comm_world, ierr) 
+          call mpi_bcast(imax,    1, mpi_integer, iroot, mpi_comm_ogcm, ierr) 
           allocate(ip(imax), jp(imax), iq(imax), jq(imax), wt(imax))
           wt(:) = 1.d0
 #ifdef OPT_IO_COCOMPI
@@ -182,11 +182,11 @@ contains
              call filcls(nf)
           end if
 #endif
-          call mpi_bcast(  ip, imax, mpi_integer, iroot, mpi_comm_world, ierr) 
-          call mpi_bcast(  jp, imax, mpi_integer, iroot, mpi_comm_world, ierr) 
-          call mpi_bcast(  iq, imax, mpi_integer, iroot, mpi_comm_world, ierr) 
-          call mpi_bcast(  jq, imax, mpi_integer, iroot, mpi_comm_world, ierr) 
-          call mpi_bcast(  wt, imax, mpi_real8,   iroot, mpi_comm_world, ierr) 
+          call mpi_bcast(  ip, imax, mpi_integer, iroot, mpi_comm_ogcm, ierr) 
+          call mpi_bcast(  jp, imax, mpi_integer, iroot, mpi_comm_ogcm, ierr) 
+          call mpi_bcast(  iq, imax, mpi_integer, iroot, mpi_comm_ogcm, ierr) 
+          call mpi_bcast(  jq, imax, mpi_integer, iroot, mpi_comm_ogcm, ierr) 
+          call mpi_bcast(  wt, imax, mpi_real8,   iroot, mpi_comm_ogcm, ierr) 
   
 ! Make list vector of distribution array for each node
           imaxn = 0
@@ -229,7 +229,7 @@ contains
              end do
              if (nn /= imaxn) then
                 write(jfpar,*) '### failed to make list of runoff vector. ###'
-                call mpi_abort(mpi_comm_world, 1, ierr)
+                call mpi_abort(mpi_comm_ogcm, 1, ierr)
              end if
           end if
 
@@ -262,7 +262,7 @@ contains
        cfitem = cfssfc
     else if (iitem > nitem ) then
        write(jfpar, *) '*** TMINTP: NO SUCH ITEM ***'
-       call mpi_abort(mpi_comm_world, 1, ierr)
+       call mpi_abort(mpi_comm_ogcm, 1, ierr)
     else if ( mod(iitem, 2) == 0 ) then
        i = (iitem - 10) / 2
        cfitem = cftref(i)
@@ -353,8 +353,8 @@ contains
            read(nfitem(iitem)) chead
            read(nfitem(iitem)) direct
         end if
-        call mpi_bcast(chead, 1024, mpi_character, iroot, mpi_comm_world, ierr)     
-        call mpi_bcast(direct, nx0*ny0, mpi_real4, iroot, mpi_comm_world, ierr)     
+        call mpi_bcast(chead, 1024, mpi_character, iroot, mpi_comm_ogcm, ierr)     
+        call mpi_bcast(direct, nx0*ny0, mpi_real4, iroot, mpi_comm_ogcm, ierr)     
 #endif
 
         call intpsfc(iitem, direct, alon, alat, dout, mask)
@@ -401,8 +401,8 @@ contains
               read(nfitem(iitem))chead
               read(nfitem(iitem))direct
            end if
-           call mpi_bcast(chead, 1024, mpi_character, iroot, mpi_comm_world, ierr)
-           call mpi_bcast(direct, nx0*ny0, mpi_real4, iroot, mpi_comm_world, ierr)
+           call mpi_bcast(chead, 1024, mpi_character, iroot, mpi_comm_ogcm, ierr)
+           call mpi_bcast(direct, nx0*ny0, mpi_real4, iroot, mpi_comm_ogcm, ierr)
 #endif
            dout(:,:)=0.d0
            do n=1,imaxn
@@ -417,7 +417,7 @@ contains
               read(nfitem(iitem)) chead
               read(nfitem(iitem)) datag
            end if
-           call mpi_bcast(chead, 1024, mpi_character, iroot, mpi_comm_world, ierr)
+           call mpi_bcast(chead, 1024, mpi_character, iroot, mpi_comm_ogcm, ierr)
            call scatter_sfc(dout, datag)
 #endif
        end if !==================================================================
@@ -557,7 +557,7 @@ contains
 !      if(oerr) then
 !         call rewnml(ifpar, jfpar)
 !         write(jfpar,*)'error: missing value in surface forcing data'
-!         call mpi_abort(mpi_comm_world, 1, ierr)
+!         call mpi_abort(mpi_comm_ogcm, 1, ierr)
 !      end if
 
   ofirst(iitem)=.false.
@@ -956,7 +956,7 @@ end subroutine intpsfc
        cfitem = cfssfc
     else if (iitem > nitem ) then
        write(jfpar, *) '*** TMINTP: NO SUCH ITEM ***'
-       call mpi_abort(mpi_comm_world, 1, ierr)
+       call mpi_abort(mpi_comm_ogcm, 1, ierr)
     else if ( mod(iitem, 2) == 0 ) then
        i = (iitem - 10) / 2
        cfitem = cftref(i)
@@ -987,7 +987,7 @@ end subroutine intpsfc
           read(nfitem(iitem)) ((datag(i, j), i = 1, nxg), j = 1, nyg)
        end if
        call mpi_bcast(chead, 1024, mpi_character,                     &
-    &                 iroot, mpi_comm_world, ierr)
+    &                 iroot, mpi_comm_ogcm, ierr)
        call scatter_sfc(data1(1, 1, iitem), datag)
        cdate = chead(50)
        read(cdate, '(i6.6,5i2.2)') (idate1(i, iitem), i = 1, 6)
@@ -1012,10 +1012,10 @@ end subroutine intpsfc
 298       continue
        end if
        call mpi_bcast                                                 &
-    &        (oeof, 1, mpi_logical, iroot, mpi_comm_world, ierr)
+    &        (oeof, 1, mpi_logical, iroot, mpi_comm_ogcm, ierr)
        if (oeof) go to 98
        call mpi_bcast(chead, 1024, mpi_character,                     &
-    &                 iroot, mpi_comm_world, ierr)
+    &                 iroot, mpi_comm_ogcm, ierr)
        call scatter_sfc(data2(1, 1, iitem), datag)
        cdate = chead(50)
        read(cdate, '(i6.6,5i2.2)') (idate2(i, iitem), i = 1, 6)
@@ -1038,10 +1038,10 @@ end subroutine intpsfc
 297       continue
        end if
        call mpi_bcast                                                 &
-    &        (oeof, 1, mpi_logical, iroot, mpi_comm_world, ierr)
+    &        (oeof, 1, mpi_logical, iroot, mpi_comm_ogcm, ierr)
        if (oeof) go to 97
        call mpi_bcast(chead, 1024, mpi_character,                     &
-    &                 iroot, mpi_comm_world, ierr)
+    &                 iroot, mpi_comm_ogcm, ierr)
        call scatter_sfc(data2(1, 1, iitem), datag)
        cdate = chead(50)
        read(cdate, '(i6.6,5i2.2)') (idate2(i, iitem), i = 1, 6)
@@ -1062,7 +1062,7 @@ end subroutine intpsfc
           read(nfitem(iitem)) ((datag(i, j), i = 1, nxg), j = 1, nyg)
        end if
        call mpi_bcast(chead, 1024, mpi_character,                     &
-    &                 iroot, mpi_comm_world, ierr)
+    &                 iroot, mpi_comm_ogcm, ierr)
        call scatter_sfc(data2(1, 1, iitem), datag)
        cdate = chead(50)
        read(cdate, '(i6.6,5i2.2)') (idate2(i, iitem), i = 1, 6)
@@ -1083,7 +1083,7 @@ end subroutine intpsfc
 
 96     write(jfpar, *) '*** TMINTP: UNEXPECTED ERROR ***'
        write(jfpar, *) '-> Please inform the developer of the situation.'
-       call mpi_abort(mpi_comm_world, 1, ierr)
+       call mpi_abort(mpi_comm_ogcm, 1, ierr)
 98     osngld(iitem) = .true.
 99     continue
        ofirst(iitem) = .false.
@@ -1109,10 +1109,10 @@ end subroutine intpsfc
 797          continue
           end if
           call mpi_bcast                                              &
-    &           (oeof, 1, mpi_logical, iroot, mpi_comm_world, ierr)
+    &           (oeof, 1, mpi_logical, iroot, mpi_comm_ogcm, ierr)
           if (oeof) go to 997
           call mpi_bcast(chead, 1024, mpi_character,                  &
-    &                    iroot, mpi_comm_world, ierr)
+    &                    iroot, mpi_comm_ogcm, ierr)
           call scatter_sfc( data2(1, 1, iitem), datag )
           cdate = chead(50)
           read(cdate, '(i6.6,5i2.2)') (idate2(i, iitem), i = 1, 6)
@@ -1133,10 +1133,10 @@ end subroutine intpsfc
 597          continue
           end if
           call mpi_bcast                                              &
-    &           (oeof, 1, mpi_logical, iroot, mpi_comm_world, ierr)
+    &           (oeof, 1, mpi_logical, iroot, mpi_comm_ogcm, ierr)
           if ( oeof ) go to 997
           call mpi_bcast(chead, 1024, mpi_character,                  &
-    &                    iroot, mpi_comm_world, ierr)
+    &                    iroot, mpi_comm_ogcm, ierr)
           call scatter_sfc(data2(1, 1, iitem), datag)
           cdate = chead(50)
           read(cdate, '(i6.6,5i2.2)') (idate2(i, iitem), i = 1, 6)
@@ -1257,7 +1257,7 @@ end subroutine intpsfc
        cfitem = cftdmb(2)
     else
        write(jfpar, *) '*** TMINTB: NO SUCH ITEM ***'
-       call mpi_abort(mpi_comm_world, 1, ierr)
+       call mpi_abort(mpi_comm_ogcm, 1, ierr)
     end if
 
     if ( ofirst(iitem) ) then
@@ -1383,7 +1383,7 @@ end subroutine intpsfc
     &      .and. (tt <= time2(iitem))) go to 99
 96     write(jfpar, *) '*** TMINTP: UNEXPECTED ERROR ***'
        write(jfpar, *) '-> Please inform the developer of the situation.'
-       call mpi_abort(mpi_comm_world, 1, ierr)
+       call mpi_abort(mpi_comm_ogcm, 1, ierr)
 98     osngld(iitem) = .true.
 99     continue
        ofirst(iitem) = .false.
@@ -1583,7 +1583,7 @@ end subroutine intpsfc
        cfitem = cfssfc
     else if (iitem > nitem ) then
        write(jfpar, *) '*** TMINTP: NO SUCH ITEM ***'
-       call mpi_abort(mpi_comm_world, 1, ierr)
+       call mpi_abort(mpi_comm_ogcm, 1, ierr)
     else if ( mod(iitem, 2) == 0 ) then
        i = (iitem - 10) / 2
        cfitem = cftref(i)
@@ -1693,7 +1693,7 @@ end subroutine intpsfc
 
 96     write(jfpar, *) '*** TMINTP: UNEXPECTED ERROR ***'
        write(jfpar, *) '-> Please inform the developer of the situation.'
-       call mpi_abort(mpi_comm_world, 1, ierr)
+       call mpi_abort(mpi_comm_ogcm, 1, ierr)
 98     osngld(iitem) = .true.
 99     continue
        ofirst(iitem) = .false.
@@ -1855,7 +1855,7 @@ end subroutine intpsfc
        cfitem = cftdmb(2)
     else
        write(jfpar, *) '*** TMINTB: NO SUCH ITEM ***'
-       call mpi_abort(mpi_comm_world, 1, ierr)
+       call mpi_abort(mpi_comm_ogcm, 1, ierr)
     end if
 
     if ( ofirst(iitem) ) then
@@ -1957,7 +1957,7 @@ end subroutine intpsfc
     &      .and. (tt <= time2(iitem))) go to 99
 96     write(jfpar, *) '*** TMINTP: UNEXPECTED ERROR ***'
        write(jfpar, *) '-> Please inform the developer of the situation.'
-       call mpi_abort(mpi_comm_world, 1, ierr)
+       call mpi_abort(mpi_comm_ogcm, 1, ierr)
 98     osngld(iitem) = .true.
 99     continue
        ofirst(iitem) = .false.
