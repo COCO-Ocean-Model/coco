@@ -52,7 +52,7 @@ module bshft
 
   integer(4)     ::        i,      j,      k,      n
   integer(4)     ::   nbfdim, nbfdm0,   istv
-  integer(4)     :: ifpar, jfpar, ierr
+  integer(4)     :: ifpar, jfpar
   
   public  ::  shift1,  shift2,  shift3, shift_pack_begin
 
@@ -1155,4 +1155,3 @@ contains
 #endif
 
 end module bshft
-
