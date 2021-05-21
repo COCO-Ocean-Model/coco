@@ -11,7 +11,7 @@ module bshft
 !     '10.04.14  M.Kurogi: (COCO4.4 tripolar code by Dr. Suzuki)
 !     '12.11.28  H.Tatebe: for COCO5.0 in F90
 !     '13.02.12  Y.Komuro: bug fix (for non-tripole code)
-!     '21.05.21  M.Kurogi: packed shift communication from MIROC5 (2013.05.23  Dr. Koji Ogochi)
+!     '21.05.21  M.Kurogi: packed shift communication from MIROC6 (2013.05.23  Dr. Koji Ogochi)
 ! ---------------------------------------------------------------------
 
 !  use zocdim,  only  :                                                &
