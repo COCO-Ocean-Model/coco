@@ -11,6 +11,7 @@ module bshft
 !     '10.04.14  M.Kurogi: (COCO4.4 tripolar code by Dr. Suzuki)
 !     '12.11.28  H.Tatebe: for COCO5.0 in F90
 !     '13.02.12  Y.Komuro: bug fix (for non-tripole code)
+!     '21.05.21  M.Kurogi: packed shift communication from MIROC5 (2013.05.23  Dr. Koji Ogochi)
 ! ---------------------------------------------------------------------
 
 !  use zocdim,  only  :                                                &
@@ -20,15 +21,44 @@ module bshft
   use zocdim
   use ufile, only : rewnml 
   implicit none
-  integer, parameter :: max_num_packed = 32
-  
-  logical, save :: pack_mode = .false.
-  integer, save :: koffset(max_num_packed +1)
-  integer, save :: num_packed = 0
-  logical, save :: is_tri_edge
   
   private
 
+!  [internal save]
+  integer, parameter :: max_ksize0 = 10 * nzdim
+  integer, parameter :: max_ksize  = 20 * nzdim * ntdim
+  integer, parameter :: max_num_packed = 32
+
+  real(8), save :: north_send(nxdim, jcomm, max_ksize)
+  real(8), save :: south_send(nxdim, jcomm, max_ksize)
+  real(8), save :: east_send (icomm, ny,    max_ksize)
+  real(8), save :: west_send (icomm, ny,    max_ksize)
+
+  real(8), save :: north_recv(nxdim, jcomm, max_ksize)
+  real(8), save :: south_recv(nxdim, jcomm, max_ksize)
+  real(8), save :: east_recv (icomm, ny,    max_ksize)
+  real(8), save :: west_recv (icomm, ny,    max_ksize)
+
+  logical, save :: pack_mode = .false.
+  integer, save :: koffset(max_num_packed + 1)
+  integer, save :: num_packed = 0
+  logical, save :: is_tri_edge
+
+#ifdef OPT_TRIPOLE
+  real(8), save :: tri_send(nxdim, 0:jcomm, max_ksize)
+  real(8), save :: tri_recv(nxdim, 0:jcomm, max_ksize)
+
+  real(8), save :: tri_east_send(icomm, jcomm+1, max_ksize0)
+  real(8), save :: tri_west_send(icomm, jcomm+1, max_ksize0)
+  real(8), save :: tri_east_recv(icomm, jcomm+1, max_ksize0)
+  real(8), save :: tri_west_recv(icomm, jcomm+1, max_ksize0)
+
+  real(8), save :: facts(max_num_packed)
+  integer, save :: ioffs(max_num_packed)
+  integer, save :: joffs(max_num_packed)
+#endif
+
+  
   real(8)        ::   sdbfx1(1:icomm, 1:ny,    1:nztdim+nzdim)
   real(8)        ::   sdbfx2(1:icomm, 1:ny,    1:nztdim+nzdim)
   real(8)        ::   sdbfy1(1:nxdim, 1:jcomm, 1:nztdim+nzdim)
@@ -53,11 +83,12 @@ module bshft
   integer(4)     ::        i,      j,      k,      n
   integer(4)     ::   nbfdim, nbfdm0,   istv
   integer(4)     :: ifpar, jfpar
-  
-  public  ::  shift1,  shift2,  shift3, shift_pack_begin
+
+  public  ::  shift1,  shift2,  shift3, shift_pack_begin, shift_pack_end
 
 contains
 
+!=======================================================================
   subroutine shift_pack_begin
     implicit none
 #include "mpif.h"
@@ -73,8 +104,264 @@ contains
 
   end subroutine shift_pack_begin
 
+!=======================================================================
+  subroutine shift_pack_end
+    integer :: nelems
+    
+    if (.not. pack_mode) return
+    nelems = icomm * ny * koffset(num_packed + 1)
+    call shiftx                         &
+     &   ( west_recv, east_recv,        &
+     &     west_send, east_send, nelems )
 
+    do k = 1, koffset(num_packed + 1)
+       do j = 1, jcomm
+          do i = 1, icomm
+             south_send(i,j,k) = west_recv(i,j,k)
+             north_send(i,j,k) = west_recv(i,j-jcomm+ny,k)
 
+             south_send(iend+i,j,k) = east_recv(i,j,k)
+             north_send(iend+i,j,k) = east_recv(i,j-jcomm+ny,k)
+          end do
+       end do
+    end do
+
+    nelems = nxdim * jcomm * koffset(num_packed + 1)
+    call shifty                          &
+         &   ( south_recv, north_recv,   &
+         &     south_send, north_send, nelems)
+
+#ifdef OPT_TRIPOLE
+    if (is_tri_edge) then
+       do n = 1, num_packed
+          if (ioffs(n) .eq. -1) then
+             do k = koffset(n) + 1, koffset(n + 1)
+                do j = 1, jcomm - joffs(n)
+                   do i = 1, icomm - 1
+                      tri_send(i,j+joffs(n),k) = facts(n) * east_recv(icomm - i, ny + 1 - j, k)
+                   end do
+                   do i = iend, nxdim - 1
+                      tri_send(i,j+joffs(n),k) = facts(n) * west_recv(nxdim - i, ny + 1 - j, k)
+                   end do
+                end do
+             end do
+          else
+             do k = koffset(n) + 1, koffset(n + 1)
+                do j = 1, jcomm - joffs(n)
+                   do i = 1, icomm
+                      tri_send(i     ,j+joffs(n),k) = facts(n) * east_recv(icomm + 1 - i, ny + 1 - j, k)
+                      tri_send(iend+i,j+joffs(n),k) = facts(n) * west_recv(icomm + 1 - i, ny + 1 - j, k)
+                   end do
+                end do
+             end do
+          endif
+       end do
+
+       nelems = nxdim * (jcomm + 1) * koffset(num_packed + 1)
+       call shift_tri_edge      &
+            &      ( tri_recv,  &
+            &        tri_send, nelems )
+    endif
+#endif
+    pack_mode = .false.
+  end subroutine shift_pack_end
+
+!=======================================================================
+  subroutine shift_unpack(q1, id)
+    implicit none
+#include "mpif.h"
+    real(8) :: q1(:,:,:)
+    integer :: id, nelems, k0, kpacked
+    
+    if (id .lt. 1 .or. id .gt. num_packed) return
+
+    k0 = koffset(id)
+    kpacked = koffset(id+1) - k0
+
+    do k = 1, kpacked
+       do j = 1, ny
+          do i = 1, icomm
+             q1(i,      j+jstr-1, k) = west_recv(i, j, k0+k)
+             q1(i+iend, j+jstr-1, k) = east_recv(i, j, k0+k)
+          end do
+       end do
+    end do
+
+    if (jdown .ne. mpi_proc_null) then
+       do k = 1, kpacked
+          do j = 1, jcomm
+             do i = 1, nxdim
+                q1(i, j, k) = south_recv(i, j, k0+k)
+             end do
+          end do
+       end do
+    end if
+
+    if (jup .ne. mpi_proc_null) then
+       do k = 1, kpacked
+          do j = 1, jcomm
+             do i = 1, nxdim
+                q1(i, j+jend, k) = north_recv(i, j, k0+k)
+             end do
+          end do
+       end do
+    end if
+
+#ifdef OPT_TRIPOLE
+    if (is_tri_edge) then
+       if (joffs(id) .eq. -1 .and. jupw .ne. mpi_proc_null) then
+          if (inodes .eq. 1) then
+             do k = 1, kpacked
+                do i = nxdim / 2 + 1, nxdim
+                   q1(i,jend,k) = tri_recv(i,0,k0+k)
+                end do
+             end do
+          else
+             do k = 1, kpacked
+                do i = 1, nxdim
+                   q1(i,jend,k) = tri_recv(i,0,k0+k)
+                end do
+             end do
+          endif
+       endif
+
+       do k = 1, kpacked
+          do j = 1, jcomm
+             do i = 1, nxdim
+                q1(i, jend+j, k) = tri_recv(i, j, k0+k)
+             end do
+          end do
+       end do
+
+       if (ioffs(id) .eq. -1) then
+          if (kpacked .gt. max_ksize0) then
+             call rewnml(ifpar, jfpar)
+             write(jfpar,*)' ### packed_shift: exceed the limit of max_ksize0.'
+             call mpi_abort(mpi_comm_ogcm, 1, ierr)
+          endif
+
+          do k = 1, kpacked
+             do j = 1, jcomm + 1
+                do i = 1, icomm
+                   tri_west_send(i,j,k) = q1(i+istr-1    , j+jend-1, k)
+                   tri_east_send(i,j,k) = q1(i+iend-icomm, j+jend-1, k)
+                end do
+             end do
+          end do
+
+          nelems = icomm * (jcomm + 1) * kpacked
+          call shiftx( tri_west_recv, tri_east_recv, &
+               &       tri_west_send, tri_east_send, nelems )
+
+          do k = 1, kpacked
+             do j = 1, jcomm + 1
+                do i = 1, icomm
+                   q1(i,     j+jend-1,k) = tri_west_recv(i,j,k)
+                   q1(iend+i,j+jend-1,k) = tri_east_recv(i,j,k)
+                end do
+             end do
+          end do
+       endif
+    endif
+#endif
+  end subroutine shift_unpack
+
+!=======================================================================
+  subroutine shift_pack(qq, ksize, fact2, ioff2, joff2)
+    real(8) :: qq(:,:,:)
+    integer :: ksize
+    real(8) :: fact2
+    integer :: ioff2, joff2
+    integer i, j, k, k0
+
+    if (num_packed .ge. max_num_packed) then
+       call rewnml(ifpar, jfpar)
+       write(jfpar,*)' ### packed_shift: exceed the limit of num_packed.'
+       call mpi_abort(mpi_comm_ogcm, 1, ierr)
+    endif
+
+    num_packed = num_packed + 1
+    k0 = koffset(num_packed)
+
+    if (k0 + ksize .gt. max_ksize) then
+       call rewnml(ifpar, jfpar)
+       write(jfpar,*)' ### packed_shift: exceed the limit of max_ksize.'
+       call mpi_abort(mpi_comm_ogcm, 1, ierr)
+    endif
+
+    do k = 1, ksize
+       do j = 1, ny
+          do i = 1, icomm
+             west_send(i,j,k0+k) = qq(i+istr-1,    j+jstr-1,k)
+             east_send(i,j,k0+k) = qq(i+iend-icomm,j+jstr-1,k)
+          end do
+       end do
+    end do
+
+    do k = 1, ksize
+       do j = 1, jcomm
+          do i = istr, iend
+             south_send(i,j,k0+k) = qq(i,j+jstr-1,    k)
+             north_send(i,j,k0+k) = qq(i,j+jend-jcomm,k)
+          end do
+       end do
+    end do
+    koffset(num_packed + 1) = k0 + ksize
+
+#ifdef OPT_TRIPOLE
+    if (is_tri_edge) then
+       do k = 1, ksize
+          do j = 1, jcomm - joff2
+             do i = istr, iend
+                tri_send(i+ioff2,j+joff2,k0+k) = fact2 * qq(nxdim + 1 - i, jend + 1 - j, k)
+             end do
+          end do
+       end do
+    endif
+    facts(num_packed) = fact2
+    ioffs(num_packed) = ioff2
+    joffs(num_packed) = joff2
+#endif
+  end subroutine shift_pack
+
+!=======================================================================
+
+#ifdef OPT_TRIPOLE
+  subroutine shift_tri_edge(recvbuf, sendbuf, nelems)
+    implicit none
+#include "mpif.h"
+
+    real(8) :: recvbuf(*)
+    real(8) :: sendbuf(*)
+    integer :: nelems
+
+    integer :: isrc, idest
+    integer :: status(mpi_status_size)
+    integer, parameter :: itag = 1234
+
+    if (jupe .ne. mpi_proc_null) then
+       isrc  = jupe
+       idest = jupe
+    else
+       isrc  = jupw
+       idest = jupw
+    endif
+
+    if (isrc .eq. myrank) then
+       recvbuf(1:nelems) = sendbuf(1:nelems)
+       return
+    endif
+
+    call mpi_sendrecv(sendbuf, nelems, mpi_double_precision,       &
+         &                  idest, itag,                           &
+         &                  recvbuf, nelems, mpi_double_precision, &
+         &                  isrc, itag,                            &
+         &                  mpi_comm_ogcm, status, ierr)
+
+  end subroutine shift_tri_edge
+#endif
+!=======================================================================
+  
   subroutine shift1(                                                  &
     &                 q1,                                             &
 #ifndef OPT_TRIPOLE    
