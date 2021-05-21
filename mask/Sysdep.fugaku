@@ -1,0 +1,14 @@
+## for gfortran
+FC	= gfortran
+FFLAGS  = -cpp -fconvert=big-endian -O3 -DOPT_PARALLEL
+
+## for fujitsu compiler
+#FC	= frt
+#FFLAGS  = -Kfast,fp_precision -DOPT_PARALLEL
+#RUNOPT	= -Wl,T
+
+FOPTION = $(FFLAGS)
+UNIT22	= fort.22
+
+.F.o:
+	$(FC) $(FOPTION) -c $<

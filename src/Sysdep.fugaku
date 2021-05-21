@@ -1,0 +1,27 @@
+FC	= mpifrtpx
+
+# standard options for K
+#FFLAGS	= -Kfast -fw -NRtrap
+#FFLAGS	= -Kfast,parallel,fp_precision -fw -NRtrap -O0
+#FFLAGS	= -Kfast,parallel,fp_precision -fw -NRtrap -Nlst=t 
+FFLAGS	= -Kfast,fp_precision -fw -NRtrap -Nlst=t 
+ifeq "$(OMP)" ".omp"	
+FFLAGS += -Kopenmp
+endif
+
+#debug options 
+#FFLAGS	= -NRtrap -Haesux -Am
+#FFLAGS	= -Kfast -Nquickdbg -fw -NRtrap
+
+FOPTION = $(FFLAGS) -I$(OGCMDIR)/src/include -I$(OGCMDIR)/src/module -I$(OGCMDIR)/src/touza -I$(OGCMDIR)/src/build $(OPTBDY) $(OPTSRST) $(OPTBBL) $(OPTTRIPOLE) $(OPTIO) $(OPTEXMASK) $(OPTTOUZA)
+
+AR	= ar r
+RANLIB	= ranlib
+#RANLIB	= touch
+
+.SUFFIXES: .F90
+ 
+.F.o:
+	$(FC) $(FOPTION) -c $<
+.F90.o:
+	$(FC) $(FOPTION) -c $<
