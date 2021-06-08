@@ -14,6 +14,7 @@ module qckot
 !     '08.??.??  Y.Komuro: SNGOUG/DBLOUG are allocated in all the nodes                           
 !     '12.10.09  M.kurogi: for COCO5.0
 !     '21.03.05  Y.Komuro: Sigma coordinate output
+!     '21.06.05  H.Tatebe: MR8/MR4 support
 !
 ! ---------------------------------------------------------------------
   use zocdim, only : nxydim, nzdim, mpi_comm_ogcm
@@ -40,6 +41,7 @@ module qckot
   character, save ::  clas(nfomax)*6
   character, save :: ctitl(nfomax)*32, cunit(nfomax)*16
   character, save :: cvcord(nfomax)*16
+  character, save ::  cdfmt(nfomax)*16
   integer, save :: nvcord(nfomax), nhcord(nfomax), isvint(nfomax)
   data citem  / nfomax*'                ' /
   data cntavr / nfomax*0.d0 /
@@ -48,6 +50,12 @@ module qckot
 
   integer, save :: nbtnb(nxydim, nchmax)
   real*8, save :: dzmnb(nxydim, nzdim, nchmax)
+
+  real(8), allocatable, save ::  dmskt (:,:,:), dmsktl(:,:)
+  real(8), allocatable, save ::  dmskv (:,:,:), dmskvl(:,:) 
+  real(8), allocatable, save ::    buf3(:,:,:)
+  real(8), allocatable, save ::    buf2(:,:)
+  
   real*8, allocatable, save :: sigma(:,:,:,:)
   integer, allocatable, save :: korg(:,:,:,:), ksdst(:,:,:,:)
   real*8, allocatable, save :: dkrep(:,:,:,:), thick(:,:,:,:)
@@ -69,11 +77,20 @@ module qckot
   character(len=16), save :: chrnum
   real(8), save  ::  dundef = -1.d20
 
+  integer, save   :: isingl(nfomax)
+  data isingl / nfomax*1 /
+
 contains
   subroutine chkset
-    use zocdim, only : nxg, nyg, nx, ny, nz, myrank, iroot
+    use zocdim, only : nxg, nyg, nx, ny, nz, myrank, iroot, &
+                       nxgdim, nygdim, nzdim, &
+                       nxdim,  nydim,         &
+                       igstr, jgstr, kstr,    &
+                       istr,  jstr,  kend
     use zocfil, only : nfomax
+    use zocmsk, only : amskt, amskv, amsktb, amskt1, nbot
     use bgs3d
+    use bshft
     use ufile
     use ucaln
     implicit none
@@ -94,18 +111,20 @@ contains
     integer :: ioxstr, ioxend, ioystr, ioyend, iozstr, iozend, iosvin
     character ::  cohfil*(ncf), cohitm*16, cohvco*16
     character(len=ncf) ::  crun = '(RUN NAME WAS NOT SET)'
+    character(16) :: ddfmt = 'not-specified'
+    character(16) ::  dfmt
 
     namelist /nmtime/ itstrt, itend, tmstp, iutstp, ntsplt
-    namelist /nmdout/ iodstr, iodend, iodint, iudint, iodavr, iodsng, iodsvi
-    namelist /nmhist/ cohitm, cohfil, cohvco,                           &
-         &            iohstr, iohend, iohint, iuhint, iohavr, iohsng,   &
-         &            ioxstr, ioxend, ioystr, ioyend, iozstr, iozend, iosvin
+    namelist /nmdout/ iodstr, iodend, iodint, iudint, iodavr, iodsng, iodsvi, &
+         &             ddfmt
+    namelist /nmhist/ cohitm, cohfil, cohvco,                                 &
+         &            iohstr, iohend, iohint, iuhint, iohavr, iohsng,         &
+         &            ioxstr, ioxend, ioystr, ioyend, iozstr, iozend, iosvin, &
+         &              dfmt
     namelist /nmrun/ crun
     
-    integer :: i, n
+    integer :: i, j, k, n, ij
     integer :: istat
-    integer, save   :: isingl(nfomax)
-    data isingl / nfomax*1 /
 
     nsig(0) = nz
     nsig(1:nncmax) = 0
@@ -141,8 +160,11 @@ contains
        iointv(iitem) = iodint
        iuintv(iitem) = iudint
        ioavrg(iitem) = iodavr
-       isingl(iitem) = iodsng
        isvint(iitem) = iodsvi
+       isingl(iitem) = iodsng
+       if ( iodsng == 0 ) cdfmt(iitem) = 'UR8'
+       if ( iodsng == 1 ) cdfmt(iitem) = 'UR4'
+       if ( ddfmt(1:13) /= 'not-specified' ) cdfmt(iitem) = ddfmt
        ixstr(iitem) = 1
        jystr(iitem) = 1
        ixend(iitem) = nxg
@@ -171,6 +193,7 @@ contains
        iozstr = -1
        iozend = -1
        iosvin = -1
+       dfmt   = 'not-specified'
 
        read(ifpar, nmhist, iostat=istat)
        if(istat < 0) exit
@@ -239,6 +262,11 @@ contains
           end if
           if (iohsng >= 0) then
              isingl(iohitm) = iohsng
+             if ( isingl(iohitm) == 0 ) cdfmt(iohitm) = 'UR8'
+             if ( isingl(iohitm) == 1 ) cdfmt(iohitm) = 'UR4'
+          end if
+          if ( dfmt(1:13) /= 'not-specified' ) then
+             cdfmt(iohitm) = dfmt
           end if
           if (iosvin >= 0) then
              isvint(iohitm) = iosvin
@@ -285,7 +313,76 @@ contains
        allocate(dbloug(nxg, nyg, nsnzmx))
        allocate(sngoug(nxg, nyg, nsnzmx))
     end if
-    
+
+!---- following is from brdge.oms.F of MIROC
+!---- setting local mask
+    allocate(dmsktl(nxydim, nzdim))
+    allocate(dmskvl(nxydim, nzdim))
+    dmsktl(:,:) = amskt(:,:)
+#ifdef OPT_BBL
+    do ij = 1, nxydim
+       dmsktl(ij, kend    ) = amsktb(ij)
+       dmsktl(ij, nbot(ij)) = amskt1(ij)
+    end do
+#endif
+#ifdef OPT_TRIPOLE
+    call shift1( dmsktl, nxdim, nydim, nzdim, 1.d0, 0, 0 )
+#else
+    call shift1( dmsktl, nxdim, nydim, nzdim )
+#endif
+    dmskvl = 1.d0
+    do k = 1, nzdim
+       do j = 1, ny
+          do i = 1, nx
+             ij = ( j + jstr - 2 ) * nxdim + i + istr - 1
+             dmskvl(ij, k) =                                  &
+                  ( 1.d0 - ( 1.d0 - dmsktl(ij        , k) )   &
+                          *( 1.d0 - dmsktl(ij+1      , k) )   &
+                          *( 1.d0 - dmsktl(ij+nxdim  , k) )   &
+                          *( 1.d0 - dmsktl(ij+nxdim+1, k) ) )
+          end do
+       end do
+    end do
+#ifdef OPT_TRIPOLE
+    call shift1( dmskvl, nxdim, nydim, nzdim, 1.d0, -1, -1 )
+#else
+    call shift1( dmskvl, nxdim, nydim, nzdim )
+#endif
+
+!---- setting global mask
+    allocate(dmskt(1, 1, 1))
+    allocate(dmskv(1, 1, 1))
+    allocate( buf3(1, 1, 1))
+    allocate( buf2(1, 1))
+    if (myrank == iroot) then
+       deallocate(dmskt, dmskv, buf3, buf2)
+       allocate(dmskt(nxg, nyg, nz))
+       allocate(dmskv(nxg, nyg, nz))
+       allocate(buf3(nxgdim, nygdim, nzdim))
+       allocate(buf2(nx, nz))
+    end if
+    call gather_3d( buf3, dmsktl )
+    if ( myrank == iroot ) then
+       do k = 1, nz
+          do j = 1, nyg
+             do i = 1, nxg
+                dmskt(i, j, k) = buf3(i+igstr-1, j+jgstr-1, k+kstr-1)
+             end do
+          end do
+       end do
+    end if
+    call gather_3d( buf3, dmskvl )
+    if ( myrank == iroot ) then
+       do k = 1, nz
+          do j = 1, nyg
+             do i = 1, nxg
+                dmskv(i, j, k) = buf3(i+igstr-1, j+jgstr-1, k+kstr-1)
+             end do
+          end do
+       end do
+    end if
+    deallocate ( buf3, dmsktl, dmskvl )
+
     do i = 1, nwork
        wrkout(i) = 0.d0
     end do
@@ -343,7 +440,7 @@ contains
 
   subroutine chkout(        &
        &             oflout)
-    use zocdim, only : nx, ny, nxy, nxg, nyg, nxdim, nxydim, &
+    use zocdim, only : nx, ny, nxy, nxg, nyg, nxdim, nxydim, nxgdim, &
          &  istr, jstr, myrank, ijnode, iroot, &
          &  nic, nz
     use zocfil, only : nfomax
@@ -356,6 +453,7 @@ contains
     logical, intent(in) :: oflout(nfomax)
     integer :: iitem
     integer ::  ixdim,  jydim,  kzdim
+    integer ::  nsiz
     character :: chead(64)*16
     data chead  / 64*'                ' /
     real(8) :: tout, tdur
@@ -425,7 +523,8 @@ contains
              end if
              write(chead(36), '(i16)') kzstr(iitem)
              write(chead(37), '(i16)') kzend(iitem)
-             write(chead(64), '(i16)') ixdim*jydim*kzdim
+             nsiz = ixdim*jydim*kzdim
+             write(chead(64), '(i16)') nsiz
              
              write(chead(39), '(e16.7)') dundef
              chead(40) = chead(39)
@@ -468,7 +567,7 @@ contains
                               &  +  istr + i - 1
                          if ( nvcord(iitem) > 0 ) then  !! if sigma
                             if (.not.owrksg(itopas(iitem)+ijkm-1)) then
-                               dbleou(ijk) = -999.d0   !! missing
+                               dbleou(ijk) = dundef   !! missing
                             else
                                if ( isvint(iitem) > 0 ) then
                                   dbleou(ijk) &
@@ -491,29 +590,95 @@ contains
              end if
              call gather_chk_sig(dbloug, dbleou, nsnzmx)
              if (myrank == iroot) then
-                if (osingl(iitem)) then
-                   do k = 1, kzdim
-                      do j = 1, nyg
-                         do i = 1, nxg
-                            sngoug(i, j, k) = dbloug(i, j, k)
-                         end do
-                      end do
-                   end do
-                   chead(38) = 'UR4'
-                   write(nfunit(iitem)) chead
-                   write(nfunit(iitem)) &
-                        & (((sngoug(i, j, k), &
-                        &  i = ixstr(iitem), ixend(iitem)), &
-                        &  j = jystr(iitem), jyend(iitem)), &
-                        &  k = 1, kzdim)
-                else
+                if ( cdfmt(iitem)(1:3) == 'UR8' ) then
                    chead(38) = 'UR8'
                    write(nfunit(iitem)) chead
-                   write(nfunit(iitem)) &
-                        & (((dbloug(i, j, k), &
-                        &  i = ixstr(iitem), ixend(iitem)), &
-                        &  j = jystr(iitem), jyend(iitem)), &
-                        &  k = 1, kzdim)
+                   call gfwrt8( dbloug(ixstr(iitem):ixend(iitem),  &
+                                       jystr(iitem):jyend(iitem),  &
+                                       kzstr(iitem):kzend(iitem)), & 
+                                nfunit(iitem),                     &
+                                nsiz )              
+                end if
+                if ( cdfmt(iitem)(1:3) == 'UR4' ) then
+                   chead(38) = 'UR4'
+                   write(nfunit(iitem)) chead
+                   call gfwrt4( dbloug(ixstr(iitem):ixend(iitem),  &
+                                       jystr(iitem):jyend(iitem),  &
+                                       kzstr(iitem):kzend(iitem)), & 
+                                nfunit(iitem),                     &
+                                nsiz )              
+                end if
+!----- buffering fty at the southern most part
+                if ( chead(32)(1:9) == 'OCLATTPVS' ) then
+                   do k = 1, nz
+                      do i = 1, nxg
+                         buf2(i,k) = dbloug(i,1,k)
+                      end do
+                   end do
+                end if
+                if ( nvcord(iitem) == 0 ) then
+                   if ( clas(iitem)(1:6) == 'OCLVTT' .or. &
+                        clas(iitem)(1:6) == 'OCLVMT' .or. &
+                        clas(iitem)(1:6) == 'OCSFCT'       ) then
+                      do k = kzstr(iitem), kzend(iitem)
+                         do j = jystr(iitem), jyend(iitem)
+                            do i = ixstr(iitem), ixend(iitem)
+                               if ( dmskt(i,j,k) == 0.d0 ) then
+                                  dbloug(i,j,k) = dundef
+                               end if
+                            end do
+                         end do
+                      end do
+                   end if
+                   if ( clas(iitem)(1:6) == 'OCLVTV' .or. &
+                        clas(iitem)(1:6) == 'OCLVMV' .or. &
+                        clas(iitem)(1:6) == 'OCSFCV'       ) then
+                      do k = kzstr(iitem), kzend(iitem)
+                         do j = jystr(iitem), jyend(iitem)
+                            do i = ixstr(iitem), ixend(iitem)
+                               if ( dmskv(i,j,k) == 0.d0 ) then
+                                  dbloug(i,j,k) = dundef
+                               end if
+                            end do
+                         end do
+                      end do
+                   end if
+                   if ( clas(iitem)(1:6) == 'OCICET' ) then
+                      do k = kzstr(iitem), kzend(iitem)
+                         do j = jystr(iitem), jyend(iitem)
+                            do i = ixstr(iitem), ixend(iitem)
+                               if ( dmskt(i,j,1) == 0.d0 ) then
+                                  dbloug(i,j,k) = dundef
+                               end if
+                            end do
+                         end do
+                      end do
+                   end if
+                end if
+                if ( chead(32)(1:9) == 'OCLATTPVS' ) then
+                   do k = 1, nz
+                      do i = 1, nxg
+                         dbloug(i,1,k) = buf2(i,k)
+                      end do
+                   end do
+                end if
+                if ( cdfmt(iitem)(1:3) == 'MR8' ) then
+                   chead(38) = 'MR8'
+                   write(nfunit(iitem)) chead
+                   call gfwrm8( dbloug(ixstr(iitem):ixend(iitem),  &
+                                       jystr(iitem):jyend(iitem),  &
+                                       kzstr(iitem):kzend(iitem)), & 
+                                nfunit(iitem),                     &
+                                nsiz, dundef )
+                end if
+                if ( cdfmt(iitem)(1:3) == 'MR4' ) then
+                   chead(38) = 'MR4'
+                   write(nfunit(iitem)) chead
+                   call gfwrm4( dbloug(ixstr(iitem):ixend(iitem),  &
+                                       jystr(iitem):jyend(iitem),  &
+                                       kzstr(iitem):kzend(iitem)), & 
+                                nfunit(iitem),                     &
+                                nsiz, dundef )
                 end if
              end if
              
@@ -726,10 +891,7 @@ contains
     use zocgrd, only: &
       &      dz,    dzv
     use zocmsk, only: &
-#ifdef OPT_BBL
-      &  amsktb, amskvb,  nbotv, &
-#endif
-      &  nbot
+      &  amsktb, amskvb,   nbot,  nbotv
     use zocfil, only: &
       &     ncf
     use ufile
@@ -911,10 +1073,7 @@ contains
       &      nx,     ny,     nz, nxydim,  nzdim, nxyzdm,  ntdim, &
       &    kstr,   kend, ijtstr, ijtend,  oinit
     use zocmsk, only: &
-#ifdef OPT_BBL
-      &  amsktb, &
-#endif
-      &   amskt,   nbot
+      &   amskt, amsktb,   nbot
 
     implicit none
 
@@ -984,13 +1143,11 @@ contains
              sigout(ij, k) = sigma(ij, k, n, 1)
           end do
        end do
-#ifdef OPT_BBL
        do ij=ijtstr, ijtend
           k = nbot(ij)
           sigout(ij, k) = sigout(ij, kend) * amsktb(ij) &
             &       + sigout(ij, k) * (1.0d0 - amsktb(ij))
        end do
-#endif
        cvmes = '                                '
        if (n == 0) then
           cvnam = 'PDEN   '
@@ -1049,10 +1206,8 @@ contains
     use zocdim, only: &
       &   nxdim,  nzdim, nxydim,   kstr,   kend, &
       &      le,     ln,    lne
-#ifdef OPT_BBL
     use zocmsk, only: &
       &  amskvb
-#endif
     implicit none
 
     integer, intent(in)  ::  sdim,  ncsig,    nch
@@ -1118,10 +1273,8 @@ contains
       &   ijstr,  ijend,   kstr,   kend
     use zocgrd, only: &
       &     dz0
-#ifdef OPT_BBL
     use zocmsk, only: &
       &  amskvb
-#endif
     implicit none
     integer, intent(in) :: nch
 

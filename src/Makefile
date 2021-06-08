@@ -24,6 +24,7 @@ SRCSHR	= \
           fshdf \
           fshlw \
           qckag \
+          packgt3 \
           qckot$(MPI) \
           tflxt \
           tovtr \

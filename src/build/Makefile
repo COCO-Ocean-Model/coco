@@ -8,6 +8,7 @@ OBJS.coco	= \
           bgs3d.o \
           bshft.o \
           bshfi.o \
+          packgt3.o \
           qckot.o \
           qckag.o \
           bstbc.o \
@@ -48,6 +49,7 @@ OBJS.icedcoco	= \
           bgs3d.o \
           bshft.o \
           bshfi.o \
+          packgt3.o \
           qckot.o \
           qckag.o \
           utrdg.o \
