@@ -508,8 +508,8 @@ contains
     implicit none
 #include "mpif.h"
 
-    character(len=nch) :: buf(nelem)
     integer :: nch, nelem, fh, i
+    character(len=nch) :: buf(nelem)
     integer(kind=mpi_offset_kind) :: disp
 
 #ifdef OPT_IO_SEQUENTIAL

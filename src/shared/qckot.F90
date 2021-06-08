@@ -944,7 +944,7 @@ contains
           read( nfsgco ) lsig
           read( nfsgco ) lsigp
           read( nfsgco ) dsig
-          close( nfsgco )
+          call filcls( nfsgco )
        end if
        call mpi_bcast( lsig, nsigmx*nnc, mpi_real8, &
          &             iroot, mpi_comm_ogcm, ierr )
