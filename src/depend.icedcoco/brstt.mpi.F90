@@ -336,7 +336,7 @@ contains
 #endif
 
     use zocdim,   only  :                                             &
-    &      nxdim,  nydim,  nzdim,                                     &
+    &      nxdim,  nydim,  nzdim,    nic,                             &
     &      igstr,  jgstr,   kstr,                                     &
     &        nxg,    nyg,     nz
     use zocnod,   only  :                                             &
@@ -375,6 +375,22 @@ contains
     &                          fact,  ioff,  joff  )
 #else
           call shift1(additm, nxdim, nydim, nzdim)
+#endif
+       end if
+    else if ( clas(1:3) == 'ICE' ) then
+       oeof = .false.
+       call mpi_read_chead(chead, mpi_fh_r, disp, icread)
+       if(icread .ne. 1024) then
+          oeof = .true.
+       end if
+       if(.not. oeof) then
+          call mpi_read_id(additm, mpi_fh_r,disp)
+
+#ifdef OPT_TRIPOLE
+          call shift1(additm, nxdim, nydim, nic+1,                    &
+    &                          fact,  ioff,  joff  )
+#else
+          call shift1(additm, nxdim, nydim, nic+1)
 #endif
        end if
     else
@@ -741,4 +757,3 @@ contains
   end subroutine edhead
 
 end module brstt
-

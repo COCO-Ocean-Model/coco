@@ -16,6 +16,8 @@ module sfcng
 !     '09.09.26  Y.Komuro: bug fix
 !     '10.04.14  M.Kurogi: (COCO4.4 tripolar code by Dr. Suzuki)
 !     '12.09.04  H.Tatebe: Rewrite in F95 format
+!     '21.05.26  Y.Komuro: snow aging & meltpond parametrization
+!                (almost dummy, since albedo is implicit in this routine)
 !
 ! ---------------------------------------------------------------------
 
@@ -41,7 +43,9 @@ contains
     &        prec,   snow,   roff,   soff,                            &
     &      tauaix, tauaiy, tauaox, tauaoy,                            &
     &          ft,   ptop,   ssfc,                                    &
+    &        dfdu,   dfbc,                                            &
     &           t,      a,     hi,     ti,    hsn,                    &
+    &          as,    vmp,   frmp,                                    &
     &           u,      v )
 
     use zocdim,  only  :                                              &
@@ -77,7 +81,10 @@ contains
     real(8),    intent(in)     ::      t(nxydim,nzdim,ntdim)
     real(8),    intent(in)     ::      a(nxydim,0:nic),  hi(nxydim,0:nic)
     real(8),    intent(in)     ::     ti(nxydim,0:nic), hsn(nxydim,0:nic)
+    real(8),    intent(in)     ::     as(nxydim, 0:nic), vmp(nxydim, 0:nic)
+    real(8),    intent(in)     ::   frmp(nxydim, 0:nic)
     real(8),    intent(in)     ::      u(nxydim,nzdim),   v(nxydim,nzdim) !! dummy
+    real(8),    intent(out)    ::   dfdu(nxydim),   dfbc(nxydim)
 
 !---- local variables
     real(8)        ::    taux(nxydim),   tauy(nxydim),   usfc(nxydim)
@@ -193,6 +200,10 @@ contains
 #ifdef OPT_SRST
     call tmintp(  ssfc,     10)
 #endif
+
+!! 2021.05.31: Now dfdu and dfbc are dummy fluxes in OGCM.
+  dfdu(:) = 0.0d0
+  dfbc(:) = 0.0d0
 
 #ifdef OPT_TRIPOLE
     call shift2(                                                      &

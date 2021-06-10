@@ -19,6 +19,7 @@ module sfcng
 !     '10.04.14  M.Kurogi: for tripolar grid
 !     '12.10.11  Y.Komuro: for COCO5.0
 !     '13.02.13  Y.Komuro: remove non-parallel code 
+!     '21.05.26  Y.Komuro: snow aging & meltpond parametrization
 !
 ! ---------------------------------------------------------------------
 
@@ -65,20 +66,58 @@ module sfcng
     &                 (/ 2.0d-2, 2.0d-3, 2.0d-3 /)
   real(8), save :: siccrt = 300.0d0            !! ice amount for conc.=1
   real(8), save :: sicden = 1000.0d0           !! ice density (kg/m**3)
+! namelist nmswbr
+  real(8), save :: rvis = 0.53d0   !! ratio of visible band in SW
+  real(8), save :: rnir = 0.47d0   !! ratio of near-IR band in SW
+  real(8), save :: rir = 0.0d0   !! ratio of IR (longwave) band in SW
+! namelist nmsfrc
+  logical, save :: oasfrc = .false. !! true if CCSM type snow fraction
+  real(8), save :: alsdpt = 1.0d0
+          !! threshold thickness of snow-covered ice in trad. scheme, cm
+  real(8), save :: alspat = 2.0d0
+                      !! snowpatch depth for CCSM type snow fraction, cm
+! namelist nmsage
+  logical, save :: osage = .false. !! true if snow aging param. is used
+  real(8), save :: alssif( nrbnd ) = &  !! albedo of fresh snow on sea ice
+    &                 (/ 0.75d0, 0.75d0, 0.0d0 /) 
+  real(8), save :: alssio( nrbnd ) = &  !! albedo of old snow on sea ice
+    &                 (/ 0.5d0, 0.5d0, 0.0d0 /) 
+  real(8), save :: alfmax = 0.999d0 !! maximum value for albfct
+  real(8), save :: snrfrs = 1.0d0 !! snowfall for refreshing snow surface [cm]
+  real(8), save :: ftage = 5.0d3  !! aging factor, for agefr1
+  real(8), save :: tauage = 2.0d6 !! time scale for aging
+  real(8), save :: adirt0 = 0.3d0 !! dirt factor for agefr3, normal place
+  real(8), save :: adirtc = 0.01d0 !! dirt factor for agefr3, clean place
+  real(8), save :: adirts = 0.1d0 !! dirt factor for agefr3, coeff. for dscppm
+  real(8), save :: adirtm = 1.0d0 !! dirt factor for agefr3, maximum
+  real(8), save :: drsmax = 0.1d0 !! maximum ratio of dust to snow
+  logical, save :: oadst = .false.
+                      !! using dsdx/dsbx for aging insted of adirt0/adirtc
+! namelist nmmpnd
+  logical, save :: ompnd = .false. !! setting if melt pond (MP) param is used
+  real(8), save :: hminmp = 10.0d0 !! min. ice thickness for keeping MP [cm]
+  real(8), save :: rtdpmp = 80.0d0 !! ratio of melt pond depth to frmp [cm/1]
+  real(8), save :: rtmxmp = 0.9d0  !! max. ratio of MP depth to ice thickness 
+  real(8), save :: cmpfrz = 0.01d0 !! constant for melt pond freeze-up rate
+  real(8), save :: tmpfrz = -2.0d0 !! ref. t for melt pond freeze-up [c]
+  real(8), save :: albmpd( nrbnd ) = &  !! deep melt pond shortwave albedo
+    &                 (/ 0.4d0, 0.1d0, 0.0d0 /)
+  real(8), save :: almpdp(2) = &   !! MP sw albedo, depth dependency [cm]
+    &                 (/ 0.5d0, 20.0d0 /)
 ! namelist nmislt
   real(8), save ::     si = 5.0d0              !! sea-ice salinity (psu)
 ! namelist nmlwem
   real(8), save :: emislo = 1.0d0   !! ocn. LW emissivity (LW co-albedo)
-  real(8), save :: emisli = 0.95d0  !! ice LW emissivity (LW co-albedo)
+!  real(8), save :: emisli = 0.95d0  !! ice LW emissivity (LW co-albedo)
   logical, save :: olwnet = .false. !! true if longwave rad. is net flux
 ! namelist nmswem
   real(8), save :: albswo = 0.066d0 !! ocn. shortwave albedo (if constant)
-  real(8), save :: albswi = 0.5d0   !! bare ice shortwave albedo
-  real(8), save :: albsws(2) = &    !! snow-covered ice shortwave albedo
-    &                        (/ 0.85d0, 0.65d0 /)
-  real(8), save :: alswst(2) = &    !! snow-covered ice sw albedo, T dependency
-    &                        (/ -15.0d0, 0.0d0 /)
-  real(8), save :: alsdpt = 1.0d0   !! threshold thickness of snow-covered ice
+!  real(8), save :: albswi = 0.5d0   !! bare ice shortwave albedo
+!  real(8), save :: albsws(2) = &    !! snow-covered ice shortwave albedo
+!    &                        (/ 0.85d0, 0.65d0 /)
+!  real(8), save :: alswst(2) = &    !! snow-covered ice sw albedo, T dependency
+!    &                        (/ -15.0d0, 0.0d0 /)
+!  real(8), save :: alsdpt = 1.0d0   !! threshold thickness of snow-covered ice
   logical, save :: oswnet = .false. !! true if shortwave rad. is net flux
   logical, save :: oasold = .false. !! true if ocn. SW albedo depends on lat.
 ! namelist nmz0
@@ -115,10 +154,16 @@ module sfcng
     &                snwcrt, snwden  
   namelist /nmice/    dfice, albice,  z0ice, &
     &                siccrt, sicden
+  namelist /nmswbr/    rvis,   rnir,    rir
+  namelist /nmsfrc/  oasfrc, alsdpt, alspat
+  namelist /nmsage/   osage, alssif, alssio, alfmax, snrfrs,  ftage, &
+    &                tauage, adirt0, adirtc, adirts, adirtm, drsmax, &
+    &                 oadst
+  namelist /nmmpnd/   ompnd, hminmp, rtdpmp, rtmxmp, cmpfrz, tmpfrz, &
+    &                albmpd, almpdp
   namelist /nmislt/      si
-  namelist /nmlwem/  emislo, emisli, olwnet
-  namelist /nmswem/  albswo, albswi, albsws, alswst, alsdpt, &
-    &                oswnet, oasold
+  namelist /nmlwem/  emislo, olwnet
+  namelist /nmswem/  albswo, oswnet, oasold
   namelist /nmz0/     z0fct,  z0min
   namelist /nmocn/    dzocn,  dfocn,  alblo
   namelist /nmsair/      za
@@ -146,7 +191,9 @@ subroutine sfcflx( &
   &                  prec,   snow,   roff,   soff, &
   &                tauaix, tauaiy, tauaox, tauaoy, &
   &                    ft,   ptop,   ssfc, &
+  &                  dfdu,   dfbc, &
   &                     t,      a,     hi,     ti,    hsn, &
+  &                    as,    vmp,   frmp, &
   &                     u,      v )
 
   use qckot
@@ -160,6 +207,8 @@ subroutine sfcflx( &
   real(8), intent(in)  ::       a(nxydim, 0:nic)
   real(8), intent(in)  ::      hi(nxydim, 0:nic),    hsn(nxydim, 0:nic)
   real(8), intent(in)  ::      ti(nxydim, 0:nic)
+  real(8), intent(in)  ::      as(nxydim, 0:nic),    vmp(nxydim, 0:nic)
+  real(8), intent(in)  ::    frmp(nxydim, 0:nic)
   real(8), intent(in)  ::       u(nxydim, nzdim),      v(nxydim, nzdim)
 
   real(8), intent(out) ::     wev(nxydim),    wsb(nxydim, nic)
@@ -174,6 +223,7 @@ subroutine sfcflx( &
   real(8), intent(out) ::      ft(nxydim, ntdim)
   real(8), intent(out) ::    ptop(nxydim)
   real(8), intent(out) ::    ssfc(nxydim)
+  real(8), intent(out) ::    dfdu(nxydim),   dfbc(nxydim)
 
   real(8) :: uo, vo
   real(8) ::    taux(nxydim)=0.d0,   tauy(nxydim)=0.d0
@@ -183,7 +233,8 @@ subroutine sfcflx( &
   real(8) ::    sflx(nxydim)=0.d0
   real(8) ::    swnt(nxydim)=0.d0,   dwlw(nxydim)=0.d0,   psfc(nxydim)=0.d0
   real(8) ::    grts(nxydim),   grtb(nxydim)
-  real(8) ::   grice(nxydim),  grsnw(nxydim),  gricr(nxydim)
+  real(8) ::   grice(nxydim),  grsnw(nxydim),  gricr(nxydim),  grsnr(nxydim)
+  real(8) ::   grasn(nxydim),  grvmp(nxydim), grfrmp(nxydim)
   real(8) ::    grz0(nxydim, ntyz0)
   real(8) ::  gfluxs(nxydim), tfluxs(nxydim), qfluxs(nxydim)
   real(8) ::  wfluxs(nxydim, 2)
@@ -200,12 +251,12 @@ subroutine sfcflx( &
 ! real(8) ::     cmv(nxydim, 0:nic), chv(nxydim, 0:nic)
 ! real(8) ::     cev(nxydim, 0:nic)
       
-! real(8) :: ralbsw(nxydim), albsw(nxydim, 0:nic)
+ real(8) :: ralbsw(nxydim), albsw(nxydim, 0:nic)
 ! real(8) :: rwsb(nxydim, 0:nic)
 ! real(8) ::    rqai(nxydim, 0:nic),   rqio(nxydim, 0:nic)
 ! real(8) ::    rqii(nxydim, 0:nic)
 ! real(8) ::  ftatm(nxydim), swntwa(nxydim)
-  real(8) :: ralbsw(nxydim, 0:nic)
+!  real(8) :: ralbsw(nxydim, 0:nic)
   real(8) ::   tisi(nxydim, 0:nic)
   real(8) ::   wsbg(nxydim)
   
@@ -232,6 +283,22 @@ subroutine sfcflx( &
      read (ifpar, nmice, iostat=istat)
      call cstnml(jfpar, 'sfcflx', 'nmice', istat)
      write(jfpar, nmice)
+     call rewnml(ifpar, jfpar)
+     read (ifpar, nmswbr, iostat=istat)
+     call cstnml(jfpar, 'sfcflx', 'nmswbr', istat)
+     write(jfpar, nmswbr)
+     call rewnml(ifpar, jfpar)
+     read (ifpar, nmsfrc, iostat=istat)
+     call cstnml(jfpar, 'sfcflx', 'nmsfrc', istat)
+     write(jfpar, nmsfrc)
+     call rewnml(ifpar, jfpar)
+     read (ifpar, nmsage, iostat=istat)
+     call cstnml(jfpar, 'sfcflx', 'nmsage', istat)
+     write(jfpar, nmsage)
+     call rewnml(ifpar, jfpar)
+     read (ifpar, nmmpnd, iostat=istat)
+     call cstnml(jfpar, 'sfcflx', 'nmmpnd', istat)
+     write(jfpar, nmmpnd)
      call rewnml(ifpar, jfpar)
      read (ifpar, nmlwem, iostat=istat)
      call cstnml(jfpar, 'sfcflx', 'nmlwem', istat)
@@ -323,6 +390,10 @@ subroutine sfcflx( &
   call tmintp(  ssfc,     11)
 #endif
 
+!! 2021.05.31: Now dfdu and dfbc are dummy fluxes in OGCM.
+  dfdu(:) = 0.0d0
+  dfbc(:) = 0.0d0
+
 !!!!!! kurogi 2009.11.27
 #ifdef OPT_TRIPOLE
   call shift1( &
@@ -374,6 +445,9 @@ subroutine sfcflx( &
            grice(ij) = hi(ij, l) * 5.0d-3
            grsnw(ij) = hsn(ij, l) * 1.0d-2
            gricr(ij) = 1.0d0
+           grasn(ij) = as(ij, l)
+           grvmp(ij) = vmp(ij, l) * 1.0d-2
+           grfrmp(ij) = frmp(ij, l)
         end do
      else
         do ij = ijstr, ijend
@@ -382,11 +456,14 @@ subroutine sfcflx( &
            grice(ij) = 0.0d0
            grsnw(ij) = 0.0d0
            gricr(ij) = 0.0d0
+           grasn(ij) = 0.0d0
+           grvmp(ij) = 0.0d0
+           grfrmp(ij) = 0.0d0
         end do
      end if
 
      call ocnbcs_core( &
-       &               gfluxs,  dgfds, &
+       &               gfluxs,  dgfds,  grsnr, &
        &                 grts,   grtb,  grice,  grsnw,  gricr )
      call sfcflx_core( &
        &               tfluxs, qfluxs,   taux,   tauy, &
@@ -411,7 +488,8 @@ subroutine sfcflx( &
        &               wfluxs, rflxlu, sflxbl,   swdn, ralbsw, &
        &                dtfds,  dqfds,  dgfds, &
        &                 swnt,   dwlw, &
-       &                gricr,  grsnw,    tmi )
+       &                gricr,  grsnw,  grsnr,    tmi, &
+       &                grasn,  grvmp, grfrmp )     
 
 #ifdef OPT_TRIPOLE
      call shift2( &
@@ -455,7 +533,7 @@ subroutine sfcflx( &
 !           rqii(ij, l) = qii(ij, l)
 !           rqio(ij, l) = qio(ij, l)
 !           rwsb(ij, l) = wsb(ij, l)
-!           albsw(ij, l) = ralbsw(ij)
+           albsw(ij, l) = ralbsw(ij)
 !           ftatm(ij) = ftatm(ij) + qai(ij, l) * fm(ij)
 !           swntwa(ij) = swntwa(ij) + swdn(ij) * fm(ij)
         end do
@@ -470,7 +548,7 @@ subroutine sfcflx( &
            qao(ij) = (gfluxs(ij) + swdn(ij)) * facth
            swabs(ij) = swdn(ij) * facth * a(ij, 0)
            wev(ij) = qfluxs(ij) * a(ij, 0) / dwatr * factw
-!           albsw(ij, l) = ralbsw(ij)
+           albsw(ij, l) = ralbsw(ij)
 !           ftatm(ij) = ftatm(ij) + gfluxs(ij) * facth * a(ij, 0)
 !           swntwa(ij) = swntwa(ij) + swdn(ij) * a(ij, 0)
         end do
@@ -517,6 +595,12 @@ subroutine sfcflx( &
   call chekin(    wev,   'WEV', &
     &           'evaporation from sea surface', 'cm/s', &
     &              nx,      ny,      1, nxydim, 'OCSFCT')
+  call chekin(  albsw(1,0), 'ALBSWO', &
+    &           'ocean surface albedo', 'ND', &
+    &              nx,      ny,      1, nxydim, 'OCSFCT')
+  call chekin(  albsw, 'ALBSWI', &
+    &           'sea-ice surface albedo', 'ND', &
+    &              nx,      ny,    nic, nxyidm, 'OCICET')
 !  call chekin( tauaox,'tauaox', &
 !    &              nx,      ny,      1, nxydim, 'sfc')
 !  call chekin( tauaoy,'tauaoy', &
@@ -574,7 +658,8 @@ subroutine ocnslv_core ( &
   &              wfluxs, rflxlu, sflxbl, rflxsd, ralbsw, &
   &              dtfds , dqfds , dgfds , &
   &              rflxs , rflxld, &
-  &              gricr , grsnw ,    tmi )
+  &              gricr , grsnw , grsnr , tmi   , &
+  &              grasn , grvmp , grfrmp )
 
   use ufile
    
@@ -596,20 +681,28 @@ subroutine ocnslv_core ( &
   real(8), intent(in)    ::  rflxld( nxydim )          !! down. LW rad.
   real(8), intent(in)    ::  gricr ( nxydim )          !! snow/ice ratio
   real(8), intent(in)    ::  grsnw ( nxydim )          !! snow thickness
+  real(8), intent(in)    ::  grsnr ( nxydim )      !! snow cover fraction
   real(8), intent(in)    ::  tmi           !! sea ice melting temperature (C)
+  real(8), intent(in)    ::  grasn ( nxydim )      !! snow age
+  real(8), intent(in)    ::  grvmp ( nxydim )      !! melt pond volume
+  real(8), intent(in)    ::  grfrmp( nxydim )      !! melt pond fraction
 
   real(8) ::     esub, stg, drfds
   real(8) ::     sflux, gsflux, dgsfds
   real(8) ::     gfluxf
   real(8) ::     sflxbi, dsbdsi, dti, evapi, gfluxi
   real(8) ::     ff, fi, dtx
-  real(8) ::     emis, albsw, snwalb, icealb, fbarei, x
+  real(8) ::     emis
+  real(8) ::     x, albx, albsw, mpdalb, snwalb, icealb
+  real(8) ::     fbarei, fbarmp, fbarbi
   real(8) ::     omega, sinij, cort
-  integer ::    ij
+  integer ::    ij, l
   integer ::  ifpar,  jfpar
 
   real(8), save :: aswo2d(nxydim) !! ocn. shortwave albedo distribution
-  real(8), save :: flwnet, fswalb, aicet1, daicet, tsdpt
+  real(8), save :: flwnet, fswalb, aicet1, daicet
+  real(8), save :: albswi, emisli, albsws(2)
+  real(8), save :: fmpnd, dalmdp, falmdp
 
   logical, save :: ofirst = .true.
 
@@ -628,9 +721,21 @@ subroutine ocnslv_core ( &
      else
         fswalb = 1.d0
      end if
-     aicet1 = alswst(1) + kelvin
-     daicet = alswst(2) - alswst(1)
-     tsdpt = alsdpt * 1.0d-2
+     if (ompnd) then
+       fmpnd = 1.0d0
+     else
+       fmpnd = 0.0d0
+     end if
+     aicet1 = talsnw(1)
+     daicet = talsnw(2) - talsnw(1)
+     dalmdp = (almpdp(2) - almpdp(1)) * 1.0d-2
+     falmdp = almpdp(1) * 1.0d-2
+     albswi = rvis * albice(1) + rnir * albice(2) + rir * albice(3)
+     do l = 1, 2
+       albsws(l) = rvis * albsnw(l,1) + rnir * albsnw(l,2) &
+         &       + rir * albsnw(l,3)
+     end do
+     emisli = 1.0d0 - albice(3)
 
 !    '08.09.16: Large and Yeager (2008) latitude-dependant albedo
      if (oasold) then
@@ -655,10 +760,21 @@ subroutine ocnslv_core ( &
   esub = el + emelt
   do ij = ijstr, ijend
      emis = emislo * (1.0d0 - gricr(ij)) + emisli * gricr(ij)
-     x = min( max( (gdts(ij) - aicet1) / daicet, 0.0d0), 1.0d0)
-     snwalb = albsws(1) * (1.0d0 - x) + albsws(2) * x
-     fbarei = 0.5d0 + sign(0.5d0, tsdpt - grsnw(ij))
-     icealb = snwalb * (1.0d0 - fbarei) + albswi * fbarei
+     albx = fmpnd * min( max( &
+       &            (grvmp(ij) - falmdp) / dalmdp, 0.0d0), 1.0d0)
+     mpdalb = albice(1) * (1.0d0 - albx) + albmpd(1) * albx
+     if (osage) then
+        snwalb = alssif(1) + grasn(ij) * ( alssio(1) - alssif(1) )
+     else
+        x = min( max( (gdts(ij) - aicet1) / daicet, 0.0d0), 1.0d0)
+        snwalb = albsws(1) * (1.0d0 - x) + albsws(2) * x
+     end if
+     fbarei = 1.0d0 - grsnr(ij)
+     fbarmp = min(grfrmp(ij), fbarei)
+     fbarbi = fbarei - fbarmp
+     icealb = snwalb * (1.0d0 - fbarei) &
+       &    + mpdalb * fbarmp           &
+       &    + albswi * fbarbi
      albsw = (aswo2d(ij) * (1.0d0 - gricr(ij)) + icealb * gricr(ij)) &
        &     * fswalb
      ralbsw(ij) = albsw
@@ -708,13 +824,14 @@ end subroutine ocnslv_core
 ! *********************************************************************
 
 subroutine ocnbcs_core ( &
-  &                      fogflx, dgfds , &
+  &                      fogflx, dgfds , grsnr , &
   &                      grts  , grtb  , grice , grsnw , gricr )
 
   use ufile
 
   real(8), intent(out) :: fogflx( nxydim )      !! heat flux
   real(8), intent(out) :: dgfds ( nxydim )      !! dG/dTs
+  real(8), intent(out) :: grsnr ( nxydim )      !! snow cover fraction
   
   real(8), intent(in)  :: grts  ( nxydim )      !! skin temperature
   real(8), intent(in)  :: grtb  ( nxydim )      !! ice base temp.
@@ -722,7 +839,10 @@ subroutine ocnbcs_core ( &
   real(8), intent(in)  :: grsnw ( nxydim )      !! snow smount
   real(8), intent(in)  :: gricr ( nxydim )      !! ice fraction
 
-  real(8) ::  grsnr( nxydim )               !! snow fraction
+  real(8), save :: tsdpt
+
+  real(8) :: grsnrf ( nxydim )      !! snow cover frac. for flux calc.
+
   integer ::     ij,     l,      m
   integer ::  ifpar,  jfpar
   integer ::    ifg
@@ -735,14 +855,28 @@ subroutine ocnbcs_core ( &
   if ( ofirst ) then
      call rewnml(ifpar, jfpar)
      write (jfpar, *) ' @@@ OCNBCS: OCEAN SURFACE BC 98/07/29'
+     if (oasfrc) then
+        tsdpt = alspat * 1.0d-2
+     else
+        tsdpt = alsdpt * 1.0d-2
+     end if
      ofirst = .false.
   endif
 
   do ij = ijstr, ijend
-     if (grsnw(ij) > 0.0d0) then
-        grsnr(ij) = 1.0d0
+     if (oasfrc) then
+        grsnr(ij) = grsnw(ij) / (tsdpt + grsnw(ij))
      else
-        grsnr(ij) = 0.0d0
+        if (grsnw(ij) .gt. tsdpt) then
+           grsnr(ij) = 1.d0
+        else
+           grsnr(ij) = 0.d0
+        end if
+     end if
+     if (grsnw(ij) .gt. 0.0d0) then
+         grsnrf(ij) = 1.d0
+     else
+         grsnrf(ij) = 0.d0
      end if
   end do
 
@@ -751,7 +885,7 @@ subroutine ocnbcs_core ( &
         dfgt = dfice / grice(ij)
         dfgx = dfice * dfsnow &
           &    / (dfice * grsnw(ij) + dfsnow * grice(ij))
-        dfgt = dfgt * (1.0d0 - grsnr(ij)) + dfgx * grsnr(ij)
+        dfgt = dfgt * (1.0d0 - grsnrf(ij)) + dfgx * grsnrf(ij)
         fogflx(ij) = dfgt * (grtb(ij) - grts(ij))
         dgfds (ij) = dfgt
      else

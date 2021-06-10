@@ -5,6 +5,7 @@ module bfrch
 !     '02.10.10  H.Nakano: from COCO3.4
 !     '07.04.23  H.Hasumi
 !     '12.10.07  M.Kurogi: rewrite in F95 format
+!     '21.05.26  Y.Komuro: snow aging & meltpond parametrization 
 !
 ! ---------------------------------------------------------------------
 contains
@@ -170,4 +171,76 @@ contains
 
  return
  end subroutine excngi
+
+! *********************************************************************
+
+ subroutine forsta( &
+  &                asa,   vmpa,  frmpa,   dsda,   dsba, &
+  &                asb,   vmpb,  frmpb,   dsdb,   dsbb )
+
+ use zocdim, only : nxydim, nic
+ implicit none
+
+ real(8), intent(inout) ::    asa(nxydim, 0:nic),    asb(nxydim, 0:nic)
+ real(8), intent(inout) ::   vmpa(nxydim, 0:nic),   vmpb(nxydim, 0:nic)
+ real(8), intent(inout) ::  frmpa(nxydim, 0:nic),  frmpb(nxydim, 0:nic)
+ real(8), intent(inout) ::   dsda(nxydim, 0:nic),   dsdb(nxydim, 0:nic)
+ real(8), intent(inout) ::   dsba(nxydim, 0:nic),   dsbb(nxydim, 0:nic)
+
+ integer ::     ij,      k
+
+ do k = 0, nic
+    do ij = 1, nxydim
+       asa(ij, k) = asb(ij, k)
+       vmpa(ij, k) = vmpb(ij, k)
+       frmpa(ij, k) = frmpb(ij, k)
+       dsda(ij, k) = dsdb(ij, k)
+       dsba(ij, k) = dsbb(ij, k)
+    end do
+ end do
+
+ return
+ end subroutine forsta
+
+! *********************************************************************
+
+ subroutine excnga( &
+  &                asa,   vmpa,  frmpa,   dsda,   dsba, &
+  &                asb,   vmpb,  frmpb,   dsdb,   dsbb )
+
+ use zocdim, only : nxydim, nic
+ implicit none
+ 
+ real(8), intent(inout) ::    asa(nxydim, 0:nic),    asb(nxydim, 0:nic)
+ real(8), intent(inout) ::   vmpa(nxydim, 0:nic),   vmpb(nxydim, 0:nic)
+ real(8), intent(inout) ::  frmpa(nxydim, 0:nic),  frmpb(nxydim, 0:nic)
+ real(8), intent(inout) ::   dsda(nxydim, 0:nic),   dsdb(nxydim, 0:nic)
+ real(8), intent(inout) ::   dsba(nxydim, 0:nic),   dsbb(nxydim, 0:nic)
+
+ integer ::    ij,      k
+ real*8 ::     as,    vmp,   frmp,    dsd,    dsb
+
+ do k = 0, nic
+    do ij = 1, nxydim
+       as         = asb(ij, k)
+       vmp        = vmpb(ij, k)
+       frmp       = frmpb(ij, k)
+       dsd        = dsdb(ij, k)
+       dsb        = dsbb(ij, k)
+       asb(ij, k) = asa(ij, k)
+       vmpb(ij, k) = vmpa(ij, k)
+       frmpb(ij, k) = frmpa(ij, k)
+       dsdb(ij, k) = dsda(ij, k)
+       dsbb(ij, k) = dsba(ij, k)
+       asa(ij, k) = as
+       vmpa(ij, k) = vmp
+       frmpa(ij, k) = frmp
+       dsda(ij, k) = dsd
+       dsba(ij, k) = dsb
+    end do
+ end do
+
+ return
+ end subroutine excnga
+
 end module bfrch

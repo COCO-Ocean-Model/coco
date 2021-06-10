@@ -13,6 +13,7 @@ module iprdg
 !     '08.07.10  H.Hasumi: initial/final processing
 !     '08.11.22  Y.Komuro: coping with the situation HRIDGE = HIX
 !     '12.07.20  Y.Komuro: for COCO5.0
+!     '21.05.26  Y.Komuro: snow aging & meltpond parametrization 
 !
 ! ---------------------------------------------------------------------
 
@@ -37,6 +38,7 @@ contains
 subroutine pridge( &
   &                  pice, &
   &                    ax,    hix,    eix,    hsx,    tix, &
+  &                   asx,   vmpx,   dsdx,   dsbx, &
   &                    az,    hiz,    eiz,    hsz, &
   &                    ui,     vi )
   use ufile
@@ -48,6 +50,10 @@ subroutine pridge( &
   real(8), intent(inout) ::     eix(nxydim, 0:nic)
   real(8), intent(inout) ::     hsx(nxydim, 0:nic)
   real(8), intent(inout) ::     tix(nxydim, 0:nic)
+  real(8), intent(inout) ::     asx(nxydim, 0:nic)
+  real(8), intent(inout) ::    vmpx(nxydim, 0:nic)
+  real(8), intent(inout) ::    dsdx(nxydim, 0:nic)
+  real(8), intent(inout) ::    dsbx(nxydim, 0:nic)
   real(8), intent(in)    ::      az(nxydim, 0:nic)
   real(8), intent(in)    ::     hiz(nxydim, 0:nic)
   real(8), intent(in)    ::     eiz(nxydim, 0:nic)
@@ -56,6 +62,9 @@ subroutine pridge( &
 
   real(8) ::   axhix(nxydim, 0:nic),  axhsx(nxydim, 0:nic)
   real(8) ::   axeix(nxydim, 0:nic)
+  real(8) ::   axasx(nxydim, 0:nic),  axvmp(nxydim, 0:nic)
+  real(8) ::   axdsd(nxydim, 0:nic),  axdsb(nxydim, 0:nic)
+  real(8) ::     axa(nxydim, 0:nic)
   real(8) ::    divv(nxydim),  edis(nxydim)
   real(8) ::      wa(nxydim, 0:nic),     wn(nxydim, 0:nic)
   real(8) ::      ww(nxydim)
@@ -64,6 +73,8 @@ subroutine pridge( &
   real(8) ::      da(nxydim, nic)
   real(8) ::    dahi(nxydim, nic),   dahs(nxydim, nic)
   real(8) ::    daei(nxydim, nic)
+  real(8) ::    daas(nxydim, nic),   davm(nxydim, nic)
+  real(8) ::    dadd(nxydim, nic),   dadb(nxydim, nic)
 !  common /work/ axhix, axhsx, &
 !    &           divv, edis, wa, wn, ww, &
 !    &           g, y, da, dahi, dahs, daei
@@ -76,7 +87,7 @@ subroutine pridge( &
 
   real(8) ::     exx,    eyy,    exy,    del
   real(8) ::   hrmax,  hrmin
-  real(8) ::    hikl,   hskl,   hekl
+  real(8) ::    hikl,   hskl,   hekl,   vmkl,   ddkl,   dbkl
   integer ::      ij,      k,      l
   integer ::    ijlw,   ijls,  ijlsw
   integer ::   ifpar,  jfpar,  istat
@@ -131,6 +142,10 @@ subroutine pridge( &
         axhix(ij, k) = ax(ij, k) * hix(ij, k)
         axhsx(ij, k) = ax(ij, k) * hsx(ij, k)
         axeix(ij, k) = ax(ij, k) * eix(ij, k)
+        axasx(ij, k) = ax(ij, k) * asx(ij, k)
+        axvmp(ij, k) = ax(ij, k) * vmpx(ij, k)
+        axdsd(ij, k) = ax(ij, k) * dsdx(ij, k)
+        axdsb(ij, k) = ax(ij, k) * dsbx(ij, k)
         g(ij, k) = 0.d0
         wn(ij, k) = 0.d0
      end do
@@ -239,6 +254,10 @@ subroutine pridge( &
         dahi(ij, l) = - hix(ij, l) * wa(ij, l) * edis(ij)
         dahs(ij, l) = - hsx(ij, l) * wa(ij, l) * edis(ij)
         daei(ij, l) = - eix(ij, l) * wa(ij, l) * edis(ij)
+        daas(ij, l) = - asx(ij, l) * wa(ij, l) * edis(ij)
+        davm(ij, l) = - vmpx(ij, l) * wa(ij, l) * edis(ij)
+        dadd(ij, l) = - dsdx(ij, l) * wa(ij, l) * edis(ij)
+        dadb(ij, l) = - dsbx(ij, l) * wa(ij, l) * edis(ij)
         pice(ij) = pice(ij) &
           &      - hix(ij, l) * hix(ij, l) * wa(ij, l) * pifct
         do k = 1, l
@@ -253,6 +272,12 @@ subroutine pridge( &
            else
               hekl = 0.d0
            end if
+           vmkl = vmpx(ij, k) * (hix(ij, k) + hrmax * 0.5d0) &
+             &    / hix(ij, k)
+           ddkl = dsdx(ij, k) * (hix(ij, k) + hrmax * 0.5d0) &
+             &    / hix(ij, k)
+           dbkl = dsbx(ij, k) * (hix(ij, k) + hrmax * 0.5d0) &
+             &    / hix(ij, k)
            dahi(ij, l) = dahi(ij, l) &
              &         + hikl * wa(ij, k) * gam(ij, k, l) * &
              &           edis(ij)
@@ -262,6 +287,18 @@ subroutine pridge( &
            daei(ij, l) = daei(ij, l) &
              &         + hekl * wa(ij ,k) * gam(ij, k, l) * &
              &           edis(ij)
+           DAAS(IJ, L) = DAAS(IJ, L) &
+             &         + ASX(IJ, K) * WA(IJ, K) * GAM(IJ, K, L) * &
+             &           EDIS(IJ)
+           DAVM(IJ, L) = DAVM(IJ, L) &
+             &         + VMKL * WA(IJ, K) * GAM(IJ, K, L) * &
+             &           EDIS(IJ)
+           DADD(IJ, L) = DADD(IJ, L) &
+             &         + DDKL * WA(IJ, K) * GAM(IJ, K, L) * &
+             &           EDIS(IJ)
+           DADB(IJ, L) = DADB(IJ, L) &
+             &         + DBKL * WA(IJ, K) * GAM(IJ, K, L) * &
+             &           EDIS(IJ)
            pice(ij) = pice(ij) &
              &      + hikl * hikl * wa(ij, k) * gam(ij, k, l) * &
              &        pifct
@@ -272,6 +309,8 @@ subroutine pridge( &
   do k = 1, nic
      do ij = ijtstr, ijtend
         ax(ij, k) = ax(ij, k) + ts * da(ij, k)
+!       Intra-category AX change does not affect ASX
+        axa(ij, k) = ax(ij, k)
         ax(ij, k) = min(1.d0, max(0.d0, ax(ij, k)))
      end do
   end do
@@ -296,18 +335,32 @@ subroutine pridge( &
      hix(ij, 0) = 0.d0
      hsx(ij, 0) = 0.d0
      eix(ij, 0) = 0.d0
+     vmpx(ij, 0) = 0.d0
+     dsdx(ij, 0) = 0.d0
+     dsbx(ij, 0) = 0.d0
      if (ax(ij, 0) .eq. 1.d0) then
         do k = 1, nic
            ax(ij, k) = 0.d0
            hix(ij, k) = hic(k)
            hsx(ij, k) = 0.d0
            eix(ij, k) = 0.d0
+           asx(ij, k) = 0.d0
+           vmpx(ij, k) = 0.d0
+           dsdx(ij, k) = 0.d0
+           dsbx(ij, k) = 0.d0
            hix(ij, 0) = hix(ij, 0) + axhix(ij, k)
            hsx(ij, 0) = hsx(ij, 0) + axhsx(ij, k)
            eix(ij, 0) = eix(ij, 0) + axeix(ij, k)
+           vmpx(ij, 0) = vmpx(ij, 0) + axvmp(ij, k)
+           dsdx(ij, 0) = dsdx(ij, 0) + axdsd(ij, k)
+           dsbx(ij, 0) = dsbx(ij, 0) + axdsb(ij, k)
            dahi(ij, k) = 0.d0
            dahs(ij, k) = 0.d0
            daei(ij, k) = 0.d0
+           daas(ij, k) = 0.d0
+           davm(ij, k) = 0.d0
+           dadd(ij, k) = 0.d0
+           dadb(ij, k) = 0.d0
         end do
      end if
   end do
@@ -317,6 +370,10 @@ subroutine pridge( &
         axhix(ij, k) = axhix(ij, k) + ts * dahi(ij, k)
         axhsx(ij, k) = axhsx(ij, k) + ts * dahs(ij, k)
         axeix(ij, k) = axeix(ij, k) + ts * daei(ij, k)
+        axasx(ij, k) = axasx(ij, k) + ts * daas(ij, k)
+        axvmp(ij, k) = axvmp(ij, k) + ts * davm(ij, k)
+        axdsd(ij, k) = axdsd(ij, k) + ts * dadd(ij, k)
+        axdsb(ij, k) = axdsb(ij, k) + ts * dadb(ij, k)
      end do
   end do
 
@@ -330,34 +387,77 @@ subroutine pridge( &
            axhix(ij, k+1) = axhix(ij, k+1) + axhix(ij, k)
            axhsx(ij, k+1) = axhsx(ij, k+1) + axhsx(ij, k)
            axeix(ij, k+1) = axeix(ij, k+1) + axeix(ij, k)
+!           axasx(ij, k+1) = axasx(ij, k+1) + axasx(ij, k)
+           axvmp(ij, k+1) = axvmp(ij, k+1) + axvmp(ij, k)
+           axdsd(ij, k+1) = axdsd(ij, k+1) + axdsd(ij, k)
+           axdsb(ij, k+1) = axdsb(ij, k+1) + axdsb(ij, k)
            axhix(ij, k) = 0.d0
            axhsx(ij, k) = 0.d0
            axeix(ij, k) = 0.d0
+           axasx(ij, k) = 0.d0
+           axvmp(ij, k) = 0.d0
+           axdsd(ij, k) = 0.d0
+           axdsb(ij, k) = 0.d0
            hix(ij, k) = hic(k)
            hsx(ij, k) = 0.d0
            eix(ij, k) = 0.d0
+           asx(ij, k) = 0.d0
+           vmpx(ij, k) = 0.d0
+           dsdx(ij, k) = 0.d0
+           dsbx(ij, k) = 0.d0
         else if (axhix(ij, k) .lt. 0.d0) then
            axhix(ij, k+1) = axhix(ij, k+1) + axhix(ij, k)
            axhsx(ij, k+1) = axhsx(ij, k+1) + axhsx(ij, k)
            axeix(ij, k+1) = axeix(ij, k+1) + axeix(ij, k)
+           axasx(ij, k+1) = axasx(ij, k+1) + axasx(ij, k)
+           axvmp(ij, k+1) = axvmp(ij, k+1) + axvmp(ij, k)
+           axdsd(ij, k+1) = axdsd(ij, k+1) + axdsd(ij, k)
+           axdsb(ij, k+1) = axdsb(ij, k+1) + axdsb(ij, k)
            ax(ij, k+1) = ax(ij, k+1) + ax(ij, k)
+           axa(ij, k+1) = ax(ij, k+1) + ax(ij, k)
            ax(ij, k) = 0.d0
            axhix(ij, k) = 0.d0
            axhsx(ij, k) = 0.d0
            axeix(ij, k) = 0.d0
+           axasx(ij, k) = 0.d0
+           axvmp(ij, k) = 0.d0
+           axdsd(ij, k) = 0.d0
+           axdsb(ij, k) = 0.d0
            hix(ij, k) = hic(k)
            hsx(ij, k) = 0.d0
            eix(ij, k) = 0.d0
+           asx(ij, k) = 0.d0
+           vmpx(ij, k) = 0.d0
+           dsdx(ij, k) = 0.d0
+           dsbx(ij, k) = 0.d0
         else
            if (axhsx(ij, k) .lt. 0.d0) then
               axhsx(ij, k+1) = axhsx(ij, k+1) + axhsx(ij, k)
               axhsx(ij, k) = 0.d0
               hsx(ij, k) = 0.d0
+!              axasx(ij, k+1) = axasx(ij, k+1) + axasx(ij, k)
+!              axasx(ij, k) = 0.d0
+!              asx(ij, k) = 0.d0
            end if
            if (axeix(ij, k) .lt. 0.d0) then
               axeix(ij, k+1) = axeix(ij, k+1) + axeix(ij, k)
               axeix(ij, k) = 0.d0
               eix(ij, k) = 0.d0
+           end if
+           if (axvmp(ij, k) .lt. 0.d0) then
+              axvmp(ij, k+1) = axvmp(ij, k+1) + axvmp(ij, k)
+              axvmp(ij, k) = 0.d0
+              vmpx(ij, k) = 0.d0
+           end if
+           if (axdsd(ij, k) .lt. 0.d0) then
+              axdsd(ij, k+1) = axdsd(ij, k+1) + axdsd(ij, k)
+              axdsd(ij, k) = 0.d0
+              dsdx(ij, k) = 0.d0
+           end if
+           if (axdsb(ij, k) .lt. 0.d0) then
+              axdsb(ij, k+1) = axdsb(ij, k+1) + axdsb(ij, k)
+              axdsb(ij, k) = 0.d0
+              dsbx(ij, k) = 0.d0
            end if
         end if
      end do
@@ -370,9 +470,21 @@ subroutine pridge( &
            hsx(ij, k) = axhsx(ij, k) / ax(ij, k)
            eix(ij, k) = axeix(ij, k) / ax(ij, k)
            tix(ij, k) = ti(eix(ij, k)/hix(ij, k), si)
+           vmpx(ij, k) = axvmp(ij, k) / ax(ij, k)
+           dsdx(ij, k) = axdsd(ij, k) / ax(ij, k)
+           dsbx(ij, k) = axdsb(ij, k) / ax(ij, k)
+           if (axa(ij, k) .gt. 0.d0) then
+              asx(ij, k) = axasx(ij, k) / axa(ij, k)
+           else
+              asx(ij, k) = 0.d0
+              write(0, *) '### REFRESH ASX (iprdg) ###' !! debug
+           end if
         else
            tix(ij, k) = tmi
         end if
+        if ((asx(ij, k).lt.0.d0).or.(asx(ij, k).gt.1.d0)) then
+           write(0,*) '##iprdg##', ij, k, asx(ij, k)
+        end if        
      end do
   end do
 

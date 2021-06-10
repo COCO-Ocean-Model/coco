@@ -9,6 +9,7 @@ module ifwtr
 !     '08.06.11  H.Hasumi: initial/final processing
 !     '08.07.10  H.Hasumi: initial/final processing
 !     '12.07.19  Y.Komuro: for COCO5.0
+!     '21.05.26  Y.Komuro: snow aging & meltpond parametrization 
 !
 ! ---------------------------------------------------------------------
 
@@ -28,14 +29,16 @@ module ifwtr
 contains
 
 subroutine fwater( &
-  &                    ax,    hix,    hsx, &
-  &                  prec,   snow, &
+  &                    ax,    hix,    hsx,   dsdx,   dsbx, &
+  &                  prec,   snow,    fdd,    fdb, &
   &                  evap,   subi, adjlat, &
   &                   wev,    wsb,   soff )
 
   real(8), intent(inout) ::     ax(nxydim, 0:nic),    hix(nxydim, 0:nic)
   real(8), intent(inout) ::    hsx(nxydim, 0:nic)
+  real(8), intent(inout) ::   dsdx(nxydim, 0:nic),   dsbx(nxydim, 0:nic)
   real(8), intent(inout) ::   prec(nxydim),   snow(nxydim)
+  real(8), intent(inout) ::    fdd(nxydim),    fdb(nxydim)
   real(8), intent(inout) ::    wsb(nxydim, nic)
   real(8), intent(out)   ::   evap(nxydim), adjlat(nxydim)
   real(8), intent(out)   ::   subi(nxydim, nic)
@@ -80,6 +83,12 @@ subroutine fwater( &
               wsb(ij, k) = wsb(ij, k) &
                 &        + ax(ij, k) * (hsx(ij, k) - hsz(ij, k)) &
                 &          / rrs / ts
+              if (hsx(ij, k) .le. 0.d0) then
+                 fdd(ij) = fdd(ij) - ax(ij, k) * dsdx(ij, k) / ts
+                 fdb(ij) = fdb(ij) - ax(ij, k) * dsbx(ij, k) / ts
+                 dsdx(ij, k) = 0.d0
+                 dsbx(ij, k) = 0.d0
+              end if
            end if
            dhi = ts * rri * wsb(ij, k) / ax(ij, k)
            hix(ij, k) = max(hiz(ij, k) - dhi, 0.d0)

@@ -591,13 +591,14 @@ contains
 #endif
 
     use zocdim,   only  :                                             &
-    &      nxdim,  nydim,  nzdim,                                     &
+    &      nxdim,  nydim,  nzdim,    nic,                             &
     &      igstr,  jgstr,   kstr,                                     &
     &        nxg,    nyg,     nz
     use zocnod,   only  :                                             &
     &     myrank,  iroot, mpi_comm_ogcm
     use bgs2d
     use bgs3d
+    use bgsid
     use bshft
 
     implicit none
@@ -641,6 +642,32 @@ contains
     &                          fact,  ioff,  joff  )
 #else
           call shift1(additm, nxdim, nydim, nzdim)
+#endif
+       end if
+    else if ( clas(1:3) == 'ICE' ) then
+       if ( myrank == iroot ) then
+          oeof = .true.
+          read(nfinit, end=314) chead
+          read(nfinit) bufi
+          do k = 1, nic
+             do j = 1, nyg
+                do i = 1, nxg
+                   gid(igstr+i-1, jgstr+j-1, k) = bufi(i, j, k)
+                end do
+             end do
+          end do
+          oeof = .false.
+314       continue
+       end if
+       call mpi_bcast                                                 &
+    &        (oeof, 1, mpi_logical, iroot, mpi_comm_ogcm, ierr)
+       if ( .not. oeof ) then
+          call scatter_id(additm, gid)
+#ifdef OPT_TRIPOLE
+          call shift1(additm, nxdim, nydim, nic+1,                    &
+    &                          fact,  ioff,  joff  )
+#else
+          call shift1(additm, nxdim, nydim, nic+1)
 #endif
        end if
     else
@@ -1288,4 +1315,3 @@ contains
   end subroutine edhead
 
 end module brstt
-

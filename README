@@ -2364,13 +2364,21 @@ SSFC: 海面塩分 (psu)
 bulk formulae を用いて計算される。特に淡水フラックスの一部が診断的に
 与えられることから、一般にモデルの水の全量は保存しないことに注意すること。
 
-標準的に与えるべきパラメータは以下の通りである。
+標準的に与えるべきパラメータは以下の通りである（アルベドに関するパラメータは
+多岐に渡るためここでは代表的なものについてのみ説明する、詳細はコードを見よ）。
 
  &NMSFBC CFUSFC='USFC', CFVSFC='VSFC', CFTSFC='TSFC', CFQSFC='QSFC',
          CFSWDW='SWDW', CFLWDW='LWDW', CFPPLR='P+R',  CFSFLX='SFLX',
          CFPSFC='PSFC', CFSSFC='SSFC' &END
- &NMSWEM OASOLD=T, ALBSWO=0.066D0, ALBSWI=0.7D0, ALBSWS=0.9D0,0.75D0,
-         ALSWST=-5.0D0,0.0D0 &end
+ &NMSWEM OASOLD = T, ALBSWO = 0.066D0 &END
+ &NMICE  ALBICE=0.5D0,0.5D0,0.05D0 &END
+ &NMSNOW ALBSNW=0.75D0,0.5D0,0.75D0,0.5D0,0.0D0,0.0D0,
+         TALSNW=258.15D0,273.15D0      &END
+ &NMSFRC OASFRC=T, ALSDPT=1.0D0, ALSPAT=2.0D0 &END
+ &NMSAGE OSAGE=T, ALSSIF=0.75D0,0.75D0,0.0D0
+                  ALSSIO=0.5D0,0.5D0,0.0D0 &END
+ &NMMPND OMPND=T, ALBMPD=0.4D0,0.1D0,0.0D0,
+                  ALMPDP=0.5D0, 20.0D0 &END
 
 CFUSFC, CFVSFC, CFTSFC, CFQSFC, CFSWDW, 
 CFLWDW, CFPPLR, CFSFLX, CFPSFC, CFSSFC:
@@ -2385,14 +2393,66 @@ ocean albedo として Larde and Yeager (2009, CD) の緯度依存性を持つ
 ALBSWO:
 OASOLD=F の時、ocean albedo の値 (ND)。
 
-ALBSWI:
-積雪のない海氷のアルベドの値 (ND)。
+ALBICE:
+積雪のない海氷のアルベドの値 (ND)。波長帯別になっており、順に可視光（以下 VIS
+と表記）、近赤外（以下 NIR と表記）、長波（以下 IR と表記）での値を設定する。
+この値は以下でのスキーム選択に依らず参照される。
 
-ALBSWS, ALSWST:
-積雪のある海氷のアルベドの値 (ND)。積雪表面温度への依存性が仮定されており、
-それを含めて設定する。例示の設定の場合、積雪の表面温度が -5C 以下であれば
-0.9、0C 以上であれば 0.75、その間の温度は線形に補間した値がアルベドとして
-用いられる。
+ALBSNW, TALSNW:
+OSAGE（後述）=F の時の海氷上積雪のアルベド値を設定する。このスキームは MIROC6
+および COCO4 までで使われてきたものと同一である。
+ALBSNW は積雪のある海氷のアルベドの値 (ND)。値は 2 つずつの組となっており、
+最初の 2 つが VIS、次の 2 つが NIR、最後の 2 つが IR の設定である。それぞれの
+組の先の値でその波長帯でのアルベドの最大値、後の値で最小値を設定する。
+モデル中でのアルベドは積雪の表面温度に依存し、その依存性を TALSNW (単位 K) で
+設定する。表面温度が TALSNW の 1 つめの値より低い時、アルベドは設定した最大値を
+取る。2 つめの値より高い表面温度の時、アルベドは最小値を取る。その間の温度は線形に
+補間した値がアルベドとして用いられる。
+
+OASFRC, ALSDPT, ALSPAT:
+海氷上アルベドを求める際の積雪被覆率の決め方を設定する。
+OASFRC=F の時は MIROC6/COCO4 までと同一のスキームを用いる。すなわち、積雪が
+ALSDPT (cm) 以上の時海氷は全て積雪に覆われ、それ未満では積雪のない海氷とみなす。
+OASFRC=T の時は、積雪 Hs (cm) の被覆率を Hs/(ALSPAT+Hs) とする (ALSPAT の
+単位は cm)。
+
+OSAGE, ALSSIF, ALSSIO:
+積雪アルベドの決め方を設定する。
+OSAGE=F の時、前述の通り ALBSNW と TALSNW を用いて積雪アルベドを決める。
+OSAGE=T の時、積雪アルベドは経験した温度と大気から降下するダスト量に依存して、
+時間と共に低下する。新雪のアルベドを ALSSIF (ND)、変質した積雪のアルベド最低値を
+ALSSIO (ND) で設定する。それぞれ VIS, NIR, IR の 3 つの値をこの順に与える。
+また OSAGE=T の時、リスタートファイルに規格化された積雪の年齢が追加出力される。
+なお、現状の COCO の実装では降下ダスト量を陽に与えることはできず、dirt factor
+で一様な変質速度を設定している。詳しくはコードを参照のこと。
+
+OMPND, ALBMPD, ALMPDP:
+海氷上のメルトポンドの効果を設定する。
+OMPND=T の時、メルトポンドの深さが ALMPDP (cm) の 1 つめの値以下の時、メルト
+ポンドのアルベドは積雪のない海氷の値に等しい。深さが ALMPDP の 2 つめの値以上の時、
+アルベドは ALBMPD となる（順に VIS, NIR, IR の値）。その間の深さでは、線形に
+補間した値がメルトポンドのアルベドとなる。
+また OMPND=T の時、リスタートファイルにメルトポンドの深さが追加出力される。
+OMPND=F の時、メルトポンドのアルベドは深さによらず積雪のない海氷の値に固定される
+（メルトポンドのアルベドへの影響を考慮しないことに相当する）。
+
+[以前のアルベド設定からの移行方法について]
+2021 年 6 月の更新以前は、海氷のアルベドおよび放射率は以下のように設定していた。
+
+ &NMLWEM OLWNET = F, EMISLO = 1.0D0, EMISLI = 0.95D0    &END
+ &NMSWEM OSWNET = F, ALBSWO = 0.066D0, ALBSWI = 0.5D0,
+         ALBSWS = 0.75D0,0.5D0, ALSWST = -15.0D0, 0.0D0 &END
+
+このうち EMISLI, ALBSWI, ALBSWS, ALSWST は現在のコードからは削除されて
+いる。これらの値を順に Em, Ai, (As1, As2), (At1, At2) とすると、以下の
+ように設定することで過去と同一の設定で実験を行うことができる。
+
+ - OASFRC=F, OSAGE=F, OMPND=F
+ - ALBICE=Ai, Ai, (1-Em)
+ - ALBSNW=As1, As2, As1, As2, 0.0D0, 0.0D0
+   （ALBSNW の IR の設定値は現状雪面の放射率としては参照していない）
+ - TALSNW=(At1+273.15), (At2+273.15)
+ - ALSDPT を陽に与えている場合は、NMSWEM から NMSFRC に移動する。
 
 ● 水位調節
 

@@ -12,6 +12,7 @@ module aocea
 !     '09.10.06  Y.Komuro: FORSTO before PREDCI
 !     '12.10.19  T.Suzuki: for COCO5.0 in F90
 !     '13.02.12  Y.Komuro: remove non-parallel code 
+!     '21.05.26  Y.Komuro: snow aging & meltpond parametrization 
 !
 ! ---------------------------------------------------------------------
 
@@ -190,6 +191,14 @@ subroutine ocean ( &
   real(8), save ::  tauaix(nxydim), tauaiy(nxydim)
   real(8), save ::  tauaox(nxydim), tauaoy(nxydim)
 
+!---- arrays for sage.mp (snow aging & melt pond)
+  real(8), save ::    asa(nxydim, 0:nic),    asb(nxydim, 0:nic)
+  real(8), save ::   vmpa(nxydim, 0:nic),   vmpb(nxydim, 0:nic)
+  real(8), save ::  frmpa(nxydim, 0:nic),  frmpb(nxydim, 0:nic)
+  real(8), save ::   dsda(nxydim, 0:nic),   dsdb(nxydim, 0:nic)
+  real(8), save ::   dsba(nxydim, 0:nic),   dsbb(nxydim, 0:nic)
+  real(8), save ::   dfdu(nxydim),   dfbc(nxydim)
+
 #ifdef OPT_BODY
   real(8), save ::      tq(nxyzdm, ntdim)
 #endif
@@ -202,12 +211,15 @@ subroutine ocean ( &
   if (oinit) then
      call predci ( &
        &               ab,    hib,    uib,    vib,    tib,    hsb, &
+       &              asb,   vmpb,  frmpb,   dsdb,   dsbb, &
        &               ft,     fs,   taux,   tauy,   ptop, &
        &               aa,    hia,    uia,    via,    tia,    hsa, &
+       &              asa,   vmpa,  frmpa,   dsda,   dsba, &
        &               tb,     ub,     vb,     hb,     ha, &
-       &              qao,    qai,    qii,    qio,  swabs, &
+       &              qao,    qai,    qii,    qio,  swabs,    tsi, &
        &              wev,    wsb, &
        &             prec,   snow,   roff,   soff, &
+       &             dfdu,   dfbc, &
        &           tauaix, tauaiy, tauaox, tauaoy )
      call predco( &
        &               hb,   ubtb,   vbtb,      w,      r, &
@@ -238,12 +250,15 @@ subroutine ocean ( &
      end if
      call predci( &
        &               ab,    hib,    uib,    vib,    tib,    hsb, &
+       &              asb,   vmpb,  frmpb,   dsdb,   dsbb, &
        &               ft,     fs,   taux,   tauy,   ptop, &
        &               aa,    hia,    uia,    via,    tia,    hsa, &
+       &              asa,   vmpa,  frmpa,   dsda,   dsba, &
        &               tb,     ub,     vb,     hb,     ha, &
-       &              qao,    qai,    qii,    qio,  swabs, &
+       &              qao,    qai,    qii,    qio,  swabs,    tsi, &
        &              wev,    wsb, &
        &             prec,   snow,   roff,   soff, &
+       &             dfdu,   dfbc, &
        &           tauaix, tauaiy, tauaox, tauaoy )
      call predco( &
        &               hb,   ubtb,   vbtb,      w,      r, &
@@ -282,7 +297,9 @@ subroutine ocean ( &
        &            prec,   snow,   roff,   soff, &
        &          tauaix, tauaiy, tauaox, tauaoy, &
        &              ft,   ptop,   ssfc, &
+       &            dfdu,   dfbc, &
        &              tb,     ab,    hib,    tib,    hsb, &
+       &             asb,   vmpb,  frmpb, &
        &              ub,     vb )
      call nmlper( &
        &             wev,   prec, &
@@ -294,12 +311,15 @@ subroutine ocean ( &
 #endif
      call predci( &
        &              ab,    hib,    uib,    vib,    tib,    hsb, &
+       &              asb,   vmpb,  frmpb,   dsdb,   dsbb, &
        &              ft,     fs,   taux,   tauy,   ptop, &
        &              aa,    hia,    uia,    via,    tia,    hsa, &
+       &             asa,   vmpa,  frmpa,   dsda,   dsba, &
        &              tb,     ub,     vb,     hb,     ha, &
-       &             qao,    qai,    qii,    qio,  swabs, &
+       &             qao,    qai,    qii,    qio,  swabs,    tsi, &
        &             wev,    wsb, &
        &            prec,   snow,   roff,   soff, &
+       &            dfdu,   dfbc, &
        &          tauaix, tauaiy, tauaox, tauaoy )
      call predco( &
        &              hb,   ubtb,   vbtb,      w,      r, &
@@ -325,7 +345,9 @@ subroutine ocean ( &
        &            prec,   snow,   roff,   soff, &
        &          tauaix, tauaiy, tauaox, tauaoy, &
        &              ft,   ptop,   ssfc, &
+       &            dfdu,   dfbc, &
        &              ta,     aa,    hia,    tia,    hsa, &
+       &             asa,   vmpa,  frmpa, &
        &              ua,     va )
      call nmlper( &
        &             wev,   prec, &
@@ -337,12 +359,15 @@ subroutine ocean ( &
 #endif
      call predci( &
        &              aa,    hia,    uia,    via,    tia,    hsa, &
+       &             asa,   vmpa,  frmpa,   dsda,   dsba, &
        &              ft,     fs,   taux,   tauy,   ptop, &
        &              ab,    hib,    uib,    vib,    tib,    hsb, &
+       &             asb,   vmpb,  frmpb,   dsdb,   dsbb, &
        &              ta,     ua,     va,     ha,     hb, &
-       &             qao,    qai,    qii,    qio,  swabs, &
+       &             qao,    qai,    qii,    qio,  swabs,    tsi, &
        &             wev,    wsb, &
        &            prec,   snow,   roff,   soff, &
+       &            dfdu,   dfbc, &
        &          tauaix, tauaiy, tauaox, tauaoy )
      call predco( &
        &              ha,   ubta,   vbta,      w,      r, &
@@ -368,7 +393,9 @@ subroutine ocean ( &
        &            prec,   snow,   roff,   soff, &
        &          tauaix, tauaiy, tauaox, tauaoy, &
        &              ft,   ptop,   ssfc, &
+       &            dfdu,   dfbc, &
        &              tb,     ab,    hib,    tib,    hsb, &
+       &             asb,   vmpb,  frmpb, &
        &              ub,     vb )
      call nmlper( &
        &             wev,   prec, &
@@ -381,6 +408,9 @@ subroutine ocean ( &
      call forsti( &
        &              aa,    hia,    uia,    via,    tia,    hsa, &
        &              ab,    hib,    uib,    vib,    tib,    hsb )
+     call forsta( &
+       &             asa,   vmpa,  frmpa,   dsda,   dsba, &
+       &             asb,   vmpb,  frmpb,   dsdb,   dsbb )
      call forsto( &
        &              ua,     va,     ta, &
        &              ha,   ubta,   vbta, &
@@ -388,16 +418,22 @@ subroutine ocean ( &
        &              hb,   ubtb,   vbtb )
      call predci( &
        &              aa,    hia,    uia,    via,    tia,    hsa, &
+       &             asa,   vmpa,  frmpa,   dsda,   dsba, &
        &              ft,     fs,   taux,   tauy,   ptop, &
        &              ab,    hib,    uib,    vib,    tib,    hsb, &
+       &             asb,   vmpb,  frmpb,   dsdb,   dsbb, &
        &              ta,     ua,     va,     ha,     hb, &
-       &             qao,    qai,    qii,    qio,  swabs, &
+       &             qao,    qai,    qii,    qio,  swabs,    tsi, &
        &             wev,    wsb, &
        &            prec,   snow,   roff,   soff, &
+       &            dfdu,   dfbc, &
        &          tauaix, tauaiy, tauaox, tauaoy )
      call excngi( &
        &              aa,    hia,    uia,    via,    tia,    hsa, &
        &              ab,    hib,    uib,    vib,    tib,    hsb )
+     call excnga( &
+       &             asa,   vmpa,  frmpa,   dsda,   dsba, &
+       &             asb,   vmpb,  frmpb,   dsdb,   dsbb )
      ieuler = 1
      call predco( &
        &              ha,   ubta,   vbta,      w,      r, &
@@ -439,7 +475,9 @@ subroutine ocean ( &
        &            prec,   snow,   roff,   soff, &
        &          tauaix, tauaiy, tauaox, tauaoy, &
        &              ft,   ptop,   ssfc, &
+       &            dfdu,   dfbc, &
        &              tb,     ab,    hib,    tib,    hsb, &
+       &             asb,   vmpb,  frmpb, &
        &              ub,     vb )
      call nmlper( &
        &             wev,   prec, &
@@ -452,6 +490,9 @@ subroutine ocean ( &
      call forsti( &
        &              aa,    hia,    uia,    via,    tia,    hsa, &
        &              ab,    hib,    uib,    vib,    tib,    hsb )
+     call forsta( &
+       &             asa,   vmpa,  frmpa,   dsda,   dsba, &
+       &             asb,   vmpb,  frmpb,   dsdb,   dsbb )
      call forsto( &
        &              ua,     va,     ta, &
        &              ha,   ubta,   vbta, &
@@ -459,16 +500,22 @@ subroutine ocean ( &
        &              hb,   ubtb,   vbtb )
      call predci( &
        &              aa,    hia,    uia,    via,    tia,    hsa, &
+       &             asa,   vmpa,  frmpa,   dsda,   dsba, &
        &              ft,     fs,   taux,   tauy,   ptop, &
        &              ab,    hib,    uib,    vib,    tib,    hsb, &
+       &             asb,   vmpb,  frmpb,   dsdb,   dsbb, &
        &              ta,     ua,     va,     ha,     hb, &
-       &             qao,    qai,    qii,    qio,  swabs, &
+       &             qao,    qai,    qii,    qio,  swabs,    tsi, &
        &             wev,    wsb, &
        &            prec,   snow,   roff,   soff, &
+       &            dfdu,   dfbc, &
        &          tauaix, tauaiy, tauaox, tauaoy )
      call excngi( &
        &              aa,    hia,    uia,    via,    tia,    hsa, &
        &              ab,    hib,    uib,    vib,    tib,    hsb )
+     call excnga( &
+       &             asa,   vmpa,  frmpa,   dsda,   dsba, &
+       &             asb,   vmpb,  frmpb,   dsdb,   dsbb )
      call predco( &
        &              ha,   ubta,   vbta,      w,      r, &
        &              ua,     va,     ta, &
@@ -543,6 +590,21 @@ subroutine ocean ( &
      call chekin(   hsa,   'HS', &
           &            'snow thickness',   'cm', &
           &          nx,     ny,    nic, nxyidm, 'OCICET')
+     call chekin(   asa,   'AS', &
+          &                    'snow age', 'ND', &
+          &          nx,     ny,    nic, nxyidm, 'OCICET')
+     call chekin(  vmpa,  'VMP', &
+          &             'melt pond depth', 'cm', &
+          &          nx,     ny,    nic, nxyidm, 'OCICET')
+     call chekin( frmpa, 'FRMP', &
+          &          'melt pond fraction', 'ND', &
+          &          nx,     ny,    nic, nxyidm, 'OCICET')
+     call chekin(  dsda, 'DSDU', &
+          & 'concentration of dust, non-bc', 'g/cm^2', &
+          &          nx,     ny,    nic, nxyidm, 'OCICET')
+     call chekin(  dsba, 'DSBC', &
+          & 'concentration of dust, bc', 'g/cm^2', &
+          &          nx,     ny,    nic, nxyidm, 'OCICET')
      do l = 1, nic
         do ij = 1, nxydim
            aig(ij) = aig(ij) + aa(ij, l)
@@ -590,6 +652,21 @@ subroutine ocean ( &
           &          nx,     ny,    nic, nxyidm, 'OCICET')
      call chekin(   hsb,   'HS', &
           &            'snow thickness',   'cm', &
+          &          nx,     ny,    nic, nxyidm, 'OCICET')
+     call chekin(   asb,   'AS', &
+          &                    'snow age', 'ND', &
+          &          nx,     ny,    nic, nxyidm, 'OCICET')
+     call chekin(  vmpb,  'VMP', &
+          &             'melt pond depth', 'cm', &
+          &          nx,     ny,    nic, nxyidm, 'OCICET')
+     call chekin( frmpb, 'FRMP', &
+          &          'melt pond fraction', 'ND', &
+          &          nx,     ny,    nic, nxyidm, 'OCICET')
+     call chekin(  dsdb, 'DSDU', &
+          & 'concentration of dust, non-bc', 'g/cm^2', &
+          &          nx,     ny,    nic, nxyidm, 'OCICET')
+     call chekin(  dsbb, 'DSBC', &
+          & 'concentration of dust, bc', 'g/cm^2', &
           &          nx,     ny,    nic, nxyidm, 'OCICET')
      do l = 1, nic
         do ij = 1, nxydim
