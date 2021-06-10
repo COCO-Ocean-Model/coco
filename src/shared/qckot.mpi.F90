@@ -466,7 +466,7 @@ contains
                               &  +  istr + i - 1
                          if ( nvcord(iitem) > 0 ) then  !! if sigma
                             if (.not.owrksg(itopas(iitem)+ijkm-1)) then
-                               dbleou(ijk) = -999.d0   !! missing
+                               dbleou(ijk) = dundef   !! missing
                             else
                                if ( isvint(iitem) > 0 ) then
                                   dbleou(ijk) &

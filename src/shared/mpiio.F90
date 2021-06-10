@@ -508,8 +508,8 @@ contains
     implicit none
 #include "mpif.h"
 
-    character(len=nch) :: buf(nelem)
     integer :: nch, nelem, fh, i
+    character(len=nch) :: buf(nelem)
     integer(kind=mpi_offset_kind) :: disp
 
 #ifdef OPT_IO_SEQUENTIAL
@@ -1104,8 +1104,7 @@ contains
 
     logical mpi_iseof
     integer fh
-    integer (kind = mpi_offset_kind):: disp
-    integer siz
+    integer (kind = mpi_offset_kind):: disp, siz
 
     call mpi_file_get_size(fh, siz, ierr)
     if (disp .ge. siz) then

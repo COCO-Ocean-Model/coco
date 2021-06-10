@@ -62,20 +62,22 @@ contains
 
   integer :: iohstr(6), iohend(6), iohint, iuhint, iohavr, iohsng
   integer :: ioxstr, ioxend, ioystr, ioyend, iozstr, iozend, iosvin
-  character (ncf) :: cohfil
-  character (16) :: cohitm='   not-specified'
-  character (16) :: cohvco='   not-specified'
+  character(ncf) :: cohfil
+  character(16) :: cohitm='   not-specified'
+  character(16) :: cohvco='   not-specified'
+  character(16) :: ddfmt = 'UR4'
+  character(16) ::  dfmt
   integer :: ifpar,  jfpar
   integer :: istat 
 
   namelist /nmtime/ itstrt, itend, tmstp, iutstp, ntsplt
   namelist /nmcaln/ icaln
   namelist /nmrstr/ irintv, iurint, irsrwd
-  namelist /nmdout/ iodstr, iodend, iodint, iudint, iodavr, iodsng, iodsvi
+  namelist /nmdout/ iodstr, iodend, iodint, iudint, iodavr, iodsng, iodsvi, ddfmt
   namelist /nmhist/ cohitm, cohfil, cohvco,                                    &
    &                  iohstr, iohend, iohint, iuhint, iohavr, iohsng,          &
-   &                  ioxstr, ioxend, ioystr, ioyend, iozstr, iozend, iosvin
-
+   &                  ioxstr, ioxend, ioystr, ioyend, iozstr, iozend, iosvin,  &
+   &                    dfmt
 
   call rewnml(ifpar, jfpar)
   read(ifpar, nmtime, iostat=istat)
