@@ -678,8 +678,10 @@ subroutine ptherm( &
            gint = g0(ij, 1)*x0 + g1(ij, 1)*x1
         end if
 !       area loss does not cause sea-ice to thicken
-        gint = min( gint, &
-          &         ax(ij, 1)*(1.0d0 - hix(ij, 1)/hiz(ij, 1)) )
+        gint = max( &
+               min( gint, &
+          &         ax(ij, 1)*(1.0d0 - hix(ij, 1)/hiz(ij, 1)) ), &
+          &         0.0d0 )
 !       only area flux can across the lowest boundary
         da(ij, 1) = da(ij, 1) - gint
         da(ij, 0) = da(ij, 0) + gint
@@ -767,12 +769,12 @@ subroutine ptherm( &
               x0 = gir - gil
               x1 = 0.5d0 * (gir*gir - gil*gil)
               gint = g0(ij, k)*x0 + g1(ij, k)*x1
-              gint = min(gint, ax(ij, k))
+              gint = max(min(gint, ax(ij, k)), 0.0d0)
               x0 = 0.5d0 * (gir*gir - gil*gil)
               x1 = (gir*gir*gir - gil*gil*gil) / 3.0d0
               fahi = hil(ij, k) * gint + &
                 &    g0(ij, k)*x0 + g1(ij, k)*x1
-              fahi = min(fahi, laxhix(ij, k))
+              fahi = max(min(fahi, laxhix(ij, k)), 0.0d0)
               pvol = fahi / laxhix(ij, k)
               fahs = laxhsx(ij, k) * pvol
               faas = asx(ij, k) * gint
