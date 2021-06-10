@@ -81,7 +81,7 @@ contains
   namelist /nmcaln/ icaln
   namelist /nmrstr/ irintv, iurint, irsrwd
   namelist /nmdout/ iodstr, iodend, iodint, iudint, iodavr, iodsng, iodsvi
-  namelist /nmhist/ cohitm, cohfil, cohvco                                     &
+  namelist /nmhist/ cohitm, cohfil, cohvco,                                    &
    &                  iohstr, iohend, iohint, iuhint, iohavr, iohsng,          &
    &                  ioxstr, ioxend, ioystr, ioyend, iozstr, iozend, iosvin
 
