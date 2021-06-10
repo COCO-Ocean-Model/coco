@@ -489,6 +489,11 @@ subroutine ichflt( &
      end do
   end do
 
+! Subtract the remaining daxhix from rdaxhi
+  do ij = ijtstr, ijtend
+     rdaxhi(ij) = rdaxhi(ij) - daxhix(ij)
+  end do
+
   call chekin( rdaxhi, 'HLMAHI', &
     &           '', '', &
     &               nx,     ny,      1, nxydim, 'OCSFCT')
