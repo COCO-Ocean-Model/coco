@@ -229,7 +229,7 @@ subroutine sfcflx( &
   real(8) ::    sflx(nxydim)=0.d0
   real(8) ::    swnt(nxydim)=0.d0,   dwlw(nxydim)=0.d0,   psfc(nxydim)=0.d0
   real(8) ::    grts(nxydim),   grtb(nxydim)
-  real(8) ::   grice(nxydim),  grsnw(nxydim),  gricr(nxydim),  grsnr(nxydim)
+  real(8) ::   grice(nxydim),  grsnw(nxydim),  gricr(nxydim)
   real(8) ::   grasn(nxydim),  grvmp(nxydim), grfrmp(nxydim)
   real(8) ::    grz0(nxydim, ntyz0)
   real(8) ::  gfluxs(nxydim), tfluxs(nxydim), qfluxs(nxydim)
@@ -445,7 +445,7 @@ subroutine sfcflx( &
      end if
 
      call ocnbcs_core( &
-       &               gfluxs,  dgfds,  grsnr, &
+       &               gfluxs,  dgfds, &
        &                 grts,   grtb,  grice,  grsnw,  gricr )
      call sfcflx_core( &
        &               tfluxs, qfluxs,   taux,   tauy, &
@@ -470,7 +470,7 @@ subroutine sfcflx( &
        &               wfluxs, rflxlu, sflxbl,   swdn, ralbsw, &
        &                dtfds,  dqfds,  dgfds, &
        &                 swnt,   dwlw, &
-       &                gricr,  grsnw,  grsnr,    tmi, &
+       &                gricr,  grsnw,    tmi, &
        &                grasn,  grvmp, grfrmp )     
 
 #ifdef OPT_TRIPOLE
@@ -630,7 +630,7 @@ subroutine ocnslv_core ( &
   &              wfluxs, rflxlu, sflxbl, rflxsd, ralbsw, &
   &              dtfds , dqfds , dgfds , &
   &              rflxs , rflxld, &
-  &              gricr , grsnw , grsnr , tmi   , &
+  &              gricr , grsnw , tmi   , &
   &              grasn , grvmp , grfrmp )
 
   use ufile
@@ -653,11 +653,13 @@ subroutine ocnslv_core ( &
   real(8), intent(in)    ::  rflxld( nxydim )          !! down. LW rad.
   real(8), intent(in)    ::  gricr ( nxydim )          !! snow/ice ratio
   real(8), intent(in)    ::  grsnw ( nxydim )          !! snow thickness
-  real(8), intent(in)    ::  grsnr ( nxydim )      !! snow cover fraction
   real(8), intent(in)    ::  tmi           !! sea ice melting temperature (C)
   real(8), intent(in)    ::  grasn ( nxydim )      !! snow age
   real(8), intent(in)    ::  grvmp ( nxydim )      !! melt pond volume
   real(8), intent(in)    ::  grfrmp( nxydim )      !! melt pond fraction
+
+  real(8) ::  grsnr ( nxydim )      !! snow cover fraction
+  real(8) ::  depmp ( nxydim )      !! melt pond depth [m]
 
   real(8) ::     esub, stg, drfds
   real(8) ::     sflux, gsflux, dgsfds
@@ -672,6 +674,7 @@ subroutine ocnslv_core ( &
   integer ::  ifpar,  jfpar
 
   real(8), save :: aswo2d(nxydim) !! ocn. shortwave albedo distribution
+  real(8), save :: tsdpt
   real(8), save :: flwnet, fswalb, aicet1, daicet
   real(8), save :: albswi, emisli, albsws(2)
   real(8), save :: fmpnd, dalmdp, falmdp
@@ -692,6 +695,11 @@ subroutine ocnslv_core ( &
         fswalb = 0.d0
      else
         fswalb = 1.d0
+     end if
+     if (oasfrc) then
+        tsdpt = alspat * 1.0d-2
+     else
+        tsdpt = alsdpt * 1.0d-2
      end if
      if (ompnd) then
        fmpnd = 1.0d0
@@ -729,11 +737,28 @@ subroutine ocnslv_core ( &
      end if
   endif
 
+  do ij = ijstr, ijend
+     if (oasfrc) then
+        grsnr(ij) = grsnw(ij) / (tsdpt + grsnw(ij))
+     else
+        if (grsnw(ij) .gt. tsdpt) then
+           grsnr(ij) = 1.d0
+        else
+           grsnr(ij) = 0.d0
+        end if
+     end if
+     if (grfrmp(ij) .eq. 0.0d0) then
+        depmp(ij) = 0.0d0
+     else
+        depmp(ij) = grvmp(ij) / grfrmp(ij)
+     end if
+  end do
+
   esub = el + emelt
   do ij = ijstr, ijend
      emis = emislo * (1.0d0 - gricr(ij)) + emisli * gricr(ij)
      albx = fmpnd * min( max( &
-       &            (grvmp(ij) - falmdp) / dalmdp, 0.0d0), 1.0d0)
+       &            (depmp(ij) - falmdp) / dalmdp, 0.0d0), 1.0d0)
      mpdalb = albice(1) * (1.0d0 - albx) + albmpd(1) * albx
      if (osage) then
         snwalb = alssif(1) + grasn(ij) * ( alssio(1) - alssif(1) )
@@ -796,22 +821,19 @@ end subroutine ocnslv_core
 ! *********************************************************************
 
 subroutine ocnbcs_core ( &
-  &                      fogflx, dgfds , grsnr , &
+  &                      fogflx, dgfds , &
   &                      grts  , grtb  , grice , grsnw , gricr )
 
   use ufile
 
   real(8), intent(out) :: fogflx( nxydim )      !! heat flux
   real(8), intent(out) :: dgfds ( nxydim )      !! dG/dTs
-  real(8), intent(out) :: grsnr ( nxydim )      !! snow cover fraction
   
   real(8), intent(in)  :: grts  ( nxydim )      !! skin temperature
   real(8), intent(in)  :: grtb  ( nxydim )      !! ice base temp.
   real(8), intent(in)  :: grice ( nxydim )      !! sea ice
   real(8), intent(in)  :: grsnw ( nxydim )      !! snow smount
   real(8), intent(in)  :: gricr ( nxydim )      !! ice fraction
-
-  real(8), save :: tsdpt
 
   real(8) :: grsnrf ( nxydim )      !! snow cover frac. for flux calc.
 
@@ -827,24 +849,10 @@ subroutine ocnbcs_core ( &
   if ( ofirst ) then
      call rewnml(ifpar, jfpar)
      write (jfpar, *) ' @@@ OCNBCS: OCEAN SURFACE BC 98/07/29'
-     if (oasfrc) then
-        tsdpt = alspat * 1.0d-2
-     else
-        tsdpt = alsdpt * 1.0d-2
-     end if
      ofirst = .false.
   endif
 
   do ij = ijstr, ijend
-     if (oasfrc) then
-        grsnr(ij) = grsnw(ij) / (tsdpt + grsnw(ij))
-     else
-        if (grsnw(ij) .gt. tsdpt) then
-           grsnr(ij) = 1.d0
-        else
-           grsnr(ij) = 0.d0
-        end if
-     end if
      if (grsnw(ij) .gt. 0.0d0) then
          grsnrf(ij) = 1.d0
      else
