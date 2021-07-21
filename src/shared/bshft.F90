@@ -84,7 +84,7 @@ module bshft
   integer(4)     ::   nbfdim, nbfdm0,   istv
   integer(4)     :: ifpar, jfpar
 
-  public  ::  shift1,  shift2,  shift3, shift_pack_begin, shift_pack_end
+  public  ::  shift1,  shift2,  shift3, shift_pack_begin, shift_pack_end, shift_unpack
 
 contains
 
@@ -170,7 +170,7 @@ contains
   subroutine shift_unpack(q1, id)
     implicit none
 #include "mpif.h"
-    real(8) :: q1(:,:,:)
+    real(8) :: q1(nxdim,nydim,*)
     integer :: id, nelems, k0, kpacked
     
     if (id .lt. 1 .or. id .gt. num_packed) return
@@ -209,21 +209,28 @@ contains
 
 #ifdef OPT_TRIPOLE
     if (is_tri_edge) then
-       if (joffs(id) .eq. -1 .and. jupw .ne. mpi_proc_null) then
-          if (inodes .eq. 1) then
-             do k = 1, kpacked
-                do i = nxdim / 2 + 1, nxdim
-                   q1(i,jend,k) = tri_recv(i,0,k0+k)
-                end do
-             end do
-          else
-             do k = 1, kpacked
-                do i = 1, nxdim
-                   q1(i,jend,k) = tri_recv(i,0,k0+k)
-                end do
-             end do
-          endif
-       endif
+!       if (joffs(id) .eq. -1 .and. jupw .ne. mpi_proc_null) then
+!          if (inodes .eq. 1) then
+!             do k = 1, kpacked
+!                do i = nxdim / 2 + 1, nxdim
+!                   q1(i,jend,k) = tri_recv(i,0,k0+k)
+!                end do
+!             end do
+!          else
+!             do k = 1, kpacked
+!                do i = 1, nxdim
+!                   q1(i,jend,k) = tri_recv(i,0,k0+k)
+!                end do
+!             end do
+!          endif
+!       endif
+!       do k = 1, kpacked
+!          do j = 1, jcomm
+!             do i = 1, nxdim
+!                q1(i, jend+j, k) = tri_recv(i, j, k0+k)
+!             end do
+!          end do
+!       end do
 
        do k = 1, kpacked
           do j = 1, jcomm
@@ -232,6 +239,26 @@ contains
              end do
           end do
        end do
+
+       if (joffs(id) .eq. -1 .and. jupw .ne. mpi_proc_null) then
+          if (inodes .eq. 1) then
+             do k = 1, kpacked
+                do j = 0, jcomm
+                   do i = nxdim / 2 + 1, nxdim
+                      q1(i,jend+j,k) = tri_recv(i,j,k0+k)
+                   end do
+                end do
+             end do
+          else
+             do k = 1, kpacked
+                do j = 0, jcomm
+                   do i = 1, nxdim
+                      q1(i,jend+j,k) = tri_recv(i,j,k0+k)
+                   end do
+                end do
+             end do
+          endif
+       endif
 
        if (ioffs(id) .eq. -1) then
           if (kpacked .gt. max_ksize0) then
@@ -378,7 +405,9 @@ contains
     integer(4),               intent(in)     ::  ioff,  joff
 #endif
     
-    if (.not. pack_mode) then
+    if (pack_mode) then
+       call shift_pack(q1, kdim, fact, ioff, joff)
+    else
        call instant_shift1(                                           &
     &                 q1,                                             &
 #ifndef OPT_TRIPOLE    
@@ -408,7 +437,10 @@ contains
     integer(4),               intent(in)     ::  ioff,  joff
 #endif
 
-    if (.not. pack_mode) then
+    if (pack_mode) then
+       call shift_pack(q1, kdim, fact, ioff, joff)
+       call shift_pack(q2, kdim, fact, ioff, joff)
+    else          
        call instant_shift2(                                           &
     &                 q1,     q2,                                     &
 #ifndef OPT_TRIPOLE
@@ -437,7 +469,11 @@ contains
     real(8),                  intent(in)     ::  fact
     integer(4),               intent(in)     ::  ioff,  joff
 #endif
-    if (.not. pack_mode) then
+    if (pack_mode) then
+       call shift_pack(q1, kdim, fact, ioff, joff)
+       call shift_pack(q2, kdim, fact, ioff, joff)
+       call shift_pack(q3, kdim, fact, ioff, joff)
+    else
        call instant_shift3(               &
     &                 q1,     q2,     q3, &
 #ifndef OPT_TRIPOLE
