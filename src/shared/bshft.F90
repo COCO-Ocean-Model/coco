@@ -400,10 +400,9 @@ contains
     implicit none
     real(8),                  intent(inout)  ::    q1(1:idim,1:jdim,1:kdim)
     integer(4),               intent(in)     ::  idim,  jdim,  kdim
-#ifdef OPT_TRIPOLE    
-    real(8),                  intent(in)     ::  fact
-    integer(4),               intent(in)     ::  ioff,  joff
-#endif
+    real(8)                                  ::  fact
+    integer(4)                               ::  ioff,  joff
+
     
     if (pack_mode) then
        call shift_pack(q1, kdim, fact, ioff, joff)
@@ -432,10 +431,8 @@ contains
     real(8),                  intent(inout)  ::    q1(1:idim,1:jdim,1:kdim)
     real(8),                  intent(inout)  ::    q2(1:idim,1:jdim,1:kdim)
     integer(4),               intent(in)     ::  idim,  jdim,  kdim
-#ifdef OPT_TRIPOLE
-    real(8),                  intent(in)     ::  fact
-    integer(4),               intent(in)     ::  ioff,  joff
-#endif
+    real(8)                                  ::  fact
+    integer(4)                               ::  ioff,  joff
 
     if (pack_mode) then
        call shift_pack(q1, kdim, fact, ioff, joff)
@@ -465,10 +462,9 @@ contains
     real(8),                  intent(inout)  ::    q2(1:idim,1:jdim,1:kdim)
     real(8),                  intent(inout)  ::    q3(1:idim,1:jdim,1:kdim)
     integer(4),               intent(in)     ::  idim,  jdim,  kdim
-#ifdef OPT_TRIPOLE
-    real(8),                  intent(in)     ::  fact
-    integer(4),               intent(in)     ::  ioff,  joff
-#endif
+    real(8)                                  ::  fact
+    integer(4)                               ::  ioff,  joff
+
     if (pack_mode) then
        call shift_pack(q1, kdim, fact, ioff, joff)
        call shift_pack(q2, kdim, fact, ioff, joff)
