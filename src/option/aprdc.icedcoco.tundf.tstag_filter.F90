@@ -140,6 +140,7 @@ contains
 #ifdef OPT_BBL
     call vdiffb(   amv,    ahv  )
 #endif
+    call shift_pack_begin
 #ifdef OPT_TRIPOLE
     call shift1(    amv,                                              &
     &             nxdim,  nydim,  nzdim,                              &
@@ -151,6 +152,9 @@ contains
     call shift2(    amv,    ahv,                                      &
     &             nxdim,  nydim,  nzdim)
 #endif
+    call shift_pack_end
+    call shift_unpack(amv, 1)
+    call shift_unpack(ahv, 2)
     call clcend('COEFF')
 
 ! *** baroclinic flow ***
@@ -252,6 +256,8 @@ contains
     &                  ubtx,   vbtx  )
           call clcend('MDGXY')
           call clcstr('BTPR1')
+          
+          call shift_pack_begin
 #ifdef OPT_TRIPOLE
           call shift2(   gxx,    gyy,                                 &
     &                  nxdim,  nydim,      1,                         &
@@ -261,6 +267,10 @@ contains
     &                  gxx,    gyy,                                   &
     &                nxdim,  nydim,      1)
 #endif
+          call shift_pack_end
+          call shift_unpack(gxx, 1)
+          call shift_unpack(gyy, 2)
+          
           call clcend('BTPR1')
 
           nb = ntss * 2
@@ -280,19 +290,25 @@ contains
     &                    htmp,  ubtmp,  vbtmp,                        &
     &                      hx,   ubtx,   vbtx,                        &
     &                     gxx,    gyy,   ptop,  ft(1,2))
+             
+             call shift_pack_begin
 #ifdef OPT_TRIPOLE
-             call shift2( ubtmp,  vbtmp,                              &
-    &                     nxdim,  nydim,      1,                      &
-    &                     -1.D0,     -1,     -1 )
              call shift1(  htmp,                                      &
     &                     nxdim,  nydim,      1,                      &
     &                      1.d0,      0,      0 )
+             call shift2( ubtmp,  vbtmp,                              &
+    &                     nxdim,  nydim,      1,                      &
+    &                     -1.D0,     -1,     -1 )
 #else
              call shift3(                                             &
     &                     htmp,  ubtmp,  vbtmp,                       &
     &                    nxdim,  nydim,      1)
 #endif
-
+             call shift_pack_end
+             call shift_unpack(htmp,  1)
+             call shift_unpack(ubtmp, 2)
+             call shift_unpack(vbtmp, 3)
+             
              fact = 2.d0 * dble(nb - itsplt + 1) / dble(nb * (nb + 1))
              ubtav(:) = ubtav(:) + ubtmp * fact
              vbtav(:) = vbtav(:) + vbtmp * fact
@@ -306,23 +322,32 @@ contains
     &                     gxx,    gyy,   ptop,  ft(1,2))
              call clcend('SHALW')
              call clcstr('BTPR2')
+             
+             call shift_pack_begin
 #ifdef OPT_TRIPOLE
-             call shift2(  ubtx,   vbtx,                              &
-    &                     nxdim,  nydim,      1,                      &
-    &                     -1.d0,     -1,     -1 )
              call shift1(    hx,                                      &
     &                     nxdim,  nydim,      1,                      &
     &                      1.d0,      0,      0 )
+             call shift2(  ubtx,   vbtx,                              &
+    &                     nxdim,  nydim,      1,                      &
+    &                     -1.d0,     -1,     -1 )
 #else
              call shift3(                                             &
     &                       hx,   ubtx,   vbtx,                       &
     &                    nxdim,  nydim,      1)
 #endif
+             call shift_pack_end
+             call shift_unpack(hx,   1)
+             call shift_unpack(ubtx, 2)
+             call shift_unpack(vbtx, 3)
+
              call clcend('BTPR2')
 
              hav(:) = hav(:) + hx(:) / dble(nb + 1)
 
           end do
+          
+          call shift_pack_begin
 #ifdef OPT_TRIPOLE
           call shift2( ubtav,  vbtav,                                 &
     &                  nxdim,  nydim,      1,                         &
@@ -338,6 +363,11 @@ contains
     &                ubtav2, vbtav2,                                  &
     &                 nxdim,  nydim,      1)
 #endif
+          call shift_pack_end
+          call shift_unpack(ubtav,  1)
+          call shift_unpack(vbtav,  2)
+          call shift_unpack(ubtav2, 3)
+          call shift_unpack(vbtav2, 4)
        end if
          hx(:) = hav(:) ! reset new value
         hxb(:) = hx(:)
@@ -445,6 +475,8 @@ contains
     &                  tmp,     xx,                                   &
     &                   ft,  swabs,     fs,     hz,   ssfc,           &
     &                   ax)
+          
+          call shift_pack_begin
 #ifdef OPT_TRIPOLE
           call shift1(    tx,                                         &
     &                  nxdim,   nydim, nztdim,                        &
@@ -460,6 +492,10 @@ contains
     &                   hx,                                           &
     &                nxdim,  nydim,      1)
 #endif
+          call shift_pack_end
+          call shift_unpack(tx, 1)
+          call shift_unpack(hx, 2)
+             
           call shdiff(   tx,     hx)
           call clcstr('TUNDIF')
           call tundif(   tx,     hx)
@@ -468,6 +504,7 @@ contains
 #ifdef OPT_BBL
           call stbbtr(   tx   )
 #endif
+          call shift_pack_begin
 #ifdef OPT_TRIPOLE
           call shift1(   r,                                           &
     &                nxdim,   nydim,  nzdim,                          &
@@ -489,6 +526,11 @@ contains
     &                    hx,                                          &
     &                 nxdim,  nydim,      1)
 #endif
+          call shift_pack_end
+          call shift_unpack(r,  1)
+          call shift_unpack(tx, 2)
+          call shift_unpack(hx, 3)
+
           call stbctr(    tx,      r)
        end if
     end if

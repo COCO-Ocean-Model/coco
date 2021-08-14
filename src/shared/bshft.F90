@@ -209,29 +209,21 @@ contains
 
 #ifdef OPT_TRIPOLE
     if (is_tri_edge) then
-!       if (joffs(id) .eq. -1 .and. jupw .ne. mpi_proc_null) then
-!          if (inodes .eq. 1) then
-!             do k = 1, kpacked
-!                do i = nxdim / 2 + 1, nxdim
-!                   q1(i,jend,k) = tri_recv(i,0,k0+k)
-!                end do
-!             end do
-!          else
-!             do k = 1, kpacked
-!                do i = 1, nxdim
-!                   q1(i,jend,k) = tri_recv(i,0,k0+k)
-!                end do
-!             end do
-!          endif
-!       endif
-!       do k = 1, kpacked
-!          do j = 1, jcomm
-!             do i = 1, nxdim
-!                q1(i, jend+j, k) = tri_recv(i, j, k0+k)
-!             end do
-!          end do
-!       end do
-
+       if (joffs(id) .eq. -1 .and. jupw .ne. mpi_proc_null) then
+          if (inodes .eq. 1) then
+             do k = 1, kpacked
+                do i = nxdim / 2 + 1, nxdim
+                   q1(i,jend,k) = tri_recv(i,0,k0+k)
+                end do
+             end do
+          else
+             do k = 1, kpacked
+                do i = 1, nxdim
+                   q1(i,jend,k) = tri_recv(i,0,k0+k)
+                end do
+             end do
+          endif
+       endif
        do k = 1, kpacked
           do j = 1, jcomm
              do i = 1, nxdim
@@ -239,26 +231,6 @@ contains
              end do
           end do
        end do
-
-       if (joffs(id) .eq. -1 .and. jupw .ne. mpi_proc_null) then
-          if (inodes .eq. 1) then
-             do k = 1, kpacked
-                do j = 0, jcomm
-                   do i = nxdim / 2 + 1, nxdim
-                      q1(i,jend+j,k) = tri_recv(i,j,k0+k)
-                   end do
-                end do
-             end do
-          else
-             do k = 1, kpacked
-                do j = 0, jcomm
-                   do i = 1, nxdim
-                      q1(i,jend+j,k) = tri_recv(i,j,k0+k)
-                   end do
-                end do
-             end do
-          endif
-       endif
 
        if (ioffs(id) .eq. -1) then
           if (kpacked .gt. max_ksize0) then
