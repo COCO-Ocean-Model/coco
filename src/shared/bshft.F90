@@ -84,7 +84,7 @@ module bshft
   integer(4)     ::   nbfdim, nbfdm0,   istv
   integer(4)     :: ifpar, jfpar
 
-  public  ::  shift1,  shift2,  shift3, shift_pack_begin, shift_pack_end
+  public  ::  shift1,  shift2,  shift3, shift_pack_begin, shift_pack_end, shift_unpack
 
 contains
 
@@ -170,7 +170,7 @@ contains
   subroutine shift_unpack(q1, id)
     implicit none
 #include "mpif.h"
-    real(8) :: q1(:,:,:)
+    real(8) :: q1(nxdim,nydim,*)
     integer :: id, nelems, k0, kpacked
     
     if (id .lt. 1 .or. id .gt. num_packed) return
@@ -224,7 +224,6 @@ contains
              end do
           endif
        endif
-
        do k = 1, kpacked
           do j = 1, jcomm
              do i = 1, nxdim
@@ -373,12 +372,13 @@ contains
     implicit none
     real(8),                  intent(inout)  ::    q1(1:idim,1:jdim,1:kdim)
     integer(4),               intent(in)     ::  idim,  jdim,  kdim
-#ifdef OPT_TRIPOLE    
-    real(8),                  intent(in)     ::  fact
-    integer(4),               intent(in)     ::  ioff,  joff
-#endif
+    real(8)                                  ::  fact
+    integer(4)                               ::  ioff,  joff
+
     
-    if (.not. pack_mode) then
+    if (pack_mode) then
+       call shift_pack(q1, kdim, fact, ioff, joff)
+    else
        call instant_shift1(                                           &
     &                 q1,                                             &
 #ifndef OPT_TRIPOLE    
@@ -403,12 +403,13 @@ contains
     real(8),                  intent(inout)  ::    q1(1:idim,1:jdim,1:kdim)
     real(8),                  intent(inout)  ::    q2(1:idim,1:jdim,1:kdim)
     integer(4),               intent(in)     ::  idim,  jdim,  kdim
-#ifdef OPT_TRIPOLE
-    real(8),                  intent(in)     ::  fact
-    integer(4),               intent(in)     ::  ioff,  joff
-#endif
+    real(8)                                  ::  fact
+    integer(4)                               ::  ioff,  joff
 
-    if (.not. pack_mode) then
+    if (pack_mode) then
+       call shift_pack(q1, kdim, fact, ioff, joff)
+       call shift_pack(q2, kdim, fact, ioff, joff)
+    else          
        call instant_shift2(                                           &
     &                 q1,     q2,                                     &
 #ifndef OPT_TRIPOLE
@@ -433,11 +434,14 @@ contains
     real(8),                  intent(inout)  ::    q2(1:idim,1:jdim,1:kdim)
     real(8),                  intent(inout)  ::    q3(1:idim,1:jdim,1:kdim)
     integer(4),               intent(in)     ::  idim,  jdim,  kdim
-#ifdef OPT_TRIPOLE
-    real(8),                  intent(in)     ::  fact
-    integer(4),               intent(in)     ::  ioff,  joff
-#endif
-    if (.not. pack_mode) then
+    real(8)                                  ::  fact
+    integer(4)                               ::  ioff,  joff
+
+    if (pack_mode) then
+       call shift_pack(q1, kdim, fact, ioff, joff)
+       call shift_pack(q2, kdim, fact, ioff, joff)
+       call shift_pack(q3, kdim, fact, ioff, joff)
+    else
        call instant_shift3(               &
     &                 q1,     q2,     q3, &
 #ifndef OPT_TRIPOLE
