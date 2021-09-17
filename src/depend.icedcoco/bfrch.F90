@@ -175,13 +175,14 @@ contains
 ! *********************************************************************
 
  subroutine forsta( &
-  &                asa,   vmpa,  frmpa,   dsda,   dsba, &
-  &                asb,   vmpb,  frmpb,   dsdb,   dsbb )
+  &                asa,  frlva,   vmpa,  frmpa,   dsda,   dsba, &
+  &                asb,  frlvb,   vmpb,  frmpb,   dsdb,   dsbb )
 
  use zocdim, only : nxydim, nic
  implicit none
 
  real(8), intent(inout) ::    asa(nxydim, 0:nic),    asb(nxydim, 0:nic)
+ real(8), intent(inout) ::  frlva(nxydim, 0:nic),  frlvb(nxydim, 0:nic)
  real(8), intent(inout) ::   vmpa(nxydim, 0:nic),   vmpb(nxydim, 0:nic)
  real(8), intent(inout) ::  frmpa(nxydim, 0:nic),  frmpb(nxydim, 0:nic)
  real(8), intent(inout) ::   dsda(nxydim, 0:nic),   dsdb(nxydim, 0:nic)
@@ -192,6 +193,7 @@ contains
  do k = 0, nic
     do ij = 1, nxydim
        asa(ij, k) = asb(ij, k)
+       frlva(ij, k) = frlvb(ij, k)
        vmpa(ij, k) = vmpb(ij, k)
        frmpa(ij, k) = frmpb(ij, k)
        dsda(ij, k) = dsdb(ij, k)
@@ -205,34 +207,38 @@ contains
 ! *********************************************************************
 
  subroutine excnga( &
-  &                asa,   vmpa,  frmpa,   dsda,   dsba, &
-  &                asb,   vmpb,  frmpb,   dsdb,   dsbb )
+  &                asa,  frlva,   vmpa,  frmpa,   dsda,   dsba, &
+  &                asb,  frlvb,   vmpb,  frmpb,   dsdb,   dsbb )
 
  use zocdim, only : nxydim, nic
  implicit none
  
  real(8), intent(inout) ::    asa(nxydim, 0:nic),    asb(nxydim, 0:nic)
+ real(8), intent(inout) ::  frlva(nxydim, 0:nic),  frlvb(nxydim, 0:nic)
  real(8), intent(inout) ::   vmpa(nxydim, 0:nic),   vmpb(nxydim, 0:nic)
  real(8), intent(inout) ::  frmpa(nxydim, 0:nic),  frmpb(nxydim, 0:nic)
  real(8), intent(inout) ::   dsda(nxydim, 0:nic),   dsdb(nxydim, 0:nic)
  real(8), intent(inout) ::   dsba(nxydim, 0:nic),   dsbb(nxydim, 0:nic)
 
  integer ::    ij,      k
- real*8 ::     as,    vmp,   frmp,    dsd,    dsb
+ real*8 ::     as,   frlv,    vmp,   frmp,    dsd,    dsb
 
  do k = 0, nic
     do ij = 1, nxydim
        as         = asb(ij, k)
+       frlv       = frlvb(ij, k)
        vmp        = vmpb(ij, k)
        frmp       = frmpb(ij, k)
        dsd        = dsdb(ij, k)
        dsb        = dsbb(ij, k)
        asb(ij, k) = asa(ij, k)
+       frlvb(ij, k) = frlva(ij, k)
        vmpb(ij, k) = vmpa(ij, k)
        frmpb(ij, k) = frmpa(ij, k)
        dsdb(ij, k) = dsda(ij, k)
        dsbb(ij, k) = dsba(ij, k)
        asa(ij, k) = as
+       frlva(ij, k) = frlv
        vmpa(ij, k) = vmp
        frmpa(ij, k) = frmp
        dsda(ij, k) = dsd

@@ -53,11 +53,20 @@ module iprdc
   logical, save :: oadst = .false.
                       !! using dsdx/dsbx for aging insted of adirt0/adirtc
 ! namelist nmmpnd
-  logical, save :: ompnd = .false. !! setting if melt pond (MP) param is used
+  integer, save :: impnd = 0 !! 0: melt pond (MP) parametrization not used
+                             !! 1: Holland et al. (2012) MP param.
+                             !! 2: Hunke et al. (2013) MP param.
   real(8), save :: hminmp = 10.0d0 !! min. ice thickness for keeping MP [cm]
   real(8), save :: rtdpmp = 80.0d0 !! ratio of melt pond depth to frmp [cm/1]
-  real(8), save :: rtmxmp = 0.9d0  !! max. ratio of MP depth to ice thickness 
-  real(8), save :: cmpfrz = 0.01d0 !! constant for melt pond freeze-up rate
+  real(8), save :: rtmxmp = 0.9d0  !! max. ratio of MP depth to ice thickness
+  !! The default dpscl in CICE is 1.0, but we set it to 0.1.
+  !! (maybe due to slightly different implementation?)
+  real(8), save :: dpscl = 0.1d0  !! permiability scale parameter [ND]
+  real(8), save :: rmpcmn(0:2) = & !! minimum water catching rate of MP 
+    &                 (/ 0.0d0, 0.15d0, 0.15d0 /) 
+  real(8), save :: rmpcmx(0:2) = & !! maximum water catching rate of MP 
+    &                 (/ 0.0d0, 0.7d0, 0.85d0 /) 
+  real(8), save :: cmpfrz = 3.d-6 !! constant for melt pond freeze-up rate
   real(8), save :: tmpfrz = -2.0d0 !! ref. t for melt pond freeze-up [c]
   real(8), save :: albmpd( nrbnd ) = &  !! deep melt pond shortwave albedo
     &                 (/ 0.4d0, 0.1d0, 0.0d0 /)
@@ -67,9 +76,9 @@ module iprdc
   namelist /nmsage/   osage, alssif, alssio, alfmax, snrfrs,  ftage, &
     &                tauage, adirt0, adirtc, adirts, adirtm, drsmax, &
     &                 oadst
-  namelist /nmmpnd/   ompnd, hminmp, rtdpmp, rtmxmp, cmpfrz, tmpfrz, &
-    &                albmpd, almpdp
-
+  namelist /nmmpnd/   impnd, hminmp, rtdpmp, rtmxmp,  dpscl, &
+    &                rmpcmn, rmpcmx, cmpfrz, tmpfrz, albmpd, almpdp
+  
   private
 
   public :: predci
@@ -78,10 +87,10 @@ contains
 
 subroutine predci( &
   &                    ax,    hix,    uix,    vix,    tix,    hsx, &
-  &                   asx,   vmpx,  frmpx,   dsdx,   dsbx, &
+  &                   asx,  frlvx,   vmpx,  frmpx,   dsdx,   dsbx, &
   &                    ft,     fs,   taux,   tauy,   ptop, &
   &                    ay,    hiy,    uiy,    viy,    tiy,    hsy, &
-  &                   asy,   vmpy,  frmpy,   dsdy,   dsby, &
+  &                   asy,  frlvy,   vmpy,  frmpy,   dsdy,   dsby, &
   &                    tx,     ux,     vx,     hx,     hy, &
   &                   qao,    qai,    qii,    qio,  swabs,    tsi, &
   &                   wev,    wsb, &
@@ -137,11 +146,13 @@ subroutine predci( &
 
 !---- arrays for sage.mp (snow aging & melt pond)
   real(8), intent(inout) ::    asx(nxydim, 0:nic)
+  real(8), intent(inout) ::  frlvx(nxydim, 0:nic)
   real(8), intent(inout) ::   vmpx(nxydim, 0:nic)
   real(8), intent(inout) ::  frmpx(nxydim, 0:nic)
   real(8), intent(inout) ::   dsdx(nxydim, 0:nic)
   real(8), intent(inout) ::   dsbx(nxydim, 0:nic)
   real(8), intent(out)   ::    asy(nxydim, 0:nic)
+  real(8), intent(out)   ::  frlvy(nxydim, 0:nic)
   real(8), intent(out)   ::   vmpy(nxydim, 0:nic)
   real(8), intent(out)   ::  frmpy(nxydim, 0:nic)
   real(8), intent(out)   ::   dsdy(nxydim, 0:nic)
@@ -157,6 +168,7 @@ subroutine predci( &
   real(8), save ::     az(nxydim, 0:nic),    hiz(nxydim, 0:nic)
   real(8), save ::    hsz(nxydim, 0:nic),    tiz(nxydim, 0:nic)
   real(8), save ::   pice(nxydim)
+  real(8), save ::  frmpz(nxydim, 0:nic)
 
   real(8), save ::    eix(nxydim, 0:nic),    eiz(nxydim, 0:nic)
 
@@ -167,8 +179,8 @@ subroutine predci( &
   real(8), save :: igrfra(nxydim), igrcon(nxydim), igrsni(nxydim)
   real(8), save :: inrlat(nxydim)
   real(8), save :: imrsno(nxydim), imrisf(nxydim), imribs(nxydim)
-  real(8), save :: impthm(nxydim), impth2(nxydim)
-  real(8), save :: impfrm(nxydim), impfrz(nxydim)
+  real(8), save :: impinc(nxydim, 0:nic), impfrz(nxydim, 0:nic)
+  real(8), save :: improf(nxydim, 0:nic)
   real(8), save ::    fdd(nxydim),    fdb(nxydim)
   real(8), save :: sitfrc(nxydim), siuabs(nxydim)
 
@@ -200,8 +212,9 @@ subroutine predci( &
      do l = 0, nic
         do ij = 1, nxydim
            asx(ij, l) = 0.0d0 !! assume fresh snow
-           frmpx(ij, l) = 0.0d0
+           frlvx(ij, l) = 1.0d0 !! assume level ice
            vmpx(ij, l) = 0.0d0
+           frmpx(ij, l) = 0.0d0
            dsdx(ij, l) = 0.0d0   !! assume no dust
            dsbx(ij, l) = 0.0d0   !! assume no dust
         end do
@@ -213,8 +226,12 @@ subroutine predci( &
         call rstadd( asx, oeof, nxdim, nydim, nic+1, 'AS', 'ICE', &
           &                                      1.d0,  0,  0 )
      end if
-     if (ompnd) then
+     if (impnd > 0) then
+        call rstadd(frlvx, oeof, nxdim, nydim, nic+1, 'FRLV', 'ICE', &
+          &                                      1.d0,  0,  0 )
         call rstadd(vmpx, oeof, nxdim, nydim, nic+1, 'VMP', 'ICE', &
+          &                                      1.d0,  0,  0 )
+        call rstadd(frmpx, oeof, nxdim, nydim, nic+1, 'FRMP', 'ICE', &
           &                                      1.d0,  0,  0 )
      end if
      if (oadst) then
@@ -228,8 +245,10 @@ subroutine predci( &
      if (osage) then
         call rstadd( asx, oeof, nxdim, nydim, nic+1, 'AS'  , 'ICE')
      end if
-     if (ompnd) then
+     if (impnd > 0) then
+        call rstadd(frlvx, oeof, nxdim, nydim, nic+1, 'FRLV' , 'ICE')
         call rstadd(vmpx, oeof, nxdim, nydim, nic+1, 'VMP' , 'ICE')
+        call rstadd(frmpx, oeof, nxdim, nydim, nic+1, 'FRMP' , 'ICE')
      end if
      if (oadst) then
         call rstadd(dsdx, oeof, nxdim, nydim, nic+1, 'DSD' , 'ICE')
@@ -237,8 +256,8 @@ subroutine predci( &
      end if
 #endif
      call idfrmp( &
-       &          frmpx,   vmpx, &
-       &         impfrm, &
+       &          frlvx,   vmpx,  frmpx, &
+       &         improf, &
        &             ax,    hix,    hsx)
      if (oeof) then
         do l = 0, nic
@@ -253,7 +272,7 @@ subroutine predci( &
         call pridge( &
           &            pice, &
           &              ax,    hix,    eix,    hsx,    tix, &
-          &             asx,   vmpx,   dsdx,   dsbx, & 
+          &             asx,  frlvx,   vmpx,  frmpx,   dsdx,   dsbx, & 
           &              az,    hiz,    eiz,    hsz, &
           &             uix,    vix )
         do l = 0, nic
@@ -265,9 +284,14 @@ subroutine predci( &
               tix (ij, l) =  tiz (ij, l) 
            end do
         end do
+        call idfrmp( &
+        &          frlvx,   vmpx,  frmpx, &
+        &         improf, &
+        &             ax,    hix,    hsx) 
         do l = 0, nic
           do ij = 1, nxydim
              asy(ij, l) = asx(ij, l)
+             frlvy(ij, l) = frlvx(ij, l)
              frmpy(ij, l) = frmpx(ij, l)
              vmpy(ij, l) = vmpx(ij, l)
              dsdy(ij, l) = dsdx(ij, l)
@@ -282,8 +306,10 @@ subroutine predci( &
      if (osage) then
         call finadd(asx,  nxdim, nydim, nic+1, 'AS'  , 'ICE')
      end if
-     if (ompnd) then
+     if (impnd > 0) then
+        call finadd(frlvx, nxdim, nydim, nic+1, 'FRLV' , 'ICE')
         call finadd(vmpx, nxdim, nydim, nic+1, 'VMP' , 'ICE')
+        call finadd(frmpx, nxdim, nydim, nic+1, 'FRMP' , 'ICE')
      end if
      if (oadst) then
         call finadd(dsdx, nxdim, nydim, nic+1, 'DSD' , 'ICE')
@@ -299,7 +325,6 @@ subroutine predci( &
      az  (ij, 0) = 1.d0
      hiz (ij, 0) = 0.d0
      hsz (ij, 0) = 0.d0
-     impfrm(ij) = 0.0d0
      fdd(ij) = 0.0d0
      fdb(ij) = 0.0d0
   end do
@@ -309,6 +334,7 @@ subroutine predci( &
         az  (ij, l) = 0.d0
         hiz (ij, l) = 0.d0
         hsz (ij, l) = 0.d0
+        improf(ij, l) = 0.0d0
      end do
   end do
   do l = 1, 2
@@ -343,28 +369,28 @@ subroutine predci( &
     &             ax)
 
   call ptherm( &
-    &             ax,    hix,    hsx, &
-    &            eix,    tix,    asx,   vmpx,   dsdx,   dsbx, &
+    &             ax,    hix,    hsx,    eix,    tix, &
+    &            asx,  frlvx,   vmpx,  frmpx,   dsdx,   dsbx, &
     &           prec,   snow,     ft,     fs,    fdd,    fdb, &
     &          ftitd, igrfra, igrcon, igrsni, &
     &         inrlat, imrsno, imrisf, imribs, &
-    &         impthm, impth2, impfrz, &
+    &         impinc, impfrz, improf, &
     &             tx,    tsi, &
     &            wio,    wao,    was,    wil, &
     &           evap,   subi,   roff, adjlat, &
     &           dfdu,   dfbc, &
     &            qio )
   call idfrmp( &
-    &          frmpx,   vmpx, &
-    &         impfrm, &
+    &          frlvx,   vmpx,  frmpx, &
+    &         improf, &
     &             ax,    hix,    hsx)
   call ictrns( &
     &             ax,    hix,    hsx,    eix,    tix, &
-    &            asx,   vmpx,   dsdx,   dsbx, &
+    &            asx,  frlvx,   vmpx,  frmpx,   dsdx,   dsbx, &
     &             ft,     fs,    fdd,    fdb )
   call idfrmp( &
-    &          frmpx,   vmpx, &
-    &         impfrm, &
+    &          frlvx,   vmpx,  frmpx, &
+    &         improf, &
     &             ax,    hix,    hsx)
 
 #ifdef OPT_TRIPOLE
@@ -377,11 +403,11 @@ subroutine predci( &
     &          nxdim,  nydim,  nic+1, &
     &          1.0d0,      0,      0 )
   call shift3( &
-    &           vmpx,  frmpx,   dsdx, &
+    &          frlvx,   vmpx,  frmpx, &
     &          nxdim,  nydim,  nic+1, &
     &          1.0d0,      0,      0 )
-  call shift1( &
-    &           dsbx, &
+  call shift2( &
+    &           dsdx,   dsbx, &
     &          nxdim,  nydim,  nic+1, &
     &          1.0d0,      0,      0 )
 #else
@@ -392,16 +418,16 @@ subroutine predci( &
     &            eix,    tix,    asx, &
     &          nxdim,  nydim,  nic+1)
   call shift3( &
-    &           vmpx,  frmpx,   dsdx, &
+    &          frlvx,   vmpx,  frmpx, &
     &          nxdim,  nydim,  nic+1)
-  call shift1( &
-    &           dsbx, &
+  call shift2( &
+    &           dsdx,   dsbx, &
     &          nxdim,  nydim,  nic+1)
 #endif
 
   call padvct( &
     &             ax,    hix,    eix,    hsx,    tix, &
-    &            asx,   vmpx,   dsdx,   dsbx, &
+    &            asx,  frlvx,   vmpx,  frmpx,   dsdx,   dsbx, &
     &             az,    hiz,    eiz,    hsz, &
     &            fix,    fiy,    fsx,    fsy, &
     &            fex,    fey, &
@@ -409,7 +435,7 @@ subroutine predci( &
   call pridge( &
     &           pice, &
     &             ax,    hix,    eix,    hsx,    tix, &
-    &            asx,   vmpx,   dsdx,   dsbx, &
+    &            asx,  frlvx,   vmpx,  frmpx,   dsdx,   dsbx, &
     &             az,    hiz,    eiz,    hsz, &
     &            uix,    vix )
   call icadjs( &
@@ -417,14 +443,14 @@ subroutine predci( &
     &           vmpx,   dsdx,   dsbx )
   call ichflt( &
     &             ax,    hix,    hsx,    eix,    tix, &
-    &            asx,   vmpx,   dsdx,   dsbx )  
+    &            asx,  frlvx,   vmpx,  frmpx,   dsdx,   dsbx )  
   call ictrns( &
     &             ax,    hix,    hsx,    eix,    tix, &
-    &            asx,   vmpx,   dsdx,   dsbx, &
+    &            asx,  frlvx,   vmpx,  frmpx,   dsdx,   dsbx, &
     &             ft,     fs,    fdd,    fdb )
   call idfrmp( &
-    &          frmpx,   vmpx, &
-    &         impfrm, &
+    &          frlvx,   vmpx,  frmpx, &
+    &         improf, &
     &             ax,    hix,    hsx)
 #ifdef OPT_TRIPOLE
   call shift3( &
@@ -436,11 +462,11 @@ subroutine predci( &
     &          nxdim,  nydim,  nic+1, &
     &          1.0d0,      0,      0 )
   call shift3( &
-    &           vmpx,  frmpx,   dsdx, &
+    &          frlvx,   vmpx,  frmpx, &
     &          nxdim,  nydim,  nic+1, &
     &          1.0d0,      0,      0 )
-  call shift1( &
-    &           dsbx, &
+  call shift2( &
+    &           dsdx,   dsbx, &
     &          nxdim,  nydim,  nic+1, &
     &          1.0d0,      0,      0 )
 #else
@@ -451,10 +477,10 @@ subroutine predci( &
     &            eix,    tix,    asx, &
     &          nxdim,  nydim,  nic+1)
   call shift3( &
-    &           vmpx,  frmpx,   dsdx, &
+    &          frlvx,   vmpx,  frmpx, &
     &          nxdim,  nydim,  nic+1)
-  call shift1( &
-    &           dsbx, &
+  call shift2( &
+    &           dsdx,   dsbx, &
     &          nxdim,  nydim,  nic+1)
 #endif
 
@@ -497,10 +523,6 @@ subroutine predci( &
   if (oinit .or. ofinal) then
      return
   end if
-
-  do ij = ijtstr, ijtend
-     impfrm(ij) = impfrm(ij) / ts
-  end do
 
 ! output section for CMIP5
 ! FIX, FIY: eastward/northward sea ice transport
@@ -600,22 +622,19 @@ subroutine predci( &
 !  call chekin( itrtot, 'ITRTOT', &
 !    &              nx,     ny,      1, nxydim, 'SFC')
 
-! IMPTHM: rate of meltpond mass change in PTHERM [g/cm^2/s]
-! IMPTH2: similar to IMPTHM but another way of estimation 
-  call chekin( impthm, 'IMPTHM', &
-    &          'meltpond mass change rate', 'g/cm^2/s', &
-    &              nx,     ny,      1, nxydim, 'OCSFCT')
-  call chekin( impth2, 'IMPTH2', &
-    &          'meltpond mass change rate', 'g/cm^2/s', &
-    &              nx,     ny,      1, nxydim, 'OCSFCT')
-! IMPFRM: rate of meltpond mass change in IDFRMP [g/cm^2/s]
-  call chekin( impfrm, 'IMPFRM', &
-    &          'meltpond mass change (IDFRMP)', 'g/cm^2/s', &
-    &              nx,     ny,      1, nxydim, 'OCSFCT')
-! IMPFRM: rate of meltpond mass change in IMPFRZ [g/cm^2/s]
+! IMPINC: MP mass increase by snow/ice melting and rainfall [g/cm^2/s]
+! IMPFRZ: MP mass decrease by MP freezing [g/cm^2/s]
+! IMPROF: MP mass runoff by permiability, negative freeboard, and
+!            lack of available space (too large fraction) [g/cm^2/s]
+  call chekin( impinc, 'IMPINC', &
+    &          'meltpond mass increase', 'g/cm^2/s', &
+    &              nx,     ny,    nic, nxyidm, 'OCICET')
   call chekin( impfrz, 'IMPFRZ', &
-    &          'meltpond mass change (IMPFRZ)', 'g/cm^2/s', &
-    &              nx,     ny,      1, nxydim, 'OCSFCT')
+    &          'meltpond mass change by freezing', 'g/cm^2/s', &
+    &              nx,     ny,    nic, nxyidm, 'OCICET')
+  call chekin( improf, 'IMPROF', &
+    &          'meltpond mass runoff', 'g/cm^2/s', &
+    &              nx,     ny,    nic, nxyidm, 'OCICET')
 
 ! ODFBC: dust fall rate, BC, [g/cm^2/s]
   call chekin(   dfbc, 'ODFBC', &

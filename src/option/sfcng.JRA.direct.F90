@@ -35,7 +35,7 @@ module sfcng
   use zocphy, only: &
     &     cp,   grav,   rair,     el,  emelt,   rvap, &
     &  dwatr,    es0,    stb,  tmelt,  tqice,   epsv, &
-    &  ckarm, kelvin,    cdi,   dtds
+    &  ckarm, kelvin,    cdi,   dtds,   rhoo,   rhos
 
   implicit none
 
@@ -94,11 +94,20 @@ module sfcng
   logical, save :: oadst = .false.
                       !! using dsdx/dsbx for aging insted of adirt0/adirtc
 ! namelist nmmpnd
-  logical, save :: ompnd = .false. !! setting if melt pond (MP) param is used
+  integer, save :: impnd = 0 !! 0: melt pond (MP) parametrization not used
+                             !! 1: Holland et al. (2012) MP param.
+                             !! 2: Hunke et al. (2013) MP param.
   real(8), save :: hminmp = 10.0d0 !! min. ice thickness for keeping MP [cm]
   real(8), save :: rtdpmp = 80.0d0 !! ratio of melt pond depth to frmp [cm/1]
-  real(8), save :: rtmxmp = 0.9d0  !! max. ratio of MP depth to ice thickness 
-  real(8), save :: cmpfrz = 0.01d0 !! constant for melt pond freeze-up rate
+  real(8), save :: rtmxmp = 0.9d0  !! max. ratio of MP depth to ice thickness
+  !! The default dpscl in CICE is 1.0, but we set it to 0.1.
+  !! (maybe due to slightly different implementation?)
+  real(8), save :: dpscl = 0.1d0  !! permiability scale parameter [ND]
+  real(8), save :: rmpcmn(0:2) = & !! minimum water catching rate of MP 
+    &                 (/ 0.0d0, 0.15d0, 0.15d0 /) 
+  real(8), save :: rmpcmx(0:2) = & !! maximum water catching rate of MP 
+    &                 (/ 0.0d0, 0.7d0, 0.85d0 /) 
+  real(8), save :: cmpfrz = 3.d-6 !! constant for melt pond freeze-up rate
   real(8), save :: tmpfrz = -2.0d0 !! ref. t for melt pond freeze-up [c]
   real(8), save :: albmpd( nrbnd ) = &  !! deep melt pond shortwave albedo
     &                 (/ 0.4d0, 0.1d0, 0.0d0 /)
@@ -159,8 +168,8 @@ module sfcng
   namelist /nmsage/   osage, alssif, alssio, alfmax, snrfrs,  ftage, &
     &                tauage, adirt0, adirtc, adirts, adirtm, drsmax, &
     &                 oadst
-  namelist /nmmpnd/   ompnd, hminmp, rtdpmp, rtmxmp, cmpfrz, tmpfrz, &
-    &                albmpd, almpdp
+  namelist /nmmpnd/   impnd, hminmp, rtdpmp, rtmxmp,  dpscl, &
+    &                rmpcmn, rmpcmx, cmpfrz, tmpfrz, albmpd, almpdp
   namelist /nmislt/      si
   namelist /nmlwem/  emislo, olwnet
   namelist /nmswem/  albswo, oswnet, oasold
@@ -258,7 +267,7 @@ subroutine sfcflx( &
 ! real(8) ::  ftatm(nxydim), swntwa(nxydim)
 !  real(8) :: ralbsw(nxydim, 0:nic)
   real(8) ::   tisi(nxydim, 0:nic)
-  real(8) ::   wsbg(nxydim)
+  real(8) ::   wsbg(nxydim), albswg(nxydim)
   
   real(8), save ::     dirdsn
 
@@ -354,6 +363,7 @@ subroutine sfcflx( &
 !     ftatm(ij) = 0.0d0
 !     swntwa(ij) = 0.0d0
      wsbg(ij) = 0.0d0
+     albswg(ij) = 0.0d0
   end do
   do l = 0, nic
      do ij = 1, nxydim
@@ -534,6 +544,7 @@ subroutine sfcflx( &
 !           rqio(ij, l) = qio(ij, l)
 !           rwsb(ij, l) = wsb(ij, l)
            albsw(ij, l) = ralbsw(ij)
+           albswg(ij) = albswg(ij) + ralbsw(ij) * a(ij, l)
 !           ftatm(ij) = ftatm(ij) + qai(ij, l) * fm(ij)
 !           swntwa(ij) = swntwa(ij) + swdn(ij) * fm(ij)
         end do
@@ -559,6 +570,7 @@ subroutine sfcflx( &
      if( a(ij,0) /= 1.d0 ) then
         tauaix(ij) = tauaix(ij) / (1.0d0 - a(ij, 0) )
         tauaiy(ij) = tauaiy(ij) / (1.0d0 - a(ij, 0) )
+        albswg(ij) = albswg(ij) / (1.0d0 - a(ij, 0) )
      endif
   enddo
 
@@ -601,6 +613,9 @@ subroutine sfcflx( &
   call chekin(  albsw, 'ALBSWI', &
     &           'sea-ice surface albedo', 'ND', &
     &              nx,      ny,    nic, nxyidm, 'OCICET')
+  call chekin( albswg, 'ALSWIG', &
+    &           'sea-ice surface albedo', 'ND', &
+    &              nx,      ny,      1, nxydim, 'OCSFCT')
 !  call chekin( tauaox,'tauaox', &
 !    &              nx,      ny,      1, nxydim, 'sfc')
 !  call chekin( tauaoy,'tauaoy', &
@@ -687,7 +702,9 @@ subroutine ocnslv_core ( &
   real(8), intent(in)    ::  grfrmp( nxydim )      !! melt pond fraction
 
   real(8) ::  grsnr ( nxydim )      !! snow cover fraction
-  real(8) ::  depmp ( nxydim )      !! melt pond depth [m]
+  real(8) ::  hsnow ( nxydim )      !! snow depth [m]
+  real(8) ::  hmp ( nxydim )        !! melt pond depth [m]
+  real(8) ::  rp ( nxydim )         !! retaind melt water ratio [ND]
 
   real(8) ::     esub, stg, drfds
   real(8) ::     sflux, gsflux, dgsfds
@@ -695,17 +712,20 @@ subroutine ocnslv_core ( &
   real(8) ::     sflxbi, dsbdsi, dti, evapi, gfluxi
   real(8) ::     ff, fi, dtx
   real(8) ::     emis
-  real(8) ::     x, albx, albsw, mpdalb, snwalb, icealb
-  real(8) ::     fbarei, fbarmp, fbarbi
+  real(8) ::     x, albx, albsw, icealb
+  real(8) ::     mpdalb, snwalb, smpalb, brialb
+  real(8) ::     fbarei, fmpnd, fsnow, fsnwmp
+  real(8) ::     hsneff, grsref, hslash, slsalb
   real(8) ::     omega, sinij, cort
   integer ::    ij, l
   integer ::  ifpar,  jfpar
 
   real(8), save :: aswo2d(nxydim) !! ocn. shortwave albedo distribution
   real(8), save :: tsdpt
-  real(8), save :: flwnet, fswalb, aicet1, daicet
-  real(8), save :: albswi, emisli, albsws(2)
-  real(8), save :: fmpnd, dalmdp, falmdp
+  real(8), save :: flwnet, fswalb, fusemp, aicet1, daicet
+  real(8), save :: emisli, alcice, alcsnw(2), alcsif, alcsio, alcmpd
+  real(8), save :: dalmdp, falmdp
+  real(8), save :: rsrro, rorros
 
   logical, save :: ofirst = .true.
 
@@ -729,21 +749,26 @@ subroutine ocnslv_core ( &
      else
         tsdpt = alsdpt * 1.0d-2
      end if
-     if (ompnd) then
-       fmpnd = 1.0d0
+     if (impnd > 0) then
+       fusemp = 1.0d0
      else
-       fmpnd = 0.0d0
+       fusemp = 0.0d0
      end if
      aicet1 = talsnw(1)
      daicet = talsnw(2) - talsnw(1)
      dalmdp = (almpdp(2) - almpdp(1)) * 1.0d-2
      falmdp = almpdp(1) * 1.0d-2
-     albswi = rvis * albice(1) + rnir * albice(2) + rir * albice(3)
+     alcice = rvis * albice(1) + rnir * albice(2) + rir * albice(3)
      do l = 1, 2
-       albsws(l) = rvis * albsnw(l,1) + rnir * albsnw(l,2) &
+       alcsnw(l) = rvis * albsnw(l,1) + rnir * albsnw(l,2) &
          &       + rir * albsnw(l,3)
      end do
+     alcsif = rvis * alssif(1) + rnir * alssif(2) + rir * alssif(3)
+     alcsio = rvis * alssio(1) + rnir * alssio(2) + rir * alssio(3)
+     alcmpd = rvis * albmpd(1) + rnir * albmpd(2) + rir * albmpd(3)
      emisli = 1.0d0 - albice(3)
+     rsrro = rhos/rhoo
+     rorros = rhoo/(rhoo-rhos)
 
 !    '08.09.16: Large and Yeager (2008) latitude-dependant albedo
      if (oasold) then
@@ -769,37 +794,75 @@ subroutine ocnslv_core ( &
      if (oasfrc) then
         grsnr(ij) = grsnw(ij) / (tsdpt + grsnw(ij))
      else
-        if (grsnw(ij) .gt. tsdpt) then
+        if (grsnw(ij) > tsdpt) then
            grsnr(ij) = 1.d0
         else
            grsnr(ij) = 0.d0
         end if
      end if
-     if (grfrmp(ij) .eq. 0.0d0) then
-        depmp(ij) = 0.0d0
+     if (grsnr(ij) > 0.0d0) then
+        hsnow(ij) = grsnw(ij) / grsnr(ij)
      else
-        depmp(ij) = grvmp(ij) / grfrmp(ij)
+        hsnow(ij) = 0.0d0
+     end if
+     if (grfrmp(ij) > 0.0d0) then
+        hmp(ij) = grvmp(ij) / grfrmp(ij)
+     else
+        hmp(ij) = 0.0d0
+     end if
+     rp(ij) = hmp(ij) + hsnow(ij) * rsrro
+     if (rp(ij) > 0.0d0) then
+        rp(ij) = hmp(ij) / rp(ij)
+     else
+        rp(ij) = 0.0d0
      end if
   end do
 
   esub = el + emelt
+  brialb = alcice
   do ij = ijstr, ijend
      emis = emislo * (1.0d0 - gricr(ij)) + emisli * gricr(ij)
-     albx = fmpnd * min( max( &
-       &            (depmp(ij) - falmdp) / dalmdp, 0.0d0), 1.0d0)
-     mpdalb = albice(1) * (1.0d0 - albx) + albmpd(1) * albx
+     albx = fusemp * min( max( &
+       &            (hmp(ij) - falmdp) / dalmdp, 0.0d0), 1.0d0)
+     mpdalb = alcice * (1.0d0 - albx) + alcmpd * albx
      if (osage) then
-        snwalb = alssif(1) + grasn(ij) * ( alssio(1) - alssif(1) )
+        snwalb = alcsif + grasn(ij) * ( alcsio - alcsif )
      else
         x = min( max( (gdts(ij) - aicet1) / daicet, 0.0d0), 1.0d0)
-        snwalb = albsws(1) * (1.0d0 - x) + albsws(2) * x
+        snwalb = alcsnw(1) * (1.0d0 - x) + alcsnw(2) * x
      end if
-     fbarei = 1.0d0 - grsnr(ij)
-     fbarmp = min(grfrmp(ij), fbarei)
-     fbarbi = fbarei - fbarmp
-     icealb = snwalb * (1.0d0 - fbarei) &
-       &    + mpdalb * fbarmp           &
-       &    + albswi * fbarbi
+     if (impnd == 2) then  !! Hunke MP param.
+        fsnow  = (1.0d0 - grfrmp(ij)) * grsnr(ij)
+        fmpnd  = grfrmp(ij) * (1.0d0 - grsnr(ij))
+        fsnwmp = grfrmp(ij) * grsnr(ij)
+        fbarei = 1.0d0 - (fsnow + fmpnd + fsnwmp)  !! = (1-grfrmp) * (1-grsnr)
+        if (rp(ij) <= 0.15d0) then  !! all the MP water retained in snow
+           smpalb = snwalb
+        else
+           if (grsnr(ij) > 0.0d0) then
+              hsneff = hsnow(ij) - hmp(ij) * rorros
+              grsref = max( 0.0d0, min( 1.0d0, &
+                &      ( hsneff / (tsdpt + hsneff) ) / grsnr(ij) ) )
+           else
+              grsref = 0.0d0
+           end if
+           hslash = hmp(ij) + rsrro * hsnow(ij)
+           albx = fmpnd * min( max( &
+           &            (hslash - falmdp) / dalmdp, 0.0d0), 1.0d0)
+           slsalb = alcice * (1.0d0 - albx) + alcmpd * albx
+           smpalb = grsref * snwalb + (1.0d0 - grsref) * slsalb
+        end if
+     else
+        fsnow  = grsnr(ij)
+        fmpnd  = min(grfrmp(ij), 1.0d0-grsnr(ij))
+        fbarei = 1.0d0 - (fsnow + fmpnd)
+        fsnwmp = 0.0d0
+        smpalb = 0.0d0
+     end if
+     icealb = snwalb * fsnow  &
+       &    + mpdalb * fmpnd  &
+       &    + smpalb * fsnwmp &
+       &    + brialb * fbarei
      albsw = (aswo2d(ij) * (1.0d0 - gricr(ij)) + icealb * gricr(ij)) &
        &     * fswalb
      ralbsw(ij) = albsw
@@ -868,7 +931,7 @@ subroutine ocnbcs_core ( &
   integer ::     ij,     l,      m
   integer ::  ifpar,  jfpar
   integer ::    ifg
-  real(8) :: talsnx, albsnx,   alb0,   dalb,  tfact,   albx
+  real(8) :: talsnx, albsnx,   alb0,   dalb,  tfact
   real(8) ::    z00,    dz0
   real(8) ::   dfgt,   dfgx
 

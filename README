@@ -2374,10 +2374,10 @@ bulk formulae を用いて計算される。特に淡水フラックスの一部
  &NMICE  ALBICE=0.5D0,0.5D0,0.05D0 &END
  &NMSNOW ALBSNW=0.75D0,0.5D0,0.75D0,0.5D0,0.0D0,0.0D0,
          TALSNW=258.15D0,273.15D0      &END
- &NMSFRC OASFRC=T, ALSDPT=1.0D0, ALSPAT=2.0D0 &END
- &NMSAGE OSAGE=T, ALSSIF=0.75D0,0.75D0,0.0D0
+ &NMSFRC OASFRC=F, ALSDPT=1.0D0, ALSPAT=2.0D0 &END
+ &NMSAGE OSAGE=F, ALSSIF=0.75D0,0.75D0,0.0D0
                   ALSSIO=0.5D0,0.5D0,0.0D0 &END
- &NMMPND OMPND=T, ALBMPD=0.4D0,0.1D0,0.0D0,
+ &NMMPND IMPND=0, ALBMPD=0.4D0,0.1D0,0.0D0,
                   ALMPDP=0.5D0, 20.0D0 &END
 
 CFUSFC, CFVSFC, CFTSFC, CFQSFC, CFSWDW, 
@@ -2426,14 +2426,21 @@ ALSSIO (ND) で設定する。それぞれ VIS, NIR, IR の 3 つの値をこの
 なお、現状の COCO の実装では降下ダスト量を陽に与えることはできず、dirt factor
 で一様な変質速度を設定している。詳しくはコードを参照のこと。
 
-OMPND, ALBMPD, ALMPDP:
+IMPND, ALBMPD, ALMPDP:
 海氷上のメルトポンドの効果を設定する。
-OMPND=T の時、メルトポンドの深さが ALMPDP (cm) の 1 つめの値以下の時、メルト
-ポンドのアルベドは積雪のない海氷の値に等しい。深さが ALMPDP の 2 つめの値以上の時、
-アルベドは ALBMPD となる（順に VIS, NIR, IR の値）。その間の深さでは、線形に
-補間した値がメルトポンドのアルベドとなる。
-また OMPND=T の時、リスタートファイルにメルトポンドの深さが追加出力される。
-OMPND=F の時、メルトポンドのアルベドは深さによらず積雪のない海氷の値に固定される
+IMPND=1 の時は Holland et al. (2012) を元にした定式化、IMPND=2 の時は
+Hunke et al. (2013) を元にした定式化を使用する。前者の方が簡便な定式化で、
+後者では ridging 等による氷の力学的変形の考慮（メルトポンドは変形を受けていない
+level ice 上のみに存在できる）、積雪とメルトポンドの共存領域の表現、もろい氷
+からのメルトポンド水漏出の表現などより複雑なプロセスが含まれる。ただし、メルト
+ポンドの再凍結過程については IMPND=2 の場合でも Holland の定式化を用いている。
+いずれの定式化でも、メルトポンドの深さが ALMPDP (cm) の 1 つめの値以下の時、
+メルトポンドのアルベドは積雪のない海氷の値に等しい。深さが ALMPDP の 2 つめの
+値以上の時、アルベドは ALBMPD となる（順に VIS, NIR, IR の値）。その間の
+深さでは、線形に補間した値がメルトポンドのアルベドとなる。
+また IMPND=1 または 2 の時、リスタートファイルに level ice 比率、メルトポンド
+深さ、メルトポンド被覆率の 3 つが追加出力される。
+IMPND=0 の時、メルトポンドのアルベドは深さによらず積雪のない海氷の値に固定される
 （メルトポンドのアルベドへの影響を考慮しないことに相当する）。
 
 [以前のアルベド設定からの移行方法について]
@@ -2447,7 +2454,7 @@ OMPND=F の時、メルトポンドのアルベドは深さによらず積雪の
 いる。これらの値を順に Em, Ai, (As1, As2), (At1, At2) とすると、以下の
 ように設定することで過去と同一の設定で実験を行うことができる。
 
- - OASFRC=F, OSAGE=F, OMPND=F
+ - OASFRC=F, OSAGE=F, IMPND=0
  - ALBICE=Ai, Ai, (1-Em)
  - ALBSNW=As1, As2, As1, As2, 0.0D0, 0.0D0
    （ALBSNW の IR の設定値は現状雪面の放射率としては参照していない）

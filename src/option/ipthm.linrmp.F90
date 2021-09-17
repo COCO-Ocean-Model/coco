@@ -26,14 +26,14 @@ module ipthm
     & nxydim,  nzdim,   kstr,  ntdim,     nx,     ny,    nic, &
     &  ijstr,  ijend, ijtstr, ijtend, &
     &     lw,     ls,    lsw, &
-    &  oinit, ofinal
+    &  oinit, ofinal, myrank, nxyidm
   use zocgrd, only: &
     &    hic,     ts,     dt,    cor
   use zocmsk, only: &
     &  amskt
   use zocphy, only: &
     &   rhoo,   rhoi,   rhos,   hfus,    cpo,    cpi,   dtds, &
-    &  tmelt, kelvin
+    &  tmelt, kelvin, gravit
 
   implicit none
 
@@ -64,11 +64,20 @@ module ipthm
   logical, save :: oadst = .false.
                       !! using dsdx/dsbx for aging insted of adirt0/adirtc
 ! namelist nmmpnd
-  logical, save :: ompnd = .false. !! setting if melt pond (MP) param is used
+  integer, save :: impnd = 0 !! 0: melt pond (MP) parametrization not used
+                             !! 1: Holland et al. (2012) MP param.
+                             !! 2: Hunke et al. (2013) MP param.
   real(8), save :: hminmp = 10.0d0 !! min. ice thickness for keeping MP [cm]
   real(8), save :: rtdpmp = 80.0d0 !! ratio of melt pond depth to frmp [cm/1]
-  real(8), save :: rtmxmp = 0.9d0  !! max. ratio of MP depth to ice thickness 
-  real(8), save :: cmpfrz = 0.01d0 !! constant for melt pond freeze-up rate
+  real(8), save :: rtmxmp = 0.9d0  !! max. ratio of MP depth to ice thickness
+  !! The default dpscl in CICE is 1.0, but we set it to 0.1.
+  !! (maybe due to slightly different implementation?)
+  real(8), save :: dpscl = 0.1d0  !! permiability scale parameter [ND]
+  real(8), save :: rmpcmn(0:2) = & !! minimum water catching rate of MP 
+    &                 (/ 0.0d0, 0.15d0, 0.15d0 /) 
+  real(8), save :: rmpcmx(0:2) = & !! maximum water catching rate of MP 
+    &                 (/ 0.0d0, 0.7d0, 0.85d0 /) 
+  real(8), save :: cmpfrz = 3.d-6 !! constant for melt pond freeze-up rate
   real(8), save :: tmpfrz = -2.0d0 !! ref. t for melt pond freeze-up [c]
   real(8), save :: albmpd( nrbnd ) = &  !! deep melt pond shortwave albedo
     &                 (/ 0.4d0, 0.1d0, 0.0d0 /)
@@ -96,8 +105,8 @@ module ipthm
   namelist /nmsage/   osage, alssif, alssio, alfmax, snrfrs,  ftage, &
     &                tauage, adirt0, adirtc, adirts, adirtm, drsmax, &
     &                 oadst
-  namelist /nmmpnd/   ompnd, hminmp, rtdpmp, rtmxmp, cmpfrz, tmpfrz, &
-    &                albmpd, almpdp
+  namelist /nmmpnd/   impnd, hminmp, rtdpmp, rtmxmp,  dpscl, &
+    &                rmpcmn, rmpcmx, cmpfrz, tmpfrz, albmpd, almpdp
   namelist /nmsaab/ abduvs, abduni, abduir, &
     &               abbcvs, abbcni, abbcir, &
     &                wgtvs,  wgtni,  wgtir
@@ -111,12 +120,12 @@ module ipthm
 contains
 
 subroutine ptherm( &
-  &                    ax,    hix,    hsx, &
-  &                   eix,    tix,    asx,   vmpx,   dsdx,   dsbx, &
+  &                    ax,    hix,    hsx,    eix,    tix, &
+  &                   asx,  frlvx,   vmpx,  frmpx,   dsdx,   dsbx, &
   &                  prec,   snow,     ft,     fs,    fdd,    fdb, &
   &                 ftitd, igrfra, igrcon, igrsni, &
   &                inrlat, imrsno, imrisf, imribs, &
-  &                impthm, impth2, impfrz, &
+  &                impinc, impfrz, improf, &
   &                    tx,    tsi, &
   &                   wio,    wao,    was,    wil, &
   &                  evap,   subi,   roff, adjlat, &
@@ -134,7 +143,9 @@ subroutine ptherm( &
   real(8), intent(inout) ::    hsx(nxydim, 0:nic)
   real(8), intent(inout) ::    eix(nxydim, 0:nic),    tix(nxydim, 0:nic)
   real(8), intent(inout) ::    asx(nxydim, 0:nic)
+  real(8), intent(inout) ::  frlvx(nxydim, 0:nic)
   real(8), intent(inout) ::   vmpx(nxydim, 0:nic)
+  real(8), intent(inout) ::  frmpx(nxydim, 0:nic)
   real(8), intent(inout) ::   dsdx(nxydim, 0:nic),   dsbx(nxydim, 0:nic)
   real(8), intent(inout) ::   prec(nxydim),   snow(nxydim)
   real(8), intent(inout) ::     ft(nxydim, ntdim),     fs(nxydim)
@@ -143,7 +154,8 @@ subroutine ptherm( &
   real(8), intent(out)   :: igrfra(nxydim), igrcon(nxydim), igrsni(nxydim)
   real(8), intent(out)   :: inrlat(nxydim)
   real(8), intent(out)   :: imrsno(nxydim), imrisf(nxydim), imribs(nxydim)
-  real(8), intent(out)   :: impthm(nxydim), impth2(nxydim), impfrz(nxydim)
+  real(8), intent(out)   :: impinc(nxydim, 0:nic), impfrz(nxydim, 0:nic)
+  real(8), intent(out)   :: improf(nxydim, 0:nic)
   real(8), intent(inout) ::    wio(nxydim, nic)
   real(8), intent(in)    ::    was(nxydim, nic)
   real(8), intent(in)    ::    wil(nxydim, nic)
@@ -160,14 +172,16 @@ subroutine ptherm( &
   real(8) ::  axhsx(nxydim, 0:nic), axhsxn(nxydim, 0:nic)
   real(8) ::  axeix(nxydim, 0:nic), axeixn(nxydim, 0:nic)
   real(8) ::  axvmp(nxydim, 0:nic)
+  real(8) ::  axflv(nxydim, 0:nic), axfmp(nxydim, 0:nic)
   real(8) ::  axdsd(nxydim, 0:nic),  axdsb(nxydim, 0:nic)
   real(8) ::    wai(nxydim, nic)
   real(8) ::     wi(nxydim),     ws(nxydim)
   real(8) ::    wen(nxydim),    wsn(nxydim)
   real(8) ::  rmpcc(nxydim)
+  real(8) ::   dvmp(nxydim, 0:nic)
   real(8) ::   dfcb(nxydim)
   real(8) :: dsdrhs(nxydim, 0:nic), dsbrhs(nxydim, 0:nic)
-  real(8) ::    hiz(nxydim, 0:nic)
+  real(8) ::    hiz(nxydim, 0:nic),   vmpz(nxydim, 0:nic)
   real(8) ::  aflrm(nxydim, 0:nic), aflrmc(nxydim)
   real(8) ::   fdtn(nxydim, 0:nic),  fdtcn(nxydim, 0:nic)
   real(8) ::   hicn(nxydim, 0:nic)
@@ -176,11 +190,13 @@ subroutine ptherm( &
   real(8) ::     da(nxydim, 0:nic),   dahi(nxydim, 0:nic)
   real(8) ::   dahs(nxydim, 0:nic),   daei(nxydim, 0:nic)
   real(8) ::   daas(nxydim, 0:nic),   davm(nxydim, 0:nic)
+  real(8) ::   dafl(nxydim, 0:nic),   dafm(nxydim, 0:nic)
   real(8) ::   dadd(nxydim, 0:nic),   dadb(nxydim, 0:nic)
   real(8) :: laxhix(nxydim, 0:nic), laxhsx(nxydim, 0:nic) 
   real(8) :: laxeix(nxydim, 0:nic)
   real(8) :: daxhit(nxydim, 0:nic), daxhib(nxydim, 0:nic)
   real(8) :: laxasx(nxydim, 0:nic), laxvmp(nxydim, 0:nic)
+  real(8) :: laxflv(nxydim, 0:nic), laxfmp(nxydim, 0:nic)
   real(8) :: laxdsd(nxydim, 0:nic), laxdsb(nxydim, 0:nic)
 !      COMMON /WORK/ AZ, AXHIX, AXHSX, AXHSXN, WAI,
 !     &              WI, WS, WEN, WSN, AXEIX, AXEIXN,
@@ -197,15 +213,20 @@ subroutine ptherm( &
   logical, save :: ofirst = .true.
 
   real(8) ::   wres
-  real(8) ::   hsxo,    dhs,   dvmp,   vmp0
+  real(8) ::   hsxo,    dhs,   vmpo,   hfrb
   real(8) :: ax1max
-  real(8) ::   etan,   etar, etanrr,   gil,    gir
+  real(8) ::    phi,   hpnd,   perm,   prhd, dvperm
+  real(8) :: delfmp,   cefb
+  real(8) ::   etan,   etar, etanrr,    gil,    gir
   real(8) ::     x0,     x1,   gint
   real(8) ::   fahi,   fahs,   faei,   pvol
-  real(8) ::   faas,   favm,   fadd,   fadb
-  real(8) ::   eieq
+  real(8) ::   faas,   favm,   fafl,   fafm,   fadd,   fadb
+  real(8) ::   eieq,  danew
   integer ::     ij,      k
   integer ::  ifpar,  jfpar,  istat
+
+  real(8) :: hmp, dhmp
+  logical :: iscrmp
 
   real(8), save ::    eps = 1.0d-3,   epsl = 1.0d-6
 
@@ -258,18 +279,20 @@ subroutine ptherm( &
      imrsno(ij) = 0.0d0
      imrisf(ij) = 0.0d0
      imribs(ij) = 0.0d0
-     impthm(ij) = 0.0d0
-     impth2(ij) = 0.0d0
-     impfrz(ij) = 0.0d0
   end do
 
   do k = 0, nic
      do ij = 1, nxydim
         az(ij, k) = ax(ij, k)
         hiz(ij, k) = hix(ij, k)
+        vmpz(ij, k) = vmpx(ij, k)
         aflrm(ij, k) = 0.0d0
         daxhit(ij, k) = 0.0d0
         daxhib(ij, k) = 0.0d0
+        dvmp(ij, k) = 0.0d0
+        impinc(ij, k) = 0.0d0
+        improf(ij, k) = 0.0d0
+        impfrz(ij, k) = 0.0d0
      end do
   end do
 
@@ -278,20 +301,23 @@ subroutine ptherm( &
         axhix(ij, k) = ax(ij, k) * hix(ij, k)
         axhsx(ij, k) = ax(ij, k) * hsx(ij, k)
         axeix(ij, k) = ax(ij, k) * eix(ij, k)
+        axflv(ij, k) = ax(ij, k) * frlvx(ij, k)
         axvmp(ij, k) = ax(ij, k) * vmpx(ij, k)
+!        axfmp(ij, k) = ax(ij, k) * frmpx(ij, k)
         axdsd(ij, k) = ax(ij, k) * dsdx(ij, k)
         axdsb(ij, k) = ax(ij, k) * dsbx(ij, k)
      end do
   end do
 
   do ij = 1, nxydim
-     rmpcc(ij) = 0.15d0
+     rmpcc(ij) = rmpcmn(impnd)
   end do
 
   do k = 1, nic
      do ij = 1, nxydim
-        rmpcc(ij) = rmpcc(ij) + 0.7d0 * ax(ij, k)
-        impth2(ij) = impth2(ij) - ax(ij, k) * vmpx(ij, k)
+        rmpcc(ij) = rmpcc(ij) + &
+          &         (rmpcmx(impnd) - rmpcmn(impnd)) * ax(ij, k)
+!        impth2(ij) = impth2(ij) - ax(ij, k) * vmpx(ij, k)
      end do
   end do
 
@@ -326,6 +352,15 @@ subroutine ptherm( &
         end if
      end do
   end do
+
+! *** catching rainfall ***
+  do k=1, nic
+     do ij = ijtstr, ijtend
+        impinc(ij, k) = impinc(ij, k) + &
+          &           rmpcc(ij) * ax(ij, k) * prec(ij) * ts
+     end do
+  end do
+
   do ij = ijtstr, ijtend
      snow(ij) = ax(ij, 0) * snow(ij)
      prec(ij) = prec(ij) + snow(ij)
@@ -356,9 +391,7 @@ subroutine ptherm( &
         axhsxn(ij, k) = ax(ij, k) * hsx(ij, k) * amskt(ij, kstr)
         imrsno(ij) = imrsno(ij) - &
           &          ( axhsxn(ij, k) - axhsx(ij, k) )
-        axvmp(ij, k) = axvmp(ij, k) - rmpcc(ij) * rhos * &
-          &          min((axhsxn(ij, k) - axhsx(ij, k)), 0.0d0)
-        impthm(ij) = impthm(ij) - rmpcc(ij) * rhos * &
+        impinc(ij, k) = impinc(ij, k) - rmpcc(ij) * rhos * &
           &          min((axhsxn(ij, k) - axhsx(ij, k)), 0.0d0)
      end do
   end do
@@ -381,9 +414,7 @@ subroutine ptherm( &
            axeixn(ij, k) = axeix(ij, k)
            daxhit(ij, k) = 0.d0
         end if
-        axvmp(ij, k) = axvmp(ij, k) &
-          &          - min((rmpcc(ij) * rhoi * daxhit(ij, k)), 0.0d0)
-        impthm(ij) = impthm(ij) &
+        impinc(ij, k) = impinc(ij, k) &
           &          - min((rmpcc(ij) * rhoi * daxhit(ij, k)), 0.0d0)
      end do
   end do
@@ -433,7 +464,9 @@ subroutine ptherm( &
            tix(ij, k) = tmi
            eix(ij, k) = 0.d0
            asx(ij, k) = 0.d0
+           frlvx(ij, k) = 1.d0
            vmpx(ij, k) = 0.d0
+           frmpx(ij, k) = 0.d0
            dsdx(ij, k) = 0.d0
            dsbx(ij, k) = 0.d0
         else
@@ -442,7 +475,7 @@ subroutine ptherm( &
              &     / ei(tix(ij, k), si)
            eix(ij, k) = axeixn(ij, k) / ax(ij, k)
            hix(ij, k) = eix(ij, k) / ei(tix(ij, k), si)
-           vmpx(ij, k) = axvmp(ij, k) / ax(ij, k)
+           vmpx(ij, k) = (axvmp(ij, k) + impinc(ij, k)) / ax(ij, k)
         end if
      end do
   end do
@@ -482,15 +515,117 @@ subroutine ptherm( &
   do k = 1, nic
      do ij = ijstr, ijend
         if (ax(ij, k) .gt. 0.0d0) then
-           vmp0 = vmpx(ij, k)
+           vmpo = vmpx(ij, k)
+!          We make the exponent depend on dt, unlike the CICE implementation.
            vmpx(ij, k) = vmpx(ij, k) * &
-             &    exp( cmpfrz * &
+             &    exp( cmpfrz * dt * &
              &         max(tmpfrz-tsi(ij, k), 0.0d0) / tmpfrz )
-           impfrz(ij) = impfrz(ij) &
-             &        + ax(ij, k) * ( vmpx(ij, k) - vmp0 )
+           impfrz(ij, k) = ax(ij, k) * ( vmpx(ij, k) - vmpo )
+!          Save the change in vmpx
+           dvmp(ij, k) = max( vmpx(ij, k)-vmpz(ij, k), -vmpz(ij, k) )
+         end if
+     end do
+  end do
+
+! *** negative freeboard consideration (virtual) ***
+! Runoff here does not change frmpx, following the CICE implementation.
+  do k = 1, nic
+     do ij = ijtstr, ijtend
+        if (frmpx(ij, k) > 0.0d0) then
+        vmpo = vmpx(ij, k)
+!        CICE uses meltpond depth (= vmpx/frmpx) instead of vmpx as below
+!        hfrb = min(vmpx(ij, k) / frmpx(ij, k), &
+!          &    ( (rhoo - rhoi) * hix(ij, k) - rhos * hsx(ij,k) ) / rhoo )
+!        vmpx(ij, k) = hfrb * frmpx(ij, k)
+        vmpx(ij, k) = min(vmpx(ij, k), &
+          &    ( (rhoo - rhoi) * hix(ij, k) - rhos * hsx(ij,k) ) / rhoo )
+        improf(ij, k) = improf(ij, k) - ax(ij, k) * (vmpx(ij, k) - vmpo)
         end if
      end do
   end do
+
+! *** permiability ***
+  if (impnd == 2) then  !! Hunke MP param.
+     do k = 1, nic
+        do ij = ijstr, ijend
+           if (frmpx(ij, k) > 0.0d0) then
+              phi = si * (1.0d-3 - 0.054d0 / tix(ij, k))
+              if (phi >= 0.05d0) then  !! permiable ice
+                 hpnd = max(vmpx(ij, k) / frmpx(ij, k), 0.0d0)
+!                In Hunke et al. (2013), perm is proportional to phi**1,
+!                 but we follow the CICE Icepack code (ver. 1.2.5).
+                 perm = 3.0d-4 * (phi**3)     !! permiability [cm**2]
+                 prhd = gravit * rhoo * &
+                   &  ( (1.0d0 - 1.0d0/rri) * hix(ij, k) &
+                   &   - 1.0d0/rrs * hsx(ij, k) )
+                 dvperm = - frmpx(ij, k) * &
+                   &      min( hpnd, &
+                   &           dpscl * perm * prhd * ts / 1.79d-2 / hix(ij, k) )
+                 dvperm = max(-vmpx(ij, k), dvperm)
+                 vmpx(ij, k) = vmpx(ij, k) + dvperm
+                 dvmp(ij, k) = max( dvmp(ij, k)+dvperm, -vmpz(ij, k) )
+                 improf(ij, k) = - ax(ij, k) * dvperm
+              end if
+           end if
+        end do
+     end do
+  end if
+
+! *** update fraction of meltpond ***
+  if (impnd == 2) then  !! Hunke MP param.
+     do k = 1, nic
+        do ij = ijstr, ijend
+           if (ax(ij, k) > 0.0d0) then
+              if (vmpx(ij, k) <= 0.0d0) then
+                 vmpx(ij, k) = 0.0d0
+                 frmpx(ij, k) = 0.0d0
+              else
+!                We solve the following equations for dfmp
+!                 under the condition that dvmp >= -vmp:
+!                   vmpz + dvmp = (frmpx + delfmp) * (hmp + delhmp)
+!                   delhmp = rtdpmp * delfmp,
+!                 where hmp is meltpond depth and delhmp is its variation.
+                 if (frmpx(ij, k) <= 0.0d0) then  !! MP not exist
+                    delfmp = sqrt(max(dvmp(ij, k), 0.0d0)/rtdpmp)
+                    frmpx(ij, k) = delfmp
+                    iscrmp = .true.
+                    hmp = 0.0d0
+                    if (delfmp > 0.0d0) then
+                       dhmp = dvmp(ij, k)/delfmp
+                    else
+                       dhmp = 0.0d0
+                    end if
+                 else
+                    cefb = vmpz(ij, k) / frmpx(ij, k) + rtdpmp * frmpx(ij, k)
+!                   max function is for avoiding floating invalid due to numerical error
+                    delfmp = ( -cefb &
+                      &      + sqrt( max( cefb**2 + 4.0d0 * rtdpmp * dvmp(ij, k), 0.0d0 ) ) )&
+                      &      / (2.0d0 * rtdpmp)                    
+                    hmp = vmpz(ij, k) / frmpx(ij, k)
+                    if ((frmpx(ij, k)+delfmp) <= 0.d0) then
+                       dhmp = -hmp
+                    else
+                       dhmp = (vmpz(ij, k)+dvmp(ij, k)) / (frmpx(ij, k)+delfmp) - hmp
+                    end if
+                    frmpx(ij, k) = frmpx(ij, k) + delfmp
+                    iscrmp = .false.
+                 end if
+                 if (frmpx(ij, k) > frlvx(ij, k)) then !! MP water runoff
+                    vmpo = vmpx(ij, k)
+                    vmpx(ij, k) = vmpx(ij, k) * frlvx(ij, k) / frmpx(ij, k)
+                    frmpx(ij, k) = frlvx(ij, k)
+                    improf(ij, k) = improf(ij, k) &
+                      &           - ax(ij, k) * (vmpx(ij, k) - vmpo)        
+                 end if
+                 if (frmpx(ij, k) <= 0.0d0) then
+                    frmpx(ij, k) = 0.0d0
+                    vmpx(ij, k) = 0.0d0
+                 end if
+              end if
+           end if
+        end do
+     end do
+  end if
 
 ! ****** linear remapping of Lipscomb(2001)
 ! *** setting flags
@@ -645,7 +780,9 @@ subroutine ptherm( &
         laxhsx(ij, k) = ax(ij, k) * hsx(ij, k)
         laxeix(ij, k) = ax(ij, k) * eix(ij, k)
         laxasx(ij, k) = ax(ij, k) * asx(ij, k)
+        laxflv(ij, k) = ax(ij, k) * frlvx(ij, k)
         laxvmp(ij, k) = ax(ij, k) * vmpx(ij, k)
+        laxfmp(ij, k) = ax(ij, k) * frmpx(ij, k)
         laxdsd(ij, k) = ax(ij, k) * dsdx(ij, k)
         laxdsb(ij, k) = ax(ij, k) * dsbx(ij, k)
         da(ij, k) = 0.0d0
@@ -653,7 +790,9 @@ subroutine ptherm( &
         dahs(ij, k) = 0.0d0
         daei(ij, k) = 0.0d0
         daas(ij, k) = 0.0d0
+        dafl(ij, k) = 0.0d0
         davm(ij, k) = 0.0d0
+        dafm(ij, k) = 0.0d0
         dadd(ij, k) = 0.0d0
         dadb(ij, k) = 0.0d0
      end do
@@ -685,9 +824,13 @@ subroutine ptherm( &
 !       only area flux can across the lowest boundary
         da(ij, 1) = da(ij, 1) - gint
         da(ij, 0) = da(ij, 0) + gint
-!       snow age does not change
+!       snow age, level-ice frac., and melt-pond frac. do not change
         faas = asx(ij, 1) * gint
+        fafl = frlvx(ij, 1) * gint
+        fafm = frmpx(ij, 1) * gint
         daas(ij, 1) = daas(ij, 1) - faas
+        dafl(ij, 1) = dafl(ij, 1) - fafl
+        dafm(ij, 1) = dafm(ij, 1) - fafm
      end if
   end do
 
@@ -704,7 +847,9 @@ subroutine ptherm( &
               fahs = laxhsx(ij, k-1)
               faei = laxeix(ij, k-1)
               faas = laxasx(ij, k-1)
+              fafl = laxflv(ij, k-1)
               favm = laxvmp(ij, k-1)
+              fafm = laxfmp(ij, k-1)
               fadd = laxdsd(ij, k-1)
               fadb = laxdsb(ij, k-1)
            else
@@ -722,7 +867,9 @@ subroutine ptherm( &
               pvol = fahi / laxhix(ij, k-1)
               fahs = laxhsx(ij, k-1) * pvol
               faas = asx(ij, k-1) * gint
+              fafl = frlvx(ij, k-1) * gint
               favm = vmpx(ij, k-1) * gint
+              fafm = frmpx(ij, k-1) * gint
               fadd = laxdsd(ij, k-1) * pvol
               fadb = laxdsb(ij, k-1) * pvol
               if (tix(ij, k-1) .lt. tmi) then
@@ -738,7 +885,9 @@ subroutine ptherm( &
            dahs(ij, k-1) = dahs(ij, k-1) - fahs
            daei(ij, k-1) = daei(ij, k-1) - faei
            daas(ij, k-1) = daas(ij, k-1) - faas
+           dafl(ij, k-1) = dafl(ij, k-1) - fafl
            davm(ij, k-1) = davm(ij, k-1) - favm
+           dafm(ij, k-1) = dafm(ij, k-1) - fafm
            dadd(ij, k-1) = dadd(ij, k-1) - fadd
            dadb(ij, k-1) = dadb(ij, k-1) - fadb
            da(ij, k) = da(ij, k) + gint
@@ -746,7 +895,9 @@ subroutine ptherm( &
            dahs(ij, k) = dahs(ij, k) + fahs
            daei(ij, k) = daei(ij, k) + faei
            daas(ij, k) = daas(ij, k) + faas
+           dafl(ij, k) = dafl(ij, k) + fafl
            davm(ij, k) = davm(ij, k) + favm
+           dafm(ij, k) = dafm(ij, k) + fafm
            dadd(ij, k) = dadd(ij, k) + fadd
            dadb(ij, k) = dadb(ij, k) + fadb
         elseif ( ( hicn(ij, k) .lt. hic(k) ) .and. &
@@ -759,7 +910,9 @@ subroutine ptherm( &
               fahs = laxhsx(ij, k)
               faei = laxeix(ij, k)
               faas = laxasx(ij, k)
+              fafl = laxflv(ij, k)
               favm = laxvmp(ij, k)
+              fafm = laxfmp(ij, k)
               fadd = laxdsd(ij, k)
               fadb = laxdsb(ij, k)
            else
@@ -778,7 +931,9 @@ subroutine ptherm( &
               pvol = fahi / laxhix(ij, k)
               fahs = laxhsx(ij, k) * pvol
               faas = asx(ij, k) * gint
+              fafl = frlvx(ij, k) * gint
               favm = vmpx(ij, k) * gint
+              fafm = frmpx(ij, k) * gint
               fadd = laxdsd(ij, k) * pvol
               fadb = laxdsb(ij, k) * pvol
               if (tix(ij, k) .lt. tmi) then
@@ -794,7 +949,9 @@ subroutine ptherm( &
            dahs(ij, k-1) = dahs(ij, k-1) + fahs
            daei(ij, k-1) = daei(ij, k-1) + faei
            daas(ij, k-1) = daas(ij, k-1) + faas
+           dafl(ij, k-1) = dafl(ij, k-1) + fafl
            davm(ij, k-1) = davm(ij, k-1) + favm
+           dafm(ij, k-1) = dafm(ij, k-1) + fafm
            dadd(ij, k-1) = dadd(ij, k-1) + fadd
            dadb(ij, k-1) = dadb(ij, k-1) + fadb
            da(ij, k) = da(ij, k) - gint
@@ -802,7 +959,9 @@ subroutine ptherm( &
            dahs(ij, k) = dahs(ij, k) - fahs
            daei(ij, k) = daei(ij, k) - faei
            daas(ij, k) = daas(ij, k) - faas
+           dafl(ij, k) = dafl(ij, k) - fafl
            davm(ij, k) = davm(ij, k) - favm
+           dafm(ij, k) = dafm(ij, k) - fafm
            dadd(ij, k) = dadd(ij, k) - fadd
            dadb(ij, k) = dadb(ij, k) - fadb
         end if
@@ -830,8 +989,12 @@ subroutine ptherm( &
           &               daei(ij, k) * amskt(ij, kstr)
         laxasx(ij, k) = laxasx(ij, k) + &
           &               daas(ij, k) * amskt(ij, kstr)
+        laxflv(ij, k) = laxflv(ij, k) + &
+          &               dafl(ij, k) * amskt(ij, kstr)
         laxvmp(ij, k) = laxvmp(ij, k) + &
           &               davm(ij, k) * amskt(ij, kstr)
+        laxfmp(ij, k) = laxfmp(ij, k) + &
+          &               dafm(ij, k) * amskt(ij, kstr)
         laxdsd(ij, k) = laxdsd(ij, k) + &
           &               dadd(ij, k) * amskt(ij, kstr)
         laxdsb(ij, k) = laxdsb(ij, k) + &
@@ -847,7 +1010,9 @@ subroutine ptherm( &
            tix(ij, k) = tmi
            eix(ij, k) = 0.d0
            asx(ij, k) = 0.d0
+           frlvx(ij, k) = 1.d0
            vmpx(ij, k) = 0.d0
+           frmpx(ij, k) = 0.d0
            dsdx(ij, k) = 0.d0
            dsbx(ij, k) = 0.d0
         elseif (ax(ij, k) .le. 0.d0) then
@@ -857,7 +1022,9 @@ subroutine ptherm( &
            tix(ij, k) = tmi
            eix(ij, k) = 0.d0
            asx(ij, k) = 0.d0
+           frlvx(ij, k) = 1.d0
            vmpx(ij, k) = 0.d0
+           frmpx(ij, k) = 0.d0
            dsdx(ij, k) = 0.d0
            dsbx(ij, k) = 0.d0
         else
@@ -865,11 +1032,17 @@ subroutine ptherm( &
            hsx(ij, k) = laxhsx(ij, k) / ax(ij, k)
            eix(ij, k) = laxeix(ij, k) / ax(ij, k)
            asx(ij, k) = laxasx(ij, k) / ax(ij, k)
+           frlvx(ij, k) = laxflv(ij, k) / ax(ij, k)
            vmpx(ij, k) = laxvmp(ij, k) / ax(ij, k)
+           frmpx(ij, k) = laxfmp(ij, k) / ax(ij, k)
 !           tix(ij, k) = ti(eix(ij, k)/hix(ij, k), si)
            dsdx(ij, k) = laxdsd(ij, k) / ax(ij, k)
            dsbx(ij, k) = laxdsb(ij, k) / ax(ij, k)
-        endif
+        end if
+!       Some variables can be out of their valid range due to truncation error
+        asx(ij, k) = max(0.0d0, min(1.0d0, asx(ij, k)))
+        frlvx(ij, k) = max(0.0d0, min(1.0d0, frlvx(ij, k)))
+        frmpx(ij, k) = max(0.0d0, min(1.0d0, frmpx(ij, k)))
      end do
   end do
 
@@ -901,6 +1074,18 @@ subroutine ptherm( &
 !             &             ij, k, ax(ij, k), hix(ij, k)
 !           stop
 !        end if
+!        if ((frlvx(ij, k) .lt. 0.d0).or.(frlvx(ij, k) .gt. 1.d0)) then
+!           call rewnml(ifpar, jfpar)
+!           write(jfpar, *) '### INVALID LEVEL-ICE FRACTION (linrmp) ###', &
+!             &             ij, k, ax(ij, k), frlvx(ij, k)
+!           stop
+!        end if
+!        if ((frmpx(ij, k) .lt. 0.d0).or.(frmpx(ij, k) .gt. 1.d0)) then
+!         call rewnml(ifpar, jfpar)
+!         write(jfpar, *) '### INVALID MELT-POND FRACTION (linrmp) ###', &
+!           &             ij, k, ax(ij, k), frmpx(ij, k)
+!         stop
+!      end if
 !     end do
 !  end do
 
@@ -916,15 +1101,27 @@ subroutine ptherm( &
         axeixn(ij, k) = axeixn(ij, k) &
           &           + wil(ij, k) * ts / rhoi * &
           &             amskt(ij, kstr)
+        laxflv(ij, k) = ax(ij, k) * frlvx(ij, k)
         laxvmp(ij, k) = ax(ij, k) * vmpx(ij, k)
+        laxfmp(ij, k) = ax(ij, k) * frmpx(ij, k)
      end do
   end do
   do k = 1, nic
      do ij = ijtstr, ijtend
         if (ax(ij, k) .gt. 0.d0) then
-           ax(ij, k) = ax(ij, k) &
-             &       + ts * wil(ij, k) / eix(ij, k) / rhoi &
-             &       * amskt(ij, kstr)
+           danew = ts * wil(ij, k) / eix(ij, k) / rhoi &
+             &   * amskt(ij, kstr)
+           ax(ij, k) = ax(ij, k) + danew
+           if (danew >= 0.0d0) then
+!             all the newly-formed ice is classed as level ice
+!             laxvmp and laxfmp not changed (vmp and frmp decrease)
+              laxflv(ij, k) = laxflv(ij, k) + danew * 1.0d0
+           else
+!             frlv, vmp, frmp not changed (lax* decrease)
+              laxflv(ij, k) = ax(ij, k) * frlvx(ij, k)
+              laxvmp(ij, k) = ax(ij, k) * vmpx(ij, k)
+              laxfmp(ij, k) = ax(ij, k) * frmpx(ij, k)
+           end if
         end if
      end do
   end do
@@ -937,7 +1134,9 @@ subroutine ptherm( &
            tix(ij, k) = tmi
            eix(ij, k) = 0.d0
            asx(ij, k) = 0.d0
+           frlvx(ij, k) = 1.d0
            vmpx(ij, k) = 0.d0
+           frmpx(ij, k) = 0.d0
            dsdx(ij, k) = 0.d0
            dsbx(ij, k) = 0.d0
         else if (ax(ij, k) .le. 0.d0) then
@@ -947,13 +1146,17 @@ subroutine ptherm( &
            tix(ij, k) = tmi
            eix(ij, k) = 0.d0
            asx(ij, k) = 0.d0
+           frlvx(ij, k) = 1.d0
            vmpx(ij, k) = 0.d0
+           frmpx(ij, k) = 0.d0
            dsdx(ij, k) = 0.d0
            dsbx(ij, k) = 0.d0
         else
            eix(ij, k) = laxeix(ij, k) / ax(ij, k)
            tix(ij, k) = ti(eix(ij, k)/hix(ij, k), si)
+           frlvx(ij, k) = laxflv(ij, k) / ax(ij, k)
            vmpx(ij, k) = laxvmp(ij, k) / ax(ij, k)
+           frmpx(ij, k) = laxfmp(ij, k) / ax(ij, k)
         end if
         inrlat(ij) = inrlat(ij) + rhoi *  &
           &          ( ax(ij, k)*hix(ij, k) - laxhix(ij, k) )
@@ -1020,7 +1223,9 @@ subroutine ptherm( &
      axeix(ij, 1) = ax(ij, 1) * eix(ij, 1) &
        &          + ax(ij, 0) * eix(ij, 0)
      axhsx(ij, 1) = ax(ij, 1) * hsx(ij, 1)
+     axflv(ij, 1) = ax(ij, 1) * frlvx(ij, 1)
      axvmp(ij, 1) = ax(ij, 1) * vmpx(ij, 1)
+     axfmp(ij, 1) = ax(ij, 1) * frmpx(ij, 1)
      axdsd(ij, 1) = ax(ij, 1) * dsdx(ij, 1)
      axdsb(ij, 1) = ax(ij, 1) * dsbx(ij, 1)
      hix(ij, 1) = max(hix(ij, 1), hic(1))
@@ -1028,15 +1233,19 @@ subroutine ptherm( &
      eix(ij, 0) = 0.d0
      tix(ij, 0) = tmi
      hsx(ij, 0) = 0.d0
+     frlvx(ij, 0) = 1.d0
      vmpx(ij, 0) = 0.d0
+     frmpx(ij, 0) = 0.d0
      dsdx(ij, 0) = 0.d0
      dsbx(ij, 0) = 0.d0
   end do
   do ij = ijtstr, ijtend
+     danew = ax(ij, 1)
      ax(ij, 1) = axhix(ij, 1) / hix(ij, 1)
 !     ax1max = az(ij, 0) + az(ij, 1)
      ax1max = az(ij, 0) + az(ij, 1) + da(ij, 0) + da(ij, 1) 
      if (ax(ij, 1) .gt. ax1max) then
+        danew = ax1max - danew
         ax(ij, 1) = ax1max
         hix(ij, 1) = axhix(ij, 1) / ax1max
         eix(ij, 1) = axeix(ij, 1) / ax1max
@@ -1045,14 +1254,25 @@ subroutine ptherm( &
         vmpx(ij, 1) = axvmp(ij, 1) / ax1max
         dsdx(ij, 1) = axdsd(ij, 1) / ax1max
         dsbx(ij, 1) = axdsb(ij, 1) / ax1max
+        if (danew > 0.0d0) then  !! new ice formed
+           frlvx(ij, 1) = (axflv(ij, 1) + danew * 1.0d0) / ax1max
+           frmpx(ij, 1) = axfmp(ij, 1) / ax1max
+        end if
+!       frlvx and frmpx do not change when danew < 0 (adjustment)
 !       asx does not change
      else if (ax(ij, 1) .gt. 0.d0) then
+        danew = ax(ij, 1) - danew
         hsx(ij, 1) = axhsx(ij, 1) / ax(ij, 1)
         eix(ij, 1) = axeix(ij, 1) / ax(ij, 1)
         tix(ij, 1) = ti(eix(ij, 1) / hix(ij, 1), si)
         vmpx(ij, 1) = axvmp(ij, 1) / ax(ij, 1)
         dsdx(ij, 1) = axdsd(ij, 1) / ax(ij, 1)
         dsbx(ij, 1) = axdsb(ij, 1) / ax(ij, 1)
+        if (danew > 0.0d0) then  !! new ice formed
+           frlvx(ij, 1) = (axflv(ij, 1) + danew * 1.0d0) / ax(ij, 1)
+           frmpx(ij, 1) = axfmp(ij, 1) / ax(ij, 1)
+        end if
+!       frlvx and frmpx do not change when danew < 0 (adjustment)
 !       asx does not change
      end if
   end do
@@ -1068,20 +1288,35 @@ subroutine ptherm( &
      imribs(ij) = imribs(ij) / ts
   end do
 
-  do k = 1, nic
-     do ij = 1, nxydim
-        impth2(ij) = impth2(ij) + ax(ij, k) * vmpx(ij, k)
-     end do
-  end do
+!  do k = 1, nic
+!     do ij = 1, nxydim
+!        impth2(ij) = impth2(ij) + ax(ij, k) * vmpx(ij, k)
+!     end do
+!  end do
 
-  do ij = ijtstr, ijtend
-     impthm(ij) = impthm(ij) / ts
-     impth2(ij) = impth2(ij) / ts
-     impfrz(ij) = impfrz(ij) / ts
+  do k = 1, nic
+     do ij = ijtstr, ijtend
+        impinc(ij, k) = impinc(ij, k) / ts
+        impfrz(ij, k) = impfrz(ij, k) / ts
+        improf(ij, k) = improf(ij, k) / ts
+     end do
   end do
 
   call cofpwi( &
     &               ws,     wi)
+
+! debug code
+!  do k = 1, nic
+!     do ij = ijtstr, ijtend
+!        if ((frlvx(ij, k).lt.0.d0).or.(frlvx(ij, k) > (1.d0+1.0d-9))) then
+!           write(0,*) '##ipthm; frlvx##', myrank, ij, k, frlvx(ij, k)
+!           stop
+!        end if        
+!        if ((frmpx(ij, k).lt.0.d0).or.(frmpx(ij, k) > (1.d0+1.0d-9))) then
+!           write(0,*) '##ipthm; frmpx##', myrank, ij, k, frmpx(ij, k)
+!        end if
+!     end do
+!  end do
 
   return
 end subroutine ptherm
@@ -1213,27 +1448,29 @@ end subroutine ipsage
 
 !***********************************************************************
 subroutine idfrmp( &
-  &                frmpx,   vmpx, &
-  &               impfrm, &
+  &                frlvx,   vmpx,  frmpx, &
+  &               improf, &
   &                   ax,    hix,    hsx)
 
   use ufile
 
-  real(8), intent(inout) ::  frmpx(nxydim, 0:nic)  !! ratio covered by MP, max. 1 
+  real(8), intent(inout) ::  frlvx(nxydim, 0:nic)  !! ratio of level-ice, 0 - 1. 
   real(8), intent(inout) ::   vmpx(nxydim, 0:nic)  !! volume per unit area of ice [cm]
-  real(8), intent(inout) :: impfrm(nxydim)
+  real(8), intent(inout) ::  frmpx(nxydim, 0:nic)  !! ratio covered by MP, max. 1 
+  real(8), intent(inout) :: improf(nxydim, 0:nic)
   real(8), intent(in)    ::     ax(nxydim, 0:nic)
   real(8), intent(in)    ::    hix(nxydim, 0:nic),    hsx(nxydim, 0:nic)
 
   real(8), save ::  csfrc
   logical, save :: ofirst = .true.
 
+  real(8) ::  axvmp(nxydim,   nic)
   real(8) :: fbarei, hmp
   logical :: oromp
   integer :: ij, k
   integer :: ifpar,  jfpar,  istat
 
-  if ((oinit .and. (.not. ofirst)) .or. ofinal) then
+  if (ofinal) then
      return
   end if
 
@@ -1259,7 +1496,7 @@ subroutine idfrmp( &
      end if
   end if
 
-  if (.not.ompnd) then
+  if (impnd == 0) then
      do k = 1, nic
         do ij = ijstr, ijend
            frmpx(ij, k) = 0.0d0
@@ -1271,39 +1508,60 @@ subroutine idfrmp( &
 
   do k = 1, nic
      do ij = 1, nxydim
-        impfrm(ij) = impfrm(ij) - ax(ij, k) * vmpx(ij, k)
+        axvmp(ij, k) = ax(ij, k) * vmpx(ij, k)
      end do
   end do
 
-  do k = 1, nic
-     do ij = ijstr, ijend
-        oromp = .false.
-        if (hix(ij, k) .lt. hminmp) then
-           vmpx(ij, k) = 0.0d0
-        end if
-        fbarei = csfrc * (1.0d0 - hsx(ij, k)/(alspat + hsx(ij, k))) &
-          &    + (1.0d0 - csfrc) * &
-          &      ( 0.5d0 + sign(0.5d0, alspat - hsx(ij, k)))
-        frmpx(ij, k) = sqrt(vmpx(ij,k)/rtdpmp)
-        if (frmpx(ij, k) .gt. fbarei) then
-           frmpx(ij, k) = fbarei
-           oromp = .true.
-        end if
-        hmp = rtdpmp * frmpx(ij, k)
-        if (hmp .gt. rtmxmp*hix(ij, k)) then
-           hmp = rtmxmp*hix(ij, k)
-           frmpx(ij, k) = hmp/rtdpmp
-           oromp = .true.
-        end if
-        if (oromp) then
-           vmpx(ij, k) = frmpx(ij, k) * hmp
-        end if
+  if (impnd == 1) then  !! Holland MP param.
+     do k = 1, nic
+        do ij = ijstr, ijend
+           oromp = .false.
+           if (hix(ij, k) .lt. hminmp) then
+              vmpx(ij, k) = 0.0d0
+           end if
+           fbarei = csfrc * (1.0d0 - hsx(ij, k)/(alspat + hsx(ij, k))) &
+             &    + (1.0d0 - csfrc) * &
+             &      ( 0.5d0 + sign(0.5d0, alspat - hsx(ij, k)))
+           frmpx(ij, k) = sqrt(vmpx(ij,k)/rtdpmp)
+           if (frmpx(ij, k) .gt. fbarei) then
+              frmpx(ij, k) = fbarei
+              oromp = .true.
+           end if
+           hmp = rtdpmp * frmpx(ij, k)
+           if (hmp .gt. rtmxmp*hix(ij, k)) then
+              hmp = rtmxmp*hix(ij, k)
+              frmpx(ij, k) = hmp/rtdpmp
+              oromp = .true.
+           end if
+           if (oromp) then
+              vmpx(ij, k) = frmpx(ij, k) * hmp
+           end if
+        end do
      end do
-  end do
+  else if (impnd == 2) then   !! Hunke MP param.
+     do k = 1, nic
+        do ij = ijstr, ijend
+           oromp = .false.
+           if (frmpx(ij, k) <= 0.0d0) then
+              frmpx(ij, k) = 0.0d0
+              vmpx(ij, k) = 0.0d0
+           else if (frmpx(ij, k) > frlvx(ij, k)) then
+              vmpx(ij, k) = vmpx(ij, k) * frlvx(ij, k) / frmpx(ij, k)
+              frmpx(ij, k) = frlvx(ij, k)
+           end if
+        end do
+     end do
+  end if
 
+  if (oinit) then
+     return
+  end if
+  
   do k = 1, nic
      do ij = 1, nxydim
-        impfrm(ij) = impfrm(ij) + ax(ij, k) * vmpx(ij, k)
+        improf(ij, k) = improf(ij, k) - &
+          &           ( ax(ij, k) * vmpx(ij, k) - axvmp(ij, k) ) &
+          &           / ts * amskt(ij, kstr)
      end do
   end do
 

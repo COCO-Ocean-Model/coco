@@ -20,7 +20,7 @@ module iprdg
   use zocdim, only: &
     & nxydim,    nic, ijtstr, ijtend, &
     &     lw,     ls,    lsw, &
-    &  oinit, ofinal
+    &  oinit, ofinal, myrank
   use zocgrd, only: &
     &     rx,     ry,    hic,     ts, &
     &    hxt,   hxyt,   hyxt,    rxt,    ryt
@@ -38,11 +38,13 @@ contains
 subroutine pridge( &
   &                  pice, &
   &                    ax,    hix,    eix,    hsx,    tix, &
-  &                   asx,   vmpx,   dsdx,   dsbx, &
+  &                   asx,  frlvx,   vmpx,  frmpx,   dsdx,   dsbx, &
   &                    az,    hiz,    eiz,    hsz, &
   &                    ui,     vi )
   use ufile
   use zocite
+
+  integer, parameter :: nrbnd = 3  !! N. of radiation bands; VI, NIR, and IR
 
   real(8), intent(out)   ::    pice(nxydim)
   real(8), intent(inout) ::      ax(nxydim, 0:nic)
@@ -51,7 +53,9 @@ subroutine pridge( &
   real(8), intent(inout) ::     hsx(nxydim, 0:nic)
   real(8), intent(inout) ::     tix(nxydim, 0:nic)
   real(8), intent(inout) ::     asx(nxydim, 0:nic)
+  real(8), intent(inout) ::   frlvx(nxydim, 0:nic)
   real(8), intent(inout) ::    vmpx(nxydim, 0:nic)
+  real(8), intent(inout) ::   frmpx(nxydim, 0:nic)
   real(8), intent(inout) ::    dsdx(nxydim, 0:nic)
   real(8), intent(inout) ::    dsbx(nxydim, 0:nic)
   real(8), intent(in)    ::      az(nxydim, 0:nic)
@@ -63,6 +67,7 @@ subroutine pridge( &
   real(8) ::   axhix(nxydim, 0:nic),  axhsx(nxydim, 0:nic)
   real(8) ::   axeix(nxydim, 0:nic)
   real(8) ::   axasx(nxydim, 0:nic),  axvmp(nxydim, 0:nic)
+  real(8) ::   axflv(nxydim, 0:nic),  axfmp(nxydim, 0:nic)
   real(8) ::   axdsd(nxydim, 0:nic),  axdsb(nxydim, 0:nic)
   real(8) ::     axa(nxydim, 0:nic)
   real(8) ::    divv(nxydim),  edis(nxydim)
@@ -74,6 +79,7 @@ subroutine pridge( &
   real(8) ::    dahi(nxydim, nic),   dahs(nxydim, nic)
   real(8) ::    daei(nxydim, nic)
   real(8) ::    daas(nxydim, nic),   davm(nxydim, nic)
+  real(8) ::    dafl(nxydim, nic),   dafm(nxydim, nic)
   real(8) ::    dadd(nxydim, nic),   dadb(nxydim, nic)
 !  common /work/ axhix, axhsx, &
 !    &           divv, edis, wa, wn, ww, &
@@ -95,11 +101,32 @@ subroutine pridge( &
   real(8), save ::  ecc = 2.0d0,  dmin = 2.0d-7,  floss = 17.0d0
   real(8), save ::  cs = 0.5d0,  gridge = 0.15d0,  hridge = 1.0d4
   real(8), save ::  si = 5.0d0
+! namelist nmmpnd
+  integer, save :: impnd = 0 !! 0: melt pond (MP) parametrization not used
+                             !! 1: Holland et al. (2012) MP param.
+                             !! 2: Hunke et al. (2013) MP param.
+  real(8), save :: hminmp = 10.0d0 !! min. ice thickness for keeping MP [cm]
+  real(8), save :: rtdpmp = 80.0d0 !! ratio of melt pond depth to frmp [cm/1]
+  real(8), save :: rtmxmp = 0.9d0  !! max. ratio of MP depth to ice thickness
+  !! The default dpscl in CICE is 1.0, but we set it to 0.1.
+  !! (maybe due to slightly different implementation?)
+  real(8), save :: dpscl = 0.1d0  !! permiability scale parameter [ND]
+  real(8), save :: rmpcmn(0:2) = & !! minimum water catching rate of MP 
+    &                 (/ 0.0d0, 0.15d0, 0.15d0 /) 
+  real(8), save :: rmpcmx(0:2) = & !! maximum water catching rate of MP 
+    &                 (/ 0.0d0, 0.7d0, 0.85d0 /) 
+  real(8), save :: cmpfrz = 3.d-6 !! constant for melt pond freeze-up rate
+  real(8), save :: tmpfrz = -2.0d0 !! ref. t for melt pond freeze-up [c]
+  real(8), save :: albmpd( nrbnd ) = &  !! deep melt pond shortwave albedo
+    &                 (/ 0.4d0, 0.1d0, 0.0d0 /)
+  real(8), save :: almpdp(2) = &   !! MP sw albedo, depth dependency [cm]
+    &                 (/ 0.5d0, 20.0d0 /)
 
   namelist /nmidyn/ ecc, dmin, floss
   namelist /nmirdg/ cs, gridge, hridge
   namelist /nmislt/ si
-
+  namelist /nmmpnd/   impnd, hminmp, rtdpmp, rtmxmp,  dpscl, &
+    &                rmpcmn, rmpcmx, cmpfrz, tmpfrz, albmpd, almpdp
 
   if (oinit .or. ofinal) then
      return
@@ -119,6 +146,10 @@ subroutine pridge( &
      read (ifpar, nmislt, iostat=istat)
      call cstnml(jfpar, 'pridge', 'nmislt', istat)
      write(jfpar, nmislt)
+     call rewnml(ifpar, jfpar)
+     read (ifpar, nmmpnd, iostat=istat)
+     call cstnml(jfpar, 'pridge', 'nmmpnd', istat)
+     write(jfpar, nmmpnd)
 
      tmi = dtds * si
 
@@ -143,7 +174,9 @@ subroutine pridge( &
         axhsx(ij, k) = ax(ij, k) * hsx(ij, k)
         axeix(ij, k) = ax(ij, k) * eix(ij, k)
         axasx(ij, k) = ax(ij, k) * asx(ij, k)
+        axflv(ij, k) = ax(ij, k) * frlvx(ij, k)
         axvmp(ij, k) = ax(ij, k) * vmpx(ij, k)
+        axfmp(ij, k) = ax(ij, k) * frmpx(ij, k)
         axdsd(ij, k) = ax(ij, k) * dsdx(ij, k)
         axdsb(ij, k) = ax(ij, k) * dsbx(ij, k)
         g(ij, k) = 0.d0
@@ -255,7 +288,9 @@ subroutine pridge( &
         dahs(ij, l) = - hsx(ij, l) * wa(ij, l) * edis(ij)
         daei(ij, l) = - eix(ij, l) * wa(ij, l) * edis(ij)
         daas(ij, l) = - asx(ij, l) * wa(ij, l) * edis(ij)
+        dafl(ij, l) = - frlvx(ij, l) * wa(ij, l) * edis(ij)
         davm(ij, l) = - vmpx(ij, l) * wa(ij, l) * edis(ij)
+        dafm(ij, l) = - frmpx(ij, l) * wa(ij, l) * edis(ij)
         dadd(ij, l) = - dsdx(ij, l) * wa(ij, l) * edis(ij)
         dadb(ij, l) = - dsbx(ij, l) * wa(ij, l) * edis(ij)
         pice(ij) = pice(ij) &
@@ -287,18 +322,27 @@ subroutine pridge( &
            daei(ij, l) = daei(ij, l) &
              &         + hekl * wa(ij ,k) * gam(ij, k, l) * &
              &           edis(ij)
-           DAAS(IJ, L) = DAAS(IJ, L) &
-             &         + ASX(IJ, K) * WA(IJ, K) * GAM(IJ, K, L) * &
-             &           EDIS(IJ)
-           DAVM(IJ, L) = DAVM(IJ, L) &
-             &         + VMKL * WA(IJ, K) * GAM(IJ, K, L) * &
-             &           EDIS(IJ)
-           DADD(IJ, L) = DADD(IJ, L) &
-             &         + DDKL * WA(IJ, K) * GAM(IJ, K, L) * &
-             &           EDIS(IJ)
-           DADB(IJ, L) = DADB(IJ, L) &
-             &         + DBKL * WA(IJ, K) * GAM(IJ, K, L) * &
-             &           EDIS(IJ)
+           daas(ij, l) = daas(ij, l) &
+             &         + asx(ij, k) * wa(ij, k) * gam(ij, k, l) * &
+             &           edis(ij)
+!          frlvx not transported to the destination category;
+!           all the ridged ice is classed as deformed ice.
+           if (impnd == 1) then
+              davm(ij, l) = davm(ij, l) &
+                &         + vmkl * wa(ij, k) * gam(ij, k, l) * &
+                &           edis(ij)
+           end if
+!          For Holland et al. (2012) MP parametrization (impnd = 1),
+!           the update of frmpx here is just a dummy.
+!          For Hunke et al. (2013) MP paramerization (impnd = 2), 
+!           vmpx and frmpx not transported to the destination category;
+!           the pond water on the ridged ice is regarded to drop to the ocean.
+           dadd(ij, l) = dadd(ij, l) &
+             &         + ddkl * wa(ij, k) * gam(ij, k, l) * &
+             &           edis(ij)
+           dadb(ij, l) = dadb(ij, l) &
+             &         + dbkl * wa(ij, k) * gam(ij, k, l) * &
+             &           edis(ij)
            pice(ij) = pice(ij) &
              &      + hikl * hikl * wa(ij, k) * gam(ij, k, l) * &
              &        pifct
@@ -309,7 +353,7 @@ subroutine pridge( &
   do k = 1, nic
      do ij = ijtstr, ijtend
         ax(ij, k) = ax(ij, k) + ts * da(ij, k)
-!       Intra-category AX change does not affect ASX
+!       Store ax before the adjustment
         axa(ij, k) = ax(ij, k)
         ax(ij, k) = min(1.d0, max(0.d0, ax(ij, k)))
      end do
@@ -345,7 +389,9 @@ subroutine pridge( &
            hsx(ij, k) = 0.d0
            eix(ij, k) = 0.d0
            asx(ij, k) = 0.d0
+           frlvx(ij, k) = 1.0d0
            vmpx(ij, k) = 0.d0
+           frmpx(ij, k) = 0.0d0
            dsdx(ij, k) = 0.d0
            dsbx(ij, k) = 0.d0
            hix(ij, 0) = hix(ij, 0) + axhix(ij, k)
@@ -358,7 +404,9 @@ subroutine pridge( &
            dahs(ij, k) = 0.d0
            daei(ij, k) = 0.d0
            daas(ij, k) = 0.d0
+           dafl(ij, k) = 0.d0
            davm(ij, k) = 0.d0
+           dafm(ij, k) = 0.d0
            dadd(ij, k) = 0.d0
            dadb(ij, k) = 0.d0
         end do
@@ -371,7 +419,9 @@ subroutine pridge( &
         axhsx(ij, k) = axhsx(ij, k) + ts * dahs(ij, k)
         axeix(ij, k) = axeix(ij, k) + ts * daei(ij, k)
         axasx(ij, k) = axasx(ij, k) + ts * daas(ij, k)
+        axflv(ij, k) = axflv(ij, k) + ts * dafl(ij, k)
         axvmp(ij, k) = axvmp(ij, k) + ts * davm(ij, k)
+        axfmp(ij, k) = axfmp(ij, k) + ts * dafm(ij, k)
         axdsd(ij, k) = axdsd(ij, k) + ts * dadd(ij, k)
         axdsb(ij, k) = axdsb(ij, k) + ts * dadb(ij, k)
      end do
@@ -381,53 +431,84 @@ subroutine pridge( &
 ! *** amount of the thickest category ice is never reduced by ridging.
 ! *** thus, the situation that axhix(ij, nic) becomes less than zero
 ! *** needs not be considered in the adjustment below. 
+!
+! '21.07.19: For variables which are not conserved through the process
+!            (asx, frlvx, frmpx, and vmpx for impnd=2), negative
+!            ax-values are not transported to the thicker category; 
+!            the negative ax-value transport sometimes causes resultant
+!            negative value, which is invalid, in the thickest category,
+!            since positive counterpart has not been transported there.
   do k = 1, nic-1
      do ij = ijtstr, ijtend
         if (ax(ij, k) .eq. 0.d0) then
            axhix(ij, k+1) = axhix(ij, k+1) + axhix(ij, k)
            axhsx(ij, k+1) = axhsx(ij, k+1) + axhsx(ij, k)
            axeix(ij, k+1) = axeix(ij, k+1) + axeix(ij, k)
-!           axasx(ij, k+1) = axasx(ij, k+1) + axasx(ij, k)
-           axvmp(ij, k+1) = axvmp(ij, k+1) + axvmp(ij, k)
+           axasx(ij, k+1) = axasx(ij, k+1) + max(axasx(ij, k), 0.d0)
+           if (impnd == 1) then
+              axvmp(ij, k+1) = axvmp(ij, k+1) + axvmp(ij, k)
+           else
+              axvmp(ij, k+1) = axvmp(ij, k+1) + max(axvmp(ij, k), 0.d0)
+           end if
+           axflv(ij, k+1) = axflv(ij, k+1) + max(axflv(ij, k), 0.d0)
+           axfmp(ij, k+1) = axfmp(ij, k+1) + max(axfmp(ij, k), 0.d0)
+!           axflv(ij, k+1) = axflv(ij, k+1) + axflv(ij, k)
+!           axfmp(ij, k+1) = axfmp(ij, k+1) + axfmp(ij, k)
            axdsd(ij, k+1) = axdsd(ij, k+1) + axdsd(ij, k)
            axdsb(ij, k+1) = axdsb(ij, k+1) + axdsb(ij, k)
            axhix(ij, k) = 0.d0
            axhsx(ij, k) = 0.d0
            axeix(ij, k) = 0.d0
            axasx(ij, k) = 0.d0
+           axflv(ij, k) = 0.d0
            axvmp(ij, k) = 0.d0
+           axfmp(ij, k) = 0.d0
            axdsd(ij, k) = 0.d0
            axdsb(ij, k) = 0.d0
            hix(ij, k) = hic(k)
            hsx(ij, k) = 0.d0
            eix(ij, k) = 0.d0
            asx(ij, k) = 0.d0
+           frlvx(ij, k) = 1.d0
            vmpx(ij, k) = 0.d0
+           frmpx(ij, k) = 0.d0
            dsdx(ij, k) = 0.d0
            dsbx(ij, k) = 0.d0
         else if (axhix(ij, k) .lt. 0.d0) then
            axhix(ij, k+1) = axhix(ij, k+1) + axhix(ij, k)
            axhsx(ij, k+1) = axhsx(ij, k+1) + axhsx(ij, k)
            axeix(ij, k+1) = axeix(ij, k+1) + axeix(ij, k)
-           axasx(ij, k+1) = axasx(ij, k+1) + axasx(ij, k)
-           axvmp(ij, k+1) = axvmp(ij, k+1) + axvmp(ij, k)
+           axasx(ij, k+1) = axasx(ij, k+1) + max(axasx(ij, k), 0.d0)
+           if (impnd == 1) then
+              axvmp(ij, k+1) = axvmp(ij, k+1) + axvmp(ij, k)
+           else
+              axvmp(ij, k+1) = axvmp(ij, k+1) + max(axvmp(ij, k), 0.d0)
+           end if
+           axflv(ij, k+1) = axflv(ij, k+1) + max(axflv(ij, k), 0.d0)
+           axfmp(ij, k+1) = axfmp(ij, k+1) + max(axfmp(ij, k), 0.d0)
+!           axflv(ij, k+1) = axflv(ij, k+1) + axflv(ij, k)
+!           axfmp(ij, k+1) = axfmp(ij, k+1) + axfmp(ij, k)
            axdsd(ij, k+1) = axdsd(ij, k+1) + axdsd(ij, k)
            axdsb(ij, k+1) = axdsb(ij, k+1) + axdsb(ij, k)
            ax(ij, k+1) = ax(ij, k+1) + ax(ij, k)
-           axa(ij, k+1) = ax(ij, k+1) + ax(ij, k)
+           axa(ij, k+1) = axa(ij, k+1) + ax(ij, k)
            ax(ij, k) = 0.d0
            axhix(ij, k) = 0.d0
            axhsx(ij, k) = 0.d0
            axeix(ij, k) = 0.d0
            axasx(ij, k) = 0.d0
+           axflv(ij, k) = 0.d0
            axvmp(ij, k) = 0.d0
+           axfmp(ij, k) = 0.d0
            axdsd(ij, k) = 0.d0
            axdsb(ij, k) = 0.d0
            hix(ij, k) = hic(k)
            hsx(ij, k) = 0.d0
            eix(ij, k) = 0.d0
            asx(ij, k) = 0.d0
+           frlvx(ij, k) = 1.d0
            vmpx(ij, k) = 0.d0
+           frmpx(ij, k) = 0.d0
            dsdx(ij, k) = 0.d0
            dsbx(ij, k) = 0.d0
         else
@@ -435,19 +516,45 @@ subroutine pridge( &
               axhsx(ij, k+1) = axhsx(ij, k+1) + axhsx(ij, k)
               axhsx(ij, k) = 0.d0
               hsx(ij, k) = 0.d0
-!              axasx(ij, k+1) = axasx(ij, k+1) + axasx(ij, k)
-!              axasx(ij, k) = 0.d0
-!              asx(ij, k) = 0.d0
+              axasx(ij, k+1) = axasx(ij, k+1) + max(axasx(ij, k), 0.d0)
+              axasx(ij, k) = 0.d0
+              asx(ij, k) = 0.d0
            end if
            if (axeix(ij, k) .lt. 0.d0) then
               axeix(ij, k+1) = axeix(ij, k+1) + axeix(ij, k)
               axeix(ij, k) = 0.d0
               eix(ij, k) = 0.d0
            end if
+           if (axasx(ij, k) .lt. 0.d0) then
+!              axasx(ij, k+1) = axasx(ij, k+1) + axasx(ij, k)
+              axasx(ij, k) = 0.d0
+              asx(ij, k) = 0.d0
+           end if
+           if (axflv(ij, k) .lt. 0.d0) then
+!              axflv(ij, k+1) = axflv(ij, k+1) + axflv(ij, k)
+              axflv(ij, k) = 0.d0
+              frlvx(ij, k) = 0.d0
+           end if
            if (axvmp(ij, k) .lt. 0.d0) then
-              axvmp(ij, k+1) = axvmp(ij, k+1) + axvmp(ij, k)
+              if (impnd == 1) then
+                 axvmp(ij, k+1) = axvmp(ij, k+1) + axvmp(ij, k)
+              end if
               axvmp(ij, k) = 0.d0
               vmpx(ij, k) = 0.d0
+              axfmp(ij, k+1) = axfmp(ij, k+1) + max(axfmp(ij, k), 0.d0)
+              axfmp(ij, k) = 0.d0
+              frmpx(ij, k) = 0.d0
+           end if
+           if (axfmp(ij, k) .lt. 0.d0) then
+!              axfmp(ij, k+1) = axfmp(ij, k+1) + axfmp(ij, k)
+              axfmp(ij, k) = 0.d0
+              frmpx(ij, k) = 0.d0
+!             frmpx update is dummy for Holland MP param. (impnd = 1)
+              if (impnd == 2) then  
+                 axvmp(ij, k+1) = axvmp(ij, k+1) + max(axvmp(ij, k), 0.d0)
+                 axvmp(ij, k) = 0.d0
+                 vmpx(ij, k) = 0.d0
+              end if
            end if
            if (axdsd(ij, k) .lt. 0.d0) then
               axdsd(ij, k+1) = axdsd(ij, k+1) + axdsd(ij, k)
@@ -473,18 +580,32 @@ subroutine pridge( &
            vmpx(ij, k) = axvmp(ij, k) / ax(ij, k)
            dsdx(ij, k) = axdsd(ij, k) / ax(ij, k)
            dsbx(ij, k) = axdsb(ij, k) / ax(ij, k)
+!          Use unadjusted ax to calculate the following variables, 
+!           since they are not affected by the adjustment:
+!           snow age, level-ice fractaion, and pond fraction.
            if (axa(ij, k) .gt. 0.d0) then
               asx(ij, k) = axasx(ij, k) / axa(ij, k)
+              frlvx(ij, k) = axflv(ij, k) / axa(ij, k)
+              frmpx(ij, k) = axfmp(ij, k) / axa(ij, k)
            else
               asx(ij, k) = 0.d0
-              write(0, *) '### REFRESH ASX (iprdg) ###' !! debug
+              frlvx(ij, k) = 1.0d0
+              frmpx(ij, k) = 0.0d0
+              write(0, *) '### REFRESH ASX/FRLVX/FRMPX (iprdg) ###' !! debug
            end if
         else
            tix(ij, k) = tmi
         end if
-        if ((asx(ij, k).lt.0.d0).or.(asx(ij, k).gt.1.d0)) then
-           write(0,*) '##iprdg##', ij, k, asx(ij, k)
-        end if        
+!       debug code
+!        if ((asx(ij, k) < 0.d0).or.(asx(ij, k) > (1.0d0+1.0d-9))) then
+!           write(0,*) '##iprdg; asx##', myrank, ij, k, asx(ij, k)
+!        end if        
+!        if ((frlvx(ij, k) < 0.d0).or.(frlvx(ij, k) > (1.0d0+1.0d-9))) then
+!            write(0,*) '##iprdg; frlvx##', myrank, ij, k, frlvx(ij, k)
+!        end if
+!        if ((frmpx(ij, k) < 0.d0).or.(frmpx(ij, k) > (1.0d0+1.0d-9))) then
+!         write(0,*) '##iprdg; frmpx##', myrank, ij, k, frmpx(ij, k)
+!        end if        
      end do
   end do
 

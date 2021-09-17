@@ -45,7 +45,7 @@ contains
 
 subroutine ictrns( &
   &                    ax,    hix,    hsx,    eix,    tix, &
-  &                   asx,   vmpx,   dsdx,   dsbx, &
+  &                   asx,  frlvx,   vmpx,  frmpx,   dsdx,   dsbx, &
   &                    ft,     fs,    fdd,    fdb )
   use ufile
   use zocite
@@ -54,7 +54,8 @@ subroutine ictrns( &
   real(8), intent(inout) ::    hix(nxydim, 0:nic)
   real(8), intent(inout) ::    hsx(nxydim, 0:nic)
   real(8), intent(inout) ::    eix(nxydim, 0:nic),    tix(nxydim, 0:nic)
-  real(8), intent(inout) ::    asx(nxydim, 0:nic),   vmpx(nxydim, 0:nic)
+  real(8), intent(inout) ::    asx(nxydim, 0:nic),  frlvx(nxydim, 0:nic)
+  real(8), intent(inout) ::   vmpx(nxydim, 0:nic),  frmpx(nxydim, 0:nic)
   real(8), intent(inout) ::   dsdx(nxydim, 0:nic),   dsbx(nxydim, 0:nic)
   real(8), intent(inout) ::     ft(nxydim, ntdim),     fs(nxydim)
   real(8), intent(inout) ::    fdd(nxydim),    fdb(nxydim)
@@ -62,6 +63,7 @@ subroutine ictrns( &
   real(8) ::  axhix(nxydim, 0:nic),  axhsx(nxydim, 0:nic)
   real(8) ::  axeix(nxydim, 0:nic)
   real(8) ::  axasx(nxydim, 0:nic),  axvmp(nxydim, 0:nic)
+  real(8) ::  axflv(nxydim, 0:nic),  axfmp(nxydim, 0:nic)
   real(8) ::  axdsd(nxydim, 0:nic),  axdsb(nxydim, 0:nic)
   real(8) ::     ci(nxydim)
 !  common /work/ axhix, axhsx, axeix, ci
@@ -101,7 +103,9 @@ subroutine ictrns( &
      axhix(ij, 0) = ax(ij, 0) * hix(ij, 0)
      axhsx(ij, 0) = ax(ij, 0) * hsx(ij, 0)
      axeix(ij, 0) = ax(ij, 0) * eix(ij, 0)
+     axflv(ij, 0) = ax(ij, 0) * frlvx(ij, 0)
      axvmp(ij, 0) = ax(ij, 0) * vmpx(ij, 0)
+     axfmp(ij, 0) = ax(ij, 0) * frmpx(ij, 0)
      axdsd(ij, 0) = ax(ij, 0) * dsdx(ij, 0)
      axdsb(ij, 0) = ax(ij, 0) * dsbx(ij, 0)
   end do
@@ -119,8 +123,12 @@ subroutine ictrns( &
              &            + ax(ij, k) * eix(ij, k)
            axasx(ij, k+1) = ax(ij, k+1) * asx(ij, k+1) &
              &            + ax(ij, k) * asx(ij, k)
+           axflv(ij, k+1) = ax(ij, k+1) * frlvx(ij, k+1) &
+             &            + ax(ij, k) * frlvx(ij, k)
            axvmp(ij, k+1) = ax(ij, k+1) * vmpx(ij, k+1) &
              &            + ax(ij, k) * vmpx(ij, k)
+           axfmp(ij, k+1) = ax(ij, k+1) * frmpx(ij, k+1) &
+             &            + ax(ij, k) * frmpx(ij, k)
            axdsd(ij, k+1) = ax(ij, k+1) * dsdx(ij, k+1) &
              &            + ax(ij, k) * dsdx(ij, k)
            axdsb(ij, k+1) = ax(ij, k+1) * dsbx(ij, k+1) &
@@ -132,7 +140,9 @@ subroutine ictrns( &
            eix(ij, k) = 0.d0
            tix(ij, k) = tmi
            asx(ij, k) = 0.d0
+           frlvx(ij, k) = 1.d0
            vmpx(ij, k) = 0.d0
+           frmpx(ij, k) = 0.d0
            dsdx(ij, k) = 0.d0
            dsbx(ij, k) = 0.d0
            hix(ij, k+1) = axhix(ij, k+1) / ax(ij, k+1)
@@ -140,7 +150,9 @@ subroutine ictrns( &
            eix(ij, k+1) = axeix(ij, k+1) / ax(ij, k+1)
            tix(ij, k+1) = ti(eix(ij, k+1)/hix(ij, k+1), si)
            asx(ij, k+1) = axasx(ij, k+1) / ax(ij, k+1)
+           frlvx(ij, k+1) = axflv(ij, k+1) / ax(ij, k+1)
            vmpx(ij, k+1) = axvmp(ij, k+1) / ax(ij, k+1)
+           frmpx(ij, k+1) = axfmp(ij, k+1) / ax(ij, k+1)
            dsdx(ij, k+1) = axdsd(ij, k+1) / ax(ij, k+1)
            dsbx(ij, k+1) = axdsb(ij, k+1) / ax(ij, k+1)
         end if
@@ -159,8 +171,12 @@ subroutine ictrns( &
              &          + ax(ij, k) * eix(ij, k)
            axasx(ij, k) = ax(ij, k+1) * asx(ij, k+1) &
              &          + ax(ij, k) * asx(ij, k)
+           axflv(ij, k) = ax(ij, k+1) * frlvx(ij, k+1) &
+             &          + ax(ij, k) * frlvx(ij, k)
            axvmp(ij, k) = ax(ij, k+1) * vmpx(ij, k+1) &
              &          + ax(ij, k) * vmpx(ij, k)
+           axfmp(ij, k) = ax(ij, k+1) * frmpx(ij, k+1) &
+             &          + ax(ij, k) * frmpx(ij, k)
            axdsd(ij, k) = ax(ij, k+1) * dsdx(ij, k+1) &
              &          + ax(ij, k) * dsdx(ij, k)
            axdsb(ij, k) = ax(ij, k+1) * dsbx(ij, k+1) &
@@ -172,7 +188,9 @@ subroutine ictrns( &
            eix(ij, k) = axeix(ij, k) / ax(ij, k)
            tix(ij, k) = ti(eix(ij, k)/hix(ij, k), si)
            asx(ij, k) = axasx(ij, k) / ax(ij, k)
+           frlvx(ij, k) = axflv(ij, k) / ax(ij, k)
            vmpx(ij, k) = axvmp(ij, k) / ax(ij, k)
+           frmpx(ij, k) = axfmp(ij, k) / ax(ij, k)
            dsdx(ij, k) = axdsd(ij, k) / ax(ij, k)
            dsbx(ij, k) = axdsb(ij, k) / ax(ij, k)
            hix(ij, k+1) = hic(k+1)
@@ -180,7 +198,9 @@ subroutine ictrns( &
            eix(ij, k+1) = 0.d0
            tix(ij, k+1) = tmi
            asx(ij, k+1) = 0.d0
+           frlvx(ij, k+1) = 1.d0
            vmpx(ij, k+1) = 0.d0
+           frmpx(ij, k+1) = 0.d0
            dsdx(ij, k+1) = 0.d0
            dsbx(ij, k+1) = 0.d0
         end if
@@ -203,9 +223,10 @@ subroutine ictrns( &
         vmpx(ij, 1) = axvmp(ij, 1) / ax(ij, 1)
         dsdx(ij, 1) = axdsd(ij, 1) / ax(ij, 1)
         dsbx(ij, 1) = axdsb(ij, 1) / ax(ij, 1)
-!       ice temperature does not change
-!       albedo does not change
-     end if
+!       The following variables do not change:
+!       ice temperature, snow age, 
+!       level ice fraction, and melt pond fraction.
+      end if
   end do
 
   do k = 1, nic
@@ -229,7 +250,9 @@ subroutine ictrns( &
            eix(ij, k) = 0.d0
            tix(ij, k) = tmi
            asx(ij, k) = 0.d0
+           frlvx(ij, k) = 1.d0
            vmpx(ij, k) = 0.d0
+           frmpx(ij, k) = 0.d0
            dsdx(ij, k) = 0.d0
            dsbx(ij, k) = 0.d0
         end if
@@ -263,7 +286,9 @@ subroutine ictrns( &
      hsx(ij, 0) = 0.d0
      eix(ij, 0) = 0.d0
      tix(ij, 0) = tmi
+     frlvx(ij, 0) = 1.d0
      vmpx(ij, 0) = 0.d0
+     frmpx(ij, 0) = 0.d0
      dsdx(ij, 0) = 0.d0
      dsbx(ij, 0) = 0.d0
   end do
@@ -278,7 +303,7 @@ subroutine ictrns( &
   do ij = ijtstr, ijtend
      ax(ij, 0) = max(0.d0, ax(ij ,0))
   end do
-  
+
   return
 
 end subroutine ictrns
@@ -361,7 +386,7 @@ end subroutine icadjs
 
 subroutine ichflt( &
   &                    ax,    hix,    hsx,    eix,    tix, &
-  &                   asx,   vmpx,   dsdx,   dsbx )
+  &                   asx,  frlvx,   vmpx,  frmpx,   dsdx,   dsbx )
   use qckot
   use zocite
 
@@ -371,13 +396,16 @@ subroutine ichflt( &
   real(8), intent(inout) ::    eix(nxydim, 0:nic)
   real(8), intent(inout) ::    tix(nxydim, 0:nic)
   real(8), intent(inout) ::    asx(nxydim, 0:nic)
+  real(8), intent(inout) ::  frlvx(nxydim, 0:nic)
   real(8), intent(inout) ::   vmpx(nxydim, 0:nic)
+  real(8), intent(inout) ::  frmpx(nxydim, 0:nic)
   real(8), intent(inout) ::   dsdx(nxydim, 0:nic)
   real(8), intent(inout) ::   dsbx(nxydim, 0:nic)
 
   real(8) ::  axhix(nxydim, 0:nic),  axhsx(nxydim, 0:nic)
   real(8) ::  axeix(nxydim, 0:nic)
   real(8) ::  axasx(nxydim, 0:nic),  axvmp(nxydim, 0:nic)
+  real(8) ::  axflv(nxydim, 0:nic),  axfmp(nxydim, 0:nic)
   real(8) ::  axdsd(nxydim, 0:nic),  axdsb(nxydim, 0:nic)
   real(8) ::     ci(nxydim)
   real(8) :: daxhix(nxydim)
@@ -385,6 +413,7 @@ subroutine ichflt( &
   real(8) ::    fax,    lax,  fdahi
   real(8) ::   fahi,   fahs,   faei
   real(8) ::   faas,  favmp,  fadsd, fadsb
+  real(8) ::  faflv,  fafmp
   real(8) :: rdaxhi(nxydim)
   
   integer ::     ij,      k
@@ -419,10 +448,13 @@ subroutine ichflt( &
      daxhix(ij) = daxhix(ij) - fax * hiref
   end do
 
-! Snow age varies only with inter-category transfer
+! The following variables change only with inter-category transfer:
+!  snow age, level ice fraction, and melt pond fraction
   do k = 1, nic
      do ij = ijtstr, ijtend
         axasx(ij, k) = ax(ij, k) * asx(ij, k)
+        axflv(ij, k) = ax(ij, k) * frlvx(ij, k)
+        axfmp(ij, k) = ax(ij, k) * frmpx(ij, k)
      end do
   end do
 
@@ -436,7 +468,9 @@ subroutine ichflt( &
            fahs = fax * hsx(ij, k)
            faei = fax * eix(ij, k)
            faas = fax * asx(ij, k)
+           faflv = fax * frlvx(ij, k)
            favmp = fax * vmpx(ij, k)
+           fafmp = fax * frmpx(ij, k)
            fadsd = fax * dsdx(ij, k)
            fadsb = fax * dsbx(ij, k)
            ax(ij, k) = ax(ij, k) - fax
@@ -444,7 +478,9 @@ subroutine ichflt( &
            axhsx(ij, k) = axhsx(ij, k) - fahs
            axeix(ij, k) = axeix(ij, k) - faei
            axasx(ij, k) = axasx(ij, k) - faas
+           axflv(ij, k) = axflv(ij, k) - faflv
            axvmp(ij, k) = axvmp(ij, k) - favmp
+           axfmp(ij, k) = axfmp(ij, k) - fafmp
            axdsd(ij, k) = axdsd(ij, k) - fadsd
            axdsb(ij, k) = axdsb(ij, k) - fadsb
            ax(ij, nic) = ax(ij, nic) + fax
@@ -452,7 +488,9 @@ subroutine ichflt( &
            axhsx(ij, nic) = axhsx(ij, nic) + fahs
            axeix(ij, nic) = axeix(ij, nic) + faei
            axasx(ij, nic) = axasx(ij, nic) + faas
+           axflv(ij, nic) = axflv(ij, nic) + faflv
            axvmp(ij, nic) = axvmp(ij, nic) + favmp
+           axfmp(ij, nic) = axfmp(ij, nic) + fafmp
            axdsd(ij, nic) = axdsd(ij, nic) + fadsd
            axdsb(ij, nic) = axdsb(ij, nic) + fadsb
         endif
@@ -473,7 +511,9 @@ subroutine ichflt( &
            tix(ij, k) = tmi
            eix(ij, k) = 0.d0
            asx(ij, k) = 0.d0
+           frlvx(ij, k) = 1.d0
            vmpx(ij, k) = 0.d0
+           frmpx(ij, k) = 0.d0
            dsdx(ij, k) = 0.d0
            dsbx(ij, k) = 0.d0
         else
@@ -482,7 +522,9 @@ subroutine ichflt( &
            eix(ij, k) = axeix(ij, k) / ax(ij, k)
            tix(ij, k) = ti(eix(ij, k)/hix(ij, k), si)
            asx(ij, k) = axasx(ij, k) / ax(ij, k)
+           frlvx(ij, k) = axflv(ij, k) / ax(ij, k)
            vmpx(ij, k) = axvmp(ij, k) / ax(ij, k)
+           frmpx(ij, k) = axfmp(ij, k) / ax(ij, k)
            dsdx(ij, k) = axdsd(ij, k) / ax(ij, k)
            dsbx(ij, k) = axdsb(ij, k) / ax(ij, k)
         endif

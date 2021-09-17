@@ -43,7 +43,7 @@ contains
 
 subroutine padvct( &
   &                    ax,    hix,    eix,    hsx,    tix, &
-  &                   asx,   vmpx,   dsdx,   dsbx, &
+  &                   asx,  frlvx,   vmpx,  frmpx,   dsdx,   dsbx, &
   &                    az,    hiz,    eiz,    hsz, &
   &                   fix,    fiy,    fsx,    fsy, &
   &                   fex,    fey, &
@@ -57,7 +57,9 @@ subroutine padvct( &
   real(8), intent(inout) ::     hsx(nxydim, 0:nic)
   real(8), intent(inout) ::     tix(nxydim, 0:nic)
   real(8), intent(inout) ::     asx(nxydim, 0:nic)
+  real(8), intent(inout) ::   frlvx(nxydim, 0:nic)
   real(8), intent(inout) ::    vmpx(nxydim, 0:nic)
+  real(8), intent(inout) ::   frmpx(nxydim, 0:nic)
   real(8), intent(inout) ::    dsdx(nxydim, 0:nic)
   real(8), intent(inout) ::    dsbx(nxydim, 0:nic)
   real(8), intent(out)   ::      az(nxydim, 0:nic)
@@ -71,12 +73,15 @@ subroutine padvct( &
 
   real(8) ::     fax(nxydim,   nic),    fay(nxydim,   nic)
   real(8) ::    fasx(nxydim,   nic),   fasy(nxydim,   nic)
-  real(8) ::    fvmx(nxydim, 0:nic),   fvmy(nxydim, 0:nic)
-  real(8) ::    fddx(nxydim, 0:nic),   fddy(nxydim, 0:nic)
-  real(8) ::    fdbx(nxydim, 0:nic),   fdby(nxydim, 0:nic)
+  real(8) ::    fflx(nxydim,   nic),   ffly(nxydim,   nic)
+  real(8) ::    fvmx(nxydim,   nic),   fvmy(nxydim,   nic)
+  real(8) ::    ffmx(nxydim,   nic),   ffmy(nxydim,   nic)
+  real(8) ::    fddx(nxydim,   nic),   fddy(nxydim,   nic)
+  real(8) ::    fdbx(nxydim,   nic),   fdby(nxydim,   nic)
   real(8) ::   axhix(nxydim, 0:nic),  axhsx(nxydim, 0:nic)
   real(8) ::   axeix(nxydim, 0:nic)
   real(8) ::   axasx(nxydim, 0:nic),  axvmp(nxydim, 0:nic)
+  real(8) ::   axflv(nxydim, 0:nic),  axfmp(nxydim, 0:nic)
   real(8) ::   axdsd(nxydim, 0:nic),  axdsb(nxydim, 0:nic)
 !  common /work/ fax, fay, axhix, axhsx, axeix
 
@@ -117,7 +122,9 @@ subroutine padvct( &
         axeix(ij, k) = ax(ij, k) * eix(ij, k)
         axhsx(ij, k) = ax(ij, k) * hsx(ij, k)
         axasx(ij, k) = ax(ij, k) * asx(ij, k)
+        axflv(ij, k) = ax(ij, k) * frlvx(ij, k)
         axvmp(ij, k) = ax(ij, k) * vmpx(ij, k)
+        axfmp(ij, k) = ax(ij, k) * frmpx(ij, k)
         axdsd(ij, k) = ax(ij, k) * dsdx(ij, k)
         axdsb(ij, k) = ax(ij, k) * dsbx(ij, k)
         fix(ij, k) = 0.d0
@@ -135,8 +142,12 @@ subroutine padvct( &
         fay(ij, k) = 0.d0
         fasx(ij, k) = 0.d0
         fasy(ij, k) = 0.d0
+        fflx(ij, k) = 0.d0
+        ffly(ij, k) = 0.d0
         fvmx(ij, k) = 0.d0
         fvmy(ij, k) = 0.d0
+        ffmx(ij, k) = 0.d0
+        ffmy(ij, k) = 0.d0
         fddx(ij, k) = 0.d0
         fddy(ij, k) = 0.d0
         fdbx(ij, k) = 0.d0
@@ -167,8 +178,14 @@ subroutine padvct( &
         fasx(ij, k) = - (  up * axasx(ijlw, k) &
           &          + um * axasx(ij, k)) * &
           &         amskt(ij, kstr) * amskt(ijlw, kstr)
+        fflx(ij, k) = - (  up * axflv(ijlw, k) &
+          &          + um * axflv(ij, k)) * &
+          &         amskt(ij, kstr) * amskt(ijlw, kstr)
         fvmx(ij, k) = - (  up * axvmp(ijlw, k) &
           &          + um * axvmp(ij, k)) * &
+          &         amskt(ij, kstr) * amskt(ijlw, kstr)
+        ffmx(ij, k) = - (  up * axfmp(ijlw, k) &
+          &          + um * axfmp(ij, k)) * &
           &         amskt(ij, kstr) * amskt(ijlw, kstr)
         fddx(ij, k) = - (  up * axdsd(ijlw, k) &
           &          + um * axdsd(ij, k)) * &
@@ -199,8 +216,14 @@ subroutine padvct( &
         fasy(ij, k) = - (  vp * axasx(ijls, k) &
           &          + vm * axasx(ij, k)) * &
           &         amskt(ij, kstr) * amskt(ijls, kstr)
+        ffly(ij, k) = - (  vp * axflv(ijls, k) &
+          &          + vm * axflv(ij, k)) * &
+          &         amskt(ij, kstr) * amskt(ijls, kstr)
         fvmy(ij, k) = - (  vp * axvmp(ijls, k) &
           &          + vm * axvmp(ij, k)) * &
+          &         amskt(ij, kstr) * amskt(ijls, kstr)
+        ffmy(ij, k) = - (  vp * axfmp(ijls, k) &
+          &          + vm * axfmp(ij, k)) * &
           &         amskt(ij, kstr) * amskt(ijls, kstr)
         fddy(ij, k) = - (  vp * axdsd(ijls, k) &
           &          + vm * axdsd(ij, k)) * &
@@ -233,9 +256,17 @@ subroutine padvct( &
           &          + ts * (  (fasx(ijle, k) - fasx(ij, k)) * rx &
           &              + (fasy(ijln, k) - fasy(ij, k)) * ry(ij)) * &
           &            rxt(ij) * ryt(ij) * amskt(ij, kstr)
+        axflv(ij, k) = axflv(ij, k) &
+          &          + ts * (  (fflx(ijle, k) - fflx(ij, k)) * rx &
+          &              + (ffly(ijln, k) - ffly(ij, k)) * ry(ij)) * &
+          &            rxt(ij) * ryt(ij) * amskt(ij, kstr)
         axvmp(ij, k) = axvmp(ij, k) &
           &          + ts * (  (fvmx(ijle, k) - fvmx(ij, k)) * rx &
           &              + (fvmy(ijln, k) - fvmy(ij, k)) * ry(ij)) * &
+          &            rxt(ij) * ryt(ij) * amskt(ij, kstr)
+        axfmp(ij, k) = axfmp(ij, k) &
+          &          + ts * (  (ffmx(ijle, k) - ffmx(ij, k)) * rx &
+          &              + (ffmy(ijln, k) - ffmy(ij, k)) * ry(ij)) * &
           &            rxt(ij) * ryt(ij) * amskt(ij, kstr)
         axdsd(ij, k) = axdsd(ij, k) &
           &          + ts * (  (fddx(ijle, k) - fddx(ij, k)) * rx &
@@ -257,7 +288,9 @@ subroutine padvct( &
            hsx(ij, k) = axhsx(ij, k) / ax(ij, k)
            tix(ij, k) = ti(eix(ij, k)/hix(ij, k), si)
            asx(ij, k) = axasx(ij, k) / ax(ij, k)
+           frlvx(ij, k) = axflv(ij, k) / ax(ij, k)
            vmpx(ij, k) = axvmp(ij, k) / ax(ij, k)
+           frmpx(ij, k) = axfmp(ij, k) / ax(ij, k)
            dsdx(ij, k) = axdsd(ij, k) / ax(ij, k)
            dsbx(ij, k) = axdsb(ij, k) / ax(ij, k)
         else
@@ -266,7 +299,9 @@ subroutine padvct( &
            hsx(ij, k) = 0.d0
            tix(ij, k) = tmi
            asx(ij, k) = 0.d0
+           frlvx(ij, k) = 1.d0
            vmpx(ij, k) = 0.d0
+           frmpx(ij, k) = 0.d0
            dsdx(ij, k) = 0.d0
            dsbx(ij, k) = 0.d0
         end if
