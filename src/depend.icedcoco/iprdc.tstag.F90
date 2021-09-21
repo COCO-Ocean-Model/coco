@@ -185,10 +185,6 @@ subroutine predci( &
   real(8), save ::    fdd(nxydim),    fdb(nxydim)
   real(8), save :: sitfrc(nxydim), siuabs(nxydim)
 
-  real(8), save :: dfrmp1(nxydim, 0:nic), dfrmp2(nxydim, 0:nic)
-  real(8), save :: dfrmp3(nxydim, 0:nic), dfrmp4(nxydim, 0:nic)
-  real(8), save :: dfrmp5(nxydim, 0:nic), dfrmp6(nxydim, 0:nic)
-
   logical, save ::  oeof
 
 !! for check
@@ -347,16 +343,6 @@ subroutine predci( &
         ft(ij, l) = 0.d0
      end do
   end do
-  do l = 0, nic
-     do ij = 1, nxydim
-        dfrmp1(ij, l) = 0.d0
-        dfrmp2(ij, l) = 0.d0
-        dfrmp3(ij, l) = 0.d0
-        dfrmp4(ij, l) = 0.d0
-        dfrmp5(ij, l) = 0.d0
-        dfrmp6(ij, l) = 0.d0
-      end do
-  end do
 
   call clcstr('ICEDYN')
   call pmomnt( &
@@ -405,11 +391,6 @@ subroutine predci( &
     &           prec,   snow,   roff,   soff,   evap, &
     &             ax)
 
-  do l = 1, nic
-     do ij = 1, nxydim
-        dfrmp1(ij, l) = dfrmp1(ij, l) - frmpx(ij, l)
-      end do
-  end do
   call ptherm( &
     &             ax,    hix,    hsx,    eix,    tix, &
     &            asx,  frlvx,   vmpx,  frmpx,   dsdx,   dsbx, &
@@ -422,53 +403,18 @@ subroutine predci( &
     &           evap,   subi,   roff, adjlat, &
     &           dfdu,   dfbc, &
     &            qio )
-  do l = 1, nic
-     do ij = 1, nxydim
-        dfrmp1(ij, l) = dfrmp1(ij, l) + frmpx(ij, l)
-      end do
-  end do
-  do l = 1, nic
-     do ij = 1, nxydim
-        dfrmp2(ij, l) = dfrmp2(ij, l) - frmpx(ij, l)
-      end do
-  end do
   call idfrmp( &
     &          frlvx,   vmpx,  frmpx, &
     &         improf, &
     &             ax,    hix,    hsx)
-  do l = 1, nic
-     do ij = 1, nxydim
-        dfrmp2(ij, l) = dfrmp2(ij, l) + frmpx(ij, l)
-      end do
-  end do
-  do l = 1, nic
-     do ij = 1, nxydim
-        dfrmp3(ij, l) = dfrmp3(ij, l) - frmpx(ij, l)
-      end do
-  end do
   call ictrns( &
     &             ax,    hix,    hsx,    eix,    tix, &
     &            asx,  frlvx,   vmpx,  frmpx,   dsdx,   dsbx, &
     &             ft,     fs,    fdd,    fdb )
-  do l = 1, nic
-     do ij = 1, nxydim
-        dfrmp3(ij, l) = dfrmp3(ij, l) + frmpx(ij, l)
-      end do
-  end do
-  do l = 1, nic
-     do ij = 1, nxydim
-        dfrmp2(ij, l) = dfrmp2(ij, l) - frmpx(ij, l)
-      end do
-  end do
   call idfrmp( &
     &          frlvx,   vmpx,  frmpx, &
     &         improf, &
     &             ax,    hix,    hsx)
-  do l = 1, nic
-     do ij = 1, nxydim
-        dfrmp2(ij, l) = dfrmp2(ij, l) + frmpx(ij, l)
-      end do
-  end do
 
 #ifdef OPT_TRIPOLE
   call shift3( &
@@ -502,11 +448,6 @@ subroutine predci( &
     &          nxdim,  nydim,  nic+1)
 #endif
 
-  do l = 1, nic
-     do ij = 1, nxydim
-        dfrmp4(ij, l) = dfrmp4(ij, l) - frmpx(ij, l)
-      end do
-  end do
   call padvct( &
     &             ax,    hix,    eix,    hsx,    tix, &
     &            asx,  frlvx,   vmpx,  frmpx,   dsdx,   dsbx, &
@@ -514,71 +455,26 @@ subroutine predci( &
     &            fix,    fiy,    fsx,    fsy, &
     &            fex,    fey, &
     &            uix,    vix )
-  do l = 1, nic
-     do ij = 1, nxydim
-        dfrmp4(ij, l) = dfrmp4(ij, l) + frmpx(ij, l)
-      end do
-  end do
-  do l = 1, nic
-     do ij = 1, nxydim
-        dfrmp5(ij, l) = dfrmp5(ij, l) - frmpx(ij, l)
-      end do
-  end do
   call pridge( &
     &           pice, &
     &             ax,    hix,    eix,    hsx,    tix, &
     &            asx,  frlvx,   vmpx,  frmpx,   dsdx,   dsbx, &
     &             az,    hiz,    eiz,    hsz, &
     &            uix,    vix )
-  do l = 1, nic
-     do ij = 1, nxydim
-        dfrmp5(ij, l) = dfrmp5(ij, l) + frmpx(ij, l)
-      end do
-  end do
   call icadjs( &
     &             ax,    hix,    hsx,    eix, &
     &           vmpx,   dsdx,   dsbx )
-  do l = 1, nic
-     do ij = 1, nxydim
-        dfrmp6(ij, l) = dfrmp6(ij, l) - frmpx(ij, l)
-      end do
-  end do
   call ichflt( &
     &             ax,    hix,    hsx,    eix,    tix, &
     &            asx,  frlvx,   vmpx,  frmpx,   dsdx,   dsbx )  
-  do l = 1, nic
-     do ij = 1, nxydim
-        dfrmp6(ij, l) = dfrmp6(ij, l) + frmpx(ij, l)
-      end do
-  end do
-  do l = 1, nic
-     do ij = 1, nxydim
-        dfrmp3(ij, l) = dfrmp3(ij, l) - frmpx(ij, l)
-      end do
-  end do
   call ictrns( &
     &             ax,    hix,    hsx,    eix,    tix, &
     &            asx,  frlvx,   vmpx,  frmpx,   dsdx,   dsbx, &
     &             ft,     fs,    fdd,    fdb )
-  do l = 1, nic
-     do ij = 1, nxydim
-        dfrmp3(ij, l) = dfrmp3(ij, l) + frmpx(ij, l)
-      end do
-  end do
-  do l = 1, nic
-     do ij = 1, nxydim
-        dfrmp2(ij, l) = dfrmp2(ij, l) - frmpx(ij, l)
-      end do
-  end do
   call idfrmp( &
     &          frlvx,   vmpx,  frmpx, &
     &         improf, &
     &             ax,    hix,    hsx)
-  do l = 1, nic
-     do ij = 1, nxydim
-        dfrmp2(ij, l) = dfrmp2(ij, l) + frmpx(ij, l)
-      end do
-  end do
 #ifdef OPT_TRIPOLE
   call shift3( &
     &             ax,    hix,    hsx, &
@@ -758,25 +654,6 @@ subroutine predci( &
   call chekin(    fdb,  'FDB', &
     &          'BC flux into ocn., upward positive', 'g/cm^2/s', &
     &              nx,     ny,      1, nxydim, 'OCSFCT')
-
-  call chekin( dfrmp1, 'DFRMP1', &
-    &          'dfrmp1 (ptherm)', 'ND', &
-    &              nx,     ny,    nic, nxyidm, 'OCICET')
-  call chekin( dfrmp2, 'DFRMP2', &
-    &          'dfrmp2 (idfrmp)', 'ND', &
-    &              nx,     ny,    nic, nxyidm, 'OCICET')
-  call chekin( dfrmp3, 'DFRMP3', &
-    &          'dfrmp3 (ictrns)', 'ND', &
-    &              nx,     ny,    nic, nxyidm, 'OCICET')
-  call chekin( dfrmp4, 'DFRMP4', &
-    &          'dfrmp4 (padvct)', 'ND', &
-    &              nx,     ny,    nic, nxyidm, 'OCICET')
-  call chekin( dfrmp5, 'DFRMP5', &
-    &          'dfrmp5 (pridge)', 'ND', &
-    &              nx,     ny,    nic, nxyidm, 'OCICET')
-  call chekin( dfrmp6, 'DFRMP6', &
-    &          'dfrmp6 (ichflt)', 'ND', &
-    &              nx,     ny,    nic, nxyidm, 'OCICET')
 
   return
 

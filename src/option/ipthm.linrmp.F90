@@ -520,7 +520,7 @@ subroutine ptherm( &
            vmpx(ij, k) = vmpx(ij, k) * &
              &    exp( cmpfrz * dt * &
              &         max(tmpfrz-tsi(ij, k), 0.0d0) / tmpfrz )
-           impfrz(ij, k) = ax(ij, k) * ( vmpx(ij, k) - vmpo )
+           impfrz(ij, k) = - ax(ij, k) * ( vmpx(ij, k) - vmpo )
 !          Save the change in vmpx
            dvmp(ij, k) = max( vmpx(ij, k)-vmpz(ij, k), -vmpz(ij, k) )
          end if
@@ -564,7 +564,7 @@ subroutine ptherm( &
                  dvperm = max(-vmpx(ij, k), dvperm)
                  vmpx(ij, k) = vmpx(ij, k) + dvperm
                  dvmp(ij, k) = max( dvmp(ij, k)+dvperm, -vmpz(ij, k) )
-                 improf(ij, k) = - ax(ij, k) * dvperm
+                 improf(ij, k) = improf(ij, k) - ax(ij, k) * dvperm
               end if
            end if
         end do
@@ -610,16 +610,17 @@ subroutine ptherm( &
                     frmpx(ij, k) = frmpx(ij, k) + delfmp
                     iscrmp = .false.
                  end if
-                 if (frmpx(ij, k) > frlvx(ij, k)) then !! MP water runoff
+                 if (frmpx(ij, k) <= 0.0d0) then
+                    improf(ij, k) = improf(ij, k) &
+                      &           + ax(ij, k) * max(vmpx(ij, k), 0.0d0)        
+                    frmpx(ij, k) = 0.0d0
+                    vmpx(ij, k) = 0.0d0
+                 else if (frmpx(ij, k) > frlvx(ij, k)) then !! MP water runoff
                     vmpo = vmpx(ij, k)
                     vmpx(ij, k) = vmpx(ij, k) * frlvx(ij, k) / frmpx(ij, k)
                     frmpx(ij, k) = frlvx(ij, k)
                     improf(ij, k) = improf(ij, k) &
                       &           - ax(ij, k) * (vmpx(ij, k) - vmpo)        
-                 end if
-                 if (frmpx(ij, k) <= 0.0d0) then
-                    frmpx(ij, k) = 0.0d0
-                    vmpx(ij, k) = 0.0d0
                  end if
               end if
            end if
