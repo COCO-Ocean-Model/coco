@@ -124,15 +124,19 @@ OPTTRIPOLE =               : 二極座標系（bipolar grid system）
 OPTTRIPOLE = -DOPT_TRIPOLE : 三極座標系（tripolar grid system）
 
 である。
+ver. 4.9.3.2 以降では、src/Mkinclude において、OPTEXMASK という変数を
+設定することで次に作成するマスキングファイルに含まれる情報を拡張することが
+可能となっている。選択方法は
+
+OPTEXMASK =              : 旧仕様のマスキングファイルを作成/使用する
+OPTEXMASK = -DOPT_EXMASK : 拡張マスキングファイルを作成/使用する
+
+である。現在、拡張マスキングファイルは一部の非標準スキームを利用する際に
+必須の設定だが、それらを使わない場合にこのオプションを指定しても実行に支障は
+ない。ただし、このオプションを指定して構築した実行ファイルで、以前のバージョン
+を含め旧仕様で作成されたマスキングファイルを読み込むことはできない。
 
 2.2 地形の設定とマスキングファイルの作成
-
-
-は完全に自由ではなく、1 つの
-極は地理座標の南極固定、残る 2 つの極は地理座標上の同緯度に位置しなければ
-ならない等の制限がある。
-
-南は切れる、北は切らないこと推奨、東西は 360 度ない場合の動作は保証しない。
 
 COCO ver.4 は COCO ver.3.4 をベースに作成され、大きな違いは水平座標系が
 球面座標系(座標系の回転を含む)に限定されなくなったことである。ただし、モ
@@ -671,7 +675,7 @@ FT 以降のデータは存在しなくてもモデルを駆動することは�
 オプションスキームが必要とする予報変数の読み書きのため、変数の予報を行な
 うプログラム（オプションプログラムに限らない）の形式には一定のルールが設
 けられている。以下にそのルールを示す。具体的な例については
-option/dvdnk.F などを参照のこと。
+option/dvdif.nk.F90 などを参照のこと。
 ・各プログラムはリスタートファイルの読み込みをコントロール変数 OINIT
 (LOGICAL) と書き出しをコントロールする変数 OFINAL (LOGICAL) を COMMON で
 共有する (zocdim.F で定義されている)
@@ -809,6 +813,17 @@ OPTSRST = -DOPT_SRST
 OPTBBL = -DOPT_BBL
 
 と指定する。
+
+拡張マスキングファイル使用の有無は、作成の際に既に述べたとおり OPTEXMASK
+で行う。実行時に旧仕様のマスキングファイルを読み込む場合は何も指定せず、
+拡張マスキングファイルを読み込む場合は
+
+OPTEXMASK = -DOPT_EXMASK
+
+と指定されていることを確認する。なお、このオプションを指定した場合、
+旧仕様のマスキングファイルを読み込ませようとすると実行時エラーとなる。
+逆にオプションを指定しない場合、拡張マスキングファイルを読み込ませても
+正常に動作する。
 
 時間方向の差分として従来の leap-frog + Eular backward + Eular
 forward スキームを用いる場合には、TSTAG に何も指定しない、すなわち
@@ -1073,11 +1088,18 @@ IYSKIP:
  &NMSFBC CFTAUX='TAUX', CFTAUY='TAUY', CFTSFC='TSFC', CFQSFC='QSFC',
          CFSWNT='SWNT', CFDWLW='DWLW', CFWFLX='WFLX', CFPSFC='PSFC',
          CFUSFC='USFC', CFSSFC='SSFC' &END
+ &NMNPER ONMPER=F &END
 
 CFTAUX, CFTAUY, CFTSFC, CFQSFC, CFSWNT, CFDWLW, CFWFLX, CFPSFC, CFUSFC, CFSSFC:
 順に、風応力東西成分、風応力南北成分、海上気温、海上比湿、海面短波放射、
 海面長波放射、海面水フラックス、海面気圧、海上風速、海面塩分のファイル名。
 それぞれについて詳しくは後述。
+
+ONMPER:
+T の場合、降水(降雪)・蒸発・河川流入による海面(海氷上面)での淡水の出入りが、
+全球平均で0になるように降水または蒸発を調整する。海洋から淡水が抜ける量が
+多い場合は降水を全球一様に増やし、海洋に淡水が入る量が多い場合は蒸発を
+全球一様に増やす。これらの操作によって潜熱フラックス等は直接影響を受けない。
 
 ● Body forcing (必要な場合のみ)
 
@@ -1100,6 +1122,16 @@ IYSKIB:
 境界条件ファイルを先頭から読み直す時に加算される年(温度、塩分、温度緩和
 時定数、塩分緩和時定数の順)。
 なお、IYSKIB の行が存在しなければ、全てに対して 1 が与えられる。
+
+● 海底地熱
+
+ &NMGTHM OGTHM = T, CFGTHM = 'GTHM' &END
+
+OGTHM:
+海底地熱を与えるかどうか。陽に指定しなければ FALSE となり、海底地熱は適用されない。
+
+CFGTHM:
+海底地熱フラックスのファイル名。単位は m W/m^2 (= erg/s/cm^2)。
 
 ● 物理パラメータ
 
@@ -2032,7 +2064,7 @@ DZSIG (密度層の層厚):
 src/option/ に存在する非標準プログラムは、コンパイル時に Mkinclude にお
 いて
 
-OBJOPT = dvdif.o
+OBJOPT = dvdif.nk
 
 などとすることによって使用することができる(拡張子を .F ではなく .o とす
 ること)。
@@ -2044,9 +2076,9 @@ OBJOPT = dvdif.o
 
 なお、以下のスキームの中には、（主として歴史的理由から）非標準スキームと
 されてはいるが事実上の標準となっているものもいくつか存在する。具体的には、
-全てのモデルにおいて tflxt.iso-ut と dvdnk、マルチカテゴリー海氷を
+全てのモデルにおいて tflxt.iso-ut と dvdif.nk、マルチカテゴリー海氷を
 用いる場合にはさらに ipthm.linrmp が該当する。通常の使用では、同種の
-異なるスキーム（たとえば dvdnk の代わりに dvdgls）を用いるのでない限り、
+異なるスキーム（たとえば dvdif.nk の代わりに dvdif.gls）を用いるのでない限り、
 これらのスキームを用いることを強く推奨する。
 
 ● トレーサー移流・(水平)拡散
@@ -2135,7 +2167,7 @@ layer thickness diffusion を、移流に second order moment scheme
 AHVCNV:
   不安定成層の時に用いられる鉛直拡散係数 (cm^2/s)
 
-＊ dvdnk (dvdnk.difadj)
+＊ dvdif.nk
 
 Noh and Kim (1999, JGR) の turbulence closure を適用する。ただし、様々な
 変更を加えてある。指定できるパラメータも多数あるが、通常は
@@ -2146,11 +2178,10 @@ MZ:
   turbulent closure scheme を適用する level 数
 
 以外はデフォルトを用いる。詳しくは COCO4 documentation を参照。
-dvdif.difadj の手段と同時に用いる場合には、dvdnk.difadj を指定する。
 
-* dvdnk.c0lat
+* dvdif.nk-c0lat
 
-dvdnk に、指定した緯度より赤道よりで TKE の消散率を高くする設定を
+dvdif.nk に、指定した緯度より赤道よりで TKE の消散率を高くする設定を
 加えたルーチン。これを用いる場合、以下を設定する。
 
  &NMDVNK OC0LAT=T, LATCEQ=5.0D0, LATC0=15.0D0,
@@ -2165,7 +2196,7 @@ LATC0, C0:
   緯度の絶対値が LATC0 より大きい場所で、消散率を決める係数として
   C0 を用いる。LATC0 から LATCEQ の間は、線形に補間する。
 
-* dvdgls, ipmmt.dvdgls
+* dvdif.gls
 混合層モデルの一種である Umlauf and Burchard (2003, JMR) の 
 generic length scale parameterization を適用する。ここでの
 実装には、Carniel et al. (2009, OM) に従って砕波による TKE input の
@@ -2184,6 +2215,33 @@ OBTKEI:
 TKEMIN:
 TKE のバックグラウンド値。このルーチンで予報される TKE の最小値として
 用いられる。
+
+* dvdif.gls.ted
+dvdif.gls に加え、エネルギー散逸率の水平2次元分布と成層を考慮して
+鉛直拡散係数の3次元分布を計算して与える。エネルギー散逸率の分布は、
+潮汐モデル(e.g., Niwa and Hibiya 2014, OM)の計算結果などを基に別途
+用意する必要がある。
+
+ &NMDVED IAM = 1, CFTEDN="TEDN", CFTEDF="TEDF", CGAMMA=0.2, ZETA=500.D0,
+         OFVCNT = F, OFVPN = F &END
+
+IAM:
+0以外を指定した場合、エネルギー散逸率の2次元分布を適用する。
+CFTEDN:
+励起源付近での局所的なエネルギー散逸率の水平2次元分布のファイル名
+CFTEDF:
+励起源から遠い場所での遠隔的なエネルギー散逸率の水平2次元分布のファイル名
+CGAMMA:
+混合効率(mixing efficiency)。
+ZETA:
+局所的エネルギー散逸のスケールハイト(単位は m)。
+OFVCNT:
+TRUE の場合、遠隔的なエネルギー散逸率を鉛直一様に分布させる
+(Oka and Niwa, 2013, Nature Comm.)。FALSE の場合は OFVPN の設定に従う。
+OFVPN:
+TRUE の場合、遠隔的なエネルギー散逸率の鉛直分布を浮力振動数に比例させ、
+FALSE の場合は浮力振動数の二乗に比例させる(Kawasaki et al., 2021, JO)。
+
 
 ● 水平粘性
 
@@ -2460,6 +2518,55 @@ IMPND=0 の時、メルトポンドのアルベドは深さによらず積雪の
    （ALBSNW の IR の設定値は現状雪面の放射率としては参照していない）
  - TALSNW=(At1+273.15), (At2+273.15)
  - ALSDPT を陽に与えている場合は、NMSWEM から NMSFRC に移動する。
+
+* sfcng.CORE.direct, sfcng.JRA.direct, utint.CORE.direct, utint.JRA.direct
+
+CORE (Large and Yeager, 2004) のプロトコルに沿った境界条件を、
+オリジナルデータの座標系で与える。境界条件として CORE データセットを
+与える場合は sfcng.CORE.direct と utint.CORE.direct を、JRA55-do
+データセット (Tsujino et al., 2018) を与える場合は sfcng.CORE.direct
+と utint.JRA.direct を用いる。現在 sfcng.CORE.direct および
+utint.CORE.direct は未実装である。
+
+標準的に与えるべきパラメータは sfcng.CORE, utint.CORE と同様だが、
+以下のネームリストのみ異なる
+
+ &NMSFBC CFUSFC='USFC', CFVSFC='VSFC', CFTSFC='TSFC', CFQSFC='QSFC',
+         CFPREC='RAIN', CFSFLX='SNOW', CFSWDW='SWDW', CFLWDW='LWDW',
+         CFPSFC='PSFC', CFROFF='ROFF', CFSSFC='SSFC',
+         GRID_JRA='GRID_JRA', ROFF_MAP='ROFF_MAP' &END
+
+CFUSFC, CFVSFC, CFTSFC, CFQSFC, CFPREC, CFSFLX,
+CFSWDW, CFLWDW, CFPSFC, CFROFF, CFSSFC:
+順に、海上風速東西成分、海上風速南北成分、海上気温、海上比湿、
+海面降水フラックス、海面降雪フラックス、海面下向き短波放射、海面下向き長波放射、
+海面気圧、海面河川流入フラックス、海面塩分のファイル名。
+すべて、データセットオリジナルの座標系・単位系・正負の向きで用意する。
+通常の、モデルの座標系で境界条件ファイルを与える場合とは、いくつかの要素で
+単位等が異なることに注意（下記の &NMTRDB についての説明を参照のこと）。
+
+GRID_JRA（または GRID_CORE）:
+データセットの座標系情報を格納したファイル名。
+
+ROFF_MAP:
+海面河川流入フラックスがモデルグリッドにどう分配されるかの情報を格納した
+ファイル名。
+
+GRID_JRA と ROFF_MAP については、TOOL 以下に作成ツールが用意される予定
+（未実装）。
+
+ &NMTRDB TRDBCP=F &END
+
+TRDBCP:
+境界条件をオリジナルの座標系で与える際の単位系・正負の向き。F の時は、データ
+セットオリジナルと同様。T の時、モデルの座標系で与える際と同様。具体的には、
+以下の境界条件ファイルが影響を受ける。
+JRA55-do の場合（utint.JRA.direct.F）:
+ - TRDBCP=F の時、PREC、SNOW は単位 kg/m^2/s、ROFF は単位 kg/s、
+   海面に入る向きを正（通常は正値となる）。
+ - TRDBCP=T の時、PREC、SNOW は単位 m/s（水換算）、ROFF は単位 m^3/s、
+   海面から出る向きを正（通常は負値となる）。
+
 
 ● 水位調節
 
