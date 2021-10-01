@@ -1194,7 +1194,7 @@ end subroutine intpsfc
           istr,   jstr,  kstr
     use zocgrd,  only  :     tt
     use zocfil,  only  :    ncf
-    use zocnod,  only  :  iroot,  myrank, newcomm
+    use zocnod,  only  :  iroot,  myrank, mpi_comm_ogcm
     use ufile
     use bgs3d
     use ucaln
@@ -1283,7 +1283,7 @@ end subroutine intpsfc
     &                                            k = 1, nz)
        end if
        call mpi_bcast(chead, 1024, mpi_character,                     &
-    &                  iroot, newcomm, ierr)
+    &                  iroot, mpi_comm_ogcm, ierr)
        call scatter_bdy(data1(1, 1, 1, iitem), datag)
        cdate = chead(50)
        read(cdate, '(i6.6,5i2.2)') (idate1(i, iitem), i = 1, 6)
@@ -1309,10 +1309,10 @@ end subroutine intpsfc
 298       continue
        end if
        call mpi_bcast                                                 &
-    &        (oeof, 1, mpi_logical, iroot, newcomm, ierr)
+    &        (oeof, 1, mpi_logical, iroot, mpi_comm_ogcm, ierr)
        if (oeof) go to 98
        call mpi_bcast(chead, 1024, mpi_character,                     &
-    &                 iroot, newcomm, ierr)
+    &                 iroot, mpi_comm_ogcm, ierr)
        call scatter_bdy(data2(1, 1, 1, iitem), datag)
        cdate = chead(50)
        read(cdate, '(i6.6,5i2.2)') (idate2(i, iitem), i = 1, 6)
@@ -1337,10 +1337,10 @@ end subroutine intpsfc
 297       continue
        end if
        call mpi_bcast                                                 &
-    &        (oeof, 1, mpi_logical, iroot, newcomm, ierr)
+    &        (oeof, 1, mpi_logical, iroot, mpi_comm_ogcm, ierr)
        if ( oeof ) go to 97
        call mpi_bcast(chead, 1024, mpi_character,                     &
-    &                 iroot, newcomm, ierr)
+    &                 iroot, mpi_comm_ogcm, ierr)
        call scatter_bdy(data2(1, 1, 1, iitem), datag)
        cdate = chead(50)
        read(cdate, '(i6.6,5i2.2)') (idate2(i, iitem), i = 1, 6)
@@ -1363,7 +1363,7 @@ end subroutine intpsfc
     &                                            k = 1, nz)
        end if
        call mpi_bcast(chead, 1024, mpi_character,                     &
-    &                 iroot, newcomm, ierr)
+    &                 iroot, mpi_comm_ogcm, ierr)
        call scatter_bdy(data2(1, 1, 1, iitem), datag)
        cdate = chead(50)
        read(cdate, '(i6.6,5i2.2)') (idate2(i, iitem), i = 1, 6)
@@ -1414,10 +1414,10 @@ end subroutine intpsfc
 797          continue
           end if
           call mpi_bcast                                              &
-    &           (oeof, 1, mpi_logical, iroot, newcomm, ierr)
+    &           (oeof, 1, mpi_logical, iroot, mpi_comm_ogcm, ierr)
           if (oeof) go to 997
           call mpi_bcast(chead, 1024, mpi_character,                  &
-   &                     iroot, newcomm, ierr)
+   &                     iroot, mpi_comm_ogcm, ierr)
           call scatter_bdy(data2(1, 1, 1, iitem), datag)
           cdate = chead(50)
           read(cdate, '(i6.6,5i2.2)') (idate2(i, iitem), i = 1, 6)
@@ -1440,10 +1440,10 @@ end subroutine intpsfc
 597          continue
           end if
           call mpi_bcast                                              &
-    &           (oeof, 1, mpi_logical, iroot, newcomm, ierr)
+    &           (oeof, 1, mpi_logical, iroot, mpi_comm_ogcm, ierr)
           if (oeof) go to 997
           call mpi_bcast(chead, 1024, mpi_character,                  &
-    &                    iroot, newcomm, ierr)
+    &                    iroot, mpi_comm_ogcm, ierr)
           call scatter_bdy(data2(1, 1, 1, iitem), datag)
           cdate = chead(50)
           read(cdate, '(i6.6,5i2.2)') (idate2(i, iitem), i = 1, 6)
