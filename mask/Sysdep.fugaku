@@ -1,6 +1,7 @@
 ## for gfortran
 FC	= gfortran
-FFLAGS  = -cpp -fconvert=big-endian -O3 -DOPT_PARALLEL
+#FFLAGS  = -cpp -fconvert=big-endian -O3 -DOPT_PARALLEL
+FFLAGS  = -cpp -mcmodel=large -fconvert=big-endian -O3 -DOPT_PARALLEL
 
 ## for fujitsu compiler
 #FC	= frt
