@@ -113,6 +113,9 @@ module sfcng
     &                 (/ 0.4d0, 0.1d0, 0.0d0 /)
   real(8), save :: almpdp(2) = &   !! MP sw albedo, depth dependency [cm]
     &                 (/ 0.5d0, 20.0d0 /)
+  real(8), save :: frmpmn = 1.0d-14  !! empirical limiter for frmpx [ND]
+  real(8), save :: vmpmin = 1.0d-12  !! empirical limiter for vmpx [cm]
+
 ! namelist nmislt
   real(8), save ::     si = 5.0d0              !! sea-ice salinity (psu)
 ! namelist nmlwem
@@ -169,7 +172,8 @@ module sfcng
     &                tauage, adirt0, adirtc, adirts, adirtm, drsmax, &
     &                 oadst
   namelist /nmmpnd/   impnd, hminmp, rtdpmp, rtmxmp,  dpscl, &
-    &                rmpcmn, rmpcmx, cmpfrz, tmpfrz, albmpd, almpdp
+    &                rmpcmn, rmpcmx, cmpfrz, tmpfrz, albmpd, almpdp, &
+    &                frmpmn, vmpmin
   namelist /nmislt/      si
   namelist /nmlwem/  emislo, olwnet
   namelist /nmswem/  albswo, oswnet, oasold

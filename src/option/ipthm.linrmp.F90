@@ -83,6 +83,8 @@ module ipthm
     &                 (/ 0.4d0, 0.1d0, 0.0d0 /)
   real(8), save :: almpdp(2) = &   !! MP sw albedo, depth dependency [cm]
     &                 (/ 0.5d0, 20.0d0 /)
+  real(8), save :: frmpmn = 1.0d-14  !! empirical limiter for frmpx [ND]
+  real(8), save :: vmpmin = 1.0d-12  !! empirical limiter for vmpx [cm]
 ! namelist nmislt
   real(8), save ::     si = 5.0d0  !! sea-ice salinity (psu)
 ! namelist nmamin
@@ -106,7 +108,8 @@ module ipthm
     &                tauage, adirt0, adirtc, adirts, adirtm, drsmax, &
     &                 oadst
   namelist /nmmpnd/   impnd, hminmp, rtdpmp, rtmxmp,  dpscl, &
-    &                rmpcmn, rmpcmx, cmpfrz, tmpfrz, albmpd, almpdp
+    &                rmpcmn, rmpcmx, cmpfrz, tmpfrz, albmpd, almpdp, &
+    &                frmpmn, vmpmin
   namelist /nmsaab/ abduvs, abduni, abduir, &
     &               abbcvs, abbcni, abbcir, &
     &                wgtvs,  wgtni,  wgtir
@@ -1553,6 +1556,16 @@ subroutine idfrmp( &
         end do
      end do
   end if
+
+! Applying a limiter to vmpx/frmpx
+  do k = 1, nic
+     do ij = ijstr, ijend
+        if ((frmpx(ij, k) < frmpmn).or.(vmpx(ij, k) < vmpmin)) then
+           frmpx(ij, k) = 0.0d0
+           vmpx(ij, k) = 0.0d0
+        end if
+     end do
+  end do
 
   if (oinit) then
      return
