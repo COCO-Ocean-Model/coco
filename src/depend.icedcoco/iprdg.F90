@@ -94,6 +94,7 @@ subroutine pridge( &
   real(8) ::     exx,    eyy,    exy,    del
   real(8) ::   hrmax,  hrmin
   real(8) ::    hikl,   hskl,   hekl,   vmkl,   ddkl,   dbkl
+  real(8) ::    cwan
   integer ::      ij,      k,      l
   integer ::    ijlw,   ijls,  ijlsw
   integer ::   ifpar,  jfpar,  istat
@@ -278,6 +279,19 @@ subroutine pridge( &
   end do
 
   do k = 1, nic
+     do ij = ijtstr, ijtend
+         if (edis(ij)*wa(ij, k)*ts > ax(ij, k)) then
+            cwan = ax(ij, k) / (edis(ij)*wa(ij, k)*ts)
+            do l = k, nic
+               wn(ij, l) = wn(ij, l) &
+                 &       - (1.0d0 - cwan) * wa(ij, k) * gam(ij, k, l)
+            end do
+            wa(ij, k) = cwan * wa(ij, k)
+         end if
+      end do
+   end do
+ 
+   do k = 1, nic
      do ij = ijtstr, ijtend
         da(ij, k) = edis(ij) * (wn(ij, k) - wa(ij, k))
      end do
@@ -474,7 +488,7 @@ subroutine pridge( &
            frmpx(ij, k) = 0.d0
            dsdx(ij, k) = 0.d0
            dsbx(ij, k) = 0.d0
-        else if (axhix(ij, k) .lt. 0.d0) then
+        else if (axhix(ij, k) .le. 0.d0) then
            axhix(ij, k+1) = axhix(ij, k+1) + axhix(ij, k)
            axhsx(ij, k+1) = axhsx(ij, k+1) + axhsx(ij, k)
            axeix(ij, k+1) = axeix(ij, k+1) + axeix(ij, k)
@@ -591,7 +605,7 @@ subroutine pridge( &
               asx(ij, k) = 0.d0
               frlvx(ij, k) = 1.0d0
               frmpx(ij, k) = 0.0d0
-              write(0, *) '### REFRESH ASX/FRLVX/FRMPX (iprdg) ###' !! debug
+!              write(0, *) '### REFRESH ASX/FRLVX/FRMPX (iprdg) ###' !! debug
            end if
         else
            tix(ij, k) = tmi
