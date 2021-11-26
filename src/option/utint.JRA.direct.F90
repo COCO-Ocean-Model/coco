@@ -56,6 +56,7 @@ contains
     integer(4), save           ::  idate1(6,nitem), idate2(6,nitem)
     real(8),    save           ::   time1(nitem),    time2(nitem)
     real(8),    save           ::   data1(nx,ny,nitem), data2(nx,ny,nitem)
+    integer(4), save           ::   dyear(nitem) = 0
     logical,    save           ::  of=.true., ofirst(nitem)=.true.
 
     real(8)             ::   data(nx,ny), time
@@ -80,6 +81,7 @@ contains
     character(len=ncf)  ::  cfswdw,   cflwdw,   cfpsfc,   cfssfc
     character(len=ncf)  ::  cftref(ntdim), cftdmp(ntdim)
     character(len=ncf)  ::  grid_jra, roff_map
+    logical, save :: otyear = .false.
     integer :: imax
     integer, allocatable :: ip(:), jp(:), iq(:), jq(:)
     real(8), allocatable :: wt(:)
@@ -91,6 +93,7 @@ contains
     namelist /nmsfbc/  cfusfc, cfvsfc, cftsfc, cfqsfc,                  &
     &                  cfprec, cfsflx, cfroff, cfswdw, cflwdw, cfpsfc, cfssfc,  &
     &                  cftref, cftdmp, grid_jra, roff_map
+    namelist /nmsfyr/  otyear
 
     data grid_jra /'not-specified'/
     data roff_map /'not-specified'/
@@ -113,6 +116,9 @@ contains
        call rewnml( ifpar, jfpar )
        read(ifpar, nmsfbc, iostat = istat )
        call cstnml( jfpar, 'tmintp', 'nmsfbc', istat )
+       call rewnml( ifpar, jfpar )
+       read(ifpar, nmsfyr, iostat = istat )
+       call cstnml( jfpar, 'tmintp', 'nmsfyr', istat )
        of = .false.
 
 #ifdef OPT_IO_COCOMPI
@@ -341,7 +347,12 @@ contains
         if (nrec(iitem) == 1) write(jfpar,'(a, 6i6)')'    first record   :',idatet
         if (nrec(iitem) == 2) write(jfpar,'(a, 6i6)')'    skipped to here:',idatet
 
+        if (ofirst(iitem) .and. otyear) then  ! regard the BC year as model year
+           dyear(iitem) = getdyr(idatet)
+        end if
+             
         if (ofirst(iitem)) then ! skip records
+           idatet(1) = idatet(1) + dyear(iitem)
            call cyh2ss( time, idatet )
            iskip=int( (tt-time)/(3.d0*3600.d0) ) ! 3h interval
            isize=disp(iitem)
@@ -355,12 +366,17 @@ contains
         end if
         call mpi_bcast(chead, 1024, mpi_character, iroot, mpi_comm_ogcm, ierr)     
         call mpi_bcast(direct, nx0*ny0, mpi_real4, iroot, mpi_comm_ogcm, ierr)     
+        if (ofirst(iitem) .and. otyear) then  ! regard the BC year as model year
+           read(chead(50), '(i6.6,5i2.2)') (idatet(i), i = 1, 6)
+           dyear(iitem) = getdyr(idatet)
+        end if
 #endif
 
         call intpsfc(iitem, direct, alon, alat, dout, mask)
 
         cdate = chead(50)
         read(cdate, '(i6.6,5i2.2)') (idatet(i), i = 1, 6)
+        idatet(1) = idatet(1) + dyear(iitem)
         call cyh2ss( time, idatet )
       end subroutine read_dat
 
@@ -389,7 +405,12 @@ contains
            if (nrec == 1) write(jfpar,'(a, 6i6)')'    first record   :',idatet
            if (nrec == 2) write(jfpar,'(a, 6i6)')'    skipped to here:',idatet
 
+           if (ofirst(iitem) .and. otyear) then  ! regard the BC year as model year
+              dyear(iitem) = getdyr(idatet)
+           end if
+
            if (ofirst(iitem)) then ! skip records
+              idatet(1) = idatet(1) + dyear(iitem)
               call cyh2ss( time, idatet )
               iskip=int( (tt-time)/(24.d0*3600.d0) ) ! runoff: 24h interval
               isize=disp
@@ -403,6 +424,10 @@ contains
            end if
            call mpi_bcast(chead, 1024, mpi_character, iroot, mpi_comm_ogcm, ierr)
            call mpi_bcast(direct, nx0*ny0, mpi_real4, iroot, mpi_comm_ogcm, ierr)
+           if (ofirst(iitem) .and. otyear) then  ! regard the BC year as model year
+              read(chead(50), '(i6.6,5i2.2)') (idatet(i), i = 1, 6)
+              dyear(iitem) = getdyr(idatet)
+           end if
 #endif
            dout(:,:)=0.d0
            do n=1,imaxn
@@ -423,10 +448,45 @@ contains
        end if !==================================================================
 
        read(chead(50), '(i6.6,5i2.2)') (idatet(i), i = 1, 6)
+       idatet(1) = idatet(1) + dyear(iitem)
        call cyh2ss( time, idatet )
 
       end subroutine read_runoff
   end subroutine tmintp_direct
+
+  function getdyr(idateb)
+  use zocgrd, only: tt
+  use ucaln
+  use ufile
+  implicit none
+
+  integer :: getdyr
+  integer :: idateb(6)
+  integer :: idatet(6), idates(6)
+  integer :: iytt, iybc
+  integer :: ifpar, jfpar
+  real(8) :: timet, times
+
+  call css2yh( idatet, tt )
+  idates(2:6) = idateb(2:6)
+  iytt = idatet(1)
+  iybc = idateb(1)
+  idatet(1) = 0
+  idates(1) = 0
+  call cyh2ss( timet, idatet )
+  call cyh2ss( times, idates )
+
+  if ( timet >= times ) then
+     getdyr = iytt - iybc
+  else
+     getdyr = iytt - iybc - 1
+  end if
+  call rewnml(ifpar, jfpar)
+  write(jfpar, *) '    >> Correction value to BC year:', getdyr
+
+  return
+
+  end function getdyr
 
   subroutine intpsfc(iitem, direct, alon, alat, data1, mask)
   use zocdim
@@ -2039,5 +2099,3 @@ end subroutine intpsfc
 #endif
 
 end module utint
-
-
