@@ -256,6 +256,16 @@ subroutine sfcflx( &
   real(8) ::   dqfds(nxydim),   swdn(nxydim)
   real(8) ::      fm(nxydim)
 
+  real(8) ::    swup(nxydim)
+  real(8) ::   swdnw(nxydim, 0:nic),           swupw(nxydim, 0:nic)
+  real(8) ::   lwdnw(nxydim, 0:nic),           lwupw(nxydim, 0:nic)
+  real(8) ::  swdnwg(nxydim), swupwg(nxydim)
+  real(8) ::  swnetg(nxydim), lwnetg(nxydim)
+  real(8) ::  lwdnwg(nxydim), lwupwg(nxydim)
+  real(8) ::   senfx(nxydim, 0:nic),           latfx(nxydim, 0:nic)
+  real(8) ::  senfxg(nxydim), latfxg(nxydim)
+  real(8) ::    esub
+
   real(8), save ::     tmi,      factfw
 
   real(8) ::     dufdu ( nxydim )              !! CMV
@@ -447,6 +457,7 @@ subroutine sfcflx( &
      vsfc(ij) = vsfc(ij) - vo * a(ij, 0) * alpha
   end do
 
+  esub = el + emelt
   do l = 0, nic
      do ij = 1, nxydim
         fm(ij) = a(ij, l)
@@ -485,7 +496,6 @@ subroutine sfcflx( &
        &                dufdu,  dqfdq, &
        &                 usfc,   vsfc,   tsfc,   qsfc,   psfc, &
        &                 grts,      l )
-
 !     do ij=1, nxydim
 !        cmv(ij, l) = dufdu(ij)
 !        chv(ij, l) = dtfds(ij)
@@ -500,6 +510,7 @@ subroutine sfcflx( &
      call ocnslv_core( &
        &                 grts, gfluxs, tfluxs, qfluxs, &
        &               wfluxs, rflxlu, sflxbl,   swdn, ralbsw, &
+       &                 swup, &
        &                dtfds,  dqfds,  dgfds, &
        &                 swnt,   dwlw, &
        &                gricr,  grsnw,    tmi, &
@@ -551,6 +562,7 @@ subroutine sfcflx( &
            albswg(ij) = albswg(ij) + ralbsw(ij) * a(ij, l)
 !           ftatm(ij) = ftatm(ij) + qai(ij, l) * fm(ij)
 !           swntwa(ij) = swntwa(ij) + swdn(ij) * fm(ij)
+           latfx(ij, l) = qfluxs(ij) * esub
         end do
      else
         do ij = ijstr, ijend
@@ -566,8 +578,16 @@ subroutine sfcflx( &
            albsw(ij, l) = ralbsw(ij)
 !           ftatm(ij) = ftatm(ij) + gfluxs(ij) * facth * a(ij, 0)
 !           swntwa(ij) = swntwa(ij) + swdn(ij) * a(ij, 0)
+           latfx(ij, l) = qfluxs(ij) * el
         end do
      end if
+     do ij = ijstr, ijend
+        swdnw(ij, l) = swnt(ij)
+        swupw(ij, l) = swup(ij)
+        lwdnw(ij, l) = dwlw(ij)
+        lwupw(ij, l) = rflxlu(ij)
+        senfx(ij, l) = tfluxs(ij)
+     end do
   end do
 
   do ij = 1, nxydim
@@ -577,6 +597,56 @@ subroutine sfcflx( &
         albswg(ij) = albswg(ij) / (1.0d0 - a(ij, 0) )
      endif
   enddo
+
+  swdnwg(:) = 0.d0
+  swupwg(:) = 0.d0
+  lwdnwg(:) = 0.d0
+  lwupwg(:) = 0.d0
+  senfxg(:) = 0.d0
+  latfxg(:) = 0.d0
+  do l = 0, nic
+     swdnwg(:) = swdnwg(:) + swdnw(:, l) * facth * a(:, l) * amskt(:, kstr)
+     swupwg(:) = swupwg(:) + swupw(:, l) * facth * a(:, l) * amskt(:, kstr)
+     lwdnwg(:) = lwdnwg(:) + lwdnw(:, l) * facth * a(:, l) * amskt(:, kstr)
+     lwupwg(:) = lwupwg(:) + lwupw(:, l) * facth * a(:, l) * amskt(:, kstr)
+     senfxg(:) = senfxg(:) + senfx(:, l) * facth * a(:, l) * amskt(:, kstr)
+     latfxg(:) = latfxg(:) + latfx(:, l) * facth * a(:, l) * amskt(:, kstr)
+  end do
+  swnetg(:) = swupwg(:) - swdnwg(:)
+  lwnetg(:) = lwupwg(:) - lwdnwg(:)
+
+  call chekin( swdnwg, 'SWDNWG', &
+    &      'downward shortwave (ocn/ice top)', &
+    &              'erg/cm^2/s', &
+    &              nx,       ny,        1,   nxydim, 'OCSFCT')
+  call chekin( swupwg, 'SWUPWG', &
+    &      'upward shortwave (ocn/ice top)', &
+    &              'erg/cm^2/s', &
+    &              nx,       ny,        1,   nxydim, 'OCSFCT')
+  call chekin( lwdnwg, 'LWDNWG', &
+    &      'downard longwave (ocn/ice top)', &
+    &              'erg/cm^2/s', &
+    &              nx,       ny,        1,   nxydim, 'OCSFCT')
+  call chekin( lwupwg, 'LWUPWG', &
+    &      'upward longwave (ocn/ice top)', &
+    &              'erg/cm^2/s', &
+    &              nx,       ny,        1,   nxydim, 'OCSFCT')
+  call chekin( lwnetg, 'LWNETG', &
+    &      'net LW (ocn/ice top; up.:+)', &
+    &              'erg/cm^2/s', &
+    &              nx,       ny,        1,   nxydim, 'OCSFCT')
+  call chekin( swnetg, 'SWNETG', &
+    &      'net SW (ocn/ice top; up.:+)', &
+    &              'erg/cm^2/s', &
+    &              nx,       ny,        1,   nxydim, 'OCSFCT')
+  call chekin( senfxg, 'SENFXG', &
+    &      'sens. hflx (ocn/ice top; up.:+)', &
+    &              'erg/cm^2/s', &
+    &              nx,       ny,        1,   nxydim, 'OCSFCT')
+  call chekin( latfxg, 'LATFXG', &
+    &      'latent hflx (ocn/ice top; up.:+)', &
+    &              'erg/cm^2/s', &
+    &              nx,       ny,        1,   nxydim, 'OCSFCT')
 
 #ifdef OPT_TRIPOLE
   call shift2( tauaox,   tauaoy, &
@@ -675,6 +745,7 @@ end subroutine sfcflx
 subroutine ocnslv_core ( &
   &              gdts  , gfluxs, tfluxs, qfluxs, &
   &              wfluxs, rflxlu, sflxbl, rflxsd, ralbsw, &
+  &              rflxsu, &
   &              dtfds , dqfds , dgfds , &
   &              rflxs , rflxld, &
   &              gricr , grsnw , tmi   , &
@@ -692,6 +763,8 @@ subroutine ocnslv_core ( &
   real(8), intent(out)   ::  sflxbl( nxydim )          !! flux balance
   real(8), intent(out)   ::  rflxsd( nxydim )          !! downward SW
   real(8), intent(out)   ::  ralbsw( nxydim )          !! SW albedo
+  
+  real(8), intent(out)   ::  rflxsu( nxydim )          !! upward SW
 
   real(8), intent(in)    ::  dtfds ( nxydim )          !! dH/dTg
   real(8), intent(in)    ::  dqfds ( nxydim )          !! dE/dTg
@@ -875,6 +948,7 @@ subroutine ocnslv_core ( &
      drfds          = 4.d0*stg/gdts( ij ) * flwnet
 
      rflxsd( ij )   = rflxs( ij ) * (1.0d0 - albsw)
+     rflxsu( ij )   = rflxs( ij ) * albsw
      sflux          = tfluxs( ij ) &
        &            + rflxlu( ij ) - rflxld( ij ) &
        &            - rflxsd( ij )
@@ -908,6 +982,7 @@ subroutine ocnslv_core ( &
      wfluxs( ij,1 ) = ff * qfluxs( ij )
      wfluxs( ij,2 ) = fi * evapi
      sflxbl( ij )   = fi * sflxbi
+
   end do
 
   return
