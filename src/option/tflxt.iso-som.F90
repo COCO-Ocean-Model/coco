@@ -550,15 +550,15 @@ subroutine flxtrc( &
 
 ! ---- divergence of diffusion fluxes
 
-        do ij = ijtstr, ijtend
-
-           adt(ij, k, n) = &
-             & (  (  (ftx(ij+le, k, n) - ftx(ij, k, n)) * rx &
-             &     + (fty(ij+ln, k, n) - fty(ij, k, n)) * ry(ij)) * &
-             &    rxt(ij) * ryt(ij) &
-             &  + ftz(ij, k, n) - ftz(ij, k+1, n)) / dz(ij, k)
-
-        end do
+!        do ij = ijtstr, ijtend
+!
+!           adt(ij, k, n) = &
+!             & (  (  (ftx(ij+le, k, n) - ftx(ij, k, n)) * rx &
+!             &     + (fty(ij+ln, k, n) - fty(ij, k, n)) * ry(ij)) * &
+!             &    rxt(ij) * ryt(ij) &
+!             &  + ftz(ij, k, n) - ftz(ij, k+1, n)) / dz(ij, k)
+!
+!        end do
      end do
 
   end do
@@ -688,10 +688,8 @@ subroutine flxtrc( &
            sxz(ij, k, n) = min( s0m, max( - s0m, sxz(ij, k, n) ) )
           
         end do
-     end do
 
 !    ---- overshoot limiter (Method B) of Morales Maqueda and Holloway (2006)
-     do k = kstr, kend
         do ij = ijtstr-nxdim-1, ijtend+nxdim+1
 
            ijlw = ij + lw * nint( amskt(ij+lw, k) )
@@ -732,7 +730,6 @@ subroutine flxtrc( &
            sxz(ij, k, n) = min( s0m, max( - s0m, sxz(ij, k, n) ) )
           
         end do
-     end do
 
 !---- bug fix 2
 !     call shift1( sx (:,:,n), nxdim, nydim, nzdim )
@@ -741,7 +738,6 @@ subroutine flxtrc( &
 !     call shift1( sxz(:,:,n), nxdim, nydim, nzdim )
 
 !    ---- calculating ALF and MASS between box (i-1,j,k) <---> (i,j,k)
-     do k = kstr, kend
         do ij = ijtstr-nxdim-1, ijtend+nxdim+1
 
            ijlw  = ij + lw
@@ -754,21 +750,14 @@ subroutine flxtrc( &
               alf(ij, k)  = fm(ijlw, k) / sm(ij  , k, n)
            end if
 
-        end do
-     end do
-
 !    ---- calculating flux and moments between box (i-1,j,k) <---> (i,j,k)
-     do k = kstr, kend
-        do ij = ijtstr-nxdim-1, ijtend+nxdim+1
 
-           ijlw  = ij + lw
+           alfq  = alf(ij, k) * alf(ij, k)
+           alf1  = 1.d0 - alf(ij, k)
+           alf1q = alf1 * alf1
 
-!          ---- flux from (i-1) to (i),  when u > 0
            if ( uv(ij, k) .gt. 0.d0 ) then
-
-              alfq  = alf(ij, k) * alf(ij, k)
-              alf1  = 1.d0 - alf(ij, k)
-              alf1q = alf1 * alf1
+!          ---- flux from (i-1) to (i),  when u > 0
 
 !             ---- moments be transported
               f0(ijlw, k) = &
@@ -798,13 +787,7 @@ subroutine flxtrc( &
                 &            - f0(ijlw, k) * tsiv * ry(ijlw)
 
            else
-             
-!             ---- flux from (i) to (i-1),  when u < 0
-
-              alfq  = alf(ij, k) * alf(ij, k)
-              alf1  = 1.d0 - alf(ij, k)
-              alf1q = alf1 * alf1
-             
+!          ---- flux from (i) to (i-1),  when u < 0
               f0 (ijlw, k) = &
                 &       alf(ij, k) * ( s0(ij, k, n) &
                 &         - alf1 * (  sx(ij, k, n) &
@@ -831,20 +814,17 @@ subroutine flxtrc( &
            end if
           
         end do
-     end do
 
 !    ---- calculating flux and moments between box (i-1,j,k) <---> (i,j,k)
-     do k = kstr, kend
         do ij = ijtstr-nxdim-1, ijtend+nxdim+1
 
            ijlw  = ij + lw
 
-!          ---- flux from (i-1) to (i),  when u > 0
+           alfq  = alf(ij, k) * alf(ij, k)
+           alf1  = 1.d0 - alf(ij, k)
+           alf1q = alf1 * alf1
            if ( uv(ij, k) .gt. 0.d0 ) then
-
-              alfq  = alf(ij, k) * alf(ij, k)
-              alf1  = 1.d0 - alf(ij, k)
-              alf1q = alf1 * alf1
+!          ---- flux from (i-1) to (i),  when u > 0
 
 !             ---- moments remaining 
               sm (ijlw, k, n) = sm(ijlw, k, n) - fm(ijlw, k)
@@ -866,12 +846,7 @@ subroutine flxtrc( &
               syz(ijlw, k, n) = syz(ijlw, k, n) - fyz(ijlw, k)
              
            else
-             
-!             ---- flux from (i) to (i-1),  when u < 0
-
-              alfq  = alf(ij, k) * alf(ij, k)
-              alf1  = 1.d0 - alf(ij, k)
-              alf1q = alf1 * alf1
+!          ---- flux from (i) to (i-1),  when u < 0
              
               sm (ij, k, n) = sm(ij, k, n) - fm(ijlw, k)
               s0 (ij, k, n) = s0(ij, k, n) - f0(ijlw, k)
@@ -893,35 +868,26 @@ subroutine flxtrc( &
            end if
           
         end do
-     end do
 
 !    ---- put the temporary moments (fi) into appropriate neighboring boxes
-     do k = kstr, kend
         do ij = ijtstr-nxdim-1, ijtend+nxdim+1
-
            ijlw  = ij + lw
-
            if ( uv(ij, k) .gt. 0.d0 ) then
-
               sm(ij  , k, n) = sm(ij, k, n) + fm(ijlw, k)
               alf(ij, k)     = fm(ijlw, k) / sm(ij, k, n)
-
-           else
-
+           end if
+        end do
+        do ij = ijtstr-nxdim-1, ijtend+nxdim+1
+           ijlw  = ij + lw
+           if ( uv(ij, k) .le. 0.d0 ) then
               sm(ijlw, k, n) = sm(ijlw, k, n) + fm(ijlw, k)
               alf(ij, k)     = fm(ijlw, k) / sm(ijlw, k, n)
-
            end if
-
         end do
-     end do
 
-     do k = kstr, kend
+!       ---- flux from (i-1) to (i),  when u > 0
         do ij = ijtstr-nxdim-1, ijtend+nxdim+1
-
            ijlw  = ij + lw
-
-!          ---- flux from (i-1) to (i),  when u > 0
            if ( uv(ij, k) .gt. 0.d0 ) then
 
               alf1 = 1.d0 - alf(ij, k)
@@ -959,8 +925,12 @@ subroutine flxtrc( &
 
               syz(ij, k, n) = syz(ij, k, n) + fyz(ijlw, k)
 
-!          ---- flux from (i) to (i-1),  when u < 0
-           else
+           end if
+        end do
+!       ---- flux from (i) to (i-1),  when u < 0
+        do ij = ijtstr-nxdim-1, ijtend+nxdim+1
+           ijlw  = ij + lw
+           if ( uv(ij, k) .le. 0.d0 ) then
 
               alf1 = 1.d0 - alf(ij, k)
 
@@ -997,10 +967,9 @@ subroutine flxtrc( &
               syz(ijlw, k, n) = syz(ijlw, k, n) + fyz(ijlw, k)
 
            end if
-           
         end do
+        
      end do
-     
   end do
 
 ! ---- Y-direction
@@ -1010,7 +979,6 @@ subroutine flxtrc( &
 
         ijls  = ij + ls
         ijlsw = ij + lsw
-
         uv(ij, k) = ( vy(ijls , k) * vlmx(ijls , k) &
           &         + vy(ijlsw, k) * vlmx(ijlsw, k) ) &
           &       * amskt(ij, k) * amskt(ijls, k) 
@@ -1057,10 +1025,8 @@ subroutine flxtrc( &
            syz(ij, k, n) = min( s0m, max( - s0m, syz(ij, k, n) ) )
 
         end do
-     end do
 
 !    ---- overshoot limiter (Method B) of Morales Maqueda and Holloway (2006)
-     do k = kstr, kend
         do ij = ijtstr-nxdim-1, ijtend+nxdim+1
 
            ijls  = ij + ls * nint( amskt(ij+ls, k) )
@@ -1140,20 +1106,18 @@ subroutine flxtrc( &
            end if
 
         end do
-     end do
 
 !    ---- calculating flux between box (i,j-1,k) <---> (i,j,k)
-     do k = kstr, kend
         do ij = ijtstr-nxdim-1, ijtend+nxdim+1
 
            ijls  = ij + ls
 
-!          ---- flux from (j-1) to (j),  when v > 0
+           alfq  = alf(ij, k) * alf(ij, k)
+           alf1  = 1.d0 - alf(ij, k)
+           alf1q = alf1 * alf1
+           
            if ( uv(ij, k) .gt. 0.d0 ) then
-
-              alfq  = alf(ij, k) * alf(ij, k)
-              alf1  = 1.d0 - alf(ij, k)
-              alf1q = alf1 * alf1
+!          ---- flux from (j-1) to (j),  when v > 0
 
 !             ---- moments be transported
               f0(ijls, k) =  &
@@ -1183,13 +1147,8 @@ subroutine flxtrc( &
                 &            - f0(ijls, k) * tsiv * rx
 
            else
-             
-!             ---- flux from (j) to (j-1),  when v < 0
+!          ---- flux from (j) to (j-1),  when v < 0
 
-              alfq  = alf(ij, k) * alf(ij, k)
-              alf1  = 1.d0 - alf(ij, k)
-              alf1q = alf1 * alf1
-             
               f0 (ijls, k) = &
                 &    alf(ij, k) * ( s0(ij, k, n) &
                 &          - alf1 * (  sy(ij, k, n) &
@@ -1216,16 +1175,45 @@ subroutine flxtrc( &
            end if
           
         end do
-     end do
 
 !    ---- calculating moments
-     do k = kstr, kend
         do ij = ijtstr-nxdim-1, ijtend+nxdim+1
 
            ijls  = ij + ls
 
-!          ---- flux from (j-1) to (j),  when v > 0
+           if ( uv(ij, k) .le. 0.d0 ) then
+!          ---- flux from (j) to (j-1),  when v < 0
+              alfq  = alf(ij, k) * alf(ij, k)
+              alf1  = 1.d0 - alf(ij, k)
+              alf1q = alf1 * alf1
+             
+              sm (ij, k, n) = sm(ij, k, n) - fm(ijls, k)
+              s0 (ij, k, n) = s0(ij, k, n) - f0(ijls, k)
+
+              sy (ij, k, n) = alf1q * ( &
+                &         sy(ij, k, n) &
+                &       + 3.d0 * alf(ij, k) * syy(ij, k, n)  )
+              syy(ij, k, n) = alf1 * alf1q * syy(ij, k, n)
+
+              sx (ij, k, n) = sx (ij, k, n) - fx (ijls, k)
+              sxx(ij, k, n) = sxx(ij, k, n) - fxx(ijls, k)
+
+              sz (ij, k, n) = sz (ij, k, n) - fz (ijls, k)
+              szz(ij, k, n) = szz(ij, k, n) - fzz(ijls, k)
+
+              sxy(ij, k, n) = alf1q * sxy(ij, k, n)
+              syz(ij, k, n) = alf1q * syz(ij, k, n)
+              sxz(ij, k, n) = sxz(ij, k, n) - fxz(ijls, k)
+             
+           end if
+        end do
+        
+        do ij = ijtstr-nxdim-1, ijtend+nxdim+1
+
+           ijls  = ij + ls
+           
            if ( uv(ij, k) .gt. 0.d0 ) then
+!          ---- flux from (j-1) to (j),  when v > 0
 
               alfq  = alf(ij, k) * alf(ij, k)
               alf1  = 1.d0 - alf(ij, k)
@@ -1250,60 +1238,32 @@ subroutine flxtrc( &
               syz(ijls, k, n) = alf1q * syz(ijls, k, n)
               sxz(ijls, k, n) = sxz(ijls, k, n) - fxz(ijls, k)
              
-           else
-             
-!             ---- flux from (j) to (j-1),  when v < 0
-
-              alfq  = alf(ij, k) * alf(ij, k)
-              alf1  = 1.d0 - alf(ij, k)
-              alf1q = alf1 * alf1
-             
-              sm (ij, k, n) = sm(ij, k, n) - fm(ijls, k)
-              s0 (ij, k, n) = s0(ij, k, n) - f0(ijls, k)
-
-              sy (ij, k, n) = alf1q * ( &
-                &         sy(ij, k, n) &
-                &       + 3.d0 * alf(ij, k) * syy(ij, k, n)  )
-              syy(ij, k, n) = alf1 * alf1q * syy(ij, k, n)
-
-              sx (ij, k, n) = sx (ij, k, n) - fx (ijls, k)
-              sxx(ij, k, n) = sxx(ij, k, n) - fxx(ijls, k)
-
-              sz (ij, k, n) = sz (ij, k, n) - fz (ijls, k)
-              szz(ij, k, n) = szz(ij, k, n) - fzz(ijls, k)
-
-              sxy(ij, k, n) = alf1q * sxy(ij, k, n)
-              syz(ij, k, n) = alf1q * syz(ij, k, n)
-              sxz(ij, k, n) = sxz(ij, k, n) - fxz(ijls, k)
-             
            end if
+             
 
         end do
-     end do
 
 !    ---- put the temporary moments (fi) into appropriate neighboring boxes
-     do k = kstr, kend
         do ij = ijtstr-nxdim-1, ijtend+nxdim+1
-
            ijls  = ij + ls
-
            if ( uv(ij, k) .gt. 0.d0 ) then
               sm(ij, k, n) = sm(ij, k, n) + fm(ijls, k)
               alf(ij, k)   = fm(ijls, k) / sm(ij, k, n)
-           else
+           end if
+        end do
+        do ij = ijtstr-nxdim-1, ijtend+nxdim+1
+           ijls  = ij + ls
+           if ( uv(ij, k) .le. 0.d0 ) then
               sm(ijls, k, n) = sm(ijls, k, n) + fm(ijls, k)
               alf(ij, k)     = fm(ijls, k) / sm(ijls, k, n)
            end if
-
         end do
-     end do
 
-     do k = kstr, kend
+!       ---- flux from (j-1) to (j),  when v > 0
         do ij = ijtstr-nxdim-1, ijtend+nxdim+1
 
            ijls  = ij + ls
 
-!          ---- flux from (j-1) to (j),  when v > 0
            if ( uv(ij, k) .gt. 0.d0 ) then
 
               alf1 = 1.d0 - alf(ij, k)
@@ -1339,9 +1299,14 @@ subroutine flxtrc( &
               szz(ij, k, n) = szz(ij, k, n) + fzz(ijls, k)
 
               sxz(ij, k, n) = sxz(ij, k, n) + fxz(ijls, k)
+           end if
+        end do
+!       ---- flux from (j) to (j-1),  when v < 0
+        do ij = ijtstr-nxdim-1, ijtend+nxdim+1
 
-!          ---- flux from (j) to (j-1),  when v < 0
-           else
+           ijls  = ij + ls
+
+           if ( uv(ij, k) .le. 0.d0 ) then
 
               alf1 = 1.d0 - alf(ij, k)
 
@@ -1456,17 +1421,7 @@ subroutine flxtrc( &
            sxz(ij, k, n) = min( s0m, max( - s0m, sxz(ij, k, n) ) )
            syz(ij, k, n) = min( s0m, max( - s0m, syz(ij, k, n) ) )
 
-        end do
-     end do
-
 !    ---- overshoot limiter (Method B) of Morales Maqueda and Holloway (2006)
-     do k = kstr, kend
-
-        ku = max( k - 1, kstr )
-        kd = min( k + 1, kend )
-
-        do ij = ijtstr, ijtend
-
            s0m = - s0(ij, k, n) &
              &   + max( s0(ij, ku, n) / sm(ij, ku, n), &
              &          s0(ij, k,  n) / sm(ij, k , n), &
@@ -1519,22 +1474,14 @@ subroutine flxtrc( &
               alf(ij, k) = fm(ij, ku) / sm(ij, k, n)
            end if
 
-        end do
-     end do
-
 !    ---- calculating flux between box (i,j,k-1) <---> (i,j,k)
-     do k = kstr, kend
 
-        ku = k - 1
+           alfq  = alf(ij, k) * alf(ij, k)
+           alf1  = 1.d0 - alf(ij, k)
+           alf1q = alf1 * alf1
 
-        do ij = ijtstr, ijtend
-
+!          ---- flux from (k-1) to (k),  when w > 0
            if ( uv(ij, k) .gt. 0.d0 ) then
-
-!             ---- flux from (k-1) to (k),  when w > 0
-              alfq  = alf(ij, k) * alf(ij, k)
-              alf1  = 1.d0 - alf(ij, k)
-              alf1q = alf1 * alf1
 
 !             ---- moments be transported
               f0(ij, ku) = &
@@ -1564,14 +1511,9 @@ subroutine flxtrc( &
               ftz (ij, k, n) = ftz(ij, k, n) &
                 &            + f0(ij, ku) * tsiv / vlmz(ij)
 
+!          ---- flux from (k) to (k-1),  when w < 0
            else
-             
-!             ---- flux from (k) to (k-1),  when w < 0
-
-              alfq  = alf(ij, k) * alf(ij, k)
-              alf1  = 1.d0 - alf(ij, k)
-              alf1q = alf1 * alf1
-             
+              
               f0 (ij, ku) = &
                 &    alf(ij, k) * ( s0(ij, k, n) &
                 &          - alf1 * (  sz(ij, k, n) &
@@ -1607,12 +1549,11 @@ subroutine flxtrc( &
 
         do ij = ijtstr, ijtend
 
+           alfq  = alf(ij, k) * alf(ij, k)
+           alf1  = 1.d0 - alf(ij, k)
+           alf1q = alf1 * alf1
            if ( uv(ij, k) .gt. 0.d0 ) then
-
-!             ---- flux from (k-1) to (k),  when w > 0
-              alfq  = alf(ij, k) * alf(ij, k)
-              alf1  = 1.d0 - alf(ij, k)
-              alf1q = alf1 * alf1
+!          ---- flux from (k-1) to (k),  when w > 0
 
 !             ---- moments remaining 
               sm (ij, ku, n) = sm(ij, ku, n) - fm(ij, ku)
@@ -1634,12 +1575,7 @@ subroutine flxtrc( &
               sxy(ij, ku, n) = sxy(ij, ku, n) - fxy(ij, ku)
              
            else
-             
-!             ---- flux from (k) to (k-1),  when w < 0
-
-              alfq  = alf(ij, k) * alf(ij, k)
-              alf1  = 1.d0 - alf(ij, k)
-              alf1q = alf1 * alf1
+!          ---- flux from (k) to (k-1),  when w < 0
              
               sm (ij, k, n) = sm(ij, k, n) - fm(ij, ku)
               s0 (ij, k, n) = s0(ij, k, n) - f0(ij, ku)
@@ -1679,19 +1615,9 @@ subroutine flxtrc( &
               alf(ij, k)    = fm(ij, ku) / sm(ij, ku, n)
            end if
 
-        end do
-     end do
-
-     do k = kstr, kend
-
-        ku = k - 1
-
-        do ij = ijtstr, ijtend
-
-!          ---- flux from (k-1) to (k),  when w > 0
+           alf1 = 1.d0 - alf(ij, k)
            if ( uv(ij, k) .gt. 0.d0 ) then
-
-              alf1 = 1.d0 - alf(ij, k)
+!          ---- flux from (k-1) to (k),  when w > 0
 
               tmp = alf(ij, k) * s0(ij, k, n) - alf1 * f0(ij, ku)
 
@@ -1726,10 +1652,8 @@ subroutine flxtrc( &
 
               sxy(ij, k, n) = sxy(ij, k, n) + fxy(ij, ku)
 
-!          ---- flux from (k) to (k-1),  when w < 0
            else
-
-              alf1 = 1.d0 - alf(ij, k)
+!          ---- flux from (k) to (k-1),  when w < 0
 
               tmp = - alf(ij, k) * s0(ij, ku, n) + alf1 * f0(ij, ku)
 
