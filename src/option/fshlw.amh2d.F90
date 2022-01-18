@@ -87,7 +87,8 @@ contains
     real(8),     save  ::  amh
     integer(4)         ::  iam,    nfamh
     character(len=ncf) ::  cfamh
-    namelist /nmvish/ amh, iam, cfamh
+    namelist /nmvish/ amh
+    namelist /nmcvis/ iam, cfamh
     data amh, iam, cfamh / 0.d0, 0, 'not-specified' /
 
 #ifdef OPT_IO_COCOMPI
@@ -117,6 +118,9 @@ contains
        read( ifpar, nmvish, iostat = istat ) 
        call cstnml( jfpar, 'modgxy', 'nmvish', istat )
        write( jfpar, nmvish )
+       read( ifpar, nmcvis, iostat = istat ) 
+       call cstnml( jfpar, 'modgxy', 'nmcvis', istat )
+       write( jfpar, nmcvis )
        
        if ( accb <= 0.d0 ) then
           accb = acc

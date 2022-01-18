@@ -158,7 +158,10 @@ subroutine vdiff( &
   real(8), save ::  alphci = 1.4d3,  atfilt = 0.0d0
   integer, save ::  nitr0 = 1,  mz = nz
   logical, save ::  osfcwv = .false.,  oswnoi = .false.,  obtkei = .false.
-
+  logical       ::  ovdfao = .false.
+  real(8), save ::  ahv0ao(nz) = 0.d0, corao
+  integer, save ::  mzao = 0
+  
 !--- TED
   real(8), save ::  tedn2d(nxydim)
   real(8), save ::  tedf2d(nxydim)
@@ -205,6 +208,7 @@ subroutine vdiff( &
     &               nitr0, epscmp, mz, &
     &               osfcwv, cw, z0sfmn, alphch, oswnoi, alphci, &
     &               obtkei, atfilt
+  namelist /nmdifvao/ ovdfao, ahv0ao, mzao
 !--- TED
   namelist /nmdved/ iam, cftedn, cftedf, cgamma, ahvemx, epst, zeta, ofvcnt, ofvpn
 !---
@@ -256,6 +260,9 @@ subroutine vdiff( &
      read (ifpar, nmdfre, iostat=istat)
      call cstnml(jfpar, 'vdiff', 'nmdfre', istat)
      write(jfpar, nmdfre)
+     read (ifpar, nmdifvao, iostat=istat)
+     call cstnml(jfpar, 'vdiff', 'nmdifvao', istat)
+     write(jfpar, nmdifvao)
 
      if (oeof) then
         do k = 1, nzdim
@@ -362,6 +369,20 @@ subroutine vdiff( &
            endif
         end do
      end do
+
+!----- reducing background vert. diffusivity in Arctic Ocean
+     if ( ovdfao ) then
+        corao = 2.D0 * omega * sin( pi * 65.D0 / 180.D0 )
+        do k = kstr, kstr+mzao-1
+           do ij = ijstr, ijend
+              cort = (  cor(ij)     + cor(ij+lw) &
+                   &  + cor(ij+lsw) + cor(ij+ls) ) * 0.25d0
+              if ( cort > corao ) then
+                 ahv03d(ij,k) = ahv0ao(k-kstr+1)
+              end if
+           end do
+        end do
+     end if
 
 !--- TED
      call rewnml(ifpar, jfpar)
@@ -942,15 +963,17 @@ subroutine vdiff( &
           &     * ( ckarm**estrn ) &
           &     * ( dstwal**estrn ) &
           &     * cw * ufrc3o(ij)
-        k = nbot(ij)+1
-        tketmp = (tke0(ij, k-1) + tke0(ij, k))*0.5d0
-        dstwal = z0btm + dzsig(ij, k-1)*0.5d0
-        fez(ij, k) = &
-          &   cpsife / scnp3d(ij, k-1) &
-          &     * amvt(ij, k-1) &
-          &     * ( tketmp**estrm ) &
-          &     * ( ckarm**estrn ) &
-          &     * ( dstwal**(estrn-1.0d0) )
+        if (nbot(ij) > kstr) then
+           k = nbot(ij)+1
+           tketmp = (tke0(ij, k-1) + tke0(ij, k))*0.5d0
+           dstwal = z0btm + dzsig(ij, k-1)*0.5d0
+           fez(ij, k) = &
+             &   cpsife / scnp3d(ij, k-1) &
+             &     * amvt(ij, k-1) &
+             &     * ( tketmp**estrm ) &
+             &     * ( ckarm**estrn ) &
+             &     * ( dstwal**(estrn-1.0d0) )
+        end if
      end do
       
      do k = kstr+1, kend
@@ -1151,7 +1174,7 @@ subroutine vdiff( &
        &          'ahv by ted', 'cm^2/s', &
        &          nx,       ny,       nz,     nxyzdm, 'OCLVMT')
   call chekin(  tedr,   'TEDR', &
-       &         'ted realized in model', 'cm^2/s^3', &
+       &         'realized ted', 'cm^2/s^3', &
        &          nx,       ny,       nz,     nxyzdm, 'OCLVMT')
   call chekin(tedn3d,   'TEDN', &
        &              'near ted calculated in model', 'cm^2/s^3', &

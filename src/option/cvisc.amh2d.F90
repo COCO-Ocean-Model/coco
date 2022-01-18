@@ -93,7 +93,8 @@ contains
     real(8),     save  ::  amhmod(nxydim)
     integer(4)         ::  iam,    nfamh
     character(len=ncf) ::  cfamh
-    namelist /nmvish/ amh, iam, cfamh
+    namelist /nmvish/ amh
+    namelist /nmcvis/ iam, cfamh
     data amh, iam, cfamh / 0.d0, 0, 'not-specified' /
 
 
@@ -117,6 +118,9 @@ contains
        read( ifpar, nmvish, iostat = istat )
        call cstnml( jfpar, 'vscvel', 'nmvish', istat )
        write( jfpar, nmvish )
+       read( ifpar, nmcvis, iostat = istat )
+       call cstnml( jfpar, 'vscvel', 'nmcvis', istat )
+       write( jfpar, nmcvis )
        
        amhmod(1:nxydim) = 0.d0
        if ( iam == 0 ) then
