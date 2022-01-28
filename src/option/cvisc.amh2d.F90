@@ -118,6 +118,7 @@ contains
        read( ifpar, nmvish, iostat = istat )
        call cstnml( jfpar, 'vscvel', 'nmvish', istat )
        write( jfpar, nmvish )
+       call rewnml( ifpar, jfpar )
        read( ifpar, nmcvis, iostat = istat )
        call cstnml( jfpar, 'vscvel', 'nmcvis', istat )
        write( jfpar, nmcvis )
