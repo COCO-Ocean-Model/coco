@@ -22,7 +22,13 @@ module dvdif
     &   kstr,   kend,     kz,     nz, &
     &  ijstr,  ijend, ijvstr, ijvend, &
     &     le,     lw,     ln,     ls,    lne,    lsw, &
-    &  oinit, ofinal
+    &  oinit, ofinal, &
+#ifndef OPT_IO_COCOMPI
+    &    nxg,    nyg, nxgdim, nygdim,  igstr,  jgstr, &
+#endif
+    &     nx,     ny
+  use zocfil, only: &
+    &    ncf
   use zocgrd, only: &
     &     dz,    dzm,     ds,    dsm,     dt, &
     &   zbot,    cor,   itst, ieuler
@@ -37,6 +43,7 @@ module dvdif
 
   implicit none
   private
+#include "mpif.h"
 
   real(8), save :: tauaox(nxydim), tauaoy(nxydim)
 
@@ -58,9 +65,17 @@ subroutine vdiff( &
   use bchmk
   use qckot
   use bshft
+  use qckot
+#ifdef OPT_IO_COCOMPI
+  use mpiio
+#else
+  use bgs2d
+  use zocnod,  only :  iroot,  myrank
+#endif
 
   real(8), intent(out) ::     amv(nxydim, nzdim),    ahv(nxydim, nzdim)
   real(8), intent(in)  ::      uy(nxydim, nzdim),     vy(nxydim, nzdim)
+
   real(8), intent(in)  ::       r(nxydim, nzdim)
   real(8), intent(in)  ::    taux(nxydim)       ,   tauy(nxydim)
   real(8), intent(in)  ::      ty(nxydim, nzdim, ntdim)
@@ -120,6 +135,7 @@ subroutine vdiff( &
   real(8) :: tketmp, dstwal,  dztmp,  rscnp
   real(8) ::  preps, preps0, alphcl
   integer ::     ij,      k,   iitr
+  integer ::      i,      j
   integer ::  ifpar,  jfpar,  istat
 
   real(8), save ::  amv0(nz) = 0.0d0,  ahv0(nz) = 0.0d0
@@ -142,6 +158,41 @@ subroutine vdiff( &
   real(8), save ::  alphci = 1.4d3,  atfilt = 0.0d0
   integer, save ::  nitr0 = 1,  mz = nz
   logical, save ::  osfcwv = .false.,  oswnoi = .false.,  obtkei = .false.
+  logical       ::  ovdfao = .false.
+  real(8), save ::  ahv0ao(nz) = 0.d0, corao
+  integer, save ::  mzao = 0
+  
+!--- TED
+  real(8), save ::  tedn2d(nxydim)
+  real(8), save ::  tedf2d(nxydim)
+  real(8)       ::    gint(nxydim)
+  real(8), save ::  tedn3d(nxydim, nzdim) = 0.d0
+  real(8), save ::  tedf3d(nxydim, nzdim) = 0.d0
+  real(8)       ::  dzmsig(nxydim, nzdim)
+  real(8)       ::  ahvted(nxydim, nzdim)
+  real(8)       ::    tedr(nxydim, nzdim)
+  real(8)       ::  ahvraw(nxydim, nzdim)
+  real(8), save ::  cgamma = 0.2d0,  ahvemx = 1000.0d0,  epst = 1.d-20
+  real(8), save ::    zeta = 500.d0 ! [m]
+  logical, save ::  ofvcnt = .false., ofvpn = .false. ! vert. prof of far-field mixing
+  ! ofvcnt = .true. : vertically constant
+  ! ofvcnt = .false, ofvpn = .false. : prop. to N^2
+  ! ofvcnt = .false, ofvpn = .true. : prop. to N
+  real(8), save ::   rzeta ! [1/cm]
+  real(8)  ::     dep ! [cm]
+  integer  ::  iamn = 0, iamf = 0
+  character(len = ncf) ::  cftedn = 'not-specified'
+  character(len = ncf) ::  cftedf = 'not-specified'
+  character(len = 16)  ::  chead(1:64)
+#ifdef OPT_IO_COCOMPI
+  integer :: mpi_fh
+  integer :: icread
+  integer (kind = mpi_offset_kind) :: disp
+#else
+  integer :: nfted
+  real(8), allocatable :: buf2(:, :),  g2d(:, :)
+#endif
+!---
 
   namelist /nmvisv/ amv0
   namelist /nmdifv/ ahv0
@@ -156,7 +207,11 @@ subroutine vdiff( &
     &               nitr0, epscmp, mz, &
     &               osfcwv, cw, z0sfmn, alphch, oswnoi, alphci, &
     &               obtkei, atfilt
-  
+  namelist /nmdifvao/ ovdfao, ahv0ao, mzao
+!--- TED
+  namelist /nmdved/ iamn, iamf, cftedn, cftedf, cgamma, ahvemx, epst, zeta, ofvcnt, ofvpn
+!---
+ 
   if (oinit) then
      do k = 1, nzdim
         do ij = 1, nxydim
@@ -204,6 +259,10 @@ subroutine vdiff( &
      read (ifpar, nmdfre, iostat=istat)
      call cstnml(jfpar, 'vdiff', 'nmdfre', istat)
      write(jfpar, nmdfre)
+     call rewnml(ifpar, jfpar)
+     read (ifpar, nmdifvao, iostat=istat)
+     call cstnml(jfpar, 'vdiff', 'nmdifvao', istat)
+     write(jfpar, nmdifvao)
 
      if (oeof) then
         do k = 1, nzdim
@@ -304,12 +363,127 @@ subroutine vdiff( &
                 &                 + sqrt(bfq**2 / cort**2 - 1.d0)) &
                 &           / log(  bfq / cor30 &
                 &                 + sqrt(bfq**2 / cor30**2 - 1.d0))
-              ahv03d(ij,k)= max(ahv03d(ij, k), 1.d-2)
+!              ahv03d(ij,k)= max(ahv03d(ij, k), 1.d-2)
+              ahv03d(ij,k)= max(ahv03d(ij, k), 1.d-4)
               ahv03d(ij,k)= ahv03d(ij,  k) * rahv(k-kstr+1) &
                 &         + ahv0(k-kstr+1) * (1.0 - rahv(k-kstr+1)) 
            endif
         end do
      end do
+
+!----- reducing background vert. diffusivity in Arctic Ocean
+     if ( ovdfao ) then
+        corao = 2.D0 * omega * sin( pi * 65.D0 / 180.D0 )
+        do k = kstr, kstr+mzao-1
+           do ij = ijstr, ijend
+              cort = (  cor(ij)     + cor(ij+lw) &
+                   &  + cor(ij+lsw) + cor(ij+ls) ) * 0.25d0
+              if ( cort > corao ) then
+                 ahv03d(ij,k) = ahv0ao(k-kstr+1)
+              end if
+           end do
+        end do
+     end if
+
+!--- TED
+     call rewnml(ifpar, jfpar)
+     read (ifpar, nmdved, iostat=istat)
+     call cstnml(jfpar, 'vdiff', 'nmdved', istat)
+     write(jfpar, nmdved)
+     do ij = 1, nxydim
+        tedn2d(ij) = 0.d0
+        tedf2d(ij) = 0.d0
+     end do
+     if ( iamn == 0 ) then
+        write(jfpar, *) ' Turbulent energy dissipation rate (near-field) is not used.'
+     else
+!---- reading file of turbulent energy dissipation rate
+#ifdef OPT_IO_COCOMPI
+        call mpi_filopn(mpi_fh, cftedn, 'READ')
+        disp=0
+        call mpi_read_chead(chead, mpi_fh, disp, icread)
+        call mpi_read_2d(tedn2d, mpi_fh  , disp)
+        call mpi_filcls(mpi_fh)
+#else
+        allocate ( buf2(1:nxg,1:nyg) )
+        allocate ( g2d(1:nxgdim,1:nygdim) )
+        if ( myrank == iroot ) then
+           call filopn( nfted, cftedn, 'READ' )
+           rewind( nfted )
+           read( nfted ) chead
+           read( nfted ) buf2
+           call filcls( nfted )
+           do j = 1, nyg
+              do i = 1, nxg
+                 g2d(igstr+i-1, jgstr+j-1) = buf2(i, j)
+              end do
+           end do
+        end if
+        call scatter_2d( tedn2d, g2d )
+        deallocate( buf2, g2d )
+#endif
+#ifdef OPT_TRIPOLE
+        call shift1(tedn2d,                                      &
+    &                nxdim,  nydim,      1,                      &
+    &                 1.d0,      0,      0 )
+#else
+        call shift1(tedn2d,                                      &
+    &                nxdim,  nydim,      1)
+#endif
+        rzeta = 1.d0 / zeta * 1.d-2
+     end if
+     if ( iamf == 0 ) then
+        write(jfpar, *) ' Turbulent energy dissipation rate (far-field) is not used.'
+        do ij = 1, nxydim
+           tedf2d(ij) = 0.d0
+        end do
+     else
+!---- reading file of turbulent energy dissipation rate
+#ifdef OPT_IO_COCOMPI
+        call mpi_filopn(mpi_fh, cftedf, 'READ')
+        disp=0
+        call mpi_read_chead(chead, mpi_fh, disp, icread)
+        call mpi_read_2d(tedf2d, mpi_fh  , disp)
+        call mpi_filcls(mpi_fh)
+#else
+        allocate ( buf2(1:nxg,1:nyg) )
+        allocate ( g2d(1:nxgdim,1:nygdim) )
+        if ( myrank == iroot ) then
+           call filopn( nfted, cftedf, 'READ' )
+           rewind( nfted )
+           read( nfted ) chead
+           read( nfted ) buf2
+           call filcls( nfted )
+           do j = 1, nyg
+              do i = 1, nxg
+                 g2d(igstr+i-1, jgstr+j-1) = buf2(i, j)
+              end do
+           end do
+        end if
+        call scatter_2d( tedf2d, g2d )
+        deallocate( buf2, g2d )
+#endif
+        if (ofvcnt) then
+           write(jfpar, *) 'Vertically constant for far-field mixing'
+        else
+           if (ofvpn) then
+              write(jfpar, *) 'Dissipation rate is prop. to N for far-field mixing'
+           else
+              write(jfpar, *) 'Dissipation rate is prop. to N^2 for far-field mixing'
+           end if
+        end if
+#ifdef OPT_TRIPOLE
+        call shift1(tedf2d,                                      &
+    &                nxdim,  nydim,      1,                      &
+    &                 1.d0,      0,      0 )
+#else
+        call shift1(tedf2d,                                      &
+    &                nxdim,  nydim,      1)
+#endif
+     end if
+!---
+
+
   end if
 
 !     -- second step of Euler-Eackward sheme --
@@ -326,12 +500,14 @@ subroutine vdiff( &
      do ij = 1, nxydim
         dzsig (ij, k) = (hy(ij) + zbot) * ds(k)
         rzmsig(ij, k) = 1.d0 / (hy(ij) + zbot) / dsm(k)
+        dzmsig(ij, k) = (hy(ij) + zbot) * dsm(k)
      end do
   end do
   do k = kstr+kz, kend
      do ij = 1, nxydim
         dzsig (ij, k) = dz(ij, k)
         rzmsig(ij, k) = 1.d0 / dzm(ij, k)
+        dzmsig(ij, k) = dzm(ij, k)
      end do
   end do
   do k = 1, nzdim
@@ -816,15 +992,17 @@ subroutine vdiff( &
           &     * ( ckarm**estrn ) &
           &     * ( dstwal**estrn ) &
           &     * cw * ufrc3o(ij)
-        k = nbot(ij)+1
-        tketmp = (tke0(ij, k-1) + tke0(ij, k))*0.5d0
-        dstwal = z0btm + dzsig(ij, k-1)*0.5d0
-        fez(ij, k) = &
-          &   cpsife / scnp3d(ij, k-1) &
-          &     * amvt(ij, k-1) &
-          &     * ( tketmp**estrm ) &
-          &     * ( ckarm**estrn ) &
-          &     * ( dstwal**(estrn-1.0d0) )
+        if (nbot(ij) > kstr) then
+           k = nbot(ij)+1
+           tketmp = (tke0(ij, k-1) + tke0(ij, k))*0.5d0
+           dstwal = z0btm + dzsig(ij, k-1)*0.5d0
+           fez(ij, k) = &
+             &   cpsife / scnp3d(ij, k-1) &
+             &     * amvt(ij, k-1) &
+             &     * ( tketmp**estrm ) &
+             &     * ( ckarm**estrn ) &
+             &     * ( dstwal**(estrn-1.0d0) )
+        end if
      end do
       
      do k = kstr+1, kend
@@ -941,6 +1119,113 @@ subroutine vdiff( &
         ahv(ij, k) = ahv03d(ij, k)
      end do
   end do
+
+
+!--- TED
+! near-field
+  if ( iamn /= 0 ) then
+     do ij = ijstr, ijend
+        gint(ij) = 0.d0
+     end do
+     do k = kstr+1, kend
+        do ij = 1, nxydim
+           dep = depth(ij, nbot(ij) + 1) ! depth of bottom
+           gint(ij) = gint(ij) + &
+                & dzmsig(ij, k) * exp((depth(ij, k) - dep) * rzeta) * amftz(ij, k)
+        end do
+     end do
+     where(gint /= 0.d0) gint = 1.d0 / gint
+     do k = kstr+1, kend
+        do ij = 1, nxydim
+           dep = depth(ij, nbot(ij) + 1) ! depth of bottom
+           tedn3d(ij, k) = gint(ij) * tedn2d(ij) * exp((depth(ij, k) - dep) * rzeta) * amftz(ij, k)
+        end do
+     end do
+  end if
+  ! far-field
+  if ( iamf /= 0 ) then
+     do ij = ijstr, ijend
+        gint(ij) = 0.d0
+     end do
+     if (ofvcnt) then
+        do k = kstr+1, kend
+           do ij = 1, nxydim
+              gint(ij) = gint(ij) + &
+                   & dzmsig(ij, k) * amftz(ij, k)
+           end do
+        end do
+        do ij = ijstr, ijend
+           if (gint(ij) /= 0.d0) then
+              gint(ij) = 1.d0 / gint(ij)
+           end if
+        end do
+        do k = kstr+1, kend
+           do ij = 1, nxydim
+              tedf3d(ij, k) = gint(ij) * tedf2d(ij) * amftz(ij, k)
+           end do
+        end do
+     else
+        if (ofvpn) then ! prop to N
+           do k = kstr+1, kend
+              do ij = 1, nxydim
+                 gint(ij) = gint(ij) + &
+                      & dzmsig(ij, k) * sqrt(abs(drdz(ij, k))) * amftz(ij, k)
+              end do
+           end do
+           do ij = ijstr, ijend
+              if (gint(ij) /= 0.d0) then
+                 gint(ij) = 1.d0 / gint(ij)
+              end if
+           end do
+           do k = kstr+1, kend
+              do ij = 1, nxydim
+                 tedf3d(ij, k) = gint(ij) * tedf2d(ij) * sqrt(abs(drdz(ij, k))) * amftz(ij, k)
+              end do
+           end do
+        else ! prop to N2
+           do k = kstr+1, kend
+              do ij = 1, nxydim
+                 gint(ij) = gint(ij) + &
+                      & dzmsig(ij, k) * drdz(ij, k) * amftz(ij, k)
+              end do
+           end do
+           do ij = ijstr, ijend
+              if (gint(ij) /= 0.d0) then
+                 gint(ij) = 1.d0 / gint(ij)
+              end if
+           end do
+           do k = kstr+1, kend
+              do ij = 1, nxydim
+                 tedf3d(ij, k) = gint(ij) * tedf2d(ij) * drdz(ij, k) * amftz(ij, k)
+              end do
+           end do
+        end if
+     end if
+  end if
+  do k = kstr+1, kend
+     do ij = ijstr, ijend
+        ahvted(ij, k) = cgamma * (tedn3d(ij, k) + tedf3d(ij, k)) &
+             &              / max(drdz(ij, k), epst) * amftz(ij, k)
+        ahvted(ij, k) = min(ahvemx, ahvted(ij, k))
+        ahv(ij, k) = max(ahv(ij, k), ahvted(ij, k))
+        tedr(ij, k) = ahv(ij, k) * drdz(ij, k) / cgamma &
+             &                  * amftz(ij, k)
+     end do
+  end do
+
+  call chekin(ahvted, 'AHVTED', &
+       &          'ahv by ted', 'cm^2/s', &
+       &          nx,       ny,       nz,     nxyzdm, 'OCLVMT')
+  call chekin(  tedr,   'TEDR', &
+       &         'realized tidal energy dissipation rate', 'cm^2/s^3', &
+       &          nx,       ny,       nz,     nxyzdm, 'OCLVMT')
+  call chekin(tedn3d,   'TEDN', &
+       &              'near-field tidal energy dissipation rate', 'cm^2/s^3', &
+       &          nx,       ny,       nz,     nxyzdm, 'OCLVMT')
+  call chekin(tedf3d,   'TEDF', &
+       &               'far-field tidal energy dissipation rate', 'cm^2/s^3', &
+       &          nx,       ny,       nz,     nxyzdm, 'OCLVMT')
+!---
 
 #ifdef OPT_BBL
   call rmmskt
