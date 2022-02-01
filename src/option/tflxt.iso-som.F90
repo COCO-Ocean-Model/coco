@@ -50,6 +50,10 @@ module tflxt
   real(8), save :: ftx(nxydim, nzdim, ntdim)
   real(8), save :: fty(nxydim, nzdim, ntdim)
   real(8), save :: ftz(nxydim, nzdim, ntdim)
+! --- for diffusive flux
+  real(8), save :: ftxd(nxydim, nzdim, ntdim)
+  real(8), save :: ftyd(nxydim, nzdim, ntdim)
+  real(8), save :: ftzd(nxydim, nzdim, ntdim)
 
   public :: flxtrc, chkftx
 #ifdef OPT_BBL
@@ -84,15 +88,38 @@ subroutine flxtrc( &
 
   real(8) ::    wzc(nxydim, nzdim),    rzm(nxydim, nzdim)
   real(8) ::  hzbot(nxydim)
+  real(8) ::     dh(nxydim)
 
   real(8) ::  xdzdx(nxydim, nzdim),  ydzdy(nxydim, nzdim)
   real(8) ::  zdzdx(nxydim, nzdim),  zdzdy(nxydim, nzdim)
   real(8) ::  xdtdz(nxydim, nzdim, ntdim),  ydtdz(nxydim, nzdim, ntdim)
   real(8) ::  zdtdx(nxydim, nzdim, ntdim),  zdtdy(nxydim, nzdim, ntdim)
 
+! --- for flux output
+  real(8) ::   adt2(nxydim, nzdim, ntdim)    
+  real(8) ::   adtd(nxydim, nzdim, ntdim)    
+  real(8) ::  adtah(nxydim, nzdim, ntdim)    
+  real(8) ::  adtgm(nxydim, nzdim, ntdim)    
+  real(8) ::  adtis(nxydim, nzdim, ntdim)    
+  real(8) ::   ftx2(nxydim, nzdim, ntdim)
+  real(8) ::   fty2(nxydim, nzdim, ntdim)
+  real(8) ::   ftz2(nxydim, nzdim, ntdim)
+  real(8) ::  ftxah(nxydim, nzdim, ntdim)
+  real(8) ::  ftyah(nxydim, nzdim, ntdim)
+  real(8) ::  ftxgm(nxydim, nzdim, ntdim)
+  real(8) ::  ftygm(nxydim, nzdim, ntdim)
+  real(8) ::  ftzgm(nxydim, nzdim, ntdim)
+  real(8) ::  ftxis(nxydim, nzdim, ntdim)
+  real(8) ::  ftyis(nxydim, nzdim, ntdim)
+  real(8) ::  ftzis(nxydim, nzdim, ntdim)
+
 ! ---- spatially varying isopycnal diffusion coefficient
   real(8), save ::   ahh3d(nxydim, nzdim),  ahi3d(nxydim, nzdim)
   real(8), save ::   ahg3d(nxydim, nzdim) 
+
+!---- bolus velocity output (for CMIP6)
+  real(8) :: ublsx(nxydim, nzdim), vblsy(nxydim, nzdim)
+  real(8) :: ublsw(nxydim, nzdim), vblsw(nxydim, nzdim)
 
 !---- for second order moment
 !---- bug fix (save these variables)
@@ -153,8 +180,18 @@ subroutine flxtrc( &
   character(len= 16) ::  chead(64) 
   integer :: iah = 0
   integer :: nfahi, nfahg
-
   namelist /nmcah/ cfahi, cfahg, iah
+
+  integer, save ::  isvgm = -1
+  real(8), save ::  ahgno = 1.d7, nlats =  40.d0, nlatn =  50.d0
+  real(8), save ::  ahgso = 1.d7, slatn = -40.d0, slats = -50.d0
+  real(8) :: pi, lat
+#ifndef OPT_EXMASK
+  real(8) :: cort, omega
+#endif
+  namelist /nmsvgm/ isvgm
+  namelist /nmdifn/ ahgno, nlats, nlatn
+  namelist /nmdifs/ ahgso, slatn, slats
 
 #ifdef OPT_BBL
   real(8), save :: ahhbbl = 0.0d0
@@ -330,6 +367,18 @@ subroutine flxtrc( &
      read(ifpar, nmcah, iostat=istat)
      call cstnml(jfpar, 'flxtrc', 'nmcah', istat)
      write(jfpar, nmcah)
+     call rewnml(ifpar, jfpar)
+     read(ifpar, nmsvgm, iostat=istat)
+     call cstnml(jfpar, 'flxtrc', 'nmsvgm', istat)
+     write(jfpar, nmsvgm)
+     call rewnml(ifpar, jfpar)
+     read(ifpar, nmdifn, iostat=istat)
+     call cstnml(jfpar, 'flxtrc', 'nmdifn', istat)
+     write(jfpar, nmdifn)
+     call rewnml(ifpar, jfpar)
+     read(ifpar, nmdifs, iostat=istat)
+     call cstnml(jfpar, 'flxtrc', 'nmdifs', istat)
+     write(jfpar, nmdifs)
 
      if ( iah .eq. 0 ) then
 
@@ -344,6 +393,35 @@ subroutine flxtrc( &
               ahh3d(ij, k) = ahh
            end do
         end do
+
+        if ( isvgm > 0 ) then
+           write(jfpar, *) 'latitudinally varying GM diffusivity is used.'
+           pi = atan( 1.d0 )*4.d0
+#ifndef OPT_EXMASK
+           omega = 2.d0 * pi / 86400.d0
+#endif
+           do ij = ijstr, ijend
+#ifdef OPT_EXMASK
+              lat = glatt(ij) * 180.d0 / pi
+#else
+              cort = (cor(ij) + cor(ij+lw) + cor(ij+lsw) + cor(ij+ls)) * 0.25d0
+              lat = asin( cort * 0.5d0 * omega ) * 180.d0 / pi
+#endif
+              if(lat .ge. slatn .and. lat .le. nlats) then
+                 ahg3d(ij, :) = ahg
+              elseif(lat .ge. slats .and. lat .lt. slatn) then
+                 ahg3d(ij, :) = (ahgso * (slatn - lat) + &
+                      &            ahg * (lat - slats)) / (slatn - slats)
+              elseif(lat .gt. nlats .and. lat .le. nlatn) then
+                 ahg3d(ij, :) = (ahgno * (lat - nlats) + &
+                      &            ahg * (nlatn - lat)) / (nlatn - nlats)
+              elseif(lat .le. slats) then
+                 ahg3d(ij, :) = ahgso
+              else
+                 ahg3d(ij, :) = ahgno
+              endif
+           end do
+        end if
 
      else
 
@@ -451,6 +529,25 @@ subroutine flxtrc( &
            ftx (ij, k, n) = 0.d0
            fty (ij, k, n) = 0.d0
            ftz (ij, k, n) = 0.d0
+           adt2 (ij, k, n) = 0.d0
+           ftx2 (ij, k, n) = 0.d0
+           fty2 (ij, k, n) = 0.d0
+           ftz2 (ij, k, n) = 0.d0
+           adtd (ij, k, n) = 0.d0
+           ftxd (ij, k, n) = 0.d0
+           ftyd (ij, k, n) = 0.d0
+           ftzd (ij, k, n) = 0.d0
+           ftxgm(ij, k, n) = 0.d0
+           ftygm(ij, k, n) = 0.d0
+           ftzgm(ij, k, n) = 0.d0
+           ftxis(ij, k, n) = 0.d0
+           ftyis(ij, k, n) = 0.d0
+           ftzis(ij, k, n) = 0.d0
+           ftxah(ij, k, n) = 0.d0
+           ftyah(ij, k, n) = 0.d0
+           adtgm(ij, k, n) = 0.d0
+           adtis(ij, k, n) = 0.d0
+           adtah(ij, k, n) = 0.d0
         end do
      end do
   end do
@@ -504,6 +601,20 @@ subroutine flxtrc( &
              &    (  zdzdx(ij, k) * zdtdx(ij, k, n) &
              &     + zdzdy(ij, k) * zdtdy(ij, k, n) ) &
              & ) * amftz(ij, k)
+           ftzd(ij, k, n) = ftz(ij, k, n)
+           ftzgm(ij, k, n) =  &
+             &   - ahg3d(ij, k) * &
+             &   ( zdzdx(ij, k) * zdtdx(ij, k, n) &
+             &   + zdzdy(ij, k) * zdtdy(ij, k, n) ) &
+             &   * amftz(ij, k)
+           ftzis(ij, k, n) =  &
+             &  (  ahi3d(ij, k) * (  zdzdx(ij, k) * zdzdx(ij, k) &
+             &                     + zdzdy(ij, k) * zdzdy(ij, k) ) * &
+             &       rzm(ij, k) * (tx(ij, ku, n) - tx(ij, k, n)) &
+             &   - ahi3d(ij, k) * &
+             &   ( zdzdx(ij, k) * zdtdx(ij, k, n) &
+             &   + zdzdy(ij, k) * zdtdy(ij, k, n) ) ) &
+             &   * amftz(ij, k)
 
         end do
      end do
@@ -524,7 +635,23 @@ subroutine flxtrc( &
              &    - ( ahi3d(ij, k) - ahg3d(ij, k) ) &
              &    * ydzdy(ij, k) * ydtdz(ij, k, n) ) &
              &    * ( hxu(ijls) + hxu(ij+lsw) ) * 0.5d0 * amfty(ij, k)
-
+           ftyd(ij, k, n) = fty(ij, k, n)
+           ftyah(ij, k, n) = &
+             &     (  ahh3d(ij, k) * rym(ijls) &
+             &      / ( hyt(ij) + hyt(ijls) ) * &
+             &        ( tx(ij, k, n) - tx(ijls, k, n) ) * 2.d0 ) &
+             &      * ( hxu(ijls) + hxu(ij+lsw) ) * 0.5d0 * amfty(ij, k)
+           ftygm(ij, k, n) = &
+             &       (  ahg3d(ij, k) &
+             &        * ydzdy(ij, k) * ydtdz(ij, k, n) ) &
+             &        * ( hxu(ijls) + hxu(ij+lsw) ) * 0.5d0 * amfty(ij, k)
+           ftyis(ij, k, n) = &
+             &     (  ahi3d(ij, k) * rym(ijls) &
+             &      / ( hyt(ij) + hyt(ijls) ) * &
+             &        ( tx(ij, k, n) - tx(ijls, k, n) ) * 2.d0 &
+             &      - ahi3d(ij, k) &
+             &      * ydzdy(ij, k) * ydtdz(ij, k, n) ) &
+             &      * ( hxu(ijls) + hxu(ij+lsw) ) * 0.5d0 * amfty(ij, k)
         end do
      end do
 
@@ -545,6 +672,23 @@ subroutine flxtrc( &
              &    - ( ahi3d(ij, k) - ahg3d(ij, k) ) &
              &    * xdzdx(ij, k) * xdtdz(ij, k, n) ) &
              &    * ( hyu(ijlw) + hyu(ij+lsw) ) * 0.5d0 * amftx(ij, k)
+           ftxd(ij, k, n) = ftx(ij, k, n)
+           ftxah(ij, k, n) = &
+             &     (  ahh3d(ij, k) * rx &
+             &      / ( hxt(ij) + hxt(ijlw) ) &
+             &      * ( tx(ij, k, n) - tx(ijlw, k, n) ) * 2.d0 ) &
+             &      * ( hyu(ijlw) + hyu(ij+lsw) ) * 0.5d0 * amftx(ij, k)
+           ftxgm(ij, k, n) = &
+             &     (  ahg3d(ij, k) &
+             &      * xdzdx(ij, k) * xdtdz(ij, k, n) ) &
+             &      * ( hyu(ijlw) + hyu(ij+lsw) ) * 0.5d0 * amftx(ij, k)
+           ftxis(ij, k, n) = &
+             &     (  ahi3d(ij, k) * rx &
+             &      / ( hxt(ij) + hxt(ijlw) ) &
+             &      * ( tx(ij, k, n) - tx(ijlw, k, n) ) * 2.d0 &
+             &      - ahi3d(ij, k) &
+             &      * xdzdx(ij, k) * xdtdz(ij, k, n) ) &
+             &      * ( hyu(ijlw) + hyu(ij+lsw) ) * 0.5d0 * amftx(ij, k)
 
         end do
 
@@ -561,6 +705,36 @@ subroutine flxtrc( &
 !        end do
      end do
 
+  end do
+
+!---- bolus velocity (for CMIP6 output)
+  do k = 1, nzdim
+     do ij = 1, nxydim
+        ublsx(ij, k) = 0.0d0
+        ublsw(ij, k) = 0.0d0
+        vblsy(ij, k) = 0.0d0
+        vblsw(ij, k) = 0.0d0
+     end do
+  end do
+  do k = kstr+1, kend
+     do ij = ijtstr, ijtend+nxdim
+        ublsw(ij, k) = ( ahg3d(ij, k-1) * xdzdx(ij, k-1) &
+             &         - ahg3d(ij, k  ) * xdzdx(ij, k  ) ) &
+             &       / dzm(ij, k) &
+             &       * (1.0d0- &
+             &         (1.0d0-amftz(ij,k))*(1.0d0-amftz(ij+lw,k)))
+        vblsw(ij, k) = ( ahg3d(ij, k-1) * ydzdy(ij, k-1) &
+             &         - ahg3d(ij, k  ) * ydzdy(ij, k  ) ) &
+             &       / dzm(ij, k) &
+             &       * (1.0d0- &
+             &         (1.0d0-amftz(ij,k))*(1.0d0-amftz(ij+ls,k)))
+     end do
+  end do
+  do k = kstr, kend
+     do ij = ijtstr, ijtend+nxdim
+        ublsx(ij, k) = 0.5d0 * (ublsw(ij, k) + ublsw(ij, k+1))
+        vblsy(ij, k) = 0.5d0 * (vblsw(ij, k) + vblsw(ij, k+1))
+     end do
   end do
 
 !---- diffusion in BBL
@@ -582,6 +756,7 @@ subroutine flxtrc( &
           &   rym(ij) * &
           &   (hxu(ijls) + hxu(ij+lsw)) / (hyt(ij) + hyt(ijls)) * &
           &   amfty(ij, kend)
+        ftyah(ij, kend, n) = fty(ij, kend, n)
      end do
      
      do ij = ijtstr, ijtend+1
@@ -590,6 +765,7 @@ subroutine flxtrc( &
           &   ahhbbl * (tx(ij, kend, n) - tx(ijlw, kend, n)) * rx * &
           &   (hyu(ijlw) + hyu(ij+lsw)) / (hxt(ij) + hxt(ijlw)) * &
           &   amftx(ij, kend) 
+        ftxah(ij, kend, n) = ftx(ij, kend, n)
      end do
 
   end do
@@ -783,6 +959,7 @@ subroutine flxtrc( &
               fzz(ijlw, k) = alf(ij, k) * szz(ijlw, k, n)
               fyz(ijlw, k) = alf(ij, k) * syz(ijlw, k, n)
 
+              ftx2(ij, k, n) =-f0(ijlw, k) * tsiv * ry(ijlw)
               ftx (ij, k, n) = ftx(ij, k, n) &
                 &            - f0(ijlw, k) * tsiv * ry(ijlw)
 
@@ -808,6 +985,7 @@ subroutine flxtrc( &
               fzz(ijlw, k) = alf(ij, k) * szz(ij, k, n)
               fyz(ijlw, k) = alf(ij, k) * syz(ij, k, n)
              
+              ftx2(ij, k, n) = f0(ijlw, k) * tsiv * ry(ijlw)
               ftx (ij, k, n) = ftx(ij, k, n) &
                 &            + f0(ijlw, k) * tsiv * ry(ijlw)
 
@@ -1143,6 +1321,7 @@ subroutine flxtrc( &
               fzz(ijls, k) = alf(ij, k) * szz(ijls, k, n)
               fxz(ijls, k) = alf(ij, k) * sxz(ijls, k, n)
              
+              fty2(ij, k, n) =-f0(ijls, k) * tsiv * rx
               fty (ij, k, n) = fty(ij, k, n) &
                 &            - f0(ijls, k) * tsiv * rx
 
@@ -1169,6 +1348,7 @@ subroutine flxtrc( &
               fzz(ijls, k) = alf(ij, k) * szz(ij, k, n)
               fxz(ijls, k) = alf(ij, k) * sxz(ij, k, n)
              
+              fty2(ij, k, n) = f0(ijls, k) * tsiv * rx
               fty (ij, k, n) = fty(ij, k, n) &
                 &            + f0(ijls, k) * tsiv * rx
 
@@ -1508,6 +1688,7 @@ subroutine flxtrc( &
               fyy(ij, ku) = alf(ij, k) * syy(ij, ku, n)
               fxy(ij, ku) = alf(ij, k) * sxy(ij, ku, n)
                   
+              ftz2(ij, k, n) = f0(ij, ku) * tsiv / vlmz(ij)
               ftz (ij, k, n) = ftz(ij, k, n) &
                 &            + f0(ij, ku) * tsiv / vlmz(ij)
 
@@ -1534,6 +1715,7 @@ subroutine flxtrc( &
               fyy(ij, ku) = alf(ij, k) * syy(ij, k, n)
               fxy(ij, ku) = alf(ij, k) * sxy(ij, k, n)
              
+              ftz2(ij, k, n) =-f0(ij, ku) * tsiv / vlmz(ij)
               ftz (ij, k, n) = ftz(ij, k, n) &
                 &            - f0(ij, ku) * tsiv / vlmz(ij)
 
@@ -1698,12 +1880,36 @@ subroutine flxtrc( &
 
 !           tx(ij, k, n) = s0(ij, k, n) / sm(ij, k, n)
 
-               adt(ij, k, n) =                                       &
+           adt(ij, k, n) =                                       &
      &         (  (  (ftx(ij+le, k, n) - ftx(ij, k, n)) * rx         &
      &             + (fty(ij+ln, k, n) - fty(ij, k, n)) * ry(ij)) *  &
      &            rxt(ij) * ryt(ij)                                  &
      &          + ftz(ij, k, n) - ftz(ij, k+1, n)) / dz(ij, k)
 
+           adt2(ij, k, n) = &
+             & ( ( (ftx2(ij+le, k, n) - ftx2(ij, k,   n)) * rx &
+             &   + (fty2(ij+ln, k, n) - fty2(ij, k,   n)) * ry(ij)) * &
+             &      rxt(ij) * ryt(ij) &
+             &    + ftz2(ij,    k, n) - ftz2(ij, k+1, n)) / dz(ij, k)
+           adtd(ij, k, n) = &
+             & ( ( (ftxd(ij+le, k, n) - ftxd(ij, k,   n)) * rx &
+             &   + (ftyd(ij+ln, k, n) - ftyd(ij, k,   n)) * ry(ij)) * &
+             &      rxt(ij) * ryt(ij) &
+             &    + ftzd(ij,    k, n) - ftzd(ij, k+1, n)) / dz(ij, k)
+           adtah(ij, k, n) = &
+             & ( ( (ftxah(ij+le, k, n) - ftxah(ij, k,   n)) * rx &
+             &   + (ftyah(ij+ln, k, n) - ftyah(ij, k,   n)) * ry(ij)) * &
+             &      rxt(ij) * ryt(ij) ) / dz(ij, k)
+           adtgm(ij, k, n) = &
+             & ( ( (ftxgm(ij+le, k, n) - ftxgm(ij, k,   n)) * rx &
+             &   + (ftygm(ij+ln, k, n) - ftygm(ij, k,   n)) * ry(ij)) * &
+             &      rxt(ij) * ryt(ij) &
+             &    + ftzgm(ij,    k, n) - ftzgm(ij, k+1, n)) / dz(ij, k)
+           adtis(ij, k, n) = &
+             & ( ( (ftxis(ij+le, k, n) - ftxis(ij, k,   n)) * rx &
+             &   + (ftyis(ij+ln, k, n) - ftyis(ij, k,   n)) * ry(ij)) * &
+             &      rxt(ij) * ryt(ij) &
+             &    + ftzis(ij,    k, n) - ftzis(ij, k+1, n)) / dz(ij, k)
         end do
      end do
   end do
@@ -1713,6 +1919,10 @@ subroutine flxtrc( &
      do ij = ijtstr, ijtend
         k = nbot(ij)
         ftz(ij, kend, n) = ftz(ij, k, n)
+        ftz2 (ij, kend, n) = ftz2 (ij, k, n)
+        ftzd (ij, kend, n) = ftzd (ij, k, n)
+        ftzgm(ij, kend, n) = ftzgm(ij, k, n)
+        ftzis(ij, kend, n) = ftzis(ij, k, n)
      end do
   end do
 
@@ -1723,6 +1933,26 @@ subroutine flxtrc( &
              &   + (fty(ij+ln, kend, n) - fty(ij, kend, n)) * ry(ij)) * &
              &  rxt(ij) * ryt(ij) &
              & + ftz(ij, kend, n) ) / dz(ij, kend)
+        adt2(ij, kend, n) = &
+             & ( ( (ftx2(ij+le, kend, n) - ftx2(ij, kend, n)) * rx &
+             &   + (fty2(ij+ln, kend, n) - fty2(ij, kend, n)) * ry(ij)) * &
+             &  rxt(ij) * ryt(ij) &
+             & + ftz2(ij, kend, n) ) / dz(ij, kend)
+        adtd(ij, kend, n) = &
+             & ( ( (ftxd(ij+le, kend, n) - ftxd(ij, kend, n)) * rx &
+             &   + (ftyd(ij+ln, kend, n) - ftyd(ij, kend, n)) * ry(ij)) * &
+             &  rxt(ij) * ryt(ij) &
+             & + ftzd(ij, kend, n) ) / dz(ij, kend)
+        adtgm(ij, kend, n) = &
+             & ( ( (ftxgm(ij+le, kend, n) - ftxgm(ij, kend, n)) * rx &
+             &   + (ftygm(ij+ln, kend, n) - ftygm(ij, kend, n)) * ry(ij)) * &
+             &  rxt(ij) * ryt(ij) &
+             & + ftzgm(ij, kend, n) ) / dz(ij, kend)
+        adtis(ij, kend, n) = &
+             & ( ( (ftxis(ij+le, kend, n) - ftxis(ij, kend, n)) * rx &
+             &   + (ftyis(ij+ln, kend, n) - ftyis(ij, kend, n)) * ry(ij)) * &
+             &  rxt(ij) * ryt(ij) &
+             & + ftzis(ij, kend, n) ) / dz(ij, kend)
      end do
   end do
 #endif
@@ -1782,6 +2012,102 @@ subroutine flxtrc( &
   call shift1( sxz, nxdim, nydim, nztdim )
   call shift1( syz, nxdim, nydim, nztdim )
 #endif
+
+!---- for CMIP6 output
+  call chekin(  ublsx, 'UBOLUS', &
+  &            'G-M bolus velocity, x-dir.', 'cm/s', &
+  &                nx,     ny,     nz, nxyzdm, 'OCLVTT')
+  call chekin(  vblsy, 'VBOLUS', &
+  &            'G-M bolus velocity, y-dir.', 'cm/s', &
+  &                nx,     ny,     nz, nxyzdm, 'OCLVTT')
+
+  call chekin(ftxgm(1, 1, 1), 'FTXGM', &
+  &            'GM zonal heat flux', 'degC cm3/rad/s', &
+  &            nx, ny, nz, nxyzdm, 'OCLVTT')
+  call chekin(ftygm(1, 1, 1), 'FTYGM', &
+  &            'GM meridional heat flux', 'degC cm3/rad/s', &
+  &            nx, ny, nz, nxyzdm, 'OCLVTT')
+  call chekin(ftxis(1, 1, 1), 'FTXIS', &
+  &            'isopycnal zonal heat flux', 'degC cm3/rad/s', &
+  &            nx, ny, nz, nxyzdm, 'OCLVTT')
+  call chekin(ftyis(1, 1, 1), 'FTYIS', &
+  &            'isopycnal meridional heat flux','degC cm3/rad/s', &
+  &            nx, ny, nz, nxyzdm, 'OCLVTT')
+  call chekin(ftxgm(1, 1, 2), 'FSXGM', &
+  &            'GM zonal salt flux', 'psu cm3/rad/s', &
+  &            nx, ny, nz, nxyzdm, 'OCLVTT')
+  call chekin(ftygm(1, 1, 2), 'FSYGM', &
+  &            'GM meridional salt flux', 'psu cm3/rad/s', &
+  &            nx, ny, nz, nxyzdm, 'OCLVTT')
+  call chekin(ftxis(1, 1, 2), 'FSXIS', &
+  &            'isopycnal zonal salt flux', 'psu cm3/rad/s', &
+  &            nx, ny, nz, nxyzdm, 'OCLVTT')
+  call chekin(ftyis(1, 1, 2), 'FSYIS', &
+  &            'isopycnal meridional salt flux', 'psu cm3/rad/s', &
+  &            nx, ny, nz, nxyzdm, 'OCLVTT')
+  call chekin(ftx2(1, 1, 1), 'FTX2', &
+  &            'ocean zonal heat flux', 'degC cm3/rad/s', &
+  &            nx, ny, nz, nxyzdm, 'OCLVTT')
+  call chekin(fty2(1, 1, 1), 'FTY2', &
+  &            'ocean meridional heat flux', 'degC cm3/rad/s', &
+  &            nx, ny, nz, nxyzdm, 'OCLVTT')
+  call chekin(ftz2(1, 1, 1), 'FTZ2', &
+  &            'ocean vertical heat flux', 'degC cm3/rad/s', &
+  &            nx, ny, nz, nxyzdm, 'OCLVMT')
+  call chekin(ftx2(1, 1, 2), 'FSX2', &
+  &            'ocean zonal salt flux', 'psu cm3/rad/s', &
+  &            nx, ny, nz, nxyzdm, 'OCLVTT')
+  call chekin(fty2(1, 1, 2), 'FSY2', &
+  &            'ocean meridional salt flux', 'psu cm3/rad/s', &
+  &            nx, ny, nz, nxyzdm, 'OCLVTT')
+  call chekin(ftz2(1, 1, 2), 'FSZ2', &
+  &            'ocean vertical salt flux', 'psu cm3/rad/s', &
+  &            nx, ny, nz, nxyzdm, 'OCLVMT')
+
+  call chekin(adtah(1, 1, 1), 'DTDTAHH', &
+  &            'tendency of temp due to AHH', 'K/sec', &
+  &            nx, ny, nz, nxyzdm, 'OCLVTT')
+  call chekin(adtah(1, 1, 2), 'DSDTAHH', &
+  &            'tendency of salt due to AHH', 'psu/sec', &
+  &            nx, ny, nz, nxyzdm, 'OCLVTT')
+  
+  call chekin(adtgm(1, 1, 1), 'DTDTAHG', &
+  &            'tendency of temp due to GM', 'K/sec', &
+  &            nx, ny, nz, nxyzdm, 'OCLVTT')
+  call chekin(adtgm(1, 1, 2), 'DSDTAHG', &
+  &            'tendency of salt due to GM', 'psu/sec', &
+  &            nx, ny, nz, nxyzdm, 'OCLVTT')
+  call chekin(adtis(1, 1, 1), 'DTDTAHI', &
+  &           'tendency of temp due to isopycnal diff', 'K/sec', &
+  &            nx, ny, nz, nxyzdm, 'OCLVTT')
+  call chekin(adtis(1, 1, 2), 'DSDTAHI', &
+  &          'tendency of salt due to isopycnal diff', 'psu/sec', &
+  &            nx, ny, nz, nxyzdm, 'OCLVTT')
+
+  call chekin(adtd(1, 1, 1), 'DTDTD', &
+  &            'tendency of temp by diffusion', 'K/sec', &
+  &            nx, ny, nz, nxyzdm, 'OCLVTT')
+  call chekin(adtd(1, 1, 2), 'DSDTD', &
+  &            'tendency of salt by diffusion', 'psu/sec', &
+  &            nx, ny, nz, nxyzdm, 'OCLVTT')
+
+  do ij = ijtstr, ijtend
+     dh(ij) = hx(ij) - hz(ij)
+  end do
+  do n = 1, ntdim
+     do k = kstr, kstr+kz-1
+        do ij = ijtstr, ijtend
+           adt2(ij, k, n) = adt2(ij, k, n) &
+                &           - dh(ij) / zbot * tsiv * tx(ij, k, n)
+        end do
+     end do
+  end do
+  call chekin(adt2(1, 1, 1), 'DTDTV', &
+       &            'tendency of temp by advection', 'K/sec', &
+       &            nx, ny, nz, nxyzdm, 'OCLVTT')
+  call chekin(adt2(1, 1, 2), 'DSDTV', &
+       &            'tendency of salt by advection', 'psu/sec', &
+       &            nx, ny, nz, nxyzdm, 'OCLVTT')
 
   return
 
@@ -2114,7 +2440,7 @@ subroutine chkftx
      &            nx,     ny,     nz, nxyzdm, 'OCLVTT')
   call chekin(   ftz,  'FTZ', &
      &            'ocean vertical heat flux', 'degC cm/s', &
-     &            nx,     ny,     nz, nxyzdm, 'OCLVTT')
+     &            nx,     ny,     nz, nxyzdm, 'OCLVMT')
   call chekin(   ftx(1, 1, 2),  'FSX', &
      &            'ocean zonal salt flux', 'psu cm^3/rad/s', &
      &            nx,     ny,     nz, nxyzdm, 'OCLVTT')
@@ -2123,7 +2449,26 @@ subroutine chkftx
      &            nx,     ny,     nz, nxyzdm, 'OCLVTT')
   call chekin(   ftz(1, 1, 2),  'FSZ', &
      &            'ocean vertical salt flux', 'psu cm/s', &
+     &            nx,     ny,     nz, nxyzdm, 'OCLVMT')
+
+  call chekin(   ftxd,  'FTXD', &
+     &            'ocean zonal diffusive heat flux', 'degC cm^3/rad/s', &
      &            nx,     ny,     nz, nxyzdm, 'OCLVTT')
+  call chekin(   ftyd,  'FTYD', &
+     &            'ocean meridional diffusive heat flux', 'degC cm^3/rad/s', &
+     &            nx,     ny,     nz, nxyzdm, 'OCLVTT')
+  call chekin(   ftzd,  'FTZD', &
+     &            'ocean vertical diffusive heat flux', 'degC cm/s', &
+     &            nx,     ny,     nz, nxyzdm, 'OCLVMT')
+  call chekin(   ftxd(1, 1, 2),  'FSXD', &
+     &            'ocean zonal diffusive salt flux', 'psu cm^3/rad/s', &
+     &            nx,     ny,     nz, nxyzdm, 'OCLVTT')
+  call chekin(   ftyd(1, 1, 2),  'FSYD', &
+     &            'ocean meridional diffusive salt flux', 'psu cm^3/rad/s', &
+     &            nx,     ny,     nz, nxyzdm, 'OCLVTT')
+  call chekin(   ftzd(1, 1, 2),  'FSZD', &
+     &            'ocean vertical diffusive salt flux', 'psu cm/s', &
+     &            nx,     ny,     nz, nxyzdm, 'OCLVMT')
 
   return
 end subroutine chkftx
