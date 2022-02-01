@@ -2149,7 +2149,7 @@ NMMLEP:
 
 を設定してもよい。
 
-* tflxt.iso-som, tslvt.($MODEL).som
+* tflxt.iso-som
 トレーサーの拡散に等密度面拡散および Gent et al. (1995) による isopycnal
 layer thickness diffusion を、移流に second order moment scheme
 (Prather, 1988) を用いる。指定すべきパラメータは tflxt.iso-ut の
@@ -2216,17 +2216,18 @@ TKEMIN:
 TKE のバックグラウンド値。このルーチンで予報される TKE の最小値として
 用いられる。
 
-* dvdif.gls.ted
-dvdif.gls に加え、エネルギー散逸率の水平2次元分布と成層を考慮して
-鉛直拡散係数の3次元分布を計算して与える。エネルギー散逸率の分布は、
+dvdif.gls では、エネルギー散逸率の水平2次元分布と成層を考慮して
+鉛直拡散係数の3次元分布を計算して与えることもできる。エネルギー散逸率の分布は、
 潮汐モデル(e.g., Niwa and Hibiya 2014, OM)の計算結果などを基に別途
 用意する必要がある。
 
- &NMDVED IAM = 1, CFTEDN="TEDN", CFTEDF="TEDF", CGAMMA=0.2, ZETA=500.D0,
+ &NMDVED IAMN = 1, IAMF = 1, CFTEDN="TEDN", CFTEDF="TEDF", CGAMMA=0.2, ZETA=500.D0,
          OFVCNT = F, OFVPN = F &END
 
-IAM:
-0以外を指定した場合、エネルギー散逸率の2次元分布を適用する。
+IAMN:
+0以外を指定した場合、局所的なエネルギー散逸率の2次元分布を適用する。
+IAMF:
+0以外を指定した場合、遠隔的なエネルギー散逸率の2次元分布を適用する。
 CFTEDN:
 励起源付近での局所的なエネルギー散逸率の水平2次元分布のファイル名
 CFTEDF:
@@ -2280,9 +2281,9 @@ CSMB  :
 
 水平粘性係数の空間分布をファイルで与える。ファイルは海面境界条件と同形式だが、
 時間変動には対応していない（ヘッダとデータ 1 組のみが有効）。パラメータとして
-通常の &NMVISH の代わりに以下を指定する。
+以下を指定する。
 
- &NMVISH IAM=1, CFAMH='AMH' &END
+ &NMCVIS IAM=1, CFAMH='AMH' &END
 
 IAM:
 水平粘性係数をファイルから読む場合、1 を指定する。
@@ -2306,7 +2307,7 @@ ipthk.clat)をグリッド幅に比例して変化させる。
 
 ● tunnel diffusion
 
-* aprdc.($MODEL).tundif($TSTAG), tslvt.($MODEL).tundif
+* aprdc.($MODEL).tundf($TSTAG), tslvt.($MODEL).tundf
 
 tunnel diffusion とは、指定した 2 つのグリッド間でトレーサー及び
 海面高度を拡散的に交換するスキームのことである。通常は、解像度不足で

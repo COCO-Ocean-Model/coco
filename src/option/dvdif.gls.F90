@@ -158,20 +158,16 @@ subroutine vdiff( &
   real(8), save ::  alphci = 1.4d3,  atfilt = 0.0d0
   integer, save ::  nitr0 = 1,  mz = nz
   logical, save ::  osfcwv = .false.,  oswnoi = .false.,  obtkei = .false.
-  logical       ::  ovdfao = .false.
-  real(8), save ::  ahv0ao(nz) = 0.d0, corao
+
+  logical, save ::  ovdfao = .false.
+  real(8), save ::  ahv0ao(nz) = 0.d0
   integer, save ::  mzao = 0
+  real(8)       ::  corao
   
-!--- TED
   real(8), save ::  tedn2d(nxydim)
   real(8), save ::  tedf2d(nxydim)
-  real(8)       ::    gint(nxydim)
   real(8), save ::  tedn3d(nxydim, nzdim) = 0.d0
   real(8), save ::  tedf3d(nxydim, nzdim) = 0.d0
-  real(8)       ::  dzmsig(nxydim, nzdim)
-  real(8)       ::  ahvted(nxydim, nzdim)
-  real(8)       ::    tedr(nxydim, nzdim)
-  real(8)       ::  ahvraw(nxydim, nzdim)
   real(8), save ::  cgamma = 0.2d0,  ahvemx = 1000.0d0,  epst = 1.d-20
   real(8), save ::    zeta = 500.d0 ! [m]
   logical, save ::  ofvcnt = .false., ofvpn = .false. ! vert. prof of far-field mixing
@@ -179,8 +175,7 @@ subroutine vdiff( &
   ! ofvcnt = .false, ofvpn = .false. : prop. to N^2
   ! ofvcnt = .false, ofvpn = .true. : prop. to N
   real(8), save ::   rzeta ! [1/cm]
-  real(8)  ::     dep ! [cm]
-  integer  ::  iamn = 0, iamf = 0
+  integer, save ::  iamn = 0, iamf = 0
   character(len = ncf) ::  cftedn = 'not-specified'
   character(len = ncf) ::  cftedf = 'not-specified'
   character(len = 16)  ::  chead(1:64)
@@ -192,7 +187,9 @@ subroutine vdiff( &
   integer :: nfted
   real(8), allocatable :: buf2(:, :),  g2d(:, :)
 #endif
-!---
+  real(8)       ::  dzmsig(nxydim, nzdim),  gint(nxydim)
+  real(8)       ::  ahvted(nxydim, nzdim),  tedr(nxydim, nzdim)
+  real(8)       ::     dep ! [cm]
 
   namelist /nmvisv/ amv0
   namelist /nmdifv/ ahv0
@@ -208,9 +205,7 @@ subroutine vdiff( &
     &               osfcwv, cw, z0sfmn, alphch, oswnoi, alphci, &
     &               obtkei, atfilt
   namelist /nmdifvao/ ovdfao, ahv0ao, mzao
-!--- TED
   namelist /nmdved/ iamn, iamf, cftedn, cftedf, cgamma, ahvemx, epst, zeta, ofvcnt, ofvpn
-!---
  
   if (oinit) then
      do k = 1, nzdim
@@ -263,6 +258,10 @@ subroutine vdiff( &
      read (ifpar, nmdifvao, iostat=istat)
      call cstnml(jfpar, 'vdiff', 'nmdifvao', istat)
      write(jfpar, nmdifvao)
+     call rewnml(ifpar, jfpar)
+     read (ifpar, nmdved, iostat=istat)
+     call cstnml(jfpar, 'vdiff', 'nmdved', istat)
+     write(jfpar, nmdved)
 
      if (oeof) then
         do k = 1, nzdim
@@ -385,11 +384,7 @@ subroutine vdiff( &
         end do
      end if
 
-!--- TED
-     call rewnml(ifpar, jfpar)
-     read (ifpar, nmdved, iostat=istat)
-     call cstnml(jfpar, 'vdiff', 'nmdved', istat)
-     write(jfpar, nmdved)
+!---- applying turbulent energy dissipation rate
      do ij = 1, nxydim
         tedn2d(ij) = 0.d0
         tedf2d(ij) = 0.d0
@@ -397,7 +392,7 @@ subroutine vdiff( &
      if ( iamn == 0 ) then
         write(jfpar, *) ' Turbulent energy dissipation rate (near-field) is not used.'
      else
-!---- reading file of turbulent energy dissipation rate
+!---- reading file of near-field tidal energy dissipation rate
 #ifdef OPT_IO_COCOMPI
         call mpi_filopn(mpi_fh, cftedn, 'READ')
         disp=0
@@ -438,7 +433,7 @@ subroutine vdiff( &
            tedf2d(ij) = 0.d0
         end do
      else
-!---- reading file of turbulent energy dissipation rate
+!---- reading file of far-field tidal energy dissipation rate
 #ifdef OPT_IO_COCOMPI
         call mpi_filopn(mpi_fh, cftedf, 'READ')
         disp=0
@@ -1121,7 +1116,7 @@ subroutine vdiff( &
   end do
 
 
-!--- TED
+!--- tidal turbulent energy dissipation rate
 ! near-field
   if ( iamn /= 0 ) then
      do ij = ijstr, ijend
@@ -1142,7 +1137,7 @@ subroutine vdiff( &
         end do
      end do
   end if
-  ! far-field
+! far-field
   if ( iamf /= 0 ) then
      do ij = ijstr, ijend
         gint(ij) = 0.d0
@@ -1202,6 +1197,7 @@ subroutine vdiff( &
         end if
      end if
   end if
+
   do k = kstr+1, kend
      do ij = ijstr, ijend
         ahvted(ij, k) = cgamma * (tedn3d(ij, k) + tedf3d(ij, k)) &
@@ -1217,7 +1213,7 @@ subroutine vdiff( &
        &          'ahv by ted', 'cm^2/s', &
        &          nx,       ny,       nz,     nxyzdm, 'OCLVMT')
   call chekin(  tedr,   'TEDR', &
-       &         'realized tidal energy dissipation rate', 'cm^2/s^3', &
+       &         'realized energy dissipation rate', 'cm^2/s^3', &
        &          nx,       ny,       nz,     nxyzdm, 'OCLVMT')
   call chekin(tedn3d,   'TEDN', &
        &              'near-field tidal energy dissipation rate', 'cm^2/s^3', &
@@ -1225,7 +1221,7 @@ subroutine vdiff( &
   call chekin(tedf3d,   'TEDF', &
        &               'far-field tidal energy dissipation rate', 'cm^2/s^3', &
        &          nx,       ny,       nz,     nxyzdm, 'OCLVMT')
-!---
+
 
 #ifdef OPT_BBL
   call rmmskt
