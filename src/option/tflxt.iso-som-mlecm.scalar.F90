@@ -1833,6 +1833,8 @@ subroutine dnsgrd( &
   real(8) :: rmavdx(nxydim), rmavdy(nxydim)
   real(8) ::   muzx(nxydim, nzdim),   muzy(nxydim, nzdim)
 
+  real(8), save :: r2taum
+
   real(8) ::  xpsiy(nxydim, nzdim),  ypsix(nxydim, nzdim)
   real(8) ::  zpsix(nxydim, nzdim),  zpsiy(nxydim, nzdim)
   real(8) ::     hz(nxydim)
@@ -1848,21 +1850,21 @@ subroutine dnsgrd( &
 
   real(8) ::   muzh,  in2dz, n2min, n2l, hmldt
   real(8) :: rsigdf, rsigbt,  dhmld, cpsi
-  real(8) ::     pi,  omega, cormin
+  real(8) ::     pi,  omega
 
   real(8), save :: slpmax = 1.d-2
-  real(8), save ::  cm = 8.0d0,  ce = 0.06d0,  fminlt = 10.0d0
+  real(8), save ::  cm = 8.0d0,  ce = 0.06d0
   real(8), save ::  lfmin = 1.0d5,  taumle = 10.0d0,  vscl = 50.0d0
   real(8), save ::  drsig = 0.1d0
-  integer, save ::  mz = nz,  mzmin = 1
+  integer, save ::  mz = nz,  mzmin = 1,  kref = 1
   integer, save ::  nfltdm = 0,  nfltps = 0,  nfltrm = 0
   logical, save ::  ofltdm = .false.,  ofltps = .false.
   logical, save ::  ofltrm = .false.,  ocoamp = .true.
 
   namelist /nmslpm/ slpmax
-  namelist /nmmlep/ cm, ce, fminlt, mz, ofltdm, nfltdm, &
+  namelist /nmmlep/ cm, ce, mz, ofltdm, nfltdm, &
     &               lfmin, taumle, vscl, ofltps, nfltps, mzmin, &
-    &               drsig, ocoamp, ofltrm, nfltrm
+    &               drsig, ocoamp, ofltrm, nfltrm, kref
 
   if (ofirst) then
      ofirst = .false.
@@ -1888,60 +1890,33 @@ subroutine dnsgrd( &
 !        and is cancelled out by the row just before it. *** 
      pi = atan( 1.d0 )*4.d0
      omega = 2.d0 * pi / 86400.d0
-     cormin = 2.d0 * omega * sin( pi*abs(fminlt)/180.d0 )
+     r2taum = 1.0d0 / (8.64d4 * taumle)**2.0d0
      kzmin = mzmin + kstr - 1
 
      do ij = nxdim+2, nxydim
+        cxpsy(ij) = ce &
+          &       / sqrt( (0.5d0*(cor(ij+lsw)+cor(ij+lw)))**2.0d0 &
+          &               + r2taum )
+        cypsx(ij) = ce &
+          &       / sqrt( (0.5d0*(cor(ij+lsw)+cor(ij+ls)))**2.0d0 &
+          &               + r2taum )
+        czpsy(ij) = ce &
+          &       / sqrt( ( 0.25d0* &
+          &                 ( cor(ij    ) + cor(ij+lw ) &
+          &                 + cor(ij+ls ) + cor(ij+lsw)))**2.0d0 &
+          &               + r2taum )
+        czpsx(ij) = ce &
+          &       / sqrt( ( 0.25d0* &
+          &                 ( cor(ij    ) + cor(ij+lw ) &
+          &                 + cor(ij+ls ) + cor(ij+lsw)))**2.0d0 &
+          &               + r2taum )
         if (ocoamp) then
-           cxpsy(ij) = ce &
-             &       / sqrt( &
-             &         max( abs(0.5d0*(cor(ij+lsw) + cor(ij+lw))), &
-             &              cormin )**2.0d0 &
-             &         + 1.0d0 / (8.64d4 * taumle)**2.0d0 ) &
-             &       * dx * 0.5d0 * (hxt(ij) + hxt(ij+lw))
-           cypsx(ij) = ce &
-             &       / sqrt( &
-             &         max( abs(0.5d0*(cor(ij+lsw) + cor(ij+ls))), &
-             &              cormin )**2.0d0 &
-             &         + 1.0d0 / (8.64d4 * taumle)**2.0d0 ) &
-             &       * dym(ij+ls) * 0.5d0 * (hyt(ij) + hyt(ij+ls))        
-           czpsy(ij) = ce &
-             &       / sqrt( &
-             &         max( abs(0.25d0* &
-             &              ( cor(ij    ) + cor(ij+lw ) &
-             &              + cor(ij+ls ) + cor(ij+lsw))), cormin ) &
-             &                                              **2.0d0 &
-             &         + 1.0d0 / (8.64d4 * taumle)**2.0d0 ) &
-             &         * dx * hxt(ij)
-           czpsx(ij) = ce &
-             &       / sqrt( &
-             &         max( abs(0.25d0* &
-             &              ( cor(ij    ) + cor(ij+lw ) &
-             &              + cor(ij+ls ) + cor(ij+lsw))), cormin ) &
-             &                                              **2.0d0 &
-             &         + 1.0d0 / (8.64d4 * taumle)**2.0d0 ) &
-             &         * dy(ij) * hyt(ij)
-        else
-           cxpsy(ij) = ce &
-             &       / sqrt( &
-             &         max( abs(0.5d0*(cor(ij+lsw) + cor(ij+lw))), &
-             &              cormin )**2.0d0 )
-           cypsx(ij) = ce &
-             &       / sqrt( &
-             &         max( abs(0.5d0*(cor(ij+lsw) + cor(ij+ls))), &
-             &              cormin )**2.0d0 )
-           czpsy(ij) = ce &
-             &       / sqrt( &
-             &         max( abs(0.25d0* &
-             &              ( cor(ij    ) + cor(ij+lw ) &
-             &              + cor(ij+ls ) + cor(ij+lsw))), cormin ) &
-             &                                              **2.0d0 )
-           czpsx(ij) = ce &
-             &       / sqrt( &
-             &         max( abs(0.25d0* &
-             &              ( cor(ij    ) + cor(ij+lw ) &
-             &              + cor(ij+ls ) + cor(ij+lsw))), cormin ) &
-             &                                              **2.0d0 )
+           cxpsy(ij) = cxpsy(ij) &
+          &          * dx * 0.5d0 * (hxt(ij) + hxt(ij+lw))
+           cypsx(ij) = cypsx(ij) &
+          &          * dym(ij+ls) * 0.5d0 * (hyt(ij) + hyt(ij+ls))        
+           czpsy(ij) = czpsy(ij) * dx * hxt(ij)
+           czpsx(ij) = czpsx(ij) * dy(ij) * hyt(ij)        
         end if
      end do
   end if
@@ -2135,13 +2110,23 @@ subroutine dnsgrd( &
 
 ! determine HMLD by sigma_theta
   do ij = 1, nxydim
-     hmld(ij) = ztm(ij, kstr)
-     zhmld(ij, kstr) = ztm(ij, kstr)
-     kmld(ij) = kstr
-     rmavez(ij) = rsigth(ij, kstr) * ztm(ij, kstr)
-     rsigbt = rsigth(ij, kstr) + drsig
+     rmavez(ij) = rsigth(ij, kstr) * 0.5d0 * dzsig(ij, kstr)
+  end do
+  do k = kstr+1, kref+kstr-1
+     do ij = 1, nxydim
+        rmavez(ij) = rmavez(ij) + 0.5d0 * &
+        &             ( rsigth(ij, k-1) * dzsig(ij, k-1) &
+        &             + rsigth(ij, k  ) * dzsig(ij, k  ) )
+     end do
+  end do
+
+  do ij = 1, nxydim
+     hmld(ij) = ztm(ij, kref+kstr-1)
+     zhmld(ij, kstr) = ztm(ij, kref+kstr-1)
+     kmld(ij) = kref+kstr-1
+     rsigbt = rsigth(ij, kref+kstr-1) + drsig
      rsigdf = 0.d0
-     do k = kstr+1, min(nbot(ij), mz+kstr-1)
+     do k = kstr+kref, min(nbot(ij), mz+kstr-1)
         if ( rsigth(ij, k) .ge. rsigbt ) then
            dhmld = dzmsig(ij, k) * (rsigbt - rsigth(ij, k-1)) &
              &   / (rsigth(ij, k) - rsigth(ij, k-1))
@@ -2172,9 +2157,12 @@ subroutine dnsgrd( &
 
   do ij = ijtstr-nxdim, ijtend+nxdim
      if (ocoamp) then
-        lf(ij) = max(4.0d0*nbv(ij)*hmld(ij)/ &
-          &          max( abs( cor(ij   ) + cor(ij+lw ) &
-          &                  + cor(ij+ls) + cor(ij+lsw) ), eps), lfmin)
+        lf(ij) = max( &
+          &          nbv(ij) * hmld(ij) / &
+          &          sqrt((0.25d0*(cor(ij   )+cor(ij+lw ) &
+          &                       +cor(ij+ls)+cor(ij+lsw)))**2.0d0 &
+          &               + r2taum ), &
+          &          lfmin)
      else
         lf(ij) = 1.0d0
      end if
