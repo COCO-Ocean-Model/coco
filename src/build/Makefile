@@ -1,100 +1,104 @@
 include ../Mkinclude
 include $(OGCMDIR)/src/Sysdep.$(SYSTEM)
 
-OBJS.coco	= \
-          ufile.o \
-          ucaln.o \
-          bgs2d.o \
-          bgs3d.o \
-          bshft.o \
-          bshfi.o \
-          packgt3.o \
-          qckot.o \
-          qckag.o \
-          bstbc.o \
-          utrdg.o \
-          utint.o \
-          xprst.o \
-          atmct.o \
-          bchmk.o \
-          brdge.o \
-          brstt.o \
-          cadvc.o \
-          csrvl.o \
-          ctnuv.o \
-          cvisc.o \
-          cvlrd.o \
-          dvdif.o \
-          dvlta.o \
-          dvlva.o \
-          dwdns.o \
-          fbtav.o \
-          fshdf.o \
-          fshlw.o \
-          tovtr.o \
-          ucloc.o \
-          bfrch.o \
-          sfcng.o \
-          tflxt.o \
-          tslvt.o \
-          binst.o \
-          aprdc.o \
-          aocea.o 
+DIRETC = ../etc
 
-OBJS.icedcoco	= \
-          ufile.o \
-          mpiio.o \
-          ucaln.o \
-          bgs2d.o \
-          bgs3d.o \
-          bshft.o \
-          bshfi.o \
-          packgt3.o \
-          qckot.o \
-          qckag.o \
-          utrdg.o \
-          utint.o \
-          xprst.o \
-          atmct.o \
-          bchmk.o \
-          bgsid.o \
-          brdge.o \
-          brstt.o \
-          cadvc.o \
-          csrvl.o \
-          ctnuv.o \
-          cvisc.o \
-          cvlrd.o \
-          dvdif.o \
-          dvlta.o \
-          dvlva.o \
-          dwdns.o \
-          fbtav.o \
-          fshdf.o \
-          fshlw.o \
-          tovtr.o \
-          ucloc.o \
-          bfrch.o \
-          bstbc.o \
-          ictrn.o \
-          ifhea.o \
-          ifwtr.o \
-          ipadv.o \
-          ipmmt.o \
-          iprdg.o \
-          iptmp.o \
-          ipthm.o \
-          iprdc.o \
-          sfcng.o \
-          tflxt.o \
-          tslvt.o \
-          binst.o \
-          aprdc.o \
-          aocea.o 
+SRCS_SHARED = \
+	atmct$(TSTAG).F90 \
+	bchmk.F90 \
+	bgs2d.F90 \
+	bgs3d$(MPI).F90 \
+	brdge$(MPI).F90 \
+	bshfi.F90 \
+	bshft.F90 \
+	cadvc$(TSTAG).F90 \
+	csrvl.F90 \
+	ctnuv$(TSTAG).F90 \
+	cvisc.F90 \
+	cvlrd.F90 \
+	dvdif.F90 \
+	dvlta.F90 \
+	dvlva.F90 \
+	dwdns.F90 \
+	fbtav.F90 \
+	fshdf.F90 \
+	fshlw.F90 \
+	mpiio.F90 \
+	packgt3.F \
+	qckag.F90 \
+	qckot$(MPI).F90 \
+	tflxt.F90 \
+	tovtr.F90 \
+	ucaln.F90 \
+	ucloc.$(SYSTEM).F90 \
+	ufile.F90 \
+	utrdg.F90 \
+	xprst.F90
 
-$(LIBOGCM):$(OBJS.$(MODEL))
-	$(AR) $(LIBOGCM) $(OBJS.$(MODEL))
+SRCS_coco = \
+	aocea.F90 \
+	aprdc$(TSTAG).F90 \
+	bfrch.F90 \
+	binst.F90 \
+	brstt.F90 \
+	bstbc.F90 \
+	sfcng.F90 \
+	tslvt.F90 \
+	utint.F90
+
+SRCS_icedcoco = \
+	aocea.F90 \
+	aprdc$(TSTAG).F90 \
+	bfrch.F90 \
+	bgsid$(MPI).F90 \
+	binst.F90 \
+	brstt$(MPI).F90 \
+	bstbc.F90 \
+	ictrn.F90 \
+	ifhea.F90 \
+	ifwtr.F90 \
+	ipadv.F90 \
+	ipmmt.F90 \
+	iprdc$(TSTAG).F90 \
+	iprdg.F90 \
+	ipthm.F90 \
+	iptmp.F90 \
+	sfcng.F90 \
+	tslvt.F90 \
+	utint$(MPI).F90
+
+## Options
+SRCS_OPTION	= $(SRCOPT:%=%.F90)
+SRCS_ENSTR	= $(SRCENS:%=%.F90)
+
+## Sorted by lowest priority.
+SRCS	= \
+	$(SRCS_SHARED) \
+	$(SRCS_$(MODEL)) \
+	$(SRCS_ENSTR) \
+	$(SRCS_OPTION)
+
+DEPENDENCY	= makefile.dep
+
+all: lib
+
+lib: $(shell cat OBJLIST)
+	$(AR) $(LIBOGCM) $(shell cat OBJLIST)
 	$(RANLIB) $(LIBOGCM)
 
+.PHONY: FORCE
+OBJLIST: FORCE
+	-@$(RM) *.F90
+	@sh $(DIRETC)/fetch.sh ../shared $(SRCS_SHARED)
+	@sh $(DIRETC)/fetch.sh ../depend.$(MODEL) $(SRCS_$(MODEL))
+	@sh $(DIRETC)/fetch.sh ../enstr $(SRCS_ENSTR)
+	@sh $(DIRETC)/fetch.sh ../option $(SRCS_OPTION)
+	@python3 $(DIRETC)/print_uniq_objs.py $(SRCS) > OBJLIST
+	@python2 $(DIRETC)/fort_depend.py -w -o $(DEPENDENCY) \
+		-f `cat OBJLIST | $(DIRETC)/srclist.sh` > /dev/null
+
 clean:
-	$(RM) *~ *.F90 *.F *.o *.mod *.trace *.cpp core
+	$(RM) *~ *.F90 *.F *.o *.mod *.trace *.cpp core OBJLIST $(DEPENDENCY)
+
+##
+-include $(DEPENDENCY)
