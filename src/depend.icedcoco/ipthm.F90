@@ -754,8 +754,8 @@ subroutine ptherm( &
   do ij = ijtstr, ijtend
      danew = ax(ij, 1)
      ax(ij, 1) = axhix(ij, 1) / hix(ij, 1)
-!     ax1max = az(ij, 0) + az(ij, 1)
-     ax1max = az(ij, 0) + az(ij, 1) + da(ij, 0) + da(ij, 1) 
+     ax1max = az(ij, 0) + az(ij, 1)
+!     ax1max = az(ij, 0) + az(ij, 1) + da(ij, 0) + da(ij, 1) 
      if (ax(ij, 1) .gt. ax1max) then
         danew = ax1max - danew
         ax(ij, 1) = ax1max
