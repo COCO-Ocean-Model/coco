@@ -24,7 +24,7 @@ module tflxt
     & nxgdim, nygdim, &
     &   kstr,   kend,     kz, &
     &     nx,     ny,     nz,    nxg,    nyg, &
-    & ijtstr, ijtend, &
+    & ijtstr, ijtend,  ijstr,  ijend, &
     &  igstr,  jgstr, &
     &     le,     lw,     ln,     ls, &
     &    lsw, &
@@ -34,7 +34,8 @@ module tflxt
     &     dy,    dym,     dz,    dz0,    dzm,    dzv,     ds,    dsm, &
     &     dx,     rx,     ry,    rym, &
     &     ts,   zbot, &
-    &    hxt,    hxu,    hyt,    hyu,    rxt,    ryt
+    &    hxt,    hxu,    hyt,    hyu,    rxt,    ryt, &
+    &    cor
   use zocmsk, only: &
 #ifdef OPT_BBL
     & amsktb, &
@@ -207,6 +208,17 @@ subroutine flxtrc( &
   real(8) :: ss, d1, d2
   integer :: l, ll(nxydim, nzdim)
 
+!---- latitudinally varying GM diffusivity
+  integer :: isvgm = -1
+  real(8), save ::  ahgno = 1.d7, nlats =  40.d0, nlatn =  50.d0
+  real(8), save ::  ahgso = 1.d7, slatn = -40.d0, slats = -50.d0
+  real(8) :: pi, lat
+  real(8) :: cort, omega
+  
+  namelist /nmsvgm/ isvgm
+  namelist /nmdifn/ ahgno, nlats, nlatn
+  namelist /nmdifs/ ahgso, slatn, slats
+
   if (oinit) then
      do n = 1, ntdim
 #ifdef OPT_TRIPOLE
@@ -352,6 +364,19 @@ subroutine flxtrc( &
      call cstnml(jfpar, 'flxtrc', 'nmcah', istat)
      write(jfpar, nmcah)
 
+     call rewnml(ifpar, jfpar)
+     read(ifpar, nmsvgm, iostat=istat)
+     call cstnml(jfpar, 'flxtrc', 'nmsvgm', istat)
+     write(jfpar, nmsvgm)
+     call rewnml(ifpar, jfpar)
+     read(ifpar, nmdifn, iostat=istat)
+     call cstnml(jfpar, 'flxtrc', 'nmdifn', istat)
+     write(jfpar, nmdifn)
+     call rewnml(ifpar, jfpar)
+     read(ifpar, nmdifs, iostat=istat)
+     call cstnml(jfpar, 'flxtrc', 'nmdifs', istat)
+     write(jfpar, nmdifs)
+
      if ( iah .eq. 0 ) then
 
         write(jfpar, *) 'Background horizontal diffusion :', ahh
@@ -366,6 +391,30 @@ subroutine flxtrc( &
            end do
         end do
 
+        if ( isvgm > 0 ) then
+        
+           write(jfpar, *) 'latitudinally varying GM diffusivity is used.'
+           pi = atan( 1.d0 )*4.d0
+           omega = 2.d0 * pi / 86400.d0
+           do ij = ijstr, ijend
+              cort = (cor(ij) + cor(ij+lw) + cor(ij+lsw) + cor(ij+ls)) * 0.25d0
+              lat = asin( cort * 0.5d0 * omega ) * 180.d0 / pi
+              if (lat .ge. slatn .and. lat .le. nlats) then
+                 ahg3d(ij, :) = ahg
+              else if (lat .ge. slats .and. lat .lt. slatn) then
+                 ahg3d(ij, :) = (ahgso * (slatn - lat) + &
+                      &            ahg * (lat - slats)) / (slatn - slats)
+              else if (lat .gt. nlats .and. lat .le. nlatn) then
+                 ahg3d(ij, :) = (ahgno * (lat - nlats) + &
+                      &            ahg * (nlatn - lat)) / (nlatn - nlats)
+              else if (lat .le. slats) then
+                 ahg3d(ij, :) = ahgso
+              else
+                 ahg3d(ij, :) = ahgno
+              endif
+           end do
+        end if
+        
      else
 
         do k = 1, nzdim

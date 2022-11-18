@@ -24,6 +24,7 @@ module tflxt
     &   kstr,   kend,     kz, &
     &     nx,     ny,     nz,    nxg,    nyg, &
     & ijtstr, ijtend, &
+    &  ijstr,  ijend, &
     &  igstr,  jgstr, &
     &     le,     lw,     ln,     ls, &
     &    lsw, &
@@ -33,6 +34,7 @@ module tflxt
     &     dy,    dym,     dz,    dz0,    dzm,    dzv,     ds,    dsm, &
     &     dx,     rx,     ry,    rym, &
     &     ts,   zbot, &
+    &    cor, &
     &    hxt,    hxu,    hyt,    hyu,    rxt,    ryt
   use zocmsk, only: &
 #ifdef OPT_BBL
@@ -182,13 +184,13 @@ subroutine flxtrc( &
   integer :: nfahi, nfahg
   namelist /nmcah/ cfahi, cfahg, iah
 
+!---- latitudinally varying GM diffusivity
   integer, save ::  isvgm = -1
   real(8), save ::  ahgno = 1.d7, nlats =  40.d0, nlatn =  50.d0
   real(8), save ::  ahgso = 1.d7, slatn = -40.d0, slats = -50.d0
   real(8) :: pi, lat
-#ifndef OPT_EXMASK
   real(8) :: cort, omega
-#endif
+
   namelist /nmsvgm/ isvgm
   namelist /nmdifn/ ahgno, nlats, nlatn
   namelist /nmdifs/ ahgso, slatn, slats
@@ -397,25 +399,19 @@ subroutine flxtrc( &
         if ( isvgm > 0 ) then
            write(jfpar, *) 'latitudinally varying GM diffusivity is used.'
            pi = atan( 1.d0 )*4.d0
-#ifndef OPT_EXMASK
            omega = 2.d0 * pi / 86400.d0
-#endif
            do ij = ijstr, ijend
-#ifdef OPT_EXMASK
-              lat = glatt(ij) * 180.d0 / pi
-#else
               cort = (cor(ij) + cor(ij+lw) + cor(ij+lsw) + cor(ij+ls)) * 0.25d0
               lat = asin( cort * 0.5d0 * omega ) * 180.d0 / pi
-#endif
-              if(lat .ge. slatn .and. lat .le. nlats) then
+              if (lat .ge. slatn .and. lat .le. nlats) then
                  ahg3d(ij, :) = ahg
-              elseif(lat .ge. slats .and. lat .lt. slatn) then
+              else if (lat .ge. slats .and. lat .lt. slatn) then
                  ahg3d(ij, :) = (ahgso * (slatn - lat) + &
                       &            ahg * (lat - slats)) / (slatn - slats)
-              elseif(lat .gt. nlats .and. lat .le. nlatn) then
+              else if (lat .gt. nlats .and. lat .le. nlatn) then
                  ahg3d(ij, :) = (ahgno * (lat - nlats) + &
                       &            ahg * (nlatn - lat)) / (nlatn - nlats)
-              elseif(lat .le. slats) then
+              else if (lat .le. slats) then
                  ahg3d(ij, :) = ahgso
               else
                  ahg3d(ij, :) = ahgno
