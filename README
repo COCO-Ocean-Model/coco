@@ -1755,6 +1755,14 @@ IDATE1 に対応し、ファイルの先頭が IDATE2 に対応するように�
 
 も標準的に出力することができる。
 
+移流に second order moment scheme (Prather, 1988) を用いている場合
+(tflxt.iso-som、tflxt.iso-som-mlecm など)、以下も出力可能である。
+
+・移流による水温の時間変化項 (DTDTV)
+・移流による塩分の時間変化項 (DSDTV)
+・拡散による水温の時間変化項 (DTDTD)
+・拡散による塩分の時間変化項 (DSDTD)
+
 トレーサー（温度・塩分を含む）の水平フラックスは、「速度×トレーサー濃
 度」に対してさらに「鉛直グリッド幅」と「フラックスに直交する方向の計量」
 がかけられた形で出力される。次元は「長さの 3 乗÷時間×トレーサー濃度」
@@ -1766,7 +1774,9 @@ IDATE1 に対応し、ファイルの先頭が IDATE2 に対応するように�
 よく、計量をあらためて乗じてはいけない。また、トレーサーの水平フラックス
 を鉛直積分する場合には、各グリッドでの値を単純に加えていくだけでよい。ト
 レーサーの鉛直フラックスにはグリッド幅や計量はかけられておらず、次元は
-「速度×トレーサー濃度」である。
+「速度×トレーサー濃度」である。海氷および海氷上雪のフラックスについても、
+ラジアンで表されたグリッド幅を乗じればフラックスと直交する水平方向の積分
+を求められる。
 
 速度の鉛直成分について、W は sigma, z それぞれの鉛直座標で定義されたもの
 で次元が異なる。WZC は sigma 座標の範囲においても「長さ／時間」の次元を
@@ -2144,11 +2154,17 @@ AHB:
 UTOPIA/QUICKEST (水平 2 次元に関して UTOPIA, 鉛直に関して QUICKEST) 
 を適用する。指定すべきパラメータは上二項を参照のこと。
 
-* tflxt.iso-ut-mlecm
+* tflxt.iso-som
+トレーサーの拡散に等密度面拡散および Gent et al. (1995) による isopycnal
+layer thickness diffusion を、移流に second order moment scheme
+(Prather, 1988) を用いる。指定すべきパラメータは tflxt.iso-ut の
+項を参照のこと
 
-tflxt.iso-ut で用いられる全てのスキームに加えて、Fox-Kemper et al. 
-(2008) の mixed layer eddy parameterization を適用する。実装は
-Fox-Kemper et al. (2011) の coarse resolution model への修正を
+* tflxt.iso-ut-mlecm, tflxt.iso-som-mlecm
+
+tflxt.iso-ut または tflxt.iso-som で用いられる全てのスキームに加えて、
+Fox-Kemper et al. (2008) の mixed layer eddy parameterization を適用する。
+実装は Fox-Kemper et al. (2011) の coarse resolution model への修正を
 含んでいる（この修正を含んでいても、高解像度設定でも問題なく使用できる）。
 指定できるパラメータはいろいろあるが、通常はデフォルト値でよい。ただし
 後述の鉛直混合層スキームの設定と対応させる形で
@@ -2159,12 +2175,6 @@ NMMLEP:
   mixed layer eddy parameterization を適用する最深の level
 
 を設定してもよい。
-
-* tflxt.iso-som
-トレーサーの拡散に等密度面拡散および Gent et al. (1995) による isopycnal
-layer thickness diffusion を、移流に second order moment scheme
-(Prather, 1988) を用いる。指定すべきパラメータは tflxt.iso-ut の
-項を参照のこと。
 
 ● 鉛直混合／鉛直対流
 
