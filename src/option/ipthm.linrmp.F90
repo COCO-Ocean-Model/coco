@@ -233,12 +233,6 @@ subroutine ptherm( &
 
   real(8), save ::    eps = 1.0d-3,   epsl = 1.0d-6
 
-  real(8), save ::  amin = 1.0d-6,  amax = 1.0d0,  si = 5.0d0
-  integer, save ::  mic = nic
-
-  namelist /nmamin/ amin, amax, mic
-  namelist /nmislt/ si
-
   if (oinit .or. ofinal) then
      return
   end if
