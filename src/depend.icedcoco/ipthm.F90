@@ -360,7 +360,7 @@ subroutine ptherm( &
         end if
         axhsxn(ij, k) = ax(ij, k) * hsx(ij, k) * amskt(ij, kstr)
         imrsno(ij) = imrsno(ij) - &
-          &          ( axhsxn(ij, k) - axhsx(ij, k) )
+          &          ( axhsxn(ij, k) - axhsx(ij, k) ) * rhos
         impinc(ij, k) = impinc(ij, k) - rmpcc(ij) * rhos * &
           &          min((axhsxn(ij, k) - axhsx(ij, k)), 0.0d0)
      end do
@@ -426,7 +426,6 @@ subroutine ptherm( &
               daxhib(ij, k) = &
                 &   - daxhib(ij, k) / ei(tix(ij, k), si)
            end if
-           daxhib(ij, k) = - daxhib(ij, k) / ei(tix(ij, k), si)
            ax(ij, k) = 0.d0
            hix(ij, k) = hic(k)
            hsx(ij, k) = 0.d0
