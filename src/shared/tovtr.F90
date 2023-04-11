@@ -55,6 +55,8 @@ module tovtr
   namelist /nmacct/ gamma
   namelist /nmmldt/ bcrit, kref
 
+  real(8), save :: ftzov(nxydim, nzdim, ntdim) = 0.d0
+
   public :: ovtset, ovturn, ddenst
 
 contains 
@@ -150,6 +152,7 @@ end subroutine ovtset
 subroutine ovturn( &
   &      r,      t,      h )
   use qckot
+  use zocgrd, only : ts
 
   real(8), intent(out)    ::       r(nxydim, nzdim)
   real(8), intent(inout)  ::       t(nxydim, nzdim, ntdim)
@@ -169,6 +172,8 @@ subroutine ovturn( &
   real(8) ::     p1,     p2
   integer ::     ij,      k,     kk,      n
   logical :: obtmld
+
+  real(8), save :: to(nxydim, nzdim, ntdim)
 
 ! common /work/ ttl, w2, conv, dzsig, lup
 
@@ -260,6 +265,14 @@ subroutine ovturn( &
      end do
   end do
 
+  do n = 1, 2
+     do k = kstr, kend
+        do ij = ijtstr, ijtend
+           to(ij, k, n) = t(ij, k, n)
+        end do
+     end do
+  end do
+  
   do ij = ijtstr, ijtend
      do k = kstr+1, nbot(ij)
         tu = t(ij, k-1, 1)
@@ -304,6 +317,14 @@ subroutine ovturn( &
      end do
   end do
 
+  do n = 1, ntdim
+     do ij = ijtstr, ijtend
+        do k = kstr+1, nbot(ij)
+           ftzov(ij, k, n) = ftzov(ij, k-1, n) + dzsig(ij, k) * (t(ij, k, n) - to(ij, k, n)) / ts
+        end do
+     end do
+  end do
+ 
 ! do k = kstr, kend
   k = kstr
   do ij = ijtstr, ijtend
@@ -387,6 +408,12 @@ subroutine ovturn( &
   call chekin(cnvdep, 'CNVDEP', &
     &            'ocean conv. depth', 'cm', &
     &            nx,     ny,      1, nxydim, 'OCSFCT')
+  call chekin( ftzov,  'FTZOV', &
+    &            'vertical temperature flux by convection', 'K cm/s', &
+    &            nx,     ny,     nz, nxyzdm, 'OCLVMT')
+  call chekin( ftzov(:,:,2),  'FSZOV', &
+    &            'vertical salinity flux by convection', 'psu cm/s', &
+    &            nx,     ny,     nz, nxyzdm, 'OCLVMT')
 
   return
 
