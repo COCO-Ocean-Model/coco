@@ -1767,6 +1767,19 @@ IDATE1 に対応し、ファイルの先頭が IDATE2 に対応するように�
 BCRIT: 混合層深度を定義する密度差 [kg/m^3]
 KREF: 密度を計算する基準の深さ (鉛直グリッド番号)
 
+海面境界条件として JRA55-do を用いる場合 (sfcng.JRA.direct, utint.JRA.direct)、
+以下も出力可能である。 単位はいずれも erg/s/cm^2。基本的に上向きが正、
+ただし下向き短波・長波フラックスは下向きが正である。
+
+・上向き短波フラックス (SWUPWG)
+・下向き短波フラックス (SWDNWG)
+・上向き長波フラックス (LWUPWG)
+・下向き長波フラックス (LWDNWG)
+・正味短波フラックス (SWNETG)
+・正味長波フラックス (LWNETG)
+・顕熱フラックス (SENFXG)
+・潜熱フラックス (LATFXG)
+
 移流に second order moment scheme (Prather, 1988) を用いている場合
 (tflxt.iso-som、tflxt.iso-som-mlecm など)、以下も出力可能である。
 
