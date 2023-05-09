@@ -404,7 +404,7 @@ subroutine flxtrc( &
            omega = 2.d0 * pi / 86400.d0
            do ij = ijstr, ijend
               cort = (cor(ij) + cor(ij+lw) + cor(ij+lsw) + cor(ij+ls)) * 0.25d0
-              lat = asin( cort * 0.5d0 * omega ) * 180.d0 / pi
+              lat = asin( cort * 0.5d0 / omega ) * 180.d0 / pi
               if (lat .ge. slatn .and. lat .le. nlats) then
                  ahg3d(ij, :) = ahg
               else if (lat .ge. slats .and. lat .lt. slatn) then
