@@ -25,6 +25,8 @@ program icedcoco
     & ofinal,  oinit
   use zocfil, only: &
     & nfstdo, nfomax,    ncf
+  use zocout, only: &
+    & loglev
   
   use aocea
   use atmct
@@ -33,6 +35,10 @@ program icedcoco
   use ucloc
   use ufile
 
+#ifdef OPT_TOUZA
+  use TOUZA_Std_log, only: msg
+#endif
+  
   implicit none
 
 #include "mpif.h"
@@ -67,12 +73,14 @@ program icedcoco
   integer ::    ijk
   integer ::  ifpar,  jfpar,  istat
   integer :: lenstd
+  integer :: idate(6)
 
   character(len=ncf) :: crun = '(RUN NAME WAS NOT SET)'
   character(len=ncf) :: cstdo = 'STDOUT'
 
   namelist /nmrun/ crun
   namelist /nmstdo/ cstdo
+  namelist /nmlog/ loglev
 
 ! *** Initial setup ***
 
@@ -98,6 +106,10 @@ program icedcoco
   call cstnml(jfpar, 'icedcoco', 'nmrun', istat)
 !  write(jfpar, nmrun)
   write(nfstdo, *) 'Run name :'//crun
+
+  call rewnml(ifpar, jfpar)
+  read (ifpar, nmlog, iostat=istat)
+  write(nfstdo, '(a,i2)') ' log level : ', loglev
 
   ofinal = .false.
   oinit = .false.
@@ -143,6 +155,16 @@ program icedcoco
     &              ab,    hib,    uib,    vib,    tib,    hsb )
   call clcend('SETUP')
 
+  if (loglev > 0) then
+     call rewnml(ifpar,jfpar)
+#ifdef OPT_TOUZA
+     call msg(' *** setup has been finished and main loop is started *** ','',jfpar)
+#else
+     write(jfpar,'(A)') ' *** setup has been finished and main loop is started *** '
+     call flush(jfpar)
+#endif
+  end if
+  
 ! *** Main loop ***
 
   call clcstr('MAIN')
@@ -151,11 +173,27 @@ program icedcoco
   do
      tt = tt + dt
      nt = nt + 1
+     if (loglev > 1) then
+        call css2yh(idate, tt)
+        call rewnml(ifpar,jfpar)
+        write(jfpar,'(A,I6,5(1X,I2.2))') ' *** time ***:', idate
+        call flush(jfpar)
+     end if
+     if (nt == 1 .and. loglev > 0) then
+        call rewnml(ifpar,jfpar)
+        write(jfpar, '(A)') ' *** subroutine "tmstpc" is started in first step ***'
+        call flush(jfpar)
+     end if
      call tmstpc( &
        &            itst,     ts,    its, &
        &            ntss,    tss, &
        &          oflout, oflstk, orsout, orsrwd, &
        &              nt,     tt )
+     if (nt == 1 .and. loglev > 0) then
+        call rewnml(ifpar,jfpar)
+        write(jfpar, '(A)') ' *** subroutine "tmstpc" has been finished and subroutine "ocean" is started in first step ***'
+        call flush(jfpar)
+     end if
      call ocean ( &
        &              ua,     va,     ta, &
        &              ha,   ubta,   vbta, &
@@ -169,6 +207,11 @@ program icedcoco
        &              nt,     tt,   itst,     ts,    its, &
        &            ntss,    tss, &
        &          oflout, oflstk )
+     if (nt == 1 .and. loglev > 0) then
+        call rewnml(ifpar,jfpar)
+        write(jfpar, '(A)') ' *** subroutine "ocean" has been finished in first step ***'
+        call flush(jfpar)
+     end if
      if (tt >= tend) then
         exit
      end if
@@ -216,6 +259,11 @@ program icedcoco
   call clcend('MAIN')
       
 ! *** Handling for termination ***
+  if (nt == 1 .and. loglev > 0) then
+     call rewnml(ifpar,jfpar)
+     write(jfpar, '(A)') ' *** main loop has been finished and finalization is started ***'
+     call flush(jfpar)
+  end if
 
   call clcstr('FINOUT')
   ofinal = .true.

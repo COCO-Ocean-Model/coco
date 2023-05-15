@@ -20,4 +20,7 @@ module zocout
   real(8), allocatable ::  dbloug(:, :, :)
   real(4), allocatable ::  sngoug(:, :, :)
 #endif
+
+  integer(4) :: loglev = 0
+
 end module zocout
