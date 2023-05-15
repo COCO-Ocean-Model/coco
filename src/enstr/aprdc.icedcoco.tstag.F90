@@ -106,6 +106,8 @@ contains
     integer(4)  ::  itsplt,     ij,    ijk,      n
     logical     ::    oeof
 
+    call clcstr('OCEAN')
+    
     if (       ( myrank >= ijnode )                                   &
     &    .and. (.not. oinit) .and. (.not. ofinal)) return
       if(oinit) then
@@ -562,6 +564,8 @@ contains
               &           nx,     ny,      1, nxydim, 'OCSFCV')
       end if
 
+    call clcend('OCEAN')
+      
   end subroutine predco
 
 end module aprdc

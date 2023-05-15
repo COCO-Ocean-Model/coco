@@ -343,6 +343,7 @@ contains
     use zocout, only : dbleou, wrkout
     use ucaln
     use mpiio
+    use ucloc
     implicit none
 
     logical, intent(in) :: oflout(nfomax)
@@ -366,6 +367,7 @@ contains
     character(len=5)  :: hzone
     integer :: ivalues(1:8)
 
+    call clcstr("CHKOUT")
     do iitem = 1, nohitm
        if (oflout(iitem)) then
           if (iflout(iitem) == 1) then
@@ -619,6 +621,7 @@ contains
           end if
        end if
     end do
+    call clcend("CHKOUT")
 
     return
   end subroutine chkout

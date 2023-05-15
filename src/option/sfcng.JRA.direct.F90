@@ -213,6 +213,7 @@ subroutine sfcflx( &
   use ufile
   use utint
   use bshft
+  use ucloc
 
   real(8), parameter :: factm = 1.0d+1, facth = 1.0d+3, factw = 1.0d+2, factmv = 1.0d-3
 
@@ -291,6 +292,8 @@ subroutine sfcflx( &
   integer ::      i,      j
   integer ::  ifpar,  jfpar,  istat
 
+  call clcstr('SFCFLX')
+  
   if (ofirst) then
      call rewnml(ifpar, jfpar)
      write(jfpar, *) '*** sfcflx ***'
@@ -388,6 +391,8 @@ subroutine sfcflx( &
      end do
   end do
 
+  call clcstr('TMINTP')
+  
   do l = 3, ntdim
      n = 12 + (l - 3) * 2
      nn = n + 1
@@ -414,6 +419,8 @@ subroutine sfcflx( &
   call tmintp(  ssfc,     11)
 #endif
 
+  call clcend('TMINTP')
+  
 !! 2021.05.31: Now dfdu and dfbc are dummy fluxes in OGCM.
   dfdu(:) = 0.0d0
   dfbc(:) = 0.0d0
@@ -737,6 +744,8 @@ subroutine sfcflx( &
      ptop(ij) = psfc(ij) * factm
   end do
 
+  call clcend('SFCFLX')
+  
   return
 end subroutine sfcflx
 
