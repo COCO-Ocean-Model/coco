@@ -1,4 +1,4 @@
-#ifdef OPT_TOUZA_CAL
+#ifdef OPT_TOUZA
 subroutine ucaln_dummy
 return
 end subroutine ucaln_dummy

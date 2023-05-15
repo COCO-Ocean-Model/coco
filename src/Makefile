@@ -12,7 +12,7 @@ lib: modules
 
 modules:
 	$(MAKE) -C module
-ifeq "$(OPTTOUZA)" "-DOPT_TOUZA_CAL"
+ifeq "$(OPTTOUZA)" "-DOPT_TOUZA"
 	$(MAKE) -C touza
 endif
 	@touch build/OBJLIST
@@ -20,9 +20,9 @@ endif
 
 
 clean:
-	$(RM) *~ *.o *.mod *.trace core
+	$(RM) *~ *.o *.mod *.trace core ../lib/*
 	$(MAKE) -C module $@
-ifeq "$(OPTTOUZA)" "-DOPT_TOUZA_CAL"
+ifeq "$(OPTTOUZA)" "-DOPT_TOUZA"
 	$(MAKE) -C touza $@
 endif
 	$(MAKE) -C build $@
