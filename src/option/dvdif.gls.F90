@@ -157,6 +157,7 @@ subroutine vdiff( &
   real(8), save ::  cw = 100.0d0,  alphch = 5.6d4,  z0sfmn = 1.0d2
   real(8), save ::  alphci = 1.4d3,  atfilt = 0.0d0
   integer, save ::  nitr0 = 1,  mz = nz
+  integer, save ::  nitr00 = 20
   logical, save ::  osfcwv = .false.,  oswnoi = .false.,  obtkei = .false.
 
   logical, save ::  ovdfao = .false.
@@ -187,7 +188,9 @@ subroutine vdiff( &
   integer :: nfted
   real(8), allocatable :: buf2(:, :),  g2d(:, :)
 #endif
-  real(8)       ::  dzmsig(nxydim, nzdim),  gint(nxydim)
+  real(8), save ::  depth0(nxydim, nzdim)
+!  real(8)       ::  dzmsig(nxydim, nzdim)
+  real(8)       ::    gint(nxydim)
   real(8)       ::  ahvted(nxydim, nzdim),  tedr(nxydim, nzdim)
   real(8)       ::     dep ! [cm]
 
@@ -201,7 +204,7 @@ subroutine vdiff( &
     &               cmu0, cpsi1, cpsi2, cpsi3p, cpsi3n, &
     &               amvmax, ahvmax, scntke, scnpsi, &
     &               tkemin, psimin, ritc, z0sfc, z0btm, &
-    &               nitr0, epscmp, mz, &
+    &               nitr0, nitr00, epscmp, mz, &
     &               osfcwv, cw, z0sfmn, alphch, oswnoi, alphci, &
     &               obtkei, atfilt
   namelist /nmdifvao/ ovdfao, ahv0ao, mzao
@@ -426,6 +429,14 @@ subroutine vdiff( &
     &                nxdim,  nydim,      1)
 #endif
         rzeta = 1.d0 / zeta * 1.d-2
+        do ij = 1, nxydim
+           depth0(ij, kstr) = 0.d0
+        end do
+        do k = kstr+1, kend+1
+           do ij = 1, nxydim
+              depth0(ij, k) = depth0(ij, k-1) + dz(ij, k-1)
+           end do
+        end do
      end if
      if ( iamf == 0 ) then
         write(jfpar, *) ' Turbulent energy dissipation rate (far-field) is not used.'
@@ -478,7 +489,6 @@ subroutine vdiff( &
      end if
 !---
 
-
   end if
 
 !     -- second step of Euler-Eackward sheme --
@@ -495,14 +505,14 @@ subroutine vdiff( &
      do ij = 1, nxydim
         dzsig (ij, k) = (hy(ij) + zbot) * ds(k)
         rzmsig(ij, k) = 1.d0 / (hy(ij) + zbot) / dsm(k)
-        dzmsig(ij, k) = (hy(ij) + zbot) * dsm(k)
+!        dzmsig(ij, k) = (hy(ij) + zbot) * dsm(k)
      end do
   end do
   do k = kstr+kz, kend
      do ij = 1, nxydim
         dzsig (ij, k) = dz(ij, k)
         rzmsig(ij, k) = 1.d0 / dzm(ij, k)
-        dzmsig(ij, k) = dzm(ij, k)
+!        dzmsig(ij, k) = dzm(ij, k)
      end do
   end do
   do k = 1, nzdim
@@ -622,7 +632,7 @@ subroutine vdiff( &
 !!        tke(ij, nbot(ij)+1) = max( ufrc2b(ij) / (cmu0*cmu0), tkemin )
 !     end do
 !
-     nitr = 20
+     nitr = nitr00
   end if
 
   do iitr = 1, nitr
@@ -1124,16 +1134,20 @@ subroutine vdiff( &
      end do
      do k = kstr+1, kend
         do ij = 1, nxydim
-           dep = depth(ij, nbot(ij) + 1) ! depth of bottom
+!           dep = depth(ij, nbot(ij) + 1) ! depth of bottom
+           dep = depth0(ij, nbot(ij) + 1) ! depth of bottom
            gint(ij) = gint(ij) + &
-                & dzmsig(ij, k) * exp((depth(ij, k) - dep) * rzeta) * amftz(ij, k)
+                & dzm(ij, k) * exp((depth0(ij, k) - dep) * rzeta) * amftz(ij, k)
+!                & dzmsig(ij, k) * exp((depth(ij, k) - dep) * rzeta) * amftz(ij, k)
         end do
      end do
      where(gint /= 0.d0) gint = 1.d0 / gint
      do k = kstr+1, kend
         do ij = 1, nxydim
-           dep = depth(ij, nbot(ij) + 1) ! depth of bottom
-           tedn3d(ij, k) = gint(ij) * tedn2d(ij) * exp((depth(ij, k) - dep) * rzeta) * amftz(ij, k)
+!           dep = depth(ij, nbot(ij) + 1) ! depth of bottom
+!           tedn3d(ij, k) = gint(ij) * tedn2d(ij) * exp((depth(ij, k) - dep) * rzeta) * amftz(ij, k)
+           dep = depth0(ij, nbot(ij) + 1) ! depth of bottom
+           tedn3d(ij, k) = gint(ij) * tedn2d(ij) * exp((depth0(ij, k) - dep) * rzeta) * amftz(ij, k)
         end do
      end do
   end if
@@ -1146,7 +1160,8 @@ subroutine vdiff( &
         do k = kstr+1, kend
            do ij = 1, nxydim
               gint(ij) = gint(ij) + &
-                   & dzmsig(ij, k) * amftz(ij, k)
+                   & dzm(ij, k) * amftz(ij, k)
+!                   & dzmsig(ij, k) * amftz(ij, k)
            end do
         end do
         do ij = ijstr, ijend
@@ -1164,7 +1179,8 @@ subroutine vdiff( &
            do k = kstr+1, kend
               do ij = 1, nxydim
                  gint(ij) = gint(ij) + &
-                      & dzmsig(ij, k) * sqrt(abs(drdz(ij, k))) * amftz(ij, k)
+                      & dzm(ij, k) * sqrt(abs(drdz(ij, k))) * amftz(ij, k)
+!                      & dzmsig(ij, k) * sqrt(abs(drdz(ij, k))) * amftz(ij, k)
               end do
            end do
            do ij = ijstr, ijend
@@ -1181,7 +1197,8 @@ subroutine vdiff( &
            do k = kstr+1, kend
               do ij = 1, nxydim
                  gint(ij) = gint(ij) + &
-                      & dzmsig(ij, k) * drdz(ij, k) * amftz(ij, k)
+                      & dzm(ij, k) * drdz(ij, k) * amftz(ij, k)
+!                      & dzmsig(ij, k) * drdz(ij, k) * amftz(ij, k)
               end do
            end do
            do ij = ijstr, ijend
