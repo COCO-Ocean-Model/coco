@@ -46,7 +46,8 @@ contains
 subroutine ictrns( &
   &                    ax,    hix,    hsx,    eix,    tix, &
   &                   asx,  frlvx,   vmpx,  frmpx,   dsdx,   dsbx, &
-  &                    ft,     fs,    fdd,    fdb )
+  &                    ft,     fs,    fdd,    fdb, &
+  &                imrtri, imrtrs )
   use ufile
   use zocite
 
@@ -59,6 +60,7 @@ subroutine ictrns( &
   real(8), intent(inout) ::   dsdx(nxydim, 0:nic),   dsbx(nxydim, 0:nic)
   real(8), intent(inout) ::     ft(nxydim, ntdim),     fs(nxydim)
   real(8), intent(inout) ::    fdd(nxydim),    fdb(nxydim)
+  real(8), intent(inout) :: imrtri(nxydim), imrtrs(nxydim)
 
   real(8) ::  axhix(nxydim, 0:nic),  axhsx(nxydim, 0:nic)
   real(8) ::  axeix(nxydim, 0:nic)
@@ -274,6 +276,10 @@ subroutine ictrns( &
 !     melt pond is a virtual reservor
      fdd(ij) = fdd(ij) - axdsd(ij, 0) / ts * amskt(ij, kstr)
      fdb(ij) = fdb(ij) - axdsb(ij, 0) / ts * amskt(ij, kstr)
+     imrtri(ij) = imrtri(ij) &
+       &        + axhix(ij, 0) / rri / ts * amskt(ij, kstr)
+     imrtrs(ij) = imrtrs(ij) &
+       &        + axhsx(ij, 0) / rrs / ts * amskt(ij, kstr)
   end do
 
 !  entry ic0set( &

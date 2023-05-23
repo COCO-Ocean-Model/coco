@@ -36,6 +36,7 @@ subroutine fwater( &
   &                    ax,    hix,    hsx,    eix,    tix, &
   &                   asx,  frlvx,   vmpx,  frmpx,   dsdx,   dsbx, &
   &                  prec,   snow,    fdd,    fdb, &
+  &                inrsbi, inrsbs, imraji, imrajs, &
   &                  evap,   subi, adjlat, wiadjs, &
   &                   wev,    wsb,   soff )
 
@@ -51,6 +52,8 @@ subroutine fwater( &
   real(8), intent(inout) ::   prec(nxydim),   snow(nxydim)
   real(8), intent(inout) ::    fdd(nxydim),    fdb(nxydim)
   real(8), intent(inout) ::    wsb(nxydim, nic)
+  real(8), intent(inout) :: inrsbi(nxydim), inrsbs(nxydim)
+  real(8), intent(inout) :: imraji(nxydim), imrajs(nxydim)
   real(8), intent(out)   ::   evap(nxydim), adjlat(nxydim), wiadjs(nxydim)
   real(8), intent(out)   ::   subi(nxydim, nic)
   real(8), intent(in)    ::    wev(nxydim),   soff(nxydim)
@@ -99,6 +102,9 @@ subroutine fwater( &
               wsb(ij, k) = wsb(ij, k) &
                 &        + ax(ij, k) * (hsx(ij, k) - hsz(ij, k)) &
                 &          / rrs / ts
+              inrsbs(ij) = inrsbs(ij) &
+                &        + ax(ij, k) * (hsx(ij, k) - hsz(ij, k)) &
+                &          / rrs / ts
               if (hsx(ij, k) .le. 0.d0) then
                  fdd(ij) = fdd(ij) - ax(ij, k) * dsdx(ij, k) / ts
                  fdb(ij) = fdb(ij) - ax(ij, k) * dsbx(ij, k) / ts
@@ -113,6 +119,9 @@ subroutine fwater( &
               dei = (hix(ij, k) - hiz(ij, k)) * hfus
               eix(ij, k) = eix(ij, k) + dei
               tix(ij, k) = ti(eix(ij, k)/hix(ij, k), si)
+              inrsbi(ij) = inrsbi(ij) &
+                &        + ax(ij, k) * (hix(ij, k) - hiz(ij, k)) &
+                &          / rri / ts
            else
 !              write(0,*) '## dhi >= dhimax at ifwtr ##'
               ax(ij, k) = 0.d0
@@ -128,6 +137,12 @@ subroutine fwater( &
               dsbx(ij, k) = 0.d0
               wiadjs(ij) = wiadjs(ij) &
                 &        - ax(ij, k) * (hiz(ij, k) - dhimax) &
+                &          / rri / ts
+              inrsbi(ij) = inrsbi(ij) &
+                &        + ax(ij, k) * (-dhimax) &
+                &          / rri / ts
+              imraji(ij) = imraji(ij) &
+                &        + ax(ij, k) * (hiz(ij, k) - dhimax) &
                 &          / rri / ts
            end if
            subi(ij, k) = ax(ij, k) * (hiz(ij, k) - hix(ij, k)) &

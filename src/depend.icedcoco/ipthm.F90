@@ -126,7 +126,9 @@ subroutine ptherm( &
   &                   asx,  frlvx,   vmpx,  frmpx,   dsdx,   dsbx, &
   &                  prec,   snow,     ft,     fs,    fdd,    fdb, &
   &                 ftitd, igrfra, igrcon, igrsni, &
-  &                inrlat, imrsno, imrisf, imribs, &
+  &                igrsfl, inrlat, &
+  &                imrsno, imrsmi, imrisf, imribs, &
+  &                inrsbi, inrsbs, imrtri, imrtrs, &
   &                impinc, impfrz, improf, &
   &                    tx,    tsi, &
   &                   wio,    wao,    was,    wil, &
@@ -155,7 +157,11 @@ subroutine ptherm( &
   real(8), intent(out)   ::  ftitd(nxydim)
   real(8), intent(out)   :: igrfra(nxydim), igrcon(nxydim), igrsni(nxydim)
   real(8), intent(out)   :: inrlat(nxydim)
-  real(8), intent(out)   :: imrsno(nxydim), imrisf(nxydim), imribs(nxydim)
+  real(8), intent(out)   :: imrsno(nxydim), imrsmi(nxydim)
+  real(8), intent(out)   :: imrisf(nxydim), imribs(nxydim)
+  real(8), intent(in)    :: inrsbi(nxydim), inrsbs(nxydim)
+  real(8), intent(in)    :: imrtri(nxydim), imrtrs(nxydim)
+  real(8), intent(out)   :: igrsfl(nxydim)
   real(8), intent(out)   :: impinc(nxydim, 0:nic), impfrz(nxydim, 0:nic)
   real(8), intent(out)   :: improf(nxydim, 0:nic)
   real(8), intent(inout) ::    wio(nxydim, nic)
@@ -247,8 +253,10 @@ subroutine ptherm( &
      igrfra(ij) = 0.0d0
      igrcon(ij) = 0.0d0
      igrsni(ij) = 0.0d0
+     igrsfl(ij) = 0.0d0
      inrlat(ij) = 0.0d0
      imrsno(ij) = 0.0d0
+     imrsmi(ij) = 0.0d0
      imrisf(ij) = 0.0d0
      imribs(ij) = 0.0d0
   end do
@@ -304,6 +312,7 @@ subroutine ptherm( &
            axhsx(ij, k) = ax(ij, k) * hsx(ij, k)
            axdsd(ij, k) = ax(ij, k) * dsdx(ij, k)
            axdsb(ij, k) = ax(ij, k) * dsbx(ij, k)
+           igrsfl(ij) = igrsfl(ij) + ax(ij, k) * snow(ij) * ts
         else
            hsx(ij, k) = 0.d0
            axhsx(ij, k) = 0.d0
@@ -456,6 +465,8 @@ subroutine ptherm( &
              &        + rhoi * max(0.0d0, daxhib(ij, k))
            imribs(ij) = imribs(ij) &
              &        - rhoi * min(0.0d0, daxhib(ij, k))
+           imrsmi(ij) = imrsmi(ij) - &
+             &          rhos * (ax(ij, k) * hsx(ij, k) - axhsxn(ij, k))
         end if
      end do
   end do
@@ -663,8 +674,10 @@ subroutine ptherm( &
            vmpx(ij, k) = laxvmp(ij, k) / ax(ij, k)
            frmpx(ij, k) = laxfmp(ij, k) / ax(ij, k)
         end if
-        inrlat(ij) = inrlat(ij) + rhoi *  &
+        inrlat(ij) = inrlat(ij) + rhoi * &
           &          ( ax(ij, k)*hix(ij, k) - laxhix(ij, k) )
+        imrsmi(ij) = imrsmi(ij) - rhos * &
+          &          ( ax(ij, k)*hsx(ij, k) - laxhsx(ij, k) )
      end do
   end do
 
@@ -787,8 +800,10 @@ subroutine ptherm( &
      igrfra(ij) = igrfra(ij) / ts
      igrcon(ij) = igrcon(ij) / ts
      igrsni(ij) = igrsni(ij) / ts
+     igrsfl(ij) = igrsfl(ij) / ts
      inrlat(ij) = inrlat(ij) / ts
      imrsno(ij) = imrsno(ij) / ts
+     imrsmi(ij) = imrsmi(ij) / ts
      imrisf(ij) = imrisf(ij) / ts
      imribs(ij) = imribs(ij) / ts
   end do

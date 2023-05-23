@@ -181,8 +181,11 @@ subroutine predci( &
   real(8), save ::    fex(nxydim, 0:nic),    fey(nxydim, 0:nic)
   real(8), save ::  ftitd(nxydim)
   real(8), save :: igrfra(nxydim), igrcon(nxydim), igrsni(nxydim)
-  real(8), save :: inrlat(nxydim)
-  real(8), save :: imrsno(nxydim), imrisf(nxydim), imribs(nxydim)
+  real(8), save :: igrsfl(nxydim), inrlat(nxydim)
+  real(8), save :: imrsno(nxydim), imrsmi(nxydim)
+  real(8), save :: imrisf(nxydim), imribs(nxydim)
+  real(8), save :: inrsbi(nxydim), inrsbs(nxydim)
+  real(8), save :: imraji(nxydim), imrajs(nxydim)
   real(8), save :: impinc(nxydim, 0:nic), impfrz(nxydim, 0:nic)
   real(8), save :: improf(nxydim, 0:nic)
   real(8), save ::    fdd(nxydim),    fdb(nxydim)
@@ -332,6 +335,19 @@ subroutine predci( &
      fdd(ij) = 0.0d0
      fdb(ij) = 0.0d0
      wiadjs(ij) = 0.d0
+     imraji(ij) = 0.d0
+     imrajs(ij) = 0.d0
+     igrfra(ij) = 0.d0
+     igrcon(ij) = 0.d0
+     igrsni(ij) = 0.d0
+     igrsfl(ij) = 0.d0
+     inrlat(ij) = 0.d0
+     imrsno(ij) = 0.d0
+     imrsmi(ij) = 0.d0
+     imrisf(ij) = 0.d0
+     imribs(ij) = 0.d0
+     inrsbi(ij) = 0.d0
+     inrsbs(ij) = 0.d0
   end do
   do l = 1, nic
      do ij = 1, nxydim
@@ -389,6 +405,7 @@ subroutine predci( &
     &             ax,    hix,    hsx,    eix,    tix, &
     &            asx,  frlvx,   vmpx,  frmpx,   dsdx,   dsbx, &
     &           prec,   snow,    fdd,    fdb, &
+    &         inrsbi, inrsbs, imraji, imrajs, &
     &           evap,   subi, adjlat, wiadjs, &
     &            wev,    wsb,   soff )
 
@@ -401,7 +418,9 @@ subroutine predci( &
     &            asx,  frlvx,   vmpx,  frmpx,   dsdx,   dsbx, &
     &           prec,   snow,     ft,     fs,    fdd,    fdb, &
     &          ftitd, igrfra, igrcon, igrsni, &
-    &         inrlat, imrsno, imrisf, imribs, &
+    &         igrsfl, inrlat, &
+    &         imrsno, imrsmi, imrisf, imribs, &
+    &         inrsbi, inrsbs, imraji, imrajs, &
     &         impinc, impfrz, improf, &
     &             tx,    tsi, &
     &            wio,    wao,    was,    wil, &
@@ -415,7 +434,8 @@ subroutine predci( &
   call ictrns( &
     &             ax,    hix,    hsx,    eix,    tix, &
     &            asx,  frlvx,   vmpx,  frmpx,   dsdx,   dsbx, &
-    &             ft,     fs,    fdd,    fdb )
+    &             ft,     fs,    fdd,    fdb, &
+    &         imraji, imrajs )
   call idfrmp( &
     &          frlvx,   vmpx,  frmpx, &
     &         improf, &
@@ -475,7 +495,8 @@ subroutine predci( &
   call ictrns( &
     &             ax,    hix,    hsx,    eix,    tix, &
     &            asx,  frlvx,   vmpx,  frmpx,   dsdx,   dsbx, &
-    &             ft,     fs,    fdd,    fdb )
+    &             ft,     fs,    fdd,    fdb, &
+    &         imraji, imrajs )
   call idfrmp( &
     &          frlvx,   vmpx,  frmpx, &
     &         improf, &
@@ -566,6 +587,10 @@ subroutine predci( &
   call chekin( igrsni, 'IGRSNI', &
      &            'snow-ice formation rate', 'g/cm^2/s', &
     &              nx,     ny,      1, nxydim, 'OCSFCT')
+! IGRSFL: snowfall rate on ice, unit [g/cm^2/s]
+    call chekin( igrsfl, 'IGRSFL', &
+    &            'snowfall rate on ice', 'g/cm^2/s', &
+   &              nx,     ny,      1, nxydim, 'OCSFCT')
 ! INRLAT: lateral sea ice net growth rate, unit [g/cm^2/s]
 !  (COCO4.4 represents lateral melting process but not freezing,
 !   thus this value will be zero or negative.)
@@ -576,6 +601,10 @@ subroutine predci( &
   call chekin( imrsno, 'IMRSNO', &
      &            'snow melt rate', 'g/cm^2/s', &
     &              nx,     ny,      1, nxydim, 'OCSFCT')
+! IMRSMI: snow decrease rate due to ice melt, unit [g/cm^2/s]
+    call chekin( imrsmi, 'IMRSMI', &
+    &            'snow decrease rate due to ice melt', 'g/cm^2/s', &
+    &              nx,     ny,      1, nxydim, 'OCSFCT')
 ! IMRISF: rate of melt at upper surface of sea ice, unit [g/cm^2/s]
   call chekin( imrisf, 'IMRISF', &
      &            'rate of melt at upper surface of sea ice', &
@@ -585,6 +614,23 @@ subroutine predci( &
   call chekin( imribs, 'IMRIBS', &
      &            'rate of melt at sea ice base', 'g/cm^2/s', &
     &              nx,     ny,      1, nxydim, 'OCSFCT')
+! INRSBI: net rate of ice sublimation, unit [g/cm^2/s]
+  call chekin(inrsbi, 'INRSBI', &
+    &         'rate of ice sublimation', 'g/cm^2/s', &
+    &         nx, ny, 1, nxydim, 'OCSFCT')
+! INRSBS: net rate of snow sublimation, unit [g/cm^2/s]
+  CALL chekin(inrsbs, 'INRSBS', &
+    &         'rate of snow sublimation', 'g/cm^2/s', &
+    &         nx, ny, 1, nxydim, 'OCSFCT')
+      
+! IMRAJI: rate of ice melt in adjustment, unit [g/cm^2/s]
+  CALL chekin(imraji, 'IMRAJI', &
+    &         'rate of ice melt in adjustment', 'g/cm^2/s', &
+    &         nx, ny, 1, nxydim, 'OCSFCT')
+! IMRAJS: rate of snow melt in adjustment, unit [g/cm^2/s]
+  CALL chekin(imrajs, 'IMRAJS', &
+    &         'rate of snow melt in adjustment', 'g/cm^2/s', &
+    &         nx, ny, 1, nxydim, 'OCSFCT')
 
 ! extra output section
 ! FEX, FEY: eastward/northward thermal transport by sea ice
