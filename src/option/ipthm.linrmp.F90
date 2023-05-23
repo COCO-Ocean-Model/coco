@@ -131,7 +131,7 @@ subroutine ptherm( &
   &                impinc, impfrz, improf, &
   &                    tx,    tsi, &
   &                   wio,    wao,    was,    wil, &
-  &                  evap,   subi,   roff, adjlat, &
+  &                  evap,   subi,   roff, adjlat, wiadjs, &
   &                  dfdu,   dfbc, &
   &                   qio )
 
@@ -164,7 +164,7 @@ subroutine ptherm( &
   real(8), intent(in)    ::    wil(nxydim, nic)
   real(8), intent(in)    ::    wao(nxydim)
   real(8), intent(in)    ::   evap(nxydim),   subi(nxydim, nic)
-  real(8), intent(in)    ::   roff(nxydim), adjlat(nxydim)
+  real(8), intent(in)    ::   roff(nxydim), adjlat(nxydim), wiadjs(nxydim)
   real(8), intent(in)    ::     tx(nxydim, nzdim, ntdim)
   real(8), intent(in)    ::    tsi(nxydim, 0:nic)
   real(8), intent(in)    ::   dfdu(nxydim),   dfbc(nxydim)
@@ -1198,12 +1198,12 @@ subroutine ptherm( &
   end do
   do ij = ijtstr, ijtend
      ft(ij, 2) = (  evap(ij) - prec(ij) - roff(ij) &
-       &          + ws(ij) + wi(ij)) * amskt(ij, kstr)
-     fs(ij) = fs(ij) + wi(ij) * si * amskt(ij, kstr)
+       &          + ws(ij) + wi(ij) + wiadjs(ij)) * amskt(ij, kstr)
+     fs(ij) = fs(ij) + (wi(ij) + wiadjs(ij)) * si * amskt(ij, kstr)
      ft(ij, 1) = - ft(ij, 1) &
        &         + hfus / cpo * (wsn(ij) - snow(ij)) &
        &         + wen(ij) / cpo &
-       &         + adjlat(ij) * hfus / cpo 
+       &         + adjlat(ij) * hfus / cpo
      ft(ij, 1) = ft(ij, 1) * amskt(ij, kstr)
      ftitd(ij) = ftitd(ij) + amskt(ij, kstr) * &
        &         ( rhoo * hfus * wi(ij) &

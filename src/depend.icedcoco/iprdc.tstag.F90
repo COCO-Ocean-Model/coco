@@ -168,7 +168,7 @@ subroutine predci( &
   real(8), save ::    wio(nxydim, nic),    was(nxydim, nic)
   real(8), save ::    wil(nxydim, nic)
   real(8), save ::   subi(nxydim, nic)
-  real(8), save ::   evap(nxydim), adjlat(nxydim)
+  real(8), save ::   evap(nxydim), adjlat(nxydim), wiadjs(nxydim)
   real(8), save ::     az(nxydim, 0:nic),    hiz(nxydim, 0:nic)
   real(8), save ::    hsz(nxydim, 0:nic),    tiz(nxydim, 0:nic)
   real(8), save ::   pice(nxydim)
@@ -331,6 +331,7 @@ subroutine predci( &
      hsz (ij, 0) = 0.d0
      fdd(ij) = 0.0d0
      fdb(ij) = 0.0d0
+     wiadjs(ij) = 0.d0
   end do
   do l = 1, nic
      do ij = 1, nxydim
@@ -385,9 +386,10 @@ subroutine predci( &
     &             ax,     tx,     hx, &
     &            qao,    qai,    qio,    qii,  swabs )
   call fwater( &
-    &             ax,    hix,    hsx,   dsdx,   dsbx, &
+    &             ax,    hix,    hsx,    eix,    tix, &
+    &            asx,  frlvx,   vmpx,  frmpx,   dsdx,   dsbx, &
     &           prec,   snow,    fdd,    fdb, &
-    &           evap,   subi, adjlat, &
+    &           evap,   subi, adjlat, wiadjs, &
     &            wev,    wsb,   soff )
 
   call cofpfw( &
@@ -403,7 +405,7 @@ subroutine predci( &
     &         impinc, impfrz, improf, &
     &             tx,    tsi, &
     &            wio,    wao,    was,    wil, &
-    &           evap,   subi,   roff, adjlat, &
+    &           evap,   subi,   roff, adjlat, wiadjs, &
     &           dfdu,   dfbc, &
     &            qio )
   call idfrmp( &

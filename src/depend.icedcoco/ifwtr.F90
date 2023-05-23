@@ -17,11 +17,15 @@ module ifwtr
     & nxydim,    nic, ijtstr, ijtend, &
     &  oinit, ofinal
   use zocgrd, only: &
-    &     ts
+    &     ts,    hic
   use zocphy, only: &
-    &   rhoo,   rhoi,   rhos
+    &   rhoo,   rhoi,   rhos,   hfus,   dtds
 
   implicit none
+
+  real(8), save :: si = 5.d0
+
+  namelist /nmislt/ si
 
   private
   public :: fwater
@@ -29,28 +33,35 @@ module ifwtr
 contains
 
 subroutine fwater( &
-  &                    ax,    hix,    hsx,   dsdx,   dsbx, &
+  &                    ax,    hix,    hsx,    eix,    tix, &
+  &                   asx,  frlvx,   vmpx,  frmpx,   dsdx,   dsbx, &
   &                  prec,   snow,    fdd,    fdb, &
-  &                  evap,   subi, adjlat, &
+  &                  evap,   subi, adjlat, wiadjs, &
   &                   wev,    wsb,   soff )
+
+  use ufile
+  use zocite
 
   real(8), intent(inout) ::     ax(nxydim, 0:nic),    hix(nxydim, 0:nic)
   real(8), intent(inout) ::    hsx(nxydim, 0:nic)
+  real(8), intent(inout) ::    eix(nxydim, 0:nic),    tix(nxydim, 0:nic)
+  real(8), intent(inout) ::    asx(nxydim, 0:nic),  frlvx(nxydim, 0:nic)
+  real(8), intent(inout) ::   vmpx(nxydim, 0:nic),  frmpx(nxydim, 0:nic)
   real(8), intent(inout) ::   dsdx(nxydim, 0:nic),   dsbx(nxydim, 0:nic)
   real(8), intent(inout) ::   prec(nxydim),   snow(nxydim)
   real(8), intent(inout) ::    fdd(nxydim),    fdb(nxydim)
   real(8), intent(inout) ::    wsb(nxydim, nic)
-  real(8), intent(out)   ::   evap(nxydim), adjlat(nxydim)
+  real(8), intent(out)   ::   evap(nxydim), adjlat(nxydim), wiadjs(nxydim)
   real(8), intent(out)   ::   subi(nxydim, nic)
   real(8), intent(in)    ::    wev(nxydim),   soff(nxydim)
   
-  real(8), save ::    rri,    rrs
+  real(8), save ::    rri,    rrs,    tmi
   logical, save ::  ofirst = .true.
 
   real(8) ::   wdif
-  real(8) ::    dhs,    dhi
+  real(8) ::    dhs,    dhi,    dei,    dti, dhimax
   integer ::     ij,      k
-  integer ::  ifpar,  jfpar
+  integer ::  ifpar,  jfpar,  istat
 
   real(8) ::     az(nxydim, 0:nic),    hiz(nxydim, 0:nic)
   real(8) ::    hsz(nxydim, 0:nic)
@@ -62,8 +73,13 @@ subroutine fwater( &
 
   if (ofirst) then
      ofirst = .false.
+     call rewnml(ifpar, jfpar)
+     read (ifpar, nmislt, iostat=istat)
+     call cstnml(jfpar, 'fwater', 'nmislt', istat)
+     write(jfpar, nmislt)
      rri = rhoo / rhoi
      rrs = rhoo / rhos
+     tmi = dtds * si
   end if
 
   do k = 0, nic
@@ -91,7 +107,29 @@ subroutine fwater( &
               end if
            end if
            dhi = ts * rri * wsb(ij, k) / ax(ij, k)
-           hix(ij, k) = max(hiz(ij, k) - dhi, 0.d0)
+           dhimax = eix(ij, k) / hfus
+           if (dhi < dhimax) then 
+              hix(ij, k) = hiz(ij, k) - dhi
+              dei = (hix(ij, k) - hiz(ij, k)) * hfus
+              eix(ij, k) = eix(ij, k) + dei
+              tix(ij, k) = ti(eix(ij, k)/hix(ij, k), si)
+           else
+!              write(0,*) '## dhi >= dhimax at ifwtr ##'
+              ax(ij, k) = 0.d0
+              hix(ij, k) = hic(k)
+              hsx(ij, k) = 0.d0
+              tix(ij, k) = tmi
+              eix(ij, k) = 0.d0
+              asx(ij, k) = 0.d0
+              frlvx(ij, k) = 1.d0
+              vmpx(ij, k) = 0.d0
+              frmpx(ij, k) = 0.d0
+              dsdx(ij, k) = 0.d0
+              dsbx(ij, k) = 0.d0
+              wiadjs(ij) = wiadjs(ij) &
+                &        - ax(ij, k) * (hiz(ij, k) - dhimax) &
+                &          / rri / ts
+           end if
            subi(ij, k) = ax(ij, k) * (hiz(ij, k) - hix(ij, k)) &
              &           / rri / ts
            wsb(ij, k) = wsb(ij, k) - subi(ij, k)
