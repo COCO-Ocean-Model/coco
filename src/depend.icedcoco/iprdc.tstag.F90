@@ -420,7 +420,6 @@ subroutine predci( &
     &          ftitd, igrfra, igrcon, igrsni, &
     &         igrsfl, inrlat, &
     &         imrsno, imrsmi, imrisf, imribs, &
-    &         inrsbi, inrsbs, imraji, imrajs, &
     &         impinc, impfrz, improf, &
     &             tx,    tsi, &
     &            wio,    wao,    was,    wil, &

@@ -129,7 +129,6 @@ subroutine ptherm( &
   &                 ftitd, igrfra, igrcon, igrsni, &
   &                igrsfl, inrlat, &
   &                imrsno, imrsmi, imrisf, imribs, &
-  &                inrsbi, inrsbs, imrtri, imrtrs, &
   &                impinc, impfrz, improf, &
   &                    tx,    tsi, &
   &                   wio,    wao,    was,    wil, &
@@ -160,8 +159,6 @@ subroutine ptherm( &
   real(8), intent(out)   :: inrlat(nxydim)
   real(8), intent(out)   :: imrsno(nxydim), imrsmi(nxydim)
   real(8), intent(out)   :: imrisf(nxydim), imribs(nxydim)
-  real(8), intent(in)    :: inrsbi(nxydim), inrsbs(nxydim)
-  real(8), intent(in)    :: imrtri(nxydim), imrtrs(nxydim)
   real(8), intent(out)   :: igrsfl(nxydim)
   real(8), intent(out)   :: impinc(nxydim, 0:nic), impfrz(nxydim, 0:nic)
   real(8), intent(out)   :: improf(nxydim, 0:nic)
