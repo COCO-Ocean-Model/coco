@@ -62,6 +62,7 @@ subroutine ocstup ( &
   use tovtr
   use tslvt
   use ufile
+!$ use omp_lib
 
   real(8), intent(out) ::     tb(nxyzdm, ntdim)
   real(8), intent(out) ::     ub(nxyzdm)
@@ -77,6 +78,8 @@ subroutine ocstup ( &
 
   integer ::     ij,      l
   integer ::  ifpar,  jfpar
+
+  integer ::  num_threads
 
   call rewnml(ifpar, jfpar)
   write(jfpar, *) '*** ocstup ***'
@@ -126,6 +129,11 @@ subroutine ocstup ( &
      gyy(ij) = 0.d0
      ptop(ij) = 0.d0
   end do
+
+!$omp parallel
+!$ num_threads = omp_get_num_threads()
+!$omp end parallel
+!$ write(jfpar, *) "OMP_NUM_THREADS=", num_threads
 
   return
 end subroutine ocstup
