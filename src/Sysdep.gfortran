@@ -1,6 +1,9 @@
 FC	= mpifort
 
 FFLAGS = -cpp -fconvert=big-endian -O3 -ffree-line-length-none -fbacktrace -ffpe-trap=invalid,zero,overflow -mcmodel=large
+ifeq "$(OMP)" ".omp"    
+FFLAGS += -fopenmp
+endif
 
 FOPTION = $(FFLAGS) -I$(OGCMDIR)/src/module -I$(OGCMDIR)/src/touza -I$(OGCMDIR)/src/build $(OPTBDY) $(OPTSRST) $(OPTBBL) $(OPTTRIPOLE) $(OPTIO) $(OPTEXMASK) $(OPTTOUZA)
 

@@ -1,7 +1,11 @@
-FC	= ifort
+#FC	= ifort
+FC	= mpiifort
 
 # standard options for ICE @ JAMSTEC/YES
 FFLAGS	= -u -w -xAVX -fpe0 -convert big_endian -lmpi
+ifeq "$(OMP)" ".omp"    
+FFLAGS += -qopenmp
+endif
 
 # debug options for Altix @ JAMSTEC/YES
 #FFLAGS	= -check -u -w -traceback -g -fpe0 -O2 -fltconsistency -mtune=itanium2-p9000 -convert big_endian -lmpi

@@ -20,7 +20,7 @@ endif
 
 
 clean:
-	$(RM) *~ *.o *.mod *.trace core ../lib/*
+	$(RM) *~ *.o *.mod *.trace core ../lib/* *.lst
 	$(MAKE) -C module $@
 ifeq "$(OPTTOUZA)" "-DOPT_TOUZA"
 	$(MAKE) -C touza $@

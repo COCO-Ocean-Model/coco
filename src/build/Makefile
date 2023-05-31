@@ -98,7 +98,7 @@ OBJLIST: FORCE
 		-f `cat OBJLIST | $(DIRETC)/srclist.sh` > /dev/null
 
 clean:
-	$(RM) *~ *.F90 *.F *.o *.mod *.trace *.cpp core OBJLIST $(DEPENDENCY)
+	$(RM) *~ *.F90 *.F *.o *.mod *.trace *.cpp core OBJLIST $(DEPENDENCY) *.lst
 
 ##
 -include $(DEPENDENCY)

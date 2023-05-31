@@ -26,7 +26,7 @@ $(DEPENDENCY): $(SRCS)
 	@python2 $(DIRETC)/fort_depend.py -w -o $@ -f $(SRCS)
 
 clean:
-	$(RM) *~ *.o *.mod *.trace *.cpp core $(DEPENDENCY)
+	$(RM) *~ *.o *.mod *.trace *.cpp core $(DEPENDENCY) *.lst
 
 ##
 -include $(DEPENDENCY)
