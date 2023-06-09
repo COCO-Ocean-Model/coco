@@ -501,6 +501,7 @@ subroutine vdiff( &
   call admkt1
 #endif
 
+!$omp parallel do
   do k = kstr, kstr+kz-1
      do ij = 1, nxydim
         dzsig (ij, k) = (hy(ij) + zbot) * ds(k)
@@ -508,6 +509,8 @@ subroutine vdiff( &
 !        dzmsig(ij, k) = (hy(ij) + zbot) * dsm(k)
      end do
   end do
+!$omp end parallel do
+!$omp parallel do
   do k = kstr+kz, kend
      do ij = 1, nxydim
         dzsig (ij, k) = dz(ij, k)
@@ -515,33 +518,45 @@ subroutine vdiff( &
 !        dzmsig(ij, k) = dzm(ij, k)
      end do
   end do
+!$omp end parallel do
+!$omp parallel do
   do k = 1, nzdim
      do ij = 1, nxydim
         depth (ij, k) = 0.d0
         depthm(ij, k) = 0.0d0
      end do
   end do
+!$omp end parallel do
   do k = kstr+1, kend+1
+!$omp parallel do
      do ij = 1, nxydim
         depth(ij, k) = depth(ij, k-1) + dzsig(ij, k-1)
      end do
+!$omp end parallel do
   end do
   do k = kstr, kstr+kz-1
+!$omp parallel do
      do ij = 1, nxydim
         depthm(ij, k) = depthm(ij, k-1) + (hy(ij) + zbot) * dsm(k)
      end do
+!$omp end parallel do
   end do
   do k = kstr+kz, kend
+!$omp parallel do
      do ij = 1, nxydim
         depthm(ij, k) = depthm(ij, k-1) + dzm(ij, k)
      end do
+!$omp end parallel do
   end do
 
+!$omp parallel do
   do k = 1, nzdim
      do ij = 1, nxydim
         drdz(ij, k) = 0.d0
      end do
   end do
+!$omp end parallel do
+!$omp parallel do private(tl, sl, p1, p2, rl, rlu, dudz, dvdz)
   do k = kstr+1, kend
      do ij = ijstr-nxdim-1, ijend+nxdim+1
         tl = ty(ij, k, 1)
@@ -581,6 +596,7 @@ subroutine vdiff( &
         duvdz(ij, k) = dudz * dudz + dvdz * dvdz
      end do
   end do
+!$omp end parallel do
 
 
 !     Initial guess for TKE and PSI
@@ -638,15 +654,18 @@ subroutine vdiff( &
   do iitr = 1, nitr
 
 !    tke backup
+!$omp parallel do
      do k = 1, nzdim
         do ij = 1, nxydim
            tke0(ij, k) = tke(ij, k)
         end do
      end do
+!$omp end parallel do
 
 !     dissipation epsil and turbulent length scale tls.
 !     an upper limit for tls is also introduced (eq.(42))
 !     turbultent richardson number rit is also calculated.
+!$omp parallel do
      do k = kstr+1, kend
         do ij = ijstr-nxdim-1, ijend+nxdim+1
            epsil(ij, k) = ceps &
@@ -661,6 +680,7 @@ subroutine vdiff( &
              &          / tke(ij,k) * 0.5d0
         end do
      end do
+!$omp end parallel do
 
 !    Kantha and Clayson (1994) quasi-equilibrium stability function
 !     Eq.(33) of Warner et al. (2005, OM) has TYPOGRAPHICAL ERRORs;
@@ -671,6 +691,7 @@ subroutine vdiff( &
 !      between the two papers).
 !
 !    '12.01.19: bug fix (due to the typograpical error dscribed above)
+!$omp parallel do
      do k = kstr+1, kend
         do ij = ijstr-nxdim-1, ijend+nxdim+1
            ghul(ij, k) = (-0.5d0) * &
@@ -686,8 +707,10 @@ subroutine vdiff( &
              &         / (1.0d0 - csfsm3 * gh(ij, k))
         end do
      end do
+!$omp end parallel do
 
 !     Vertical eddy viscosity at T-grid amvt and diffusivity ahv
+!$omp parallel do private(q)
      do k = kstr+1, kend
         do ij = ijstr-nxdim-1, ijend+nxdim+1
            q = sqrt( 2.0d0 * tke(ij, k) )
@@ -697,25 +720,33 @@ subroutine vdiff( &
              &               csfe * q * tls(ij, k) * sh(ij, k) )
         end do
      end do
+!$omp end parallel do
 
 !     Wall function fwall is just a dummy
+!$omp parallel do
      do k = kstr-1, kend+1
         do ij = ijstr-nxdim-1, ijend+nxdim+1
            fwall(ij, k) = 1.0d0
         end do
      end do
+!$omp end parallel do
       
 !     Frictional velocity and surface roughness
+!$omp parallel do
      do ij = ijstr-nxdim-1-nxdim-1, ijend+nxdim+1
         taubtm(ij) = 0.0d0
      end do
+!$omp end parallel do
      do k = kstr, kend
+!$omp parallel do
         do ij = ijstr-nxdim-1-nxdim-1, ijend+nxdim+1
            taubtm(ij) = taubtm(ij) + ctaubt * rhoo * &
              &        ( uy(ij, k) * uy(ij, k) + vy(ij, k) * vy(ij, k) ) &
              &        * amskb(ij, k)
         end do
+!$omp end parallel do
      end do
+!$omp parallel do private(avrtx, avrty, avrtox, avrtoy)
      do ij = ijstr-nxdim-1, ijend+nxdim+1
         avrtx = (  taux(ij)    + taux(ij+lw) &
           &      + taux(ij+ls) + taux(ij+lsw)) * 0.25d0
@@ -751,18 +782,24 @@ subroutine vdiff( &
            z0sf2d(ij) = z0sfc
         endif
      end do
+!$omp end parallel do
 
 !    Schmidt number for psi
+!$omp parallel do
      do k = 1, nzdim
         do ij = 1, nxydim
            scnp3d(ij, k) = scnpsi
         end do
      end do
+!$omp end parallel do
      if (osfcwv) then
+!$omp parallel do
         do ij = 1, nxydim
            prepmx(ij) = epscmp
         end do
+!$omp end parallel do
          
+!$omp parallel do private(preps0, preps)
         do ij = ijstr-nxdim-1, ijend+nxdim+1
            preps0 = 0.0d0
            do k = kstr+1, nbot(ij)
@@ -782,7 +819,9 @@ subroutine vdiff( &
                 &         / max(prepmx(ij), epscmp)
            end if
         end do
+!$omp end parallel do
 
+!$omp parallel do private(rscnp)
         do k = kstr, kend
            do ij = ijstr-nxdim-1, ijend+nxdim+1
               rscnp = min(depthm(ij, k-1)/max(dpsi0(ij),epscmp), 1.0d0)
@@ -791,15 +830,19 @@ subroutine vdiff( &
                 &  + rscnp*scnpsi
            end do
         end do
+!$omp end parallel do
      else
+!$omp parallel do
         do k = kstr, kend+1
            do ij = ijstr-nxdim-1, ijend+nxdim+1
               scnp3d(ij, k) = scnpsi
            end do
         end do
+!$omp end parallel do
      end if
 
 !    tke equation
+!$omp parallel do
      do k = kstr+1, kend
         do ij = ijstr-nxdim-1, ijend+nxdim+1
            cdkdtl(ij, k) = &  ! gamma = -(p+b)/k (temporary)
@@ -813,8 +856,10 @@ subroutine vdiff( &
              &    + epsil(ij, k)) * amftz(ij, k)
         end do
      end do
+!$omp end parallel do
 
 !    -- Semi-implicit : adjusted alps in each time step --
+!$omp parallel do private(p, alps)
      do k = kstr+1, kend
         do ij = ijstr-nxdim-1, ijend+nxdim+1
            p = cdkdtl(ij, k) * dt   ! gamma * dt
@@ -836,16 +881,20 @@ subroutine vdiff( &
                 &        + cdmp(ij, k)    ! (1-mu)*gamma + delta
         end do
      end do
+!$omp end parallel do
 
 !    --- Boundary condition for tke ---
 !     "diffz(ij, kstr+1)=0"  & "diffz(ij, nbot(ij)+1)=0"
 !      ==>  "aa(ij, kstr+1)=0" & "ac(ij, nbot(ij))=0".
+!$omp parallel do
      do k = 1, nzdim
         do ij = 1, nxydim
            diffz(ij, k) = 0.d0
            fez(ij, k) = 0.d0
         end do
      end do
+!$omp end parallel do
+!$omp parallel do
      do k = kstr+2, kend
         do ij = ijstr-nxdim-1, ijend+nxdim+1
            diffz(ij, k) = ( amvt(ij, k-1) + amvt(ij, k) ) * &
@@ -854,19 +903,25 @@ subroutine vdiff( &
            fez(ij, k) = diffz(ij, k) * (tke(ij, k-1) - tke(ij, k))
         end do
      end do
+!$omp end parallel do
 
 !    tke flux by surface wave breaking, after Carniel et al.(2009)
+!$omp parallel do
      do ij = ijstr-nxdim-1, ijend+nxdim+1
         fez(ij, kstr+1) = cw * ufrc3o(ij)
      end do
+!$omp end parallel do
       
+!$omp parallel do
      do k = kstr+1, kend
         do ij = ijstr-nxdim-1, ijend+nxdim+1
            ade(ij, k) = (fez(ij, k) - fez(ij, k+1)) * rzmsig(ij, k) &
              &        + adefwd(ij, k)
         end do
      end do
+!$omp end parallel do
 
+!$omp parallel do
      do k = kstr+1, kend
         do ij = ijstr-nxdim-1, ijend+nxdim+1
            aa(ij, k) = - dt * diffz(ij, k) * rzmsig(ij, k)
@@ -875,23 +930,30 @@ subroutine vdiff( &
              &       + dt * cdkdtl(ij, k)
         end do
      end do
+!$omp parallel do
      do ij = ijstr-nxdim-1, ijend+nxdim+1
         ac(ij, kstr+1) = ac(ij, kstr+1) / ab(ij, kstr+1)
         ade(ij, kstr+1) = ade(ij, kstr+1) / ab(ij, kstr+1)
      end do
+!$omp end parallel do
      do k = kstr+2, kend
+!$omp parallel do private(fc)
         do ij = ijstr-nxdim-1, ijend+nxdim+1
            fc = 1.d0 / (ab(ij, k) - aa(ij, k) * ac(ij, k-1))
            ac(ij, k) = ac(ij, k) * fc
            ade(ij, k) = (ade(ij, k) - aa(ij, k) * ade(ij, k-1)) * fc
         end do
+!$omp end parallel do
      end do
      do k = kend-1, kstr+1, -1
+!$omp parallel do
         do ij = ijstr-nxdim-1, ijend+nxdim+1
            ade(ij, k) = ade(ij, k) - ac(ij, k) * ade(ij, k+1)
         end do
+!$omp end parallel do
      end do
 
+!$omp parallel do
      do k = kstr+1, kend
         do ij = ijstr-nxdim-1, ijend+nxdim+1
            tke(ij, k) = (  atfilt * tke(ij, k) &
@@ -900,16 +962,20 @@ subroutine vdiff( &
              &          ) * amftz(ij, k)
         end do
      end do
+!$omp end parallel do
 
 !    Surface and bottom tke estimation
 !    for surface tke, surface wave breaking effect is accounted
 !     (after Carniel et al. (2009)).
+!$omp parallel do
      do ij = ijstr-nxdim-1, ijend+nxdim+1
         tke(ij, kstr) = 1.0d0 / (cmu0*cmu0) * &
           &        (ufrc3s(ij) + ufrc3o(ij) * csftkw * cw)**(2.0d0/3.0d0)
         tke(ij, nbot(ij)+1) = ufrc2b(ij) / (cmu0*cmu0)
      end do
+!$omp end parallel do
 
+!$omp parallel do
      do k = kstr, kend+1
         do ij = 1, nxydim
            if (tke(ij, k) .lt. tkemin) then
@@ -920,8 +986,10 @@ subroutine vdiff( &
            tke(ij, k) = max(tke(ij, k), tkemin)
         end do
      end do
+!$omp end parallel do
 
 !    GLS quantity psi equation
+!$omp parallel do
      do k = kstr+1, kend
         do ij = ijstr-nxdim-1, ijend+nxdim+1
            cdkdtl(ij, k) = &  ! gamma = -(c1*p+c3*b)/k (temporary) 
@@ -937,8 +1005,10 @@ subroutine vdiff( &
              &  * amftz(ij, k)
         end do
      end do
+!$omp end parallel do
 
 !    -- Semi-implicit : adjusted alps in each time step --
+!$omp parallel do private(p, alps)
      do k = kstr+1, kend
         do ij = ijstr-nxdim-1, ijend+nxdim+1
            p = cdkdtl(ij, k) * dt   ! gamma * dt
@@ -960,16 +1030,20 @@ subroutine vdiff( &
              &           + cdmp(ij, k)  ! (1-mu)*gamma + delta
         end do
      end do
+!$omp end parallel do
 
 !    --- Boundary condition for psi ---
 !     "diffz(ij, kstr+1)=0"  & "diffz(ij, nbot(ij)+1)=0"
 !       ==> "aa(ij, kstr+1)=0" & "ac(ij, nbot(ij))=0"
+!$omp parallel do
      do k = 1, nzdim
         do ij = 1, nxydim
            diffz(ij, k) = 0.d0
            fez(ij, k) = 0.d0
         end do
      end do
+!$omp end parallel do
+!$omp parallel do
      do k = kstr+2, kend
         do ij = ijstr-nxdim-1, ijend+nxdim+1
            diffz(ij, k) = ( amvt(ij, k-1) + amvt(ij, k) ) * &
@@ -978,10 +1052,12 @@ subroutine vdiff( &
            fez(ij, k) = diffz(ij, k) * (psi(ij, k-1) - psi(ij, k))
         end do
      end do
+!$omp end parallel do
 
 !    fez(ij, kstr+1) & fez(ij, nbot(ij)+1)
 !    eq.(54) of Warner et al. (2005, om) has TYPOGRAPHICAL ERROR;
 !      k^{n} must be \kappa^{n}.
+!$omp parallel do private(k, tketmp, dstwal)
      do ij = ijstr-nxdim-1, ijend+nxdim+1
         k = kstr+1
         tketmp = (tke0(ij, k-1) + tke0(ij, k))*0.5d0
@@ -1009,14 +1085,18 @@ subroutine vdiff( &
              &     * ( dstwal**(estrn-1.0d0) )
         end if
      end do
+!$omp end parallel do
       
+!$omp parallel do
      do k = kstr+1, kend
         do ij = ijstr-nxdim-1, ijend+nxdim+1
            ade(ij, k) = ( fez(ij, k) - fez(ij, k+1) ) * rzmsig(ij, k) &
              &          + adefwd(ij, k)
         end do
      end do
+!$omp end parallel do
 
+!$omp parallel do
      do k = kstr+1, kend
         do ij = ijstr-nxdim-1, ijend+nxdim+1
            aa(ij, k) = - dt * diffz(ij, k) * rzmsig(ij, k)
@@ -1025,23 +1105,31 @@ subroutine vdiff( &
              &       + dt * cdkdtl(ij, k)
         end do
      end do
+!$omp end parallel do
+!$omp parallel do
      do ij = ijstr-nxdim-1, ijend+nxdim+1
         ac(ij, kstr+1) = ac(ij, kstr+1) / ab(ij, kstr+1)
         ade(ij, kstr+1) = ade(ij, kstr+1) / ab(ij, kstr+1)
      end do
+!$omp end parallel do
      do k = kstr+2, kend
+!$omp parallel do
         do ij = ijstr-nxdim-1, ijend+nxdim+1
            fc = 1.d0 / (ab(ij, k) - aa(ij, k) * ac(ij, k-1))
            ac(ij, k) = ac(ij, k) * fc
            ade(ij, k) = (ade(ij, k) - aa(ij, k) * ade(ij, k-1)) * fc
         end do
+!$omp end parallel do
      end do
      do k = kend-1, kstr+1, -1
+!$omp parallel do
         do ij = ijstr-nxdim-1, ijend+nxdim+1
            ade(ij, k) = ade(ij, k) - ac(ij, k) * ade(ij, k+1)
         end do
+!$omp end parallel do
      end do
 
+!$omp parallel do
      do k = kstr+1, kend
         do ij = ijstr-nxdim-1, ijend+nxdim+1
            psi(ij, k) = (  atfilt * psi(ij, k) &
@@ -1050,17 +1138,21 @@ subroutine vdiff( &
              &          ) * amftz(ij, k)
         end do
      end do
+!$omp end parallel do
 
 !    Surface and bottom psi estimation
 !    (this part is only for output and will not be referred below,
 !     thus can be removed).
+!$omp parallel do
      do ij = ijstr-nxdim-1, ijend+nxdim+1
         psi(ij, kstr) = cpsibs * (ckarm*z0sf2d(ij))**(estrn) &
           &                    * (ufrc2s(ij)**(2.0d0*estrm))
         psi(ij, nbot(ij)+1) = cpsibb * (ufrc2s(ij)**(2.0d0*estrm))
      end do
+!$omp end parallel do
 
 !    Limit on psi (psimin, and eq.(43) if stable stratification)
+!$omp parallel do private(psilm)
      do k = kstr, kend+1
         do ij = ijstr-nxdim-1, ijend+nxdim+1
            if (drdz(ij, k) .gt. 0.0d0) then
@@ -1076,6 +1168,7 @@ subroutine vdiff( &
            end if
         end do
      end do
+!$omp end parallel do
 
   end do
 
@@ -1084,6 +1177,7 @@ subroutine vdiff( &
      ofirst = .false.
   end if
 
+!$omp parallel do
   do k = kstr+1, kend
      do ij = ijstr, ijend
         amv(ij, k) = ( amvt(ij    , k) * amftz(ij    , k) &
@@ -1093,8 +1187,10 @@ subroutine vdiff( &
           &          ) * csamv(ij, k)
      end do
   end do
+!$omp end parallel do
 
 ! -- Smoothing --
+!$omp parallel do
   do k = kstr+1, kend
      do ij = ijstr-nxdim-1, ijend
         amvt(ij, k) = ( ahv(ij    , k) * amftz(ij    , k) &
@@ -1111,28 +1207,36 @@ subroutine vdiff( &
           &          ) * csahv(ij, k)
      end do
   end do
+!$omp end parallel do
 
+!$omp parallel do
   do k = kstr, kstr+mz-1
      do ij = ijstr-nxdim-1, ijend
         amv(ij, k) = min(amvmax, max(amv(ij, k), amv0(k-kstr+1)))
         ahv(ij, k) = max(ahv(ij, k), ahv03d(ij, k))
      end do
   end do
+!$omp end parallel do
+!$omp parallel do
   do k = kstr+mz, kend
      do ij = ijstr, ijend
         amv(ij, k) = amv0(k-kstr+1)
         ahv(ij, k) = ahv03d(ij, k)
      end do
   end do
+!$omp end parallel do
 
 
 !--- tidal turbulent energy dissipation rate
 ! near-field
   if ( iamn /= 0 ) then
+!$omp parallel do
      do ij = ijstr, ijend
         gint(ij) = 0.d0
      end do
+!$omp end parallel do
      do k = kstr+1, kend
+!$omp parallel do private(dep)
         do ij = 1, nxydim
 !           dep = depth(ij, nbot(ij) + 1) ! depth of bottom
            dep = depth0(ij, nbot(ij) + 1) ! depth of bottom
@@ -1140,8 +1244,10 @@ subroutine vdiff( &
                 & dzm(ij, k) * exp((depth0(ij, k) - dep) * rzeta) * amftz(ij, k)
 !                & dzmsig(ij, k) * exp((depth(ij, k) - dep) * rzeta) * amftz(ij, k)
         end do
+!$omp end parallel do
      end do
      where(gint /= 0.d0) gint = 1.d0 / gint
+!$omp parallel do private(dep)
      do k = kstr+1, kend
         do ij = 1, nxydim
 !           dep = depth(ij, nbot(ij) + 1) ! depth of bottom
@@ -1150,71 +1256,93 @@ subroutine vdiff( &
            tedn3d(ij, k) = gint(ij) * tedn2d(ij) * exp((depth0(ij, k) - dep) * rzeta) * amftz(ij, k)
         end do
      end do
+!$omp end parallel do
   end if
 ! far-field
   if ( iamf /= 0 ) then
+!$omp parallel do
      do ij = ijstr, ijend
         gint(ij) = 0.d0
      end do
+!$omp end parallel do
      if (ofvcnt) then
         do k = kstr+1, kend
+!$omp parallel do
            do ij = 1, nxydim
               gint(ij) = gint(ij) + &
                    & dzm(ij, k) * amftz(ij, k)
 !                   & dzmsig(ij, k) * amftz(ij, k)
            end do
+!$omp end parallel do
         end do
+!$omp parallel do
         do ij = ijstr, ijend
            if (gint(ij) /= 0.d0) then
               gint(ij) = 1.d0 / gint(ij)
            end if
         end do
+!$omp end parallel do
+!$omp parallel do
         do k = kstr+1, kend
            do ij = 1, nxydim
               tedf3d(ij, k) = gint(ij) * tedf2d(ij) * amftz(ij, k)
            end do
         end do
+!$omp end parallel do
      else
         if (ofvpn) then ! prop to N
            do k = kstr+1, kend
+!$omp parallel do
               do ij = 1, nxydim
                  gint(ij) = gint(ij) + &
                       & dzm(ij, k) * sqrt(abs(drdz(ij, k))) * amftz(ij, k)
 !                      & dzmsig(ij, k) * sqrt(abs(drdz(ij, k))) * amftz(ij, k)
               end do
+!$omp end parallel do
            end do
+!$omp parallel do
            do ij = ijstr, ijend
               if (gint(ij) /= 0.d0) then
                  gint(ij) = 1.d0 / gint(ij)
               end if
            end do
+!$omp end parallel do
+!$omp parallel do
            do k = kstr+1, kend
               do ij = 1, nxydim
                  tedf3d(ij, k) = gint(ij) * tedf2d(ij) * sqrt(abs(drdz(ij, k))) * amftz(ij, k)
               end do
            end do
+!$omp end parallel do
         else ! prop to N2
            do k = kstr+1, kend
+!$omp parallel do
               do ij = 1, nxydim
                  gint(ij) = gint(ij) + &
                       & dzm(ij, k) * drdz(ij, k) * amftz(ij, k)
 !                      & dzmsig(ij, k) * drdz(ij, k) * amftz(ij, k)
               end do
+!$omp end parallel do
            end do
+!$omp parallel do
            do ij = ijstr, ijend
               if (gint(ij) /= 0.d0) then
                  gint(ij) = 1.d0 / gint(ij)
               end if
            end do
+!$omp end parallel do
+!$omp parallel do
            do k = kstr+1, kend
               do ij = 1, nxydim
                  tedf3d(ij, k) = gint(ij) * tedf2d(ij) * drdz(ij, k) * amftz(ij, k)
               end do
            end do
+!$omp end parallel do
         end if
      end if
   end if
 
+!$omp parallel do
   do k = kstr+1, kend
      do ij = ijstr, ijend
         ahvted(ij, k) = cgamma * (tedn3d(ij, k) + tedf3d(ij, k)) &
@@ -1225,6 +1353,7 @@ subroutine vdiff( &
              &                  * amftz(ij, k)
      end do
   end do
+!$omp end parallel do
 
   call chekin(ahvted, 'AHVTED', &
        &          'ahv by ted', 'cm^2/s', &
