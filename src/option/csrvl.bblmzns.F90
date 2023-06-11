@@ -70,6 +70,7 @@ subroutine srcvel( &
      write(jfpar, nmbtmf)
   end if
 
+!$omp parallel do
   do k = 1, nzdim
      do ij = 1, nxydim
         gx(ij, k) = 0.d0
@@ -78,7 +79,9 @@ subroutine srcvel( &
         yy(ij, k) = 0.d0
      end do
   end do
+!$omp end parallel do
 
+!$omp parallel do private(abv)
   do k = kstr, kend
      do ij = ijvstr, ijvend
         abv = - btmfrc / dzv(ij, k) * &
@@ -89,6 +92,7 @@ subroutine srcvel( &
         yy(ij, k) = gy(ij, k)
      end do
   end do
+!$omp end parallel do
 
   return
 
