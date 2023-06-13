@@ -114,6 +114,7 @@ contains
        return
     end if
 
+!$omp parallel do
     do k = 1, nzdim
        do ij = 1, nxydim
           fux(ij, k) = 0.d0
@@ -124,7 +125,9 @@ contains
           fvz(ij, k) = 0.d0
        end do
     end do
+!$omp end parallel do
 
+!$omp parallel do
     do ij = ijvstr, ijvend
        hvbot(ij) = (  (hy(ij)    + hy(ij+le) ) * dy(ij)               &
     &               + (hy(ij+ln) + hy(ij+lne)) * dy(ij+ln)) *         &
@@ -137,18 +140,24 @@ contains
     &             + zbot
        hvbotx(ij) = 1.d0 / hvbotx(ij)
     end do
+!$omp end parallel do
 
+!$omp parallel do
     do k = kstr, kstr+kz-1
        do ij = ijvstr, ijvend
           rz (ij, k) = 1.d0 * rs (k) * hvbotx(ij)
        end do
     end do
+!$omp end parallel do
+!$omp parallel do
     do k = kstr+kz, kend
        do ij = ijvstr, ijvend
           rz (ij, k) = 1.d0 / dzv(ij, k)
        end do
     end do
+!$omp end parallel do
     
+!$omp parallel do
     do k = kstr, kstr+kz-2
        do ij = ijvstr, ijvend
           div(ij, k) = (  (  (  uadv(ij+le, k) *                      &
@@ -165,7 +174,9 @@ contains
     &                 amskv(ij, k)
        end do
     end do
+!$omp end parallel do
     k = kstr+kz-1
+!$omp parallel do
     do ij = ijvstr, ijvend
        div(ij, k) = (  (  (  uadv(ij+le, k) *                         &
     &                       (hyu(ij+le) + hyu(ij))                    &
@@ -181,12 +192,16 @@ contains
     &                  - wadv(ij, k+1) * hvbot(ij)) * rs(k)) *        &
     &              amskv(ij, k)
     end do
+!$omp end parallel do
 
+!$omp parallel do
     do ij = ijvstr, ijvend
        fuz(ij, kstr) = 0.d0
        fvz(ij, kstr) = 0.d0
     end do
+!$omp end parallel do
 
+!$omp parallel do
     do k = kstr+1, kend
        do ij = ijvstr, ijvend
           fuz(ij, k) =                                                &
@@ -197,7 +212,9 @@ contains
     &                  (vy(ij, k-1) + vy(ij, k))
        end do
     end do
+!$omp end parallel do
 
+!$omp parallel do
     do k = kstr, kend
        do ij = ijvstr, ijvend+nxdim
           fuy(ij, k) =                                                &
@@ -210,7 +227,9 @@ contains
     &                   + vy(ij+ls, k) * hxu(ij+ls))
        end do
     end do
+!$omp end parallel do
     
+!$omp parallel do
     do k = kstr, kend
        do ij = ijvstr, ijvend+1
           fux(ij, k) =                                                &
@@ -223,7 +242,9 @@ contains
     &                   + vy(ij+lw, k) * hyu(ij+lw))
        end do
     end do
+!$omp end parallel do
 
+!$omp parallel do
     do k = kstr, kstr+kz-2
        do ij = ijvstr, ijvend
           xx1(ij, k) = (                                              &
@@ -246,8 +267,10 @@ contains
     &                amskv(ij, k)
        end do
     end do
+!$omp end parallel do
 
     k = kstr+kz-1
+!$omp parallel do
     do ij = ijvstr, ijvend
        xx1(ij, k) = (                                                 &
     &                + (  (fux(ij+le, k) - fux(ij, k)) * rx           &
@@ -270,7 +293,9 @@ contains
     &                - uy(ij, k) * vy(ij, k) * hyxu(ij)) *            &
     &               amskv(ij, k)
     end do
+!$omp end parallel do
 
+!$omp parallel do
     do k = kstr+kz, kend
        do ij = ijvstr, ijvend
           xx1(ij, k) = (                                              &
@@ -295,11 +320,13 @@ contains
     &                amskv(ij, k)
        end do
     end do
+!$omp end parallel do
 
 !---- Adams-Bashforth scheme by M. Kurogi
     ncall = ncall + 1
     if ( ( ncall >= 3 ) .or. ( .not. oeof ) ) then
        ncall = 3
+!$omp parallel do
        do k = kstr, kend
           do ij = ijvstr, ijvend
              gx(ij, k) = gx(ij, k)                                    &
@@ -308,15 +335,19 @@ contains
     &             + c1 * yy1(ij,k) + c2 * yy2(ij,k) + c3 * yy3(ij, k) 
           end do
        end do
+!$omp end parallel do
     else 
        if ( ncall == 1 ) then ! forward
+!$omp parallel do
           do k = kstr, kend
              do ij = ijvstr, ijvend
                 gx(ij, k) = gx(ij, k) + xx1(ij, k)
                 gy(ij, k) = gy(ij, k) + yy1(ij, k)
              end do
           end do
+!$omp end parallel do
        else if ( ncall == 2 ) then !2nd order AB
+!$omp parallel do
           do k = kstr, kend
              do ij = ijvstr, ijvend
                 gx(ij, k) = gx(ij, k)                                 &
@@ -325,9 +356,11 @@ contains
     &                 + 1.5d0 * yy1(ij,k) - 0.5d0 * yy2(ij,k)
              end do
           end do
+!$omp end parallel do
        end if
     end if
 
+!$omp parallel do
     do k = kstr, kend
        do ij = ijvstr, ijvend
          
@@ -339,6 +372,7 @@ contains
 
        end do
     end do
+!$omp end parallel do
     
   end subroutine advvel
 
@@ -433,13 +467,16 @@ contains
        end do
     end if
 
+!$omp parallel do
     do ij = 1, nxydim
        fux(ij) = 0.d0
        fvx(ij) = 0.d0
        fuy(ij) = 0.d0
        fvy(ij) = 0.d0
     end do
+!$omp end parallel do
 
+!$omp parallel do private(kup)
     do ij = ijvstr, ijvend
        kup = max(nbotv(ij)-1, 1)                                      
        fuz(ij) = - wadv(ij, kend) * 0.5d0 *                           &
@@ -447,7 +484,9 @@ contains
        fvz(ij) = - wadv(ij, kend) * 0.5d0 *                           &
     &             (vy(ij, kup) + vy(ij, kend))
     end do
+!$omp end parallel do
 
+!$omp parallel do
     do ij = ijvstr, ijvend+nxdim
        fuy(ij) = - vadv(ij, kend) * 0.5d0 *                           &
     &             (  uy(ij, kend) * hxu(ij)                           &
@@ -456,7 +495,9 @@ contains
     &             (  vy(ij, kend) * hxu(ij)                           &
     &              + vy(ij+ls, kend) * hxu(ij+ls))
     end do
+!$omp end parallel do
 
+!$omp parallel do
     do ij = ijvstr, ijvend+1
        fux(ij) = - uadv(ij, kend) * 0.5d0 *                           &
     &             (  uy(ij, kend) * hyu(ij)                           &
@@ -465,7 +506,9 @@ contains
     &             (  vy(ij, kend) * hyu(ij)                           &
     &              + vy(ij+lw, kend) * hyu(ij+lw))
     end do
+!$omp end parallel do
 
+!$omp parallel do
     do ij = ijvstr, ijvend
        xx1(ij) = (                                                    &
     &                 + (  (  (fux(ij+le) - fux(ij)) * rx             &
@@ -484,32 +527,40 @@ contains
     &                 - uy(ij, kend) * vy(ij, kend) * hyxu(ij)) *     &
     &                amskvb(ij)
     end do
+!$omp end parallel do
 
 !---- Adams-Bashforth scheme by M. Kurogi
     ncall = ncall + 1
 
     if ( ( ncall >= 3 ) .or. ( .not. oeof ) ) then
        ncall = 3
+!$omp parallel do
        do ij = ijvstr, ijvend
           gx(ij, kend) =  gx(ij, kend)                                &
     &        + c1 * xx1(ij) + c2 * xx2(ij) + c3 * xx3(ij) 
           gy(ij, kend) =  gy(ij, kend)                                &
     &        + c1 * yy1(ij) + c2 * yy2(ij) + c3 * yy3(ij) 
        end do
+!$omp end parallel do
     else
        if ( ncall == 1 ) then ! forward
+!$omp parallel do
           do ij = ijvstr, ijvend
              gx(ij, kend) =  gx(ij, kend) + xx1(ij)
              gy(ij, kend) =  gy(ij, kend) + yy1(ij)
           end do
+!$omp end parallel do
        else if (ncall == 2 ) then !2nd order AB
+!$omp parallel do
           do ij = ijvstr, ijvend
              gx(ij, kend) = gx(ij, kend) + 1.5d0 * xx1(ij) - 0.5d0 * xx2(ij)
              gy(ij, kend) = gy(ij, kend) + 1.5D0 * yy1(ij) - 0.5d0 * yy2(ij)
           end do
+!$omp end parallel do
        end if
     end if
 
+!$omp parallel do
     do ij = ijvstr, ijvend
     
        xx3(ij) = xx2(ij) ! n-1 > n-2
@@ -519,6 +570,7 @@ contains
        yy2(ij) = yy1(ij)
 
     end do
+!$omp end parallel do
 
   end subroutine advvlb
 
