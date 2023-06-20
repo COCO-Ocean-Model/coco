@@ -426,7 +426,7 @@ subroutine ptherm( &
   end do
   do k = 1, nic
      do ij = ijtstr, ijtend
-        if (axeixn(ij, k) .le. 0.d0) then
+        if (axeixn(ij, k) .le. 0.d0 .or. ax(ij, k) .le. 0.d0) then
            if (daxhib(ij, k) .le. 0.d0) then
               daxhib(ij, k) = 0.d0
            else
