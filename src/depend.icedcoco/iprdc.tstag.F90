@@ -168,7 +168,8 @@ subroutine predci( &
   real(8), save ::    wio(nxydim, nic),    was(nxydim, nic)
   real(8), save ::    wil(nxydim, nic)
   real(8), save ::   subi(nxydim, nic)
-  real(8), save ::   evap(nxydim), adjlat(nxydim), wiadjs(nxydim)
+  real(8), save ::   evap(nxydim)
+  real(8), save :: wiadjs(nxydim), weadjs(nxydim)
   real(8), save ::     az(nxydim, 0:nic),    hiz(nxydim, 0:nic)
   real(8), save ::    hsz(nxydim, 0:nic),    tiz(nxydim, 0:nic)
   real(8), save ::   pice(nxydim)
@@ -335,6 +336,7 @@ subroutine predci( &
      fdd(ij) = 0.0d0
      fdb(ij) = 0.0d0
      wiadjs(ij) = 0.d0
+     weadjs(ij) = 0.d0
      imraji(ij) = 0.d0
      imrajs(ij) = 0.d0
      igrfra(ij) = 0.d0
@@ -406,7 +408,7 @@ subroutine predci( &
     &            asx,  frlvx,   vmpx,  frmpx,   dsdx,   dsbx, &
     &           prec,   snow,    fdd,    fdb, &
     &         inrsbi, inrsbs, imraji, imrajs, &
-    &           evap,   subi, adjlat, wiadjs, &
+    &           subi, wiadjs, weadjs, &
     &            wev,    wsb,   soff )
 
   call cofpfw( &
@@ -423,7 +425,7 @@ subroutine predci( &
     &         impinc, impfrz, improf, &
     &             tx,    tsi, &
     &            wio,    wao,    was,    wil, &
-    &           evap,   subi,   roff, adjlat, wiadjs, &
+    &           evap,   subi,   roff, wiadjs, weadjs, &
     &           dfdu,   dfbc, &
     &            qio )
   call idfrmp( &

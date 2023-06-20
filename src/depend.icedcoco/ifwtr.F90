@@ -37,7 +37,7 @@ subroutine fwater( &
   &                   asx,  frlvx,   vmpx,  frmpx,   dsdx,   dsbx, &
   &                  prec,   snow,    fdd,    fdb, &
   &                inrsbi, inrsbs, imraji, imrajs, &
-  &                  evap,   subi, adjlat, wiadjs, &
+  &                  subi, wiadjs, weadjs, &
   &                   wev,    wsb,   soff )
 
   use ufile
@@ -54,7 +54,7 @@ subroutine fwater( &
   real(8), intent(inout) ::    wsb(nxydim, nic)
   real(8), intent(inout) :: inrsbi(nxydim), inrsbs(nxydim)
   real(8), intent(inout) :: imraji(nxydim), imrajs(nxydim)
-  real(8), intent(out)   ::   evap(nxydim), adjlat(nxydim), wiadjs(nxydim)
+  real(8), intent(out)   :: wiadjs(nxydim), weadjs(nxydim)
   real(8), intent(out)   ::   subi(nxydim, nic)
   real(8), intent(in)    ::    wev(nxydim),   soff(nxydim)
   
@@ -67,7 +67,7 @@ subroutine fwater( &
   integer ::  ifpar,  jfpar,  istat
 
   real(8) ::     az(nxydim, 0:nic),    hiz(nxydim, 0:nic)
-  real(8) ::    hsz(nxydim, 0:nic)
+  real(8) ::    hsz(nxydim, 0:nic),    eiz(nxydim, 0:nic)
 !      common /work/ az, hiz, hsz
 
   if (oinit .or. ofinal) then
@@ -90,6 +90,7 @@ subroutine fwater( &
         az (ij, k) = ax(ij, k)
         hiz(ij, k) = hix(ij, k)
         hsz(ij, k) = hsx(ij, k)
+        eiz(ij, k) = eix(ij, k)
      end do
   end do
 
@@ -113,7 +114,7 @@ subroutine fwater( &
               end if
            end if
            dhi = ts * rri * wsb(ij, k) / ax(ij, k)
-           dhimax = eix(ij, k) / hfus
+           dhimax = min(eix(ij, k) / hfus, hix(ij, k))
            if (dhi < dhimax) then 
               hix(ij, k) = hiz(ij, k) - dhi
               dei = (hix(ij, k) - hiz(ij, k)) * hfus
@@ -124,6 +125,19 @@ subroutine fwater( &
                 &          / rri / ts
            else
 !              write(0,*) '## dhi >= dhimax at ifwtr ##'
+!              if (dhi >= (eix(ij, k)/hfus)) then
+!                 if (dhi >= hix(ij, k)) then
+!                    write(0,*) '### DHI >= DHIMAX at IFWTR (E&H) ##'
+!                 else
+!                    write(0,*) '### DHI >= DHIMAX at IFWTR (EIX) ##'
+!                 end if
+!              else
+!                 if (dhi >= hix(ij, k)) then
+!                    write(0,*) '### DHI >= DHIMAX at IFWTR (HIX) ##'
+!                 else
+!                    write(0,*) '### Suspicious DHI >= DHIMAX ##'
+!                 end if
+!              end if
               ax(ij, k) = 0.d0
               hix(ij, k) = hic(k)
               hsx(ij, k) = 0.d0
@@ -136,29 +150,22 @@ subroutine fwater( &
               dsdx(ij, k) = 0.d0
               dsbx(ij, k) = 0.d0
               wiadjs(ij) = wiadjs(ij) &
-                &        - ax(ij, k) * (hiz(ij, k) - dhimax) &
-                &          / rri / ts
+                &        + az(ij, k) * (dhi - hiz(ij, k)) &
+                &        / rri / ts
+              weadjs(ij) = weadjs(ij) &
+                &        + az(ij, k) * (dhi * hfus - eiz(ij, k)) &
+                &        / rri / ts
               inrsbi(ij) = inrsbi(ij) &
-                &        + ax(ij, k) * (-dhimax) &
+                &        + az(ij, k) * (-dhimax) &
                 &          / rri / ts
               imraji(ij) = imraji(ij) &
-                &        + ax(ij, k) * (hiz(ij, k) - dhimax) &
+                &        + az(ij, k) * (hiz(ij, k) - dhimax) &
                 &          / rri / ts
            end if
-           subi(ij, k) = ax(ij, k) * (hiz(ij, k) - hix(ij, k)) &
-             &           / rri / ts
-           wsb(ij, k) = wsb(ij, k) - subi(ij, k)
+           subi(ij, k) = az(ij, k) * (hiz(ij, k) - hix(ij, k)) &
+                &        / rri / ts
         end if
      end do
-  end do
-
-  do k = 1, nic
-     do ij = ijtstr, ijtend
-        evap(ij) = evap(ij) + wsb(ij, k)
-     end do
-  end do
-  do ij = ijtstr, ijtend
-     adjlat(ij) = evap(ij) - wev(ij)
   end do
 
   do ij = ijtstr, ijtend
