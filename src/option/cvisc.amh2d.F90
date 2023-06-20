@@ -177,6 +177,7 @@ contains
        
     end if
 
+!$omp parallel do
     do k = 1, nzdim
        do ij = 1, nxydim
           fux(ij, k) = 0.d0
@@ -187,12 +188,16 @@ contains
           fvz(ij, k) = 0.d0
        end do
     end do
+!$omp end parallel do
 
+!$omp parallel do private(ij)
     do ij = ijvstr, ijvend
        fuz(ij, kstr) = taux(ij)
        fvz(ij, kstr) = tauy(ij)
     end do
+!$omp end parallel do
 
+!$omp parallel do private(ij)
     do ij = ijvstr, ijvend
        hvbot(ij) = (  (hx(ij)    + hx(ij+le) ) * dy(ij)               &
     &               + (hx(ij+ln) + hx(ij+lne)) * dy(ij+ln) ) *        &
@@ -200,34 +205,44 @@ contains
     &             + zbot
        hvbot(ij) = 1.d0 / hvbot(ij)
     end do
+!$omp end parallel do
+!$omp parallel do private(ij)
     do k = kstr, kstr+kz-1
        do ij = ijvstr, ijvend
           rz (ij, k) = 1.d0 * rs (k) * hvbot(ij)
           rzm(ij, k) = 1.d0 * rsm(k) * hvbot(ij)
        end do
     end do
+!$omp end parallel do
+!$omp parallel do private(ij)
     do k = kstr+kz, kend
        do ij = ijvstr, ijvend
           rz (ij, k) = 1.d0 / dzv(ij, k)
           rzm(ij, k) = 1.d0 / dzm(ij, k)
        end do
     end do
+!$omp end parallel do
 
+!$omp parallel do private(ij)
     do k = kstr+1, kend
        do ij = ijvstr, ijvend
           fuz(ij, k) = amv(ij, k) * rzm(ij, k) * ( ux(ij, k-1) - ux(ij, k) )
           fvz(ij, k) = amv(ij, k) * rzm(ij, k) * ( vx(ij, k-1) - vx(ij, k) )
        end do
     end do
+!$omp end parallel do
 
+!$omp parallel do private(ij)
     do k = kstr, kend
        do ij = ijvstr, ijvend
           gx(ij, k) = gx(ij, k) + (fuz(ij, k) - fuz(ij, k+1)) * rz(ij, k)
           gy(ij, k) = gy(ij, k) + (fvz(ij, k) - fvz(ij, k+1)) * rz(ij, k)
        end do
     end do
+!$omp end parallel do
 
     do k = kstr, kend
+!$omp parallel do private(ijls, ijlw, ijln, ijle, ijnw, ijse, ijsw)
        do ij = ijstr, ijend+nxdim+1
           ijls = ij + ls
           ijlw = ij + lw
@@ -279,7 +294,9 @@ contains
     &                 (  (amv(ij, k) + amv(ij, k+1)) * 0.5d0 / rea    &
     &                  + (amv(ij, k) - amv(ij, k+1)) * rz(ij, k))
        end do
+!$omp end parallel do
 
+!$omp parallel do private(ijlw)
        do ij = ijvstr, ijvend+1
           ijlw = ij + lw
           fux(ij, k) = sxx(ij) * (hyu(ij) + hyu(ijlw)) *              &
@@ -289,7 +306,9 @@ contains
     &                            (hyu(ij) + hyu(ijlw)) * 0.25d0 *     &
     &                   amfvx(ij, k)
        end do
+!$omp end parallel do
 
+!$omp parallel do private(ijls)
        do ij = ijvstr, ijvend+nxdim
           ijls = ij + ls
           fuy(ij, k) = sxy(ij) * (hxu(ij) + hxu(ijls)) *              &
@@ -299,14 +318,18 @@ contains
     &                            (hxu(ij) + hxu(ijls)) * 0.25d0 *     &
     &                  amfvy(ij, k)
        end do
+!$omp end parallel do
 
+!$omp parallel do
        do ij = ijvstr, ijvend
           smx(ij, k) = szx(ij) / rea
           smy(ij, k) = szy(ij) / rea
        end do
+!$omp end parallel do
 
     end do
 
+!$omp parallel do
     do k = kstr, kstr+kz-1
        do ij = ijvstr, ijvend
           gx(ij, k) = (  gx(ij, k)                                    &
@@ -323,7 +346,9 @@ contains
     &                + smy(ij, k) ) * amskv(ij, k)
        end do
     end do
+!$omp end parallel do
       
+!$omp parallel do
     do k = kstr+kz, kend
        do ij = ijvstr, ijvend
           gx(ij, k) = (  gx(ij, k)                                   &
@@ -342,13 +367,16 @@ contains
     &                + smy(ij, k) ) * amskv(ij, k)
        end do
     end do
+!$omp end parallel do
 
+!$omp parallel do
     do k = kstr, kend
        do ij = ijvstr, ijvend
           xx(ij, k) = gx(ij, k)
           yy(ij, k) = gy(ij, k)
        end do
     end do
+!$omp end parallel do
 
   end subroutine vscvel
 
@@ -498,19 +526,24 @@ contains
 
     k = kend
 
+!$omp parallel do
     do ij = 1, nxydim
        fux(ij) = 0.d0
        fvx(ij) = 0.d0
        fuy(ij) = 0.d0
        fvy(ij) = 0.d0
     end do
+!$omp end parallel do
 
+!$omp parallel do private(kup)
     do ij = ijvstr, ijvend
        kup = max( nbotv(ij)-1, 1 )
        fuz(ij) = amv(ij, kend) * rzm(ij) * (ux(ij, kup) - ux(ij, kend))
        fvz(ij) = amv(ij, kend) * rzm(ij) * (vx(ij, kup) - vx(ij, kend))
     end do
+!$omp end parallel do
 
+!$omp parallel do private(ijls, ijlw, ijln, ijle, ijnw, ijse, ijsw)
     do ij = ijstr, ijend+nxdim+1
        ijls = ij + ls
        ijlw = ij + lw
@@ -558,7 +591,9 @@ contains
        szx(ij) = - ux(ij, k) * amv(ij, k) / rea
        szy(ij) = - vx(ij, k) * amv(ij, k) / rea
     end do
+!$omp end parallel do
      
+!$omp parallel do private(ijlw)
     do ij = ijvstr, ijvend+1
        ijlw = ij + lw
        fux(ij) = sxx(ij) * (hyu(ij) + hyu(ijlw)) *                    &
@@ -568,6 +603,8 @@ contains
     &                      (hyu(ij) + hyu(ijlw)) * 0.25d0 *           &
     &            amfvx(ij, k)
     end do
+!$omp end parallel do
+!$omp parallel do private(ijls)
     do ij = ijvstr, ijvend+nxdim
        ijls = ij + ls
        fuy(ij) = sxy(ij) * (hxu(ij) + hxu(ijls)) *                    &
@@ -577,12 +614,16 @@ contains
     &                      (hxu(ij) + hxu(ijls)) * 0.25d0 *           &
     &            amfvy(ij, k)
     end do
+!$omp end parallel do
     
+!$omp parallel do
     do ij = ijvstr, ijvend
        smx(ij) = szx(ij) / rea
        smy(ij) = szy(ij) / rea
     end do
+!$omp end parallel do
 
+!$omp parallel do
     do ij = ijvstr, ijvend
        gx(ij, k) = (  gx(ij, k)                                      &
     &               + fuz(ij) * rz(ij)                               &
@@ -601,11 +642,14 @@ contains
     &                 ) * rxu(ij) * ryu(ij) * rz(ij)                 &
     &               + smy(ij)) * amskvb(ij)
     end do
+!$omp end parallel do
 
+!$omp parallel do
     do ij = ijvstr, ijvend
        xx(ij, kend) = gx(ij, kend)
        yy(ij, kend) = gy(ij, kend)
     end do
+!$omp end parallel do
     
   end subroutine vscvlb
 

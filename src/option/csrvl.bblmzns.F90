@@ -160,6 +160,7 @@ subroutine srcvlb( &
      end do
   end if
 
+!$omp parallel do private(abv)
   do ij = ijvstr, ijvend
      abv = - btmfrc / dzv(ij, kend) * &
        &     sqrt(  ux(ij, kend) * ux(ij, kend) &
@@ -170,6 +171,7 @@ subroutine srcvlb( &
      xx(ij, kend) = gx(ij, kend)
      yy(ij, kend) = gy(ij, kend)
   end do
+!$omp end parallel do
 
   return
 
