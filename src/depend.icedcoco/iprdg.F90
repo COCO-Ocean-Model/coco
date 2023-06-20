@@ -81,6 +81,7 @@ subroutine pridge( &
   real(8) ::    daas(nxydim, nic),   davm(nxydim, nic)
   real(8) ::    dafl(nxydim, nic),   dafm(nxydim, nic)
   real(8) ::    dadd(nxydim, nic),   dadb(nxydim, nic)
+  real(8) ::  hrdgef(nxydim)
 !  common /work/ axhix, axhsx, &
 !    &           divv, edis, wa, wn, ww, &
 !    &           g, y, da, dahi, dahs, daei
@@ -190,6 +191,7 @@ subroutine pridge( &
   do ij = 1, nxydim
      pice(ij) = 0.d0
      g(ij, -1) = 0.d0
+     hrdgef(ij) = hridge
   end do
 
   do ij = ijtstr, ijtend
@@ -237,22 +239,26 @@ subroutine pridge( &
   do k = 0, nic
      do ij = ijtstr, ijtend
         wa(ij, k) = y(ij, k-1) - y(ij, k)
+        if (wa(ij, k) > 0.0d0) then
+           hrdgef(ij) = max(hix(ij, k), hridge)
+        end if
      end do
   end do
 
   do l = 1, nic
      do k = 1, l
         do ij = ijtstr, ijtend
-           hrmax = 2.d0 * sqrt(hridge * hix(ij, k))
+           hrmax = 2.d0 * sqrt(hrdgef(ij) * hix(ij, k))
            hrmin = 2.d0 * hix(ij, k)
            if (     (hic(l+1) .lt. hrmin) &
-             & .or. (hic(l) .gt. hrmax) &
-             & .or. (hrmin .ge. hrmax) ) then
+             & .or. (hic(l) .gt. hrmax) ) then
               gam(ij, k, l) = 0.d0
+           else if (hrmin .ge. hrmax) then
+              gam(ij, k, l) = 0.5d0
            else
               gam(ij, k, l) = (  min(hrmax, hic(l+1)) &
                 &              - max(hrmin, hic(l))) * 0.5d0 &
-                &             / (hridge - hix(ij, k))
+                &             / (hrdgef(ij) - hix(ij, k))
            end if
         end do
      end do
@@ -313,7 +319,7 @@ subroutine pridge( &
         pice(ij) = pice(ij) &
           &      - hix(ij, l) * hix(ij, l) * wa(ij, l) * pifct
         do k = 1, l
-           hrmax = 2.d0 * sqrt(hridge * hix(ij, k))
+           hrmax = 2.d0 * sqrt(hrdgef(ij) * hix(ij, k))
            hrmin = 2.d0 * hix(ij, k)
            hikl = (  min(hrmax, hic(l+1)) &
              &     + max(hrmin, hic(l))) * 0.5d0
