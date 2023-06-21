@@ -125,18 +125,24 @@ subroutine tnduvd( &
      cof = -0.25d0 * gravit / rhoo * 1.d-3
   end if
 
+!$omp parallel do
   do ij = ijvstr, ijvend+nxdim
      hvbot(ij) = (  (hy(ij) + hy(ij+le)) * dy(ij) &
         &         + (hy(ij+ln) + hy(ij+lne)) * dy(ij+ln)) * &
         &        rym(ij) * 0.25d0 &
         &      + zbot
   end do
+!$omp end parallel do
+
+!$omp parallel do
   do k = kstr, kstr+kz-1
      do ij = ijvstr, ijvend+nxdim
         dzsig(ij, k) = ds(k) * hvbot(ij)
      end do
   end do
+!$omp end parallel do
 
+!$omp parallel do
   do ij = ijvstr, ijvend
      pxm(ij, kstr) = (  r(ij+lne, kstr) + r(ij+le, kstr) &
         &             - r(ij+ln , kstr) - r(ij   , kstr)) * &
@@ -163,8 +169,11 @@ subroutine tnduvd( &
      gyy(ij)       = yy(ij, kstr) * dzsig(ij, kstr) * &
         &            amskv(ij, kstr)
   end do
+!$omp end parallel do
 
+!$omp parallel
   do k = kstr+1, kstr+kz-1
+!$omp do
      do ij = ijvstr, ijvend
         pxm(ij, k) = (  r(ij+lne, k) + r(ij+le, k) &
            &          - r(ij+ln , k) - r(ij   , k)) * &
@@ -193,9 +202,13 @@ subroutine tnduvd( &
         gyy(ij)    = gyy(ij) + yy(ij, k) * dzsig(ij, k) * &
            &         amskv(ij, k)
      end do
+!$omp end do
   end do
+!$omp end parallel
 
+!$omp parallel
   do k = kstr+kz, kend
+!$omp do
      do ij = ijvstr, ijvend
         pxm(ij, k) = (  r(ij+lne, k) - r(ij+ln, k) &
            &          + r(ij+le , k) - r(ij   , k)) * &
@@ -222,15 +235,21 @@ subroutine tnduvd( &
            &       + py(ij, k) * amskv(ij, k)
         gyy(ij)    = gyy(ij) + yy(ij, k) * dzv(ij, k) * amskv(ij, k)
      end do
+!$omp end do
   end do
+!$omp end parallel
 
 ! -----------------------------------------------------------
+!$omp parallel do
   do ij=1,nxydim
      xx1(ij)=0.d0
      yy1(ij)=0.d0
   end do
+!$omp end parallel do
 
+!$omp parallel
   do k = kstr, kstr+kz-1
+!$omp do
      do ij = ijvstr, ijvend+nxdim
         uu(ij) = uadv(ij, k) * 0.5d0 * &
            &    (  uy(ij, k) * hyu(ij) &
@@ -245,6 +264,7 @@ subroutine tnduvd( &
            &    (  vy(ij, k) * hxu(ij) &
            &     + vy(ij+ls, k) * hxu(ij+ls))
      end do
+!$omp do
      do ij = ijvstr, ijvend
 !x        gxx(ij) = gxx(ij)
         xx1(ij) = xx1(ij) &
@@ -257,7 +277,9 @@ subroutine tnduvd( &
            &       + (vv(ij+ln) - vv(ij)) * rym(ij)) * &
            &      rxu(ij) * ryu(ij) * dzsig(ij,k)
      end do
+!$omp end do
   end do
+!$omp end parallel
 ! -----------------------------------------------------------
 !      do ij = 1, nxydim
 !         uu(ij) = 0.d0
@@ -298,14 +320,18 @@ subroutine tnduvd( &
 !        &      rxu(ij) * ryu(ij) * hvbot(ij)
 !      enddo
 ! ------------------------------------------------------------
+!$omp parallel do
   do ij = 1, nxydim
      uu(ij) = 0.d0
      uv(ij) = 0.d0
      vu(ij) = 0.d0
      vv(ij) = 0.d0
   end do
+!$omp end parallel do
 !
+!$omp parallel
   do k = kstr+kz, kend
+!$omp do
      do ij = ijvstr, ijvend+nxdim
         uu(ij) = uu(ij) &
            &   + uadv(ij, k) * 0.5d0 * &
@@ -324,8 +350,11 @@ subroutine tnduvd( &
            &     (  vy(ij, k) * hxu(ij) &
            &      + vy(ij+ls, k) * hxu(ij+ls))
      end do
+!$omp end do
   end do
+!$omp end parallel
 
+!$omp parallel do
   do ij = ijvstr, ijvend
 !x     gxx(ij) = gxx(ij)
      xx1(ij) = xx1(ij) &
@@ -338,7 +367,9 @@ subroutine tnduvd( &
         &       + (vv(ij+ln) - vv(ij)) * rym(ij)) * &
         &      rxu(ij) * ryu(ij)
   end do
+!$omp end parallel do
 
+!$omp parallel do
   do ij = ijvstr, ijvend
      uu(ij) = uy(ij, kstr) * uy(ij, kstr) * &
         &     dzsig(ij, kstr) * amskv(ij, kstr)
@@ -347,8 +378,11 @@ subroutine tnduvd( &
      vv(ij) = vy(ij, kstr) * vy(ij, kstr) * &
         &     dzsig(ij, kstr) * amskv(ij, kstr)
   end do
+!$omp end parallel do
 
+!$omp parallel
   do k = kstr+1, kstr+kz-1
+!$omp do
      do ij = ijvstr, ijvend
         uu(ij) = uu(ij) &
            &   + uy(ij, k) * uy(ij, k) * &
@@ -360,9 +394,13 @@ subroutine tnduvd( &
            &   + vy(ij, k) * vy(ij, k) * &
            &     dzsig(ij, k) * amskv(ij, k)
      end do
+!$omp end do
   end do
+!$omp end parallel
 
+!$omp parallel
   do k = kstr+kz, kend
+!$omp do
      do ij = ijvstr, ijvend
         uu(ij) = uu(ij) &
            &   + uy(ij, k) * uy(ij, k) * dzv(ij, k) * amskv(ij, k)
@@ -371,8 +409,11 @@ subroutine tnduvd( &
         vv(ij) = vv(ij) &
            &   + vy(ij, k) * vy(ij, k) * dzv(ij, k) * amskv(ij, k)
      end do
+!$omp end do
   end do
+!$omp end parallel
 
+!$omp parallel do
   do ij = ijvstr, ijvend
 !x     gxx(ij) = gxx(ij) + vv(ij) * hyxu(ij) - uv(ij) * hxyu(ij)
 !x     gyy(ij) = gyy(ij) + uu(ij) * hxyu(ij) - uv(ij) * hyxu(ij)
@@ -381,13 +422,16 @@ subroutine tnduvd( &
      xx1(ij) = xx1(ij) * amskv(ij,kstr)
      yy1(ij) = yy1(ij) * amskv(ij,kstr)
   end do
+!$omp end parallel do
 
 
 !cccccccc adams-bashforth scheme
   ncall=ncall +1
 
+!$omp parallel
   if( (ncall .ge. 3) .or. (.not. oeof)) then
      ncall=3
+!$omp do
      do ij = ijvstr, ijvend
         gxx(ij) =  gxx(ij) &
            &    +  cx1 *xx1(ij)  + cx2* xx2(ij) + cx3*xx3(ij) 
@@ -395,13 +439,17 @@ subroutine tnduvd( &
         gyy(ij) =  gyy(ij) &
            &    +  cx1 *yy1(ij)  + cx2* yy2(ij) + cx3*yy3(ij) 
      end do
+!$omp end do
   else
      if(ncall .eq. 1) then ! forward
+!$omp do
         do ij = ijvstr, ijvend
            gxx(ij) =  gxx(ij) + xx1(ij)
            gyy(ij) =  gyy(ij) + yy1(ij)
         end do
+!$omp end do
      else if(ncall .eq. 2) then !2nd order ab       
+!$omp do
         do ij = ijvstr, ijvend
            gxx(ij) =  gxx(ij) &
               &    +  1.5d0 *xx1(ij)  -0.5d0* xx2(ij)
@@ -409,10 +457,13 @@ subroutine tnduvd( &
            gyy(ij) =  gyy(ij) &
               &    +  1.5d0 *yy1(ij)  -0.5d0* yy2(ij)
         end do
+!$omp end do
      end if
   end if
+!$omp end parallel
 
 
+!$omp parallel do
   do ij = ijvstr, ijvend
      xx3(ij)=xx2(ij) !n-1 > n-2
      yy3(ij)=yy2(ij)
@@ -420,6 +471,7 @@ subroutine tnduvd( &
      xx2(ij)=xx1(ij) !n> n-1
      yy2(ij)=yy1(ij)
   end do
+!$omp end parallel do
 
   return
 end subroutine tnduvd
