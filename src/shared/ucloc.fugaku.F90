@@ -23,11 +23,16 @@ module ucloc
   integer(4),                 save  ::  nclock
   logical,                    save  ::  ofirst
   character(16),              save  ::  htitle(nclmax)
+  real(8),                    save  ::  wcltim(nclmax)
+  real(8),                    save  ::  wclold(nclmax)
+  real(8),                    save  ::  wclt
                               
 !---- used in yclock
   real(8),                    save  ::  cput2,  vput2
   real(8),                    save  ::  ticks,  tick0,  tusr0
   real(4),                    save  ::  tarray(1:2)
+  real(8),                    save  ::  wclt2,  wclt0
+  integer(8),                 save  ::    crt,    cmx
 
   public  ::  clcout,  clcstr,  clcend  !  ued in icedcoco.F, aprdc.F, iprdc,F
   
@@ -45,16 +50,19 @@ contains
     integer(4)  ::  ic
 
     call rewnml(ifpar, jfpar)
-
+    call yclock(cput, vput, wclt)
+    
+    write(jfpar, '(17x,3a25)') 'CPU time (system)', 'CPU time (user)', 'real (elapse) time'
     do ic = 1, nclock
        if ( htitle(ic) /= ' ' ) then
-          write(jfpar, '(1x,a16,2f15.6)') htitle(ic), cputim(ic), vputim(ic)
+          write(jfpar, '(1x,a16,3(f15.6,"s (",f5.2,"%)"))') htitle(ic), &
+               & cputim(ic), cputim(ic)/cput*100.d0, &
+               & vputim(ic), vputim(ic)/vput*100.d0, &
+               & wcltim(ic), wcltim(ic)/wclt*100.d0
        end if
     end do
-!51  format(' ', a16, 2f15.6)
     
-    call yclock(cput, vput)
-    write(jfpar, '(1x,a16,2f15.6)') ' total time = ', cput, vput
+    write(jfpar, '(1x,a16,3(f15.6,"s",9x))') ' total time = ', cput, vput, wclt
     
   end subroutine clcout
   
@@ -73,11 +81,12 @@ contains
        call yclocl
     end if
 
-    call yclock( cput, vput )
+    call yclock( cput, vput, wclt )
     do ic = 1, nclock
        if ( htitle(ic) == httl ) then
           cpuold(ic) = cput
           vpuold(ic) = vput
+          wclold(ic) = wclt
           return
        end if
     end do
@@ -86,6 +95,7 @@ contains
        htitle(nclock) = httl
        cpuold(nclock) = cput
        vpuold(nclock) = vput
+       wclold(nclock) = wclt
     end if
     
   end subroutine clcstr
@@ -100,11 +110,12 @@ contains
 
     integer(4)  ::  ic
 
-    call yclock( cput, vput )
+    call yclock( cput, vput, wclt )
     do ic = 1, nclock
        if (htitle(ic) == httl) then
           cputim(ic) = cputim(ic) + cput - cpuold(ic)
           vputim(ic) = vputim(ic) + vput - vpuold(ic)
+          wcltim(ic) = wcltim(ic) + wclt - wclold(ic)
           return
        end if
     end do
@@ -113,17 +124,24 @@ contains
 
 ! **********************************************************************
 
-  subroutine yclock( cput2, vput2 )
+  subroutine yclock( cput2, vput2, wclt2 )
 
     implicit none
 
-    real(8),                intent(inout)  ::  cput2,   vput2
+    real(8),                intent(inout)  ::  cput2,   vput2,   wclt2
 
     real(4)                                ::  etime
+
+    integer(8)                             ::    cnt
 
     ticks = etime( tarray )
     cput2 = ticks - tick0
     vput2 = tarray(1) - tusr0
+    call system_clock(cnt)
+    wclt2 = dble(cnt) / dble(crt) - wclt0
+    if (wclt2 < 0) then
+       wclt2 = wclt2 + dble(cmx) / dble(crt)
+    end if
 
   end subroutine yclock
 
@@ -135,9 +153,13 @@ contains
 
     real(4)                                ::  etime
 
+    integer(8)                             ::    cnt
+
     tick0 = etime( tarray )
     tusr0 = tarray(1)
-
+    call system_clock(cnt, crt, cmx)
+    wclt0 = dble(cnt) / dble(crt)
+    
   end subroutine yclocl
 
 end module ucloc
