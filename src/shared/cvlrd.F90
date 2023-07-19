@@ -90,6 +90,7 @@ contains
 
     end if
 
+!$omp parallel do
     do k = 1, nzdim
        do ij = 1, nxydim
           aa    (ij, k) = 0.d0
@@ -101,7 +102,9 @@ contains
           tdiffz(ij, k) = 0.d0
        end do
     end do
+!$omp end parallel do
     
+!$omp parallel do
     do ij = ijvstr, ijvend
        hvbot(ij) = (   (hx(ij)    + hx(ij+le) ) * dy(ij)              &
     &                + (hx(ij+ln) + hx(ij+lne)) * dy(ij+ln) )         &
@@ -109,19 +112,25 @@ contains
     &             + zbot
        hvbot(ij) = 1.d0 / hvbot(ij)
     end do
+!$omp end parallel do
 
+!$omp parallel do
     do k = kstr+1, kstr+kz-1
        do ij = ijvstr, ijvend
           tdiffz(ij, k) = ts * cf2 * amv(ij, k) * hvbot(ij) * rsm(k) * amfvz(ij, k)
        end do
     end do
+!$omp end parallel do
 
+!$omp parallel do
     do k = kstr+kz, kend
        do ij = ijvstr, ijvend
           tdiffz(ij, k) = ts * cf2 * amv(ij, k) / dzm(ij, k) * amfvz(ij, k)
        end do
     end do
+!$omp end parallel do
 
+!$omp parallel do
     do k = kstr, kstr+kz-1
        do ij = ijvstr, ijvend
           aa (ij, k) = - tdiffz(ij, k  ) * hvbot(ij) * rs(k)
@@ -132,7 +141,9 @@ contains
           adi(ij, k) = gy(ij, k)
        end do
     end do
+!$omp end parallel do
 
+!$omp parallel do
     do k = kstr+kz, kend
        do ij = ijvstr, ijvend
           aa (ij, k) = - tdiffz(ij, k  ) / dzv(ij, k)
@@ -143,15 +154,18 @@ contains
           adi(ij, k) = gy(ij, k)
        end do
     end do
+!$omp end parallel do
     
     call thmasc( adr, adi, aa, abr, abi, ac )
 
+!$omp parallel do
     do k = kstr, kend
        do ij = ijvstr, ijvend
           ux(ij, k) = (  ux(ij, k) + ts * cf2 * adr(ij, k)) * amskv(ij, k)
           vx(ij, k) = (  vx(ij, k) + ts * cf2 * adi(ij, k)) * amskv(ij, k)
        end do
     end do
+!$omp end parallel do
 
   end subroutine velrds
 

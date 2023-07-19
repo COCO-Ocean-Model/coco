@@ -125,6 +125,7 @@ subroutine tnduvd( &
      cof = -0.25d0 * gravit / rhoo * 1.d-3
   end if
 
+
 !$omp parallel do
   do ij = ijvstr, ijvend+nxdim
      hvbot(ij) = (  (hy(ij) + hy(ij+le)) * dy(ij) &
@@ -591,6 +592,7 @@ subroutine tnduvb( &
      end do
   end if
 
+!$omp parallel do private(ij, k, ijle, ijln, ijne, tl, sl, rtmp, p, kk, pe, pn, pne)
   do ij = ijvstr, ijvend
 
      k = max(nbotv(ij)-1, 1)
@@ -741,7 +743,9 @@ subroutine tnduvb( &
         &         + yy(ij, kend) * dzv(ij, kend) * amskvb(ij)
 
   end do
+!$omp end parallel do
 
+!$omp parallel do private(ij)
   do ij = ijvstr, ijvend
 !x     gxx(ij) = gxx(ij) +
      xx1(ij) = &
@@ -754,12 +758,14 @@ subroutine tnduvb( &
         &     - uy(ij, kend) * vy(ij, kend) * hyxu(ij)) * &
         &    dzv(ij, kend) * amskvb(ij)
   end do
+!$omp end parallel do
 
 !cccccccc adams-bashforth scheme
   ncall=ncall +1
 
   if( (ncall .ge. 3) .or. (.not. oeof)) then
      ncall=3
+!$omp parallel do private(ij)
      do ij = ijvstr, ijvend
         gxx(ij) =  gxx(ij) &
            &    +  cx1 *xx1(ij)  + cx2* xx2(ij) + cx3*xx3(ij) 
@@ -767,13 +773,17 @@ subroutine tnduvb( &
         gyy(ij) =  gyy(ij) &
            &    +  cx1 *yy1(ij)  + cx2* yy2(ij) + cx3*yy3(ij) 
      end do
+!$omp end parallel do
   else
      if(ncall .eq. 1) then ! forward
+!$omp parallel do private(ij)
         do ij = ijvstr, ijvend
            gxx(ij) =  gxx(ij) + xx1(ij)
            gyy(ij) =  gyy(ij) + yy1(ij)
         end do
+!$omp end parallel do
      else if(ncall .eq. 2) then !2nd order ab       
+!$omp parallel do private(ij)
         do ij = ijvstr, ijvend
            gxx(ij) =  gxx(ij) &
               &    +  1.5d0 *xx1(ij)  -0.5d0* xx2(ij)
@@ -781,10 +791,12 @@ subroutine tnduvb( &
            gyy(ij) =  gyy(ij) &
               &    +  1.5d0 *yy1(ij)  -0.5d0* yy2(ij)
         end do
+!$omp end parallel do
      end if
   end if
 
 
+!$omp parallel do private(ij)
   do ij = ijvstr, ijvend
      xx3(ij)=xx2(ij) !n-1 > n-2
      yy3(ij)=yy2(ij)
@@ -792,6 +804,7 @@ subroutine tnduvb( &
      xx2(ij)=xx1(ij) !n> n-1
      yy2(ij)=yy1(ij)
   end do
+!$omp end parallel do
 
   return
 
