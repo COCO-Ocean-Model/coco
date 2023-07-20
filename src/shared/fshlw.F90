@@ -106,13 +106,16 @@ contains
        
     end if
 
+!$omp parallel do 
     do ij = 1, nxydim
        fux(ij) = 0.d0
        fuy(ij) = 0.d0
        fvx(ij) = 0.d0
        fvy(ij) = 0.d0
     end do
+!$omp end parallel do
        
+!$omp parallel do private(ij, ijls, ijlw, ijln, ijle, ijnw, ijse, ijsw)
     do ij = ijstr-nxdim-1, ijend+nxdim+1
        ijls = ij + ls
        ijlw = ij + lw
@@ -158,7 +161,9 @@ contains
     &          - (ubtx(ij) + ubtx(ijlw)) * amh *                      &
     &            (hxyu(ij) + hxyu(ijlw)) * 0.25d0
     end do
+!$omp end parallel do
 
+!$omp parallel do private(ij, ijlw)
     do ij = ijvstr-nxdim-1, ijvend+1
        ijlw = ij + lw
        fux(ij) = sxx(ij) * (hyu(ij) + hyu(ijlw)) *                   &
@@ -166,6 +171,8 @@ contains
        fvx(ij) = syx(ij) * (hyu(ij) + hyu(ijlw)) *                   &
     &                      (hyu(ij) + hyu(ijlw)) * 0.25d0
     end do
+!$omp end parallel do
+!$omp parallel do private(ij, ijls)
     do ij = ijvstr-nxdim-1, ijvend+nxdim
        ijls = ij + ls
        fuy(ij) = sxy(ij) * (hxu(ij) + hxu(ijls)) *                   &
@@ -173,7 +180,9 @@ contains
        fvy(ij) = syy(ij) * (hxu(ij) + hxu(ijls)) *                   &
     &                      (hxu(ij) + hxu(ijls)) * 0.25d0
     end do
+!$omp end parallel do
 
+!$omp parallel do
     do ij = ijvstr-nxdim-1, ijvend+nxdim+1
        gxx(ij) = gxx(ij)                                             &
     &          - (  (fux(ij+le) - fux(ij)) * rx * ryu(ij)            & 
@@ -184,6 +193,7 @@ contains
     &             + (fvy(ij+ln) - fvy(ij)) * rym(ij) * rxu(ij)) *    &
     &            rxu(ij) * ryu(ij) * amskv(ij, kstr)
     end do
+!$omp end parallel do
 
   end subroutine modgxy
 
@@ -221,6 +231,7 @@ contains
     integer(4)  ::   ijnw,   ijse,   ijsw
     integer(4)  ::  ifpar,  jfpar,   istat
      
+!$omp parallel do 
     do ij = 1, nxydim
        fux(ij) = 0.d0
        fuy(ij) = 0.d0
@@ -229,16 +240,23 @@ contains
        fhx(ij) = 0.d0
        fhy(ij) = 0.d0
     end do
+!$omp end parallel do 
  
+!$omp parallel do
     do ij = ijtstr-nxdim-1, ijtend+nxdim+2
        fhx(ij) =  - (  ubty(ij+lw) * hyu(ij+lw)                       &
     &                + ubty(ij+lsw) * hyu(ij+lsw)) * 0.5d0
     end do
+!$omp end parallel do 
+
+!$omp parallel do 
     do ij = ijtstr-nxdim-1, ijtend+nxdim+nxdim+1
        fhy(ij) = - (  vbty(ij+ls) * hxu(ij+ls)                        &
     &               + vbty(ij+lsw) * hxu(ij+lsw)) * 0.5d0
     end do
+!$omp end parallel do 
  
+!$omp parallel do 
     do ij = ijtstr-nxdim-1, ijtend+nxdim+1
        hx(ij) = hx(ij)                                                &
     &         + tss * (  (fhx(ij+le) - fhx(ij)) * rx                  &
@@ -246,7 +264,9 @@ contains
     &           rxt(ij) * ryt(ij) * amskt(ij, kstr)                   &
     &         - tss * fw(ij) * amskt(ij, kstr)
     end do
+!$omp end parallel do 
  
+!$omp parallel do private(ij, ijls, ijlw, ijln, ijle, ijnw, ijse, ijsw)
     do ij = ijstr-nxdim-1, ijend+nxdim+1
        ijls = ij + ls
        ijlw = ij + lw
@@ -292,7 +312,9 @@ contains
     &          - (ubtx(ij) + ubtx(ijlw)) * amh *                      &
     &            (hxyu(ij) + hxyu(ijlw)) * 0.25d0
     end do
+!$omp end parallel do 
  
+!$omp parallel do private(ij, ijlw)
     do ij = ijvstr-nxdim-1, ijvend+1
        ijlw = ij + lw
        fux(ij) = sxx(ij) * (hyu(ij) + hyu(ijlw)) *                    &
@@ -300,7 +322,9 @@ contains
        fvx(ij) = syx(ij) * (hyu(ij) + hyu(ijlw)) *                    &
     &                      (hyu(ij) + hyu(ijlw)) * 0.25d0
     end do
+!$omp end parallel do 
  
+!$omp parallel do private(ij, ijls)
     do ij = ijvstr-nxdim-1, ijvend+nxdim
        ijls = ij + ls
        fuy(ij) = sxy(ij) * (hxu(ij) + hxu(ijls)) *                    & 
@@ -308,7 +332,9 @@ contains
        fvy(ij) = syy(ij) * (hxu(ij) + hxu(ijls)) *                    &
     &                      (hxu(ij) + hxu(ijls)) * 0.25d0
     end do
- 
+!$omp end parallel do 
+
+!$omp parallel do 
     do ij = ijstr-nxdim-1, ijend
        gu(ij) = gxx(ij) + cor(ij) * vbtx(ij)                         &
     &         + (  (fux(ij+le) - fux(ij)) * rx * ryu(ij)             &
@@ -331,7 +357,9 @@ contains
     &              / rdepv(ij) / rhoo                                &
     &           ) * 0.5d0 * rym(ij) * ryu(ij)
     end do
+!$omp end parallel do 
  
+!$omp parallel do private(ij, cf)
     do ij = ijstr-nxdim-1, ijend
        cf = cor(ij) * tss / accb * 0.5d0
        ubtx(ij) = ubtx(ij)                                           &
@@ -341,6 +369,7 @@ contains
     &           + tss / accb / (1.d0 + cf * cf) *                    &
     &             (gv(ij) - cf * gu(ij)) * amskv(ij, kstr)
     end do
+!$omp end parallel do 
 
   end subroutine shalow
 
