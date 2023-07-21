@@ -37,36 +37,50 @@ contains
      return
   end if
 
+!$omp parallel do
   do k = 1, nzdim
      do ij = 1, nxydim
         uadv(ij, k) = 0.0d0
         vadv(ij, k) = 0.0d0
      end do
   end do
+!$omp end parallel do
 
+!$omp parallel do
   do ij = ijvstr, ijvend
      uavr(ij) = u(ij, kstr) * dzv(ij, kstr) * amskv(ij, kstr)
      vavr(ij) = v(ij, kstr) * dzv(ij, kstr) * amskv(ij, kstr)
   end do
+!$omp end parallel do
+
+!$omp parallel
   do k = kstr+1, kend
+!$omp do
      do ij = ijvstr, ijvend
             uavr(ij) = uavr(ij) + u(ij, k) * dzv(ij, k) * amskv(ij, k)
             vavr(ij) = vavr(ij) + v(ij, k) * dzv(ij, k) * amskv(ij, k)
      end do
   end do
+!$omp end parallel
+
+!$omp parallel do
   do ij = ijvstr, ijvend
      uavr(ij) = uavr(ij) * rdepv(ij)
      vavr(ij) = vavr(ij) * rdepv(ij)
      ubar(ij) = ubt(ij) * rdepv(ij)
      vbar(ij) = vbt(ij) * rdepv(ij)
   end do
+!$omp end parallel do
 
+!$omp parallel
   do k = kstr, kend
+!$omp do
      do ij = ijvstr, ijvend
             uadv(ij, k) = (ubar(ij) + (u(ij, k) - uavr(ij))) * amskv(ij, k)
             vadv(ij, k) = (vbar(ij) + (v(ij, k) - vavr(ij))) * amskv(ij, k)
      end do
   end do
+!$omp end parallel
 
   return
   end   subroutine veltad
