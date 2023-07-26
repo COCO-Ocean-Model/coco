@@ -41,18 +41,23 @@ contains
      return
   end if
 
+!$omp parallel do
   do k = 1, nzdim
      do ij = 1, nxydim
             ftx(ij, k) = 0.d0
             fty(ij, k) = 0.d0
      end do
   end do
+!$omp end parallel do
 
+!$omp parallel do
   do ij = 1, nxydim
      dhdt(ij) = (hx(ij) - hz(ij)) / ts
      rhzbot(ij) = 1.d0 / (hz(ij) + zbot)
   end do
+!$omp end parallel do
 
+!$omp parallel do private(ijlw, ijls, ijlsw)
   do k = kstr, kend
      do ij = ijtstr-nxdim-1, ijtend+nxdim+nxdim+1
         ijlw = ij + lw
@@ -70,14 +75,20 @@ contains
    &                 amskt(ij, k) * amskt(ijls, k)
      end do
   end do
+!$omp end parallel do
 
+!$omp parallel do
   do ij = ijtstr-nxdim-1, ijtend+nxdim+1
      w(ij, kend) = - (  (ftx(ij+le, kend) - ftx(ij, kend)) *                   &
    &                    rx                                                     &
    &                  + (fty(ij+ln, kend) - fty(ij, kend)) *                   &
    &                    ry(ij)) * rxt(ij) * ryt(ij) * 0.5d0
   end do
+!$omp end parallel do
+
+!$omp parallel
   do k = kend-1, kstr+kz, -1
+!$omp do
      do ij = ijtstr-nxdim-1, ijtend+nxdim+1
         w(ij, k) = w(ij, k+1)                                                  &
    &             - (  (ftx(ij+le, k) - ftx(ij, k)) * rx                        &
@@ -85,7 +96,9 @@ contains
    &               rxt(ij) * ryt(ij) * 0.5d0
      end do
   end do
+!$omp end parallel
   k = kstr+kz-1
+!$omp parallel do
   do ij = ijtstr-nxdim-1, ijtend+nxdim+1
      w(ij, k) = w(ij, k+1) * rhzbot(ij)                                        &
    &          - (  (  (ftx(ij+le, k) - ftx(ij, k)) * rx                        &
@@ -93,7 +106,11 @@ contains
    &               rxt(ij) * ryt(ij) * 0.5d0                                   &
    &             + dhdt(ij) * ds(k)) * rhzbot(ij)
   end do
+!$omp end parallel do
+
+!$omp parallel
   do k = kstr+kz-2, kstr+1, -1
+!$omp do
      do ij = ijtstr-nxdim-1, ijtend+nxdim+1
         w(ij, k) = w(ij, k+1)                                                  &
    &             - (  (  (ftx(ij+le, k) - ftx(ij, k)) * rx                     &
@@ -102,9 +119,13 @@ contains
    &                + dhdt(ij) * ds(k)) * rhzbot(ij)
      end do
   end do
+!$omp end parallel
+
+!$omp parallel do
   do ij = ijtstr-nxdim-1, ijtend+nxdim+1
      w(ij, kstr) = 0.d0
   end do
+!$omp end parallel do
 
   return
   end subroutine wdenst
