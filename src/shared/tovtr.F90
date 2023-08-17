@@ -94,11 +94,15 @@ subroutine ovtset( &
      & d5(kstr), d6(kstr), d7(kstr), d8(kstr),  d9(kstr) )
   write(jfpar, *) '*** the equation of state determined ***'
 
+!$omp parallel do private(k, ij)
   do k = 1, nzdim
      do ij = 1, nxydim
         r(ij, k) = 0.d0
      end do
   end do
+!$omp end parallel do
+
+!$omp parallel do private(k, ij, tl, sl, p1, p2)
   do k = kstr, kend
      do ij = ijtstr, ijtend
         tl = t(ij, k, 1)
@@ -113,6 +117,7 @@ subroutine ovtset( &
         r(ij, k) = p1 / p2 - 1.d3
      end do
   end do
+!$omp end parallel do
 
   c0s=c0(kstr)
   c1s=c1(kstr)
@@ -132,16 +137,20 @@ subroutine ovtset( &
   d8s=d8(kstr)
   d9s=d9(kstr)
 
+!$omp parallel do
   do k = 1, nzdim
      do ij = 1, nxydim
         depth(ij, k) = 0.d0
      end do
   end do
+!$omp end parallel do
 
   do k = kstr, kend
+!$omp parallel do
      do ij = 1, nxydim
         depth(ij, k) = depth(ij, k-1) + dz(ij, k)
      end do
+!$omp end parallel do
   end do
 
   return
@@ -216,55 +225,79 @@ subroutine ovturn( &
      end do
   end do
       
+
+!$omp parallel do private(k, ij)
   do k = 1, nzdim
      do ij = 1, nxydim
         conv(ij, k) = 0.d0
         n2(ij, k) = 0.d0
      end do
   end do
+!$omp end parallel do
+
+!$omp parallel do
   do ij = 1, nxydim
      mld(ij) = 0.d0
   end do
+!$omp end parallel do
 
+!$omp parallel do
   do ij = 1, nxydim
      cnvdep(ij) = 0.d0
   end do
+!$omp end parallel do
 
+!$omp parallel do private(k, ij)
   do k = kstr, kstr+kz-1
      do ij = 1, nxydim
 !        dzsig(ij, k) = ds(k) * (h(ij) + zbot) * gamma(k-kstr+1)
         dzsig(ij, k)=ds(k)*(h(ij)*amskt(ij,kstr)+zbot)*gamma(k-kstr+1)
      end do
   end do
+!$omp end parallel do
+
+!$omp parallel do private(k, ij)
   do k = kstr+kz, kend
      do ij = 1, nxydim
         dzsig(ij, k) = dz(ij, k) * gamma(k-kstr+1)
      end do
   end do
+!$omp end parallel do
 #ifdef OPT_BBL
+!$omp parallel do private(k, ij)
   do ij = ijtstr, ijtend
      k = nbot(ij)
      dzsig(ij, k) = dz(ij, k) * gamma(nz) * amsktb(ij) &
         &         + dzsig(ij, k) * (1.d0 - amsktb(ij))
   end do
+!$omp end parallel do
 #endif
 
+!$omp parallel do private(ij)
   do ij = 1, nxydim
      zt(ij, kstr) = 0.d0
   end do
+!$omp end parallel do
+
+!$omp parallel
   do k = kstr, kend
+!$omp do private(ij)
      do ij = 1, nxydim
         zt(ij, k+1) = zt(ij, k) + dzsig(ij, k)
      end do
   end do
+!$omp end parallel
 
+!$omp parallel do collapse(2) private(n, ij)
   do n = 1, ntdim
      do ij = ijtstr, ijtend
         ttl(ij, n) = t(ij, kstr, n) * dzsig(ij, kstr)
         lup(ij) = kstr
      end do
   end do
+!$omp end parallel do
 
+!$omp parallel do collapse(2) private(n, k)
   do n = 1, 2
      do k = kstr, kend
         do ij = ijtstr, ijtend
@@ -272,7 +305,9 @@ subroutine ovturn( &
         end do
      end do
   end do
+!$omp end parallel do
   
+!$omp parallel do private(ij, k, tu, su, tl, sl, p1, p2, ru, rl)
   do ij = ijtstr, ijtend
      do k = kstr+1, nbot(ij)
         tu = t(ij, k-1, 1)
@@ -316,17 +351,22 @@ subroutine ovturn( &
          end if
      end do
   end do
+!$omp end parallel do
 
+!$omp parallel
   do n = 1, ntdim
+!$omp do
      do ij = ijtstr, ijtend
         do k = kstr+1, nbot(ij)
            ftzov(ij, k, n) = ftzov(ij, k-1, n) + dzsig(ij, k) * (t(ij, k, n) - to(ij, k, n)) / ts
         end do
      end do
   end do
+!$omp end parallel
  
 ! do k = kstr, kend
   k = kstr
+!$omp parallel do
   do ij = ijtstr, ijtend
      tl = t(ij, k, 1) * amskt(ij, k)
      sl = t(ij, k, 2) * amskt(ij, k)
@@ -339,8 +379,10 @@ subroutine ovturn( &
      &           + (d8s + d9s * tl * tl) * sqrt(sl)) * sl
      r(ij, k) = p1 / p2 - 1.d3
   enddo
+!$omp end parallel do
 ! enddo
 
+!$omp parallel do
   do k = kstr+1, kend
      do ij = ijtstr, ijtend
         tl = t(ij, k, 1) * amskt(ij, k)
@@ -379,7 +421,9 @@ subroutine ovturn( &
         delb(ij, k) = - gravit * (rr - rl) / rl
      end do
   end do
+!$omp end parallel do
 
+!$omp parallel do
   do ij = ijtstr, ijtend
      obtmld = .true.
      do k = kref+kstr, nbot(ij)
@@ -395,6 +439,7 @@ subroutine ovturn( &
         mld(ij) = dptsig(ij, nbot(ij))
      end if
   end do
+!$omp end parallel do
 
   call chekin(    n2,     'N2', &
     &            'square of buoyancy frequency', '1/s^2', &
@@ -430,6 +475,7 @@ subroutine ddenst( &
   real(8) ::     tl,     sl
   real(8) ::     p1,     p2
 
+!$omp parallel do private(k, ij, tl, sl, p1, p2)
   do k = kstr, kend
      do ij = ijtstr, ijtend
         tl = t(ij, k, 1)
@@ -444,6 +490,7 @@ subroutine ddenst( &
         r(ij, k) = p1 / p2 - 1.d3
      end do
   end do
+!$omp end parallel do
 
   return
 

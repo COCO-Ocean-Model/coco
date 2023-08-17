@@ -96,6 +96,7 @@ subroutine flxtrc( &
      alpv = alphav - 0.5d+0
   end if
 
+!$omp parallel do collapse(2)
   do n = 1, ntdim
      do k = 1, nzdim
         do ij = 1, nxydim
@@ -106,22 +107,30 @@ subroutine flxtrc( &
         end do
      end do
   end do
+!$omp end parallel do
+!$omp parallel do
   do k = 1, nzdim
      do ij = 1, nxydim
         diffz(ij, k) = 0.d0
      end do
   end do
+!$omp end parallel do
+!$omp parallel do
   do ij = 1, nxydim
      hzbot(ij) = hz(ij) + zbot
   end do
+!$omp end parallel do
 
+!$omp parallel do
   do k = kstr+1, kstr+kz-1
      do ij = ijtstr, ijtend
         diffz(ij, k) = ahv(ij, k) / dsm(k) / hzbot(ij) * &
           &            amftz(ij, k)
      end do
   end do
+!$omp end parallel do
   do n = 1, ntdim
+!$omp parallel do private(wt)
      do k = kstr+1, kstr+kz-1
         do ij = ijtstr, ijtend
            wt = sign(alpv, w(ij, k))
@@ -133,13 +142,17 @@ subroutine flxtrc( &
              &           amftz(ij, k)
         end do
      end do
+!$omp end parallel do
   end do
 
+!$omp parallel do
   do k = kstr+kz, kend
      do ij = ijtstr, ijtend
         diffz(ij, k) = ahv(ij, k) / dzm(ij, k) * amftz(ij, k)
      enddo
   enddo
+!$omp end parallel do
+!$omp parallel do private(wt) collapse(2)
   do n = 1, ntdim
      do k = kstr+kz, kend
         do ij = ijtstr, ijtend
@@ -152,7 +165,9 @@ subroutine flxtrc( &
         end do
      end do
   end do
+!$omp end parallel do
 
+!$omp parallel do private(v, wt, u) collapse(2)
   do n = 1, ntdim
      do k = kstr, kend
 
@@ -190,6 +205,7 @@ subroutine flxtrc( &
 
      end do
   end do
+!$omp end parallel do
 
   return
 
