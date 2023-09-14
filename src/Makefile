@@ -22,7 +22,5 @@ endif
 clean:
 	$(RM) *~ *.o *.mod *.trace core ../lib/*
 	$(MAKE) -C module $@
-ifeq "$(OPTTOUZA)" "-DOPT_TOUZA"
 	$(MAKE) -C touza $@
-endif
 	$(MAKE) -C build $@
