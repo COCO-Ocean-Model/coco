@@ -386,10 +386,13 @@ contains
        return
     end if
 
+!$omp parallel do
     do ij = ijtstr, ijtend
        hxbot(ij) = hx(ij) + zbot
     end do
+!$omp end parallel do
 
+!$omp parallel do
     do k = 1, nzdim
        do ij = 1, nxydim
           aa(ij, k) = 0.d0
@@ -397,13 +400,17 @@ contains
           ac(ij, k) = 0.d0
        end do
     end do
+!$omp end parallel do
 
 !---- when SOM is used, the lines below should be commented.
+!$omp parallel do
     do ij = 1, nxydim
        dh(ij) = hx(ij) - hz(ij)
     end do
+!$omp end parallel do
 !----
     
+!$omp parallel do
     do k = kstr, kstr+kz-1
        do ij = ijtstr, ijtend
           aa(ij, k) = - ts * diffz(ij, k)   / dz(ij, k)
@@ -411,8 +418,10 @@ contains
           ab(ij, k) = (hx(ij) + zbot) / zbot - aa(ij, k) - ac(ij, k)
        end do
     end do
+!$omp end parallel do
     
 !---- when SOM is used, the lines below should be commented.
+!$omp parallel do collapse(2) private(n, k, ij)
     do n = 1, ntdim
        do k = kstr, kstr+kz-1
           do ij = ijtstr, ijtend
@@ -421,8 +430,10 @@ contains
           end do
        end do
     end do
+!$omp end parallel do
 !----
 
+!$omp parallel do
     do k = kstr+kz, kend
        do ij = ijtstr, ijtend
           aa(ij, k) = - ts * diffz(ij, k) / dz(ij, k)
@@ -430,7 +441,9 @@ contains
           ab(ij, k) = 1.d0 - aa(ij, k) - ac(ij, k)
        end do
     end do
+!$omp end parallel do
     
+!$omp parallel do
     do ij = ijstr, ijend
 !       adt(ij, kstr, 1) = adt(ij, kstr, 1)                            &
 !    &                   + tx(ij, kstr, 1) * ft(ij, 2) / zbot          &
@@ -442,9 +455,11 @@ contains
     &                    - fs(ij)                                     &
     &                     /dz(ij, kstr) * amskt(ij, kstr) 
     end do
+!$omp end parallel do
 
     call thomas( adt, ac, aa, ab )
 
+!$omp parallel do collapse(2) private(n, k, ij)
     do n = 1, ntdim
        do k = kstr, kend
           do ij = ijtstr, ijtend
@@ -452,7 +467,9 @@ contains
           end do
        end do
     end do
+!$omp end parallel do
 #ifdef OPT_BBL
+!$omp parallel do collapse(2) private(n, k, ij)
     do n = 1, ntdim
        do ij = ijtstr, ijtend
           k = max(nbot(ij), kstr)
@@ -462,8 +479,10 @@ contains
     &                                 - 1.d0) )
        end do
     end do
+!$omp end parallel do
 #endif
 
+!$omp parallel do collapse(2) private(n, k, ij)
     do n = 1, ntdim
        do k = kstr, kend
           do ij = ijtstr, ijtend
@@ -471,6 +490,7 @@ contains
           end do
        end do
     end do
+!$omp end parallel do
 
 !     '12.01.30: removed 
 !      DO IJ = IJTSTR, IJTEND
@@ -540,12 +560,15 @@ contains
     call cofpsf( &
       &             tx,     ft,     fs,  swabs)
 
+!$omp parallel do private(ij)
     do ij = ijtstr, ijtend
        tx(ij, kstr, 1) = tx(ij, kstr, 1)                              &
     &                  + ts * ft(ij, 1) / hxbot(ij) / ds(kstr) 
     end do
+!$omp end parallel do
 
 
+!$omp parallel do private(k, ij)
     do k = kstr, kstr+kz-1
        do ij = ijtstr, ijtend
           tx(ij, k, 1) = tx(ij, k, 1)                                 &
@@ -553,24 +576,30 @@ contains
     &                  / hxbot(ij) / ds(k)
        end do
     end do
+!$omp end parallel do
+
+!$omp parallel do private(k, ij)
     do k = kstr+kz, kend
        do ij = ijtstr, ijtend
           tx(ij, k, 1) = tx(ij, k, 1)                                &
     &                  + ts * swconv(ij, k) * swabs(ij) / dz(ij, k)
        end do
     end do
+!$omp end parallel do
 
 !    do ij = ijtstr, ijtend
 !       tx(ij, kstr, 2) = tx(ij, kstr, 2)                             &
 !    &                  - ts * fs(ij) / hxbot(ij) / ds(kstr)
 !    end do
 
+!$omp parallel do collapse(2) private(n, ij)
     do n = 3, ntdim
        do ij = ijtstr, ijtend
           tx(ij, kstr, n) = tx(ij, kstr, n)                          &
     &                     + ts * ft(ij, n) / hxbot(ij) / ds(kstr)
        end do
     end do
+!$omp end parallel do
 
 #ifdef OPT_SRST
     do ij = 1, nxydim
@@ -659,11 +688,13 @@ contains
 #endif
 
     if (ogthm) then
+!!$omp parallel do private(k, ij) ! DIV?
        do ij = ijtstr, ijtend
           k = nbot(ij)
           tx(ij, k, 1) = tx(ij, k, 1) &
                & + ts * gthm(ij) / dz(ij, k) / rhoo / cpo
        end do
+!!$omp end parallel do
     end if
 
 !---- mixing salinity in sigma-layers to avoid extremely low SSS
@@ -693,14 +724,18 @@ contains
     integer(4)                ::     ij,    k
 
     depth = dz0(kstr)
+!$omp parallel do private(ij)
     do ij = 1, nxydim
        ssum(ij) = tx(ij, kstr) * dz0(kstr)
        smean(ij) = tx(ij, kstr)
        kmix(ij) = kstr
     end do
+!$omp end parallel do
 
+!!$omp parallel 
     do k = kstr+1, kstr+kz-1
        depth = depth + dz0(k)
+!!$omp do private(ij) ! DIV?
        do ij = 1, nxydim
           if ( smean(ij) <= smin ) then
              ssum(ij) = ssum(ij) + dz0(k) * tx(ij, k)
@@ -708,8 +743,11 @@ contains
              kmix(ij) = k
           end if
        end do
+!!$omp end do
     end do
+!!$omp end parallel
 
+!$omp parallel do private(k, ij)
     do k = kstr, kstr+kz-1
        do ij = 1, nxydim
           if ( k <= kmix(ij) ) then
@@ -718,6 +756,7 @@ contains
           end if
        end do
     end do
+!$omp end parallel do
    
   end subroutine tmixss
 
