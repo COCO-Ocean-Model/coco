@@ -518,6 +518,7 @@ subroutine flxtrc( &
      &  xdtdz,  ydtdz,  zdtdx,  zdtdy, &
      &     ty,     tx )
 
+!$omp parallel do collapse(2) private(n, k, ij)
   do n = 1, ntdim
      do k = 1, nzdim
         do ij = 1, nxydim
@@ -547,30 +548,40 @@ subroutine flxtrc( &
         end do
      end do
   end do
+!$omp end parallel do
 
+!$omp parallel do private(k, ij)
   do k = 1, nzdim
      do ij = 1, nxydim
         diffz(ij, k) = 0.d0
      end do
   end do
+!$omp end parallel do
 
+!$omp parallel do private(ij)
   do ij = 1, nxydim
      hzbot(ij) = hz(ij) + zbot
   end do
+!$omp end parallel do
 
 ! ---- vertical velocity on sigma coordinate
+!$omp parallel do private(k, ij)
   do k = kstr, kstr+kz-1
      do ij = 1, nxydim
         wzc(ij, k) = w(ij, k) * hzbot(ij)
         rzm(ij, k) = 1.d0 / dsm(k) / hzbot(ij)
      end do
   end do
+!$omp end parallel do
+
+!$omp parallel do private(k, ij)
   do k = kstr+kz, kend
      do ij = 1, nxydim
         wzc(ij, k) = w(ij, k)
         rzm(ij, k) = 1.d0 / dzm(ij, k)
      end do
   end do
+!$omp end parallel do
 
   call chekin(wzc, 'WZC', &
      &     'ocean vertical velocity on sigma coordinate', 'cm/s', &
@@ -578,6 +589,7 @@ subroutine flxtrc( &
 
 ! ======  GM  isopycnal and diapycnal diffusion  ======
 ! ---- z diffusion flux of GM
+!$omp parallel do collapse(2) private(n, k, ij, kuu, ku, kd)
   do n = 1, ntdim
      do k = kstr+1, kend
         kuu = k - 2
@@ -615,8 +627,10 @@ subroutine flxtrc( &
         end do
      end do
   end do
+!$omp end parallel do
 
 ! ---- y diffusion flux of GM
+!$omp parallel do collapse(2) private(n, k, ij, ijls)
   do n = 1, ntdim
 
      do k = kstr, kend
@@ -652,8 +666,10 @@ subroutine flxtrc( &
      end do
 
   end do
+!$omp end parallel do
 
 ! ---- x diffusion flux of GM
+!$omp parallel do collapse(2) private(n, k, ij, ijlw)
   do n = 1, ntdim
 
      do k = kstr, kend
@@ -702,6 +718,7 @@ subroutine flxtrc( &
      end do
 
   end do
+!$omp end parallel do
 
 !---- bolus velocity (for CMIP6 output)
   do k = 1, nzdim
@@ -736,15 +753,20 @@ subroutine flxtrc( &
 !---- diffusion in BBL
 #ifdef OPT_BBL
 
+!$omp parallel
   do n = 1, ntdim
+!$omp do private(k)
      do ij = ijtstr, ijtend
         k = nbot(ij)
         ftz(ij, kend, n) = ftz(ij, k, n)
      end do
+!$omp end do
   end do
+!$omp end parallel
 
   do n = 1, ntdim
 
+!$omp parallel do private(ijls)
      do ij = ijtstr, ijtend+nxdim
         ijls = ij + ls
         fty(ij, kend, n) = &
@@ -754,7 +776,9 @@ subroutine flxtrc( &
           &   amfty(ij, kend)
         ftyah(ij, kend, n) = fty(ij, kend, n)
      end do
+!$omp end parallel do
      
+!$omp parallel do private(ijlw)
      do ij = ijtstr, ijtend+1
         ijlw = ij + lw
         ftx(ij, kend, n) = &
@@ -763,6 +787,7 @@ subroutine flxtrc( &
           &   amftx(ij, kend) 
         ftxah(ij, kend, n) = ftx(ij, kend, n)
      end do
+!$omp end parallel do
 
   end do
 
@@ -773,6 +798,7 @@ subroutine flxtrc( &
 ! ---- mass contained in a tracer grid
   do n = 1, ntdim
 
+!$omp parallel do
      do k = kstr, kstr+kz-1
         do ij = 1, nxydim
 
@@ -780,7 +806,9 @@ subroutine flxtrc( &
 
         end do
      end do
+!$omp end parallel do
 
+!$omp parallel do
      do k = kstr+kz, kend
         do ij = 1, nxydim
 
@@ -788,7 +816,9 @@ subroutine flxtrc( &
 
         end do
      end do
+!$omp end parallel do
 
+!$omp parallel do
      do k = kstr, kend
         do ij = 1, nxydim
 
@@ -796,18 +826,22 @@ subroutine flxtrc( &
                
         end do
      end do
+!$omp end parallel do
 
+!$omp parallel do
      do ij = 1, nxydim
         sm(ij, kstr-1, n) = sm(ij, kstr, n)
         sm(ij, kend+1, n) = sm(ij, kend, n)
         s0(ij, kstr-1, n) = s0(ij, kstr, n)
         s0(ij, kend+1, n) = s0(ij, kend, n)
      end do
+!$omp end parallel do
 
   end do
 
 ! ---- in X-direction
 
+!$omp parallel do private(k, ij, ijlw, ijlsw)
   do k = kstr, kend
      do ij = ijtstr-nxdim-1, ijtend+nxdim+1
 
@@ -820,10 +854,12 @@ subroutine flxtrc( &
 
      end do
   end do
+!$omp end parallel do
 
   do n = 1, ntdim
 
 ! ---- undershoot limiter (Method B) of Morales Maqueda and Holloway (2006)
+!$omp parallel do private(k, ij, ijlw, ijle, s0m, s1m, s0p, sxp, alfq, alf1, alf1q, tmp)
      do k = kstr, kend
         do ij = ijtstr-nxdim-1, ijtend+nxdim+1
 
@@ -1144,10 +1180,12 @@ subroutine flxtrc( &
         end do
         
      end do
+!$omp end parallel do
   end do
 
 ! ---- Y-direction
 
+!$omp parallel do private(k, ij, ijls, ijlsw)
   do k = kstr, kend
      do ij = ijtstr-nxdim-1, ijtend+nxdim+1
 
@@ -1159,10 +1197,12 @@ subroutine flxtrc( &
 
      end do
   end do
+!$omp end parallel do
 
   do n = 1, ntdim
 
 !    ---- undershoot limiter (Method B) of Morales Maqueda and Holloway (2006)
+!$omp parallel do private(k, ij, ijls, ijln, s0m, s1m, s0p, sxp)
      do k = kstr, kend
         do ij = ijtstr-nxdim-1, ijtend+nxdim+1
 
@@ -1243,6 +1283,7 @@ subroutine flxtrc( &
 
         end do
      end do
+!$omp end parallel do
 
 !---- bug fix 2
 #ifdef OPT_TRIPOLE
@@ -1266,6 +1307,7 @@ subroutine flxtrc( &
 #endif
 
 !    ---- calculating ALF  and MASS between box (i,j-1,k) <---> (i,j,k)
+!$omp parallel do private(k, ij, ijls, alfq, alf1, alf1q, tmp)
      do k = kstr, kend
         do ij = ijtstr-nxdim-1, ijtend+nxdim+1
 
@@ -1521,6 +1563,7 @@ subroutine flxtrc( &
 
         end do
      end do
+!$omp end parallel do
 
   end do
 
@@ -1541,6 +1584,7 @@ subroutine flxtrc( &
 
 ! ---- Z-direction
 
+!$omp parallel do private(k, ij)
   do k = kstr, kend
      do ij = ijtstr, ijtend
 
@@ -1550,18 +1594,22 @@ subroutine flxtrc( &
                
      end do
   end do
+!$omp end parallel do
 
 #ifdef OPT_BBL
+!$omp parallel do private(k, ij)
   do ij = ijtstr, ijtend
      k = nbot(ij)
      uv(ij, k) = - wzc(ij, k) * vlmz(ij) * amsktb(ij) &
           &      +  uv(ij, k) * (1.d0 - amsktb(ij))
   end do
+!$omp end parallel do
 #endif
 
   do n = 1, ntdim
 
 !    ---- undershoot limiter (Method B) of Morales Maqueda and Holloway (2006)
+!$omp parallel do private(k, ij, ku, kd, s0m, s1m, s0p, sxp)
      do k = kstr, kend
 
         ku = max( k - 1, kstr )
@@ -1634,8 +1682,10 @@ subroutine flxtrc( &
            
         end do
      end do
+!$omp end parallel do
 
 !    ---- calculating ALF
+!$omp parallel do private(k, ij, ku, alfq, alf1, alf1q)
      do k = kstr, kend
 
         ku = k - 1
@@ -1719,12 +1769,15 @@ subroutine flxtrc( &
           
         end do
      end do
+!$omp end parallel do
 
 !    ---- calculating flux between box (i,j,k-1) <---> (i,j,k)
+!!$omp parallel
      do k = kstr, kend
 
         ku = k - 1
 
+!!$omp do private(k, ij, ku, alfq, alf1, alf1q)
         do ij = ijtstr, ijtend
 
            alfq  = alf(ij, k) * alf(ij, k)
@@ -1776,9 +1829,12 @@ subroutine flxtrc( &
            end if
           
         end do
+!!$omp end do
      end do
+!!$omp end parallel
 
 !    ---- put the temporary moments (fi) into appropriate neighboring boxes
+!!$omp parallel do private(k, ij, ku, alf1, tmp) 
      do k = kstr, kend
 
         ku = k - 1
@@ -1866,11 +1922,13 @@ subroutine flxtrc( &
 
         end do
      end do
+!!$omp end parallel do
 
   end do
 
 ! ---- tx
   do n = 1, ntdim
+!$omp parallel do
      do k = kstr, kend
         do ij = ijtstr, ijtend
 
@@ -1908,10 +1966,12 @@ subroutine flxtrc( &
              &    + ftzis(ij,    k, n) - ftzis(ij, k+1, n)) / dz(ij, k)
         end do
      end do
+!$omp end parallel do
   end do
 
 #ifdef OPT_BBL
   do n = 1, ntdim
+!$omp parallel do private(k)
      do ij = ijtstr, ijtend
         k = nbot(ij)
         ftz(ij, kend, n) = ftz(ij, k, n)
@@ -1920,9 +1980,11 @@ subroutine flxtrc( &
         ftzgm(ij, kend, n) = ftzgm(ij, k, n)
         ftzis(ij, kend, n) = ftzis(ij, k, n)
      end do
+!$omp end parallel do
   end do
 
   do n = 1, ntdim
+!$omp parallel do
      do ij = ijtstr, ijtend
         adt(ij, kend, n) = &
              & ( ( (ftx(ij+le, kend, n) - ftx(ij, kend, n)) * rx &
@@ -1950,6 +2012,7 @@ subroutine flxtrc( &
              &  rxt(ij) * ryt(ij) &
              & + ftzis(ij, kend, n) ) / dz(ij, kend)
      end do
+!$omp end parallel do
   end do
 #endif
 
@@ -2087,16 +2150,20 @@ subroutine flxtrc( &
   &            'tendency of salt by diffusion', 'psu/sec', &
   &            nx, ny, nz, nxyzdm, 'OCLVTT')
 
+!$omp parallel do
   do ij = ijtstr, ijtend
      dh(ij) = hx(ij) - hz(ij)
   end do
+!$omp end parallel do
   do n = 1, ntdim
+!$omp parallel do
      do k = kstr, kstr+kz-1
         do ij = ijtstr, ijtend
            adt2(ij, k, n) = adt2(ij, k, n) &
                 &           - dh(ij) / zbot * tsiv * tx(ij, k, n)
         end do
      end do
+!$omp end parallel do
   end do
   call chekin(adt2(1, 1, 1), 'DTDTV', &
        &            'tendency of temp by advection', 'K/sec', &
