@@ -358,7 +358,7 @@ subroutine ovturn( &
 !$omp do
      do ij = ijtstr, ijtend
         do k = kstr+1, nbot(ij)
-           ftzov(ij, k, n) = ftzov(ij, k-1, n) + dzsig(ij, k) * (t(ij, k, n) - to(ij, k, n)) / ts
+           ftzov(ij, k, n) = ftzov(ij, k-1, n) - dzsig(ij, k-1) * (t(ij, k-1, n) - to(ij, k-1, n)) / ts
         end do
      end do
   end do

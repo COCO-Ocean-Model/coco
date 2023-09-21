@@ -246,7 +246,10 @@ subroutine pridge( &
   end do
 
   do l = 1, nic
-     do k = 1, l
+! === '23.07.12: avoid loop interchange due to a bug
+!                 in ES4ve nfort compiler (version 5.0.0 or earlier)
+!NEC$ nointerchange
+   do k = 1, l
         do ij = ijtstr, ijtend
            hrmax = 2.d0 * sqrt(hrdgef(ij) * hix(ij, k))
            hrmin = 2.d0 * hix(ij, k)

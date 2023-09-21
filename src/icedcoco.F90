@@ -37,6 +37,8 @@ program icedcoco
 
 #ifdef OPT_TOUZA
   use TOUZA_Std_log, only: msg
+#else
+  use ucaln
 #endif
   
   implicit none
