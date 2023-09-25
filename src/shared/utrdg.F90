@@ -40,6 +40,7 @@ contains
     real(8)                   ::    rr,     ri,      r,     sr,     si
     integer(4)                ::    ij,      k
   
+!$omp parallel do private(ij, r1, pr1, pi1, qr1, qi1)
     do ij = ijvstr, ijvend
        r1 = br(ij, kstr) * br(ij, kstr)                                 &
     &     + bi(ij, kstr) * bi(ij, kstr)
@@ -54,8 +55,11 @@ contains
        dr(ij, kstr) = qr1
        di(ij, kstr) = qi1
     end do
+!$omp end parallel do
   
+!$omp parallel
     do k = kstr+1, kend
+!$omp do private(ij, rr, ri, sr, si, r)
        do ij = ijvstr, ijvend
           rr = br(ij, k) - a(ij, k) * br(ij, k-1)
           ri = bi(ij, k) - a(ij, k) * bi(ij, k-1)
@@ -67,16 +71,22 @@ contains
           dr(ij, k) = (sr * rr + si * ri) / r
           di(ij, k) = (si * rr - sr * ri) / r
        end do
+!$omp end do
     end do
+!$omp end parallel
   
+!$omp parallel
     do k = kend-1, kstr, -1
+!$omp do private(ij)
        do ij = ijvstr, ijvend
           dr(ij, k) = dr(ij, k) - br(ij, k) * dr(ij, k+1)               &
     &                           + bi(ij, k) * di(ij, k+1)
           di(ij, k) = di(ij, k) - bi(ij, k) * dr(ij, k+1)               &
     &                           - br(ij, k) * di(ij, k+1)
        end do
+!$omp end do
     end do
+!$omp end parallel
   
   end subroutine thmasc
   
@@ -100,16 +110,22 @@ contains
     real(8)                   ::    fc
     integer(4)                ::    ij,       k,       n
   
+!$omp parallel do private(ij)
     do ij = ijtstr, ijtend
        ac(ij, kstr) = ac(ij, kstr) / ab(ij, kstr)
     end do
+!$omp end parallel do
+!$omp parallel do collapse(2) private(n, ij)
     do n = 1, ntdim
        do ij = ijtstr, ijtend
           adt(ij, kstr, n) = adt(ij, kstr, n) / ab(ij, kstr)
        end do
     end do
+!$omp end parallel do
   
+!$omp parallel
     do k = kstr+1, kend
+!$omp do private(ij, fc, n)
        do ij = ijtstr, ijtend
           fc = 1.d0 / ( ab(ij, k) - aa(ij, k) * ac(ij, k-1) )
           ac(ij, k) = ac(ij, k) * fc
@@ -118,15 +134,21 @@ contains
     &                      - aa(ij, k) * adt(ij, k-1, n) ) * fc
           end do
        end do
+!$omp end do
     end do
+!$omp end parallel
   
+!$omp parallel
     do n = 1, ntdim
        do k = kend-1, kstr, -1
+!$omp do private(ij)
           do ij = ijtstr, ijtend
              adt(ij, k, n) = adt(ij, k, n) - ac(ij, k) * adt(ij, k+1, n)
           end do
+!$omp end do
        end do
     end do
+!$omp end parallel
   
   end subroutine thomas
   
