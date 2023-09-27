@@ -115,13 +115,15 @@ contains
        ac(ij, kstr) = ac(ij, kstr) / ab(ij, kstr)
     end do
 !$omp end parallel do
-!$omp parallel do collapse(2) private(n, ij)
+!$omp parallel
     do n = 1, ntdim
+!$omp do
        do ij = ijtstr, ijtend
           adt(ij, kstr, n) = adt(ij, kstr, n) / ab(ij, kstr)
        end do
+!$omp end do
     end do
-!$omp end parallel do
+!$omp end parallel
   
 !$omp parallel
     do k = kstr+1, kend
