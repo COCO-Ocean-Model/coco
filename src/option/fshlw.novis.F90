@@ -121,6 +121,7 @@ contains
     integer(4)  ::   ijnw,   ijse,   ijsw
     integer(4)  ::  ifpar,  jfpar,   istat
      
+!$omp parallel do 
     do ij = 1, nxydim
        fux(ij) = 0.d0
        fuy(ij) = 0.d0
@@ -129,16 +130,23 @@ contains
        fhx(ij) = 0.d0
        fhy(ij) = 0.d0
     end do
+!$omp end parallel do 
  
+!$omp parallel do 
     do ij = ijtstr-nxdim-1, ijtend+nxdim+2
        fhx(ij) = - (  ubty(ij+lw)  * hyu(ij+lw)                       &
     &               + ubty(ij+lsw) * hyu(ij+lsw)) * 0.5d0
     end do
+!$omp end parallel do 
+
+!$omp parallel do 
     do ij = ijtstr-nxdim-1, ijtend+nxdim+nxdim+1
        fhy(ij) = - (  vbty(ij+ls) * hxu(ij+ls)                        &
     &               + vbty(ij+lsw) * hxu(ij+lsw)) * 0.5d0
     end do
+!$omp end parallel do 
  
+!$omp parallel do 
     do ij = ijtstr-nxdim-1, ijtend+nxdim+1
        hx(ij) = hx(ij)                                                &
     &         + tss * (  (fhx(ij+le) - fhx(ij)) * rx                  &
@@ -146,7 +154,9 @@ contains
     &           rxt(ij) * ryt(ij) * amskt(ij, kstr)                   &
     &         - tss * fw(ij) * amskt(ij, kstr)
     end do
+!$omp end parallel do 
  
+!$omp parallel do 
     do ij = ijstr-nxdim-1, ijend
        gu(ij) = gxx(ij) + cor(ij) * vbtx(ij)                          &
     &         + (  (fux(ij+le) - fux(ij)) * rx * ryu(ij)              &
@@ -169,7 +179,9 @@ contains
     &              / rdepv(ij) / rhoo                                 &
     &           ) * 0.5d0 * rym(ij) * ryu(ij)                         
     end do                                                            
+!$omp end parallel do 
                                                                       
+!$omp parallel do private(cf)
     do ij = ijstr-nxdim-1, ijend                                      
        cf = cor(ij) * tss / accb * 0.5d0                              
        ubtx(ij) = ubtx(ij)                                            &
@@ -179,6 +191,7 @@ contains
     &           + tss / accb / (1.d0 + cf * cf) *                     &
     &             (gv(ij) - cf * gu(ij)) * amskv(ij, kstr)
     end do
+!$omp end parallel do 
 
   end subroutine shalow
 
