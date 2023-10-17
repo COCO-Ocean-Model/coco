@@ -1258,11 +1258,15 @@ subroutine flxtrc( &
      call shift1( syz(:,:,n), &
        &           nxdim,  nydim,  nzdim, &
        &           -1.d0,      0,      0 )
+     call shift1( s0(:,:,n), &
+       &           nxdim,  nydim,  nzdim, &
+       &            1.d0,      0,      0 )
 #else
      call shift1( sy (:,:,n), nxdim, nydim, nzdim )
      call shift1( syy(:,:,n), nxdim, nydim, nzdim )
      call shift1( sxy(:,:,n), nxdim, nydim, nzdim )
      call shift1( syz(:,:,n), nxdim, nydim, nzdim )
+     call shift1( s0 (:,:,n), nxdim, nydim, nzdim )
 #endif
 
 !    ---- calculating ALF  and MASS between box (i,j-1,k) <---> (i,j,k)

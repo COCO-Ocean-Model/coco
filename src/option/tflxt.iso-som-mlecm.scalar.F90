@@ -1164,11 +1164,15 @@ subroutine flxtrc( &
      call shift1( syz, &
        &           nxdim, nydim, nztdim, &
        &           -1.d0,     0,      0 )
+     call shift1( s0(:,:,n), &
+       &           nxdim,  nydim,  nzdim, &
+       &            1.d0,      0,      0 )
 #else
      call shift1( sy , nxdim, nydim, nztdim )
      call shift1( syy, nxdim, nydim, nztdim )
      call shift1( sxy, nxdim, nydim, nztdim )
      call shift1( syz, nxdim, nydim, nztdim )
+     call shift1( s0 (:,:,n), nxdim, nydim, nzdim )
 #endif
 
 !!*POPTION PARALLEL
