@@ -8,7 +8,8 @@ module zocout
   save
 
   integer, parameter :: cnwork = 60, cnwrks = 15
-  integer, parameter :: nncmax = 10, nchmax = 2
+  integer, parameter :: nncmax = 10
+  integer, parameter :: nchmax = 4
   integer, parameter :: nwork = cnwork*nxyzdm
 
   real(8) ::  wrkout(nwork)

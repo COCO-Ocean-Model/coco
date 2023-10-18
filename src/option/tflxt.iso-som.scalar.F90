@@ -1698,43 +1698,43 @@ subroutine flxtrc( &
 
   call chekin(ftxgm(1, 1, 1), 'FTXGM', &
   &            'GM zonal heat flux', 'degC cm3/rad/s', &
-  &            nx, ny, nz, nxyzdm, 'OCLVTT')
+  &            nx, ny, nz, nxyzdm, 'OCLVTX')
   call chekin(ftygm(1, 1, 1), 'FTYGM', &
   &            'GM meridional heat flux', 'degC cm3/rad/s', &
-  &            nx, ny, nz, nxyzdm, 'OCLVTT')
+  &            nx, ny, nz, nxyzdm, 'OCLVTY')
   call chekin(ftxis(1, 1, 1), 'FTXIS', &
   &            'isopycnal zonal heat flux', 'degC cm3/rad/s', &
-  &            nx, ny, nz, nxyzdm, 'OCLVTT')
+  &            nx, ny, nz, nxyzdm, 'OCLVTX')
   call chekin(ftyis(1, 1, 1), 'FTYIS', &
   &            'isopycnal meridional heat flux','degC cm3/rad/s', &
-  &            nx, ny, nz, nxyzdm, 'OCLVTT')
+  &            nx, ny, nz, nxyzdm, 'OCLVTY')
   call chekin(ftxgm(1, 1, 2), 'FSXGM', &
   &            'GM zonal salt flux', 'psu cm3/rad/s', &
-  &            nx, ny, nz, nxyzdm, 'OCLVTT')
+  &            nx, ny, nz, nxyzdm, 'OCLVTX')
   call chekin(ftygm(1, 1, 2), 'FSYGM', &
   &            'GM meridional salt flux', 'psu cm3/rad/s', &
-  &            nx, ny, nz, nxyzdm, 'OCLVTT')
+  &            nx, ny, nz, nxyzdm, 'OCLVTY')
   call chekin(ftxis(1, 1, 2), 'FSXIS', &
   &            'isopycnal zonal salt flux', 'psu cm3/rad/s', &
-  &            nx, ny, nz, nxyzdm, 'OCLVTT')
+  &            nx, ny, nz, nxyzdm, 'OCLVTX')
   call chekin(ftyis(1, 1, 2), 'FSYIS', &
   &            'isopycnal meridional salt flux', 'psu cm3/rad/s', &
-  &            nx, ny, nz, nxyzdm, 'OCLVTT')
+  &            nx, ny, nz, nxyzdm, 'OCLVTY')
   call chekin(ftx2(1, 1, 1), 'FTX2', &
   &            'ocean zonal heat flux', 'degC cm3/rad/s', &
-  &            nx, ny, nz, nxyzdm, 'OCLVTT')
+  &            nx, ny, nz, nxyzdm, 'OCLVTX')
   call chekin(fty2(1, 1, 1), 'FTY2', &
   &            'ocean meridional heat flux', 'degC cm3/rad/s', &
-  &            nx, ny, nz, nxyzdm, 'OCLVTT')
+  &            nx, ny, nz, nxyzdm, 'OCLVTY')
   call chekin(ftz2(1, 1, 1), 'FTZ2', &
   &            'ocean vertical heat flux', 'degC cm3/rad/s', &
   &            nx, ny, nz, nxyzdm, 'OCLVMT')
   call chekin(ftx2(1, 1, 2), 'FSX2', &
   &            'ocean zonal salt flux', 'psu cm3/rad/s', &
-  &            nx, ny, nz, nxyzdm, 'OCLVTT')
+  &            nx, ny, nz, nxyzdm, 'OCLVTX')
   call chekin(fty2(1, 1, 2), 'FSY2', &
   &            'ocean meridional salt flux', 'psu cm3/rad/s', &
-  &            nx, ny, nz, nxyzdm, 'OCLVTT')
+  &            nx, ny, nz, nxyzdm, 'OCLVTY')
   call chekin(ftz2(1, 1, 2), 'FSZ2', &
   &            'ocean vertical salt flux', 'psu cm3/rad/s', &
   &            nx, ny, nz, nxyzdm, 'OCLVMT')
@@ -2125,38 +2125,38 @@ subroutine chkftx
 
   call chekin(   ftx,  'FTX', &
      &            'ocean zonal heat flux', 'degC cm^3/rad/s', &
-     &            nx,     ny,     nz, nxyzdm, 'OCLVTT')
+     &            nx,     ny,     nz, nxyzdm, 'OCLVTX')
   call chekin(   fty,  'FTY', &
      &            'ocean meridional heat flux', 'degC cm^3/rad/s', &
-     &            nx,     ny,     nz, nxyzdm, 'OCLVTT')
+     &            nx,     ny,     nz, nxyzdm, 'OCLVTY')
   call chekin(   ftz,  'FTZ', &
      &            'ocean vertical heat flux', 'degC cm/s', &
      &            nx,     ny,     nz, nxyzdm, 'OCLVMT')
   call chekin(   ftx(1, 1, 2),  'FSX', &
      &            'ocean zonal salt flux', 'psu cm^3/rad/s', &
-     &            nx,     ny,     nz, nxyzdm, 'OCLVTT')
+     &            nx,     ny,     nz, nxyzdm, 'OCLVTX')
   call chekin(   fty(1, 1, 2),  'FSY', &
      &            'ocean meridional salt flux', 'psu cm^3/rad/s', &
-     &            nx,     ny,     nz, nxyzdm, 'OCLVTT')
+     &            nx,     ny,     nz, nxyzdm, 'OCLVTY')
   call chekin(   ftz(1, 1, 2),  'FSZ', &
      &            'ocean vertical salt flux', 'psu cm/s', &
      &            nx,     ny,     nz, nxyzdm, 'OCLVMT')
 
   call chekin(   ftxd,  'FTXD', &
      &            'ocean zonal diffusive heat flux', 'degC cm^3/rad/s', &
-     &            nx,     ny,     nz, nxyzdm, 'OCLVTT')
+     &            nx,     ny,     nz, nxyzdm, 'OCLVTX')
   call chekin(   ftyd,  'FTYD', &
      &            'ocean meridional diffusive heat flux', 'degC cm^3/rad/s', &
-     &            nx,     ny,     nz, nxyzdm, 'OCLVTT')
+     &            nx,     ny,     nz, nxyzdm, 'OCLVTY')
   call chekin(   ftzd,  'FTZD', &
      &            'ocean vertical diffusive heat flux', 'degC cm/s', &
      &            nx,     ny,     nz, nxyzdm, 'OCLVMT')
   call chekin(   ftxd(1, 1, 2),  'FSXD', &
      &            'ocean zonal diffusive salt flux', 'psu cm^3/rad/s', &
-     &            nx,     ny,     nz, nxyzdm, 'OCLVTT')
+     &            nx,     ny,     nz, nxyzdm, 'OCLVTX')
   call chekin(   ftyd(1, 1, 2),  'FSYD', &
      &            'ocean meridional diffusive salt flux', 'psu cm^3/rad/s', &
-     &            nx,     ny,     nz, nxyzdm, 'OCLVTT')
+     &            nx,     ny,     nz, nxyzdm, 'OCLVTY')
   call chekin(   ftzd(1, 1, 2),  'FSZD', &
      &            'ocean vertical diffusive salt flux', 'psu cm/s', &
      &            nx,     ny,     nz, nxyzdm, 'OCLVMT')

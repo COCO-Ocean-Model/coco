@@ -556,18 +556,18 @@ subroutine predci( &
 !           unit [cm^3(ice)/s]
   call chekin(   fix,  'FIX', &
        &            'eastward ice transport', 'cm^3(ice)/rad/s', &
-       &             nx,     ny,    nic, nxyidm, 'OCICET')
+       &             nx,     ny,    nic, nxyidm, 'OCICEX')
   call chekin(   fiy,  'FIY', &
      &            'northward ice transport', 'cm^3(ice)/rad/s', &
-    &             nx,     ny,    nic, nxyidm, 'OCICET')
+    &             nx,     ny,    nic, nxyidm, 'OCICEY')
 ! FISX, FISY: eastward/northward snow transport
 !             unit [cm^3(snow)/s]
   call chekin(   fsx, 'FISX', &
      &            'eastward snow transport', 'cm^3(snow)/rad/s', &
-    &             nx,     ny,    nic, nxyidm, 'OCICET')
+    &             nx,     ny,    nic, nxyidm, 'OCICEX')
   call chekin(   fsy, 'FISY', &
      &            'northward snow transport', 'cm^3(snow)/rad/s', &
-    &             nx,     ny,    nic, nxyidm, 'OCICET')
+    &             nx,     ny,    nic, nxyidm, 'OCICEY')
 ! FTITD: heat flux into sea water due to sea ice thermodynamics
 !        unit [erg/cm^2/s]
   call chekin(  ftitd,  'FTITD', &
@@ -636,10 +636,10 @@ subroutine predci( &
 !           unit [(erg/g)*(cm^3(ice)/s)]
   call chekin(   fex,  'FIEX', &
     &            'eastward ice heat transport', 'erg*cm^3/rad/g/s', &
-    &             nx,     ny,    nic, nxyidm, 'OCICET')
+    &             nx,     ny,    nic, nxyidm, 'OCICEX')
   call chekin(   fey,  'FIEY', &
     &            'northward ice heat transport', 'erg*cm^3/rad/g/s', &
-    &             nx,     ny,    nic, nxyidm, 'OCICET')
+    &             nx,     ny,    nic, nxyidm, 'OCICEY')
 
 ! output section for CMIP6 
   do ij = 1, nxydim

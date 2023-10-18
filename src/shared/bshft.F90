@@ -78,13 +78,18 @@ module bshft
   real(8)        ::   sdbfn2(1:nxdim, 1:jcomm, 1:nztdim+nzdim)
   real(8)        ::   rvbfn1(1:nxdim, 1:jcomm, 1:nztdim+nzdim)
   real(8)        ::   rvbfn2(1:nxdim, 0:jcomm, 1:nztdim+nzdim)
-#endif
 
+  real(8), allocatable :: sdbffy(:,:,:), rvbffy(:,:,:)
+#endif
+  
   integer(4)     ::        i,      j,      k,      n
   integer(4)     ::   nbfdim, nbfdm0,   istv
   integer(4)     :: ifpar, jfpar
 
   public  ::  shift1,  shift2,  shift3, shift_pack_begin, shift_pack_end, shift_unpack
+#ifdef OPT_TRIPOLE
+  public  ::  shiftf1
+#endif
 
 contains
 
@@ -1260,6 +1265,45 @@ contains
 #endif
 
   end subroutine instant_shift3
+#ifdef OPT_TRIPOLE
+!========================================================================================
+    
+  subroutine shiftf1(                                                &
+   &                 q1,                                             &
+   &               idim,   jdim,   kdim )
+
+  implicit none
+    
+#include "mpif.h"
+
+  real(8),                  intent(inout)  ::    q1(1:idim,1:jdim,1:kdim)
+  integer(4),               intent(in)     ::  idim,  jdim,  kdim
+
+  allocate(sdbffy(nxdim, 1, kdim), rvbffy(nxdim, 1, kdim))
+  if (jupfy .ne. mpi_proc_null) then
+     do k = 1, kdim
+        do i = 1, nxdim
+           sdbffy(i, 1, k) = q1(i, jend+1, k)
+        end do
+     end do
+  end if
+  nbfdim = kdim * nxdim * 1
+  call shiftfy( &
+    &         rvbffy, &
+    &         sdbffy, &
+    &         nbfdim, kdim)
+  if (jdownfy .ne. mpi_proc_null) then
+     do k = 1, kdim
+        do i = 1, nxdim
+           q1(i, jstr, k) = rvbffy(i, 1, k)
+        end do
+     end do
+  end if
+  deallocate(sdbffy, rvbffy)
+
+  return
+  end subroutine shiftf1
+#endif
 
 ! *********************************************************************
 
@@ -1443,6 +1487,40 @@ contains
 
   end subroutine shiftnv
 
+! *********************************************************************
+
+  subroutine shiftfy(                                                 &
+    &            rvbffy,                                              &
+    &            sdbffy,                                              &
+    &            nbfdim, nzsdim )
+
+  implicit none
+
+#include "mpif.h"
+
+  integer(4),   intent(in)    ::  nbfdim, nzsdim
+  real(8),      intent(inout) ::  rvbffy(nxdim, 1, nzsdim)
+  real(8),      intent(in)    ::  sdbffy(nxdim, 1, nzsdim)
+
+!---- internal work
+  integer(4)  ::  isrqfy1
+  integer(4)  ::  irrqfy1
+  integer(4)  ::  istmpi(mpi_status_size)
+
+  call mpi_isend( &
+    &               sdbffy, nbfdim, mpi_real8, &
+    &                jupfy,      5, mpi_comm_world, &
+    &              isrqfy1,   ierr)
+  call mpi_irecv( &
+    &               rvbffy, nbfdim, mpi_real8, &
+    &              jdownfy,      5, mpi_comm_world, &
+    &              irrqfy1,   ierr)
+
+  call mpi_wait(isrqfy1, istmpi,   ierr)
+  call mpi_wait(irrqfy1, istmpi,   ierr)
+
+  return
+  end subroutine shiftfy
 #endif
 
 end module bshft
