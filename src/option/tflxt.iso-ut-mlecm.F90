@@ -481,8 +481,8 @@ subroutine flxtrc( &
         igsy(ij, k) = ( ahi - ahg ) * ydzdy(ij, k)
      end do
   end do
-  call chekin(igsx, 'IGSX', nx, ny, nz, nxyzdm, 'OCN')
-  call chekin(igsy, 'IGSY', nx, ny, nz, nxyzdm, 'OCN')
+!  call chekin(igsx, 'IGSX', nx, ny, nz, nxyzdm, 'OCN')
+!  call chekin(igsy, 'IGSY', nx, ny, nz, nxyzdm, 'OCN')
 
   do n = 1, ntdim
      do k = kstr, kend
@@ -510,8 +510,8 @@ subroutine flxtrc( &
      end do
   end do
 
-  call chekin(psigmx, 'PSIGMX', nx, ny, nz, nxyzdm, 'OCN')
-  call chekin(psigmy, 'PSIGMY', nx, ny, nz, nxyzdm, 'OCN')
+!  call chekin(psigmx, 'PSIGMX', nx, ny, nz, nxyzdm, 'OCN')
+!  call chekin(psigmy, 'PSIGMY', nx, ny, nz, nxyzdm, 'OCN')
 
   return
 
@@ -1363,19 +1363,19 @@ subroutine chkftx
 
   call chekin(   ftx,  'FTX', &
      &            'ocean zonal heat flux', 'degC cm^3/rad/s', &
-     &            nx,     ny,     nz, nxyzdm, 'OCLVTT')
+     &            nx,     ny,     nz, nxyzdm, 'OCLVTX')
   call chekin(   fty,  'FTY', &
      &            'ocean meridional heat flux', 'degC cm^3/rad/s', &
-     &            nx,     ny,     nz, nxyzdm, 'OCLVTT')
+     &            nx,     ny,     nz, nxyzdm, 'OCLVTY')
   call chekin(   ftz,  'FTZ', &
      &            'ocean vertical heat flux', 'degC cm/s', &
      &            nx,     ny,     nz, nxyzdm, 'OCLVTT')
   call chekin(   ftx(1, 1, 2),  'FSX', &
      &            'ocean zonal salt flux', 'psu cm^3/rad/s', &
-     &            nx,     ny,     nz, nxyzdm, 'OCLVTT')
+     &            nx,     ny,     nz, nxyzdm, 'OCLVTX')
   call chekin(   fty(1, 1, 2),  'FSY', &
      &            'ocean meridional salt flux', 'psu cm^3/rad/s', &
-     &            nx,     ny,     nz, nxyzdm, 'OCLVTT')
+     &            nx,     ny,     nz, nxyzdm, 'OCLVTY')
   call chekin(   ftz(1, 1, 2),  'FSZ', &
      &            'ocean vertical salt flux', 'psu cm/s', &
      &            nx,     ny,     nz, nxyzdm, 'OCLVTT')

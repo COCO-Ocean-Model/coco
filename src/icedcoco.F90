@@ -32,6 +32,7 @@ program icedcoco
   use atmct
   use bfrch
   use brstt
+  use ucaln
   use ucloc
   use ufile
 
@@ -327,7 +328,7 @@ subroutine parset
   use zocdim, only: &
     & inodes, jnodes, &
 #ifdef OPT_TRIPOLE
-    &   jupe,   jupw, &
+    &   jupe,   jupw,  jupfy, jdownfy, &
 #endif
     & nprocs, myrank, ijnode,  iroot,   ierr, &
     &  irank,    iup,  idown, &
@@ -438,6 +439,18 @@ subroutine parset
      jupe = mpi_proc_null
      jupw = mpi_proc_null
   endif
+
+  if (jrank .eq. 0) then
+     jdownfy = inodes * (jnodes - 1) + irank
+  else
+     jdownfy = mpi_proc_null
+  end if
+  if (jrank .eq. jnodes-1) then
+     jupfy = irank
+  else
+     jupfy = mpi_proc_null
+  end if
+  
 #endif
   if (jrank == jnodes-1) then
      jup = mpi_proc_null

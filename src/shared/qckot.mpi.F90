@@ -631,10 +631,16 @@ contains
        &              ditem, ccitem,                        &
        &              htitl,  hunit,                        &
        &             nxitem, nyitem, nzitem, nditem,   cclas)
+#ifdef OPT_TRIPOLE
+    use zocdim, only : nxydim, nxdim, nydim, nxg, nyg, kstr, nic
+    use bshft
+#else
     use zocdim, only : nxydim, nxg, nyg, kstr, nic
+#endif
     use zocout, only : nwork, wrkout 
     use zocfil, only : nfstdo
     use ufile
+    
     integer,      intent(in) :: nxitem, nyitem, nzitem, nditem 
     real(8),      intent(in) :: ditem(nditem)
     character(*), intent(in) :: ccitem,  cclas,  htitl,  hunit
@@ -642,6 +648,10 @@ contains
     real(8), allocatable :: sigitm(:), sigthk(:)
     logical, allocatable :: osigex(:)
     integer :: sdim
+#ifdef OPT_TRIPOLE
+    real(8), allocatable :: flxitm(:)
+    integer :: kdim
+#endif
 
     integer :: item, iohitm
     integer, save :: jtopad = 1, jtopas = 1
@@ -680,11 +690,15 @@ contains
           ctitl(item) = htitl
           cunit(item) = hunit
 
-!         Horizontal position: 1:T, 2:V
+!         Horizontal position: 1:T, 2:V, 3:X(flux), 4:Y(flux)
           if (cclas(6:6) == 'T') then
              nhcord(item) = 1
           elseif (cclas(6:6) == 'V') then
              nhcord(item) = 2
+          elseif (cclas(6:6) == 'X') then
+             nhcord(item) = 3
+          elseif (cclas(6:6) == 'Y') then
+             nhcord(item) = 4
           else
              nhcord(item) = 0
           end if
@@ -766,6 +780,8 @@ contains
                    &         sigitm, sigthk, osigex, &
                    &          ditem,                 &
                    &           sdim,  nvcord(item), nhcord(item))
+!!              '23.08.29:
+!!              cyclic output of fy on sigma co. is not implemented yet.
                 do i = 1, nszitm(item)
                    wrkout(itopad(item) + i - 1) = &
              &    wrkout(itopad(item) + i - 1) * fctavr(item) &
@@ -783,11 +799,40 @@ contains
                 end if
                 deallocate(sigitm,sigthk,osigex)
              else
+#ifdef OPT_TRIPOLE
+                if (nhcord(item) == 4) then  !! y-flux
+                   allocate(flxitm(nditem))
+                   flxitm(:) = ditem(:)
+                   if (cclas(3:5) == 'SFC') then
+                      kdim = 1
+                   else if (cclas(3:5) == 'ICE') then
+                      kdim = nic + 1
+                   else if (cclas(3:5) == 'LVT' .or. cclas(3:5) == 'LVM') then
+                      kdim = nzdim
+                   end if
+                   call shiftf1( &
+                     &          flxitm, &
+                     &           nxdim,  nydim,   kdim)
+                   do i = 1, nszitm(item)
+                      wrkout(itopad(item) + i - 1) = &
+                        &    wrkout(itopad(item) + i - 1) * fctavr(item) &
+                        &  + flxitm(ktopad(item) + i - 1)
+                   end do
+                   deallocate(flxitm)
+                else
+                   do i = 1, nszitm(item)
+                      wrkout(itopad(item) + i - 1) = &
+                        &    wrkout(itopad(item) + i - 1) * fctavr(item) &
+                        &  + ditem(ktopad(item) + i - 1)
+                   end do
+                endif
+#else
                 do i = 1, nszitm(item)
                    wrkout(itopad(item) + i - 1) = &
-             &    wrkout(itopad(item) + i - 1) * fctavr(item) &
-             &  + ditem(ktopad(item) + i - 1)
+                     &    wrkout(itopad(item) + i - 1) * fctavr(item) &
+                     &  + ditem(ktopad(item) + i - 1)
                 end do
+#endif
              end if
           end if
        end if
@@ -949,6 +994,13 @@ contains
 #endif
 #endif
 
+! '23.08.29: will be updated for output of flux vars on sigma co..
+!   nbtnb(ij,3): nbot without BBL at FX-point, ***temporary*** 
+    nbtnb(:,3) = nbtnb(:,1)
+
+!   nbtnb(ij,4): nbot without BBL at FY-point, ***temporary*** 
+    nbtnb(:,4) = nbtnb(:,1)
+
     do nh = 1, nchmax
        do k = 1, nzdim
           do ij = 1, nxydim
@@ -978,6 +1030,13 @@ contains
           dzmnb(ij, nbtnb(ij, 2)+1, 2) = 0.5d0 * dzv(ij, nbtnb(ij, 2))
        end if
     end do
+
+! '23.08.29: will be updated for output of flux vars on sigma co..
+!   dzmnb(ij,3): dzm without BBL at FX-point, ***temporary*** 
+    dzmnb(:,:,3) = dzmnb(:,:,1)
+
+!   dzmnb(ij,4): dzm without BBL at FY-point, ***temporary*** 
+    dzmnb(:,:,4) = dzmnb(:,:,1)
 
     return
   end subroutine csgset
@@ -1160,7 +1219,12 @@ contains
 #endif
              end do
           end do
-       end if
+! '23.08.29: will be updated for output of flux vars on sigma co..
+       else if (nch == 3) then  !! sigma for FX-point, ***temporary***
+          sigma(:,:,:,3) = sigma(:,:,:,1)
+       else if (nch == 4) then  !! sigma for FY-point, ***temporary***
+          sigma(:,:,:,4) = sigma(:,:,:,1)
+       endif
        call mkcvtb( nch )
        oscvtb(nch) = .true.
     end if
