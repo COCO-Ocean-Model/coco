@@ -1335,7 +1335,8 @@ subroutine bdyflx( &
 
   integer ::     ij,      k,      l,      n
   
-  real(8) ::  tbdy(nxydim, nzdim, ntdim), tdmb(nxydim, nzdim, ntdim)
+  real(8), save        ::    tbdy(nxydim, nzdim, ntdim) = 0.d0
+  real(8), save        ::    tdmb(nxydim, nzdim, ntdim) = 0.d0
 
 !  do l = 1, ntdim
   do l = 1, 2
