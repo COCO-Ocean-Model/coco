@@ -12,6 +12,7 @@ module zocnod
   integer ::  jrank,    jup,  jdown
 #ifdef OPT_TRIPOLE
   integer ::  jupe,    jupw
+  integer :: jupfy, jdownfy
 #endif
   integer :: ijtstr, ijtend
   integer :: ijvstr, ijvend

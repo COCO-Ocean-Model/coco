@@ -101,9 +101,8 @@ contains
     real(8),    intent(inout)  ::  tq(nxydim, nzdim, ntdim)
     real(8),    intent(inout)  ::  t (nxydim, nzdim, ntdim)
 
-
-    real(8)      ::    tbdy(nxydim, nzdim, ntdim)
-    real(8)      ::    tdmb(nxydim, nzdim, ntdim)
+    real(8),    save       ::    tbdy(nxydim, nzdim, ntdim) = 0.d0
+    real(8),    save       ::    tdmb(nxydim, nzdim, ntdim) = 0.d0
     integer(4)   ::      ij,      k,      l,      n
 
     do l = 1, 2
