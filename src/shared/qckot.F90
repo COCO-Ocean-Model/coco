@@ -88,7 +88,11 @@ contains
                        igstr, jgstr, kstr,    &
                        istr,  jstr,  kend
     use zocfil, only : nfomax
-    use zocmsk, only : amskt, amskv, amsktb, amskt1, nbot
+    use zocmsk, only : amskt, amskv, &
+#ifdef OPT_BBL
+         & amsktb, amskt1, &
+#endif
+         & nbot
     use bgs3d
     use bshft
     use ufile
@@ -936,7 +940,10 @@ contains
     use zocgrd, only: &
       &      dz,    dzv
     use zocmsk, only: &
-      &  amsktb, amskvb,   nbot,  nbotv
+#ifdef OPT_BBL
+      &  amsktb, amskvb,  nbotv, &
+#endif
+      &    nbot
     use zocfil, only: &
       &     ncf
     use ufile
@@ -1132,7 +1139,10 @@ contains
       &      nx,     ny,     nz, nxydim,  nzdim, nxyzdm,  ntdim, &
       &    kstr,   kend, ijtstr, ijtend,  oinit
     use zocmsk, only: &
-      &   amskt, amsktb,   nbot
+#ifdef OPT_BBL
+      &  amsktb, &
+#endif
+      &    nbot,  amskt
 
     implicit none
 
@@ -1202,11 +1212,13 @@ contains
              sigout(ij, k) = sigma(ij, k, n, 1)
           end do
        end do
+#ifdef OPT_BBL
        do ij=ijtstr, ijtend
           k = nbot(ij)
           sigout(ij, k) = sigout(ij, kend) * amsktb(ij) &
             &       + sigout(ij, k) * (1.0d0 - amsktb(ij))
        end do
+#endif
        cvmes = '                                '
        if (n == 0) then
           cvnam = 'PDEN   '
@@ -1265,8 +1277,10 @@ contains
     use zocdim, only: &
       &   nxdim,  nzdim, nxydim,   kstr,   kend, &
       &      le,     ln,    lne
+#ifdef OPT_BBL
     use zocmsk, only: &
       &  amskvb
+#endif
     implicit none
 
     integer, intent(in)  ::  sdim,  ncsig,    nch
@@ -1337,8 +1351,10 @@ contains
       &   ijstr,  ijend,   kstr,   kend
     use zocgrd, only: &
       &     dz0
+#ifdef OPT_BBL
     use zocmsk, only: &
       &  amskvb
+#endif
     implicit none
     integer, intent(in) :: nch
 
