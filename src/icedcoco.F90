@@ -41,6 +41,10 @@ program icedcoco
 #else
   use ucaln
 #endif
+
+#ifdef _OPENACC
+  use openacc
+#endif
   
   implicit none
 
@@ -85,6 +89,10 @@ program icedcoco
   namelist /nmstdo/ cstdo
   namelist /nmlog/ loglev
 
+#ifdef _OPENACC
+  integer :: ngpus, gpuid
+#endif
+
 ! *** Initial setup ***
 
   call mpi_init(ierr)
@@ -104,6 +112,14 @@ program icedcoco
   open(unit=jfpar, file=cstdo, &
     &  access='sequential', form='formatted')
   write(nfstdo, *) 'MESSAGE OUTPUT FOR RANK', myrank
+
+#ifdef _OPENACC
+  ngpus = acc_get_num_devices(acc_device_nvidia)
+  gpuid = mod(myrank, ngpus)
+  call acc_set_device_num(gpuid, acc_device_nvidia)
+  write(nfstdo, *) 'ngpus, gpuid', ngpus, gpuid
+#endif
+
   call rewnml(ifpar, jfpar)
   read (ifpar, nmrun, iostat=istat)
   call cstnml(jfpar, 'icedcoco', 'nmrun', istat)
