@@ -452,6 +452,10 @@ contains
    &             amskv,  amfvz,                                                &
    &             nxdim,  nydim,  nzdim,                                        &
    &              1.d0,     -1,     -1 )
+  call shift1(                                                                 &
+   &             amskb,                                                        &
+   &             nxdim,  nydim,  nzdim,                                        &
+   &              1.d0,     -1,     -1 )
 
   call shft1i(                                                                 &
    &              nbot,                                                        &
@@ -528,8 +532,8 @@ contains
    &             nxdim,  nydim,  nzdim,                                        &
    &             1.d0 ,     -1,      0)
 #else
-  call shift2(                                                                 &
-   &             amskt,  amskv,                                                &
+  call shift3(                                                                 &
+   &             amskt,  amskv,  amskb,                                        &
    &             nxdim,  nydim,  nzdim)
   call shift3(                                                                 &
    &             amftx,  amfty,  amftz,                                        &
