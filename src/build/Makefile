@@ -30,7 +30,7 @@ SRCS_SHARED = \
 	tflxt.F90 \
 	tovtr.F90 \
 	ucaln.F90 \
-	ucloc.$(SYSTEM).F90 \
+	ucloc.F90 \
 	ufile.F90 \
 	utrdg.F90 \
 	xprst.F90
