@@ -1,6 +1,23 @@
  FC = mpif90
 
- FFLAGS += -fast -O3 -Minfo=all -Mlre=noassoc -Mnopre -byteswapio -mcmodel=medium -DOPT_PARALLEL
+#FFLAGS += -fast -O3 -Minfo=all -Mlre=noassoc -Mnopre -byteswapio -mcmodel=medium -DOPT_PARALLEL
+ FFLAGS += -O3 -m64 -Minfo=all -Mautoinline -Minline -Mpreprocess -Mnovect -Mmovnt -Mflushz -Mcache_align -mcmodel=medium
+
+# CUDA configuration
+#CUDAV=12.3
+#CUDAV=12.2
+#CUDAV=12.0
+#CUDAV=11.8
+#CUDAV=11.7
+ CUDAV=11.6
+#CUDAV=11.2
+#CUDAV=10.2
+ CCA=80
+#CCA=60
+
+ifeq "$(ACC)" ".acc"    
+FFLAGS += -acc -cuda -gpu=cuda${CUDAV},cc${CCA}
+endif
 
 ifeq "$(OMP)" ".omp"    
 FFLAGS += -mp
@@ -10,7 +27,7 @@ endif
 #FFLAGS +=                   -g
 #FFLAGS +=                   -Mchkstk
  
- FOPTION = $(FFLAGS)                                  -I$(OGCMDIR)/src/module -I$(OGCMDIR)/src/touza -I$(OGCMDIR)/src/build $(OPTBDY) $(OPTSRST) $(OPTBBL) $(OPTTRIPOLE) $(OPTIO) $(OPTEXMASK) $(OPTTOUZA)
+ FOPTION = $(FFLAGS)                                  -I$(OGCMDIR)/src/module -I$(OGCMDIR)/src/touza -I$(OGCMDIR)/src/build $(OPTBDY) $(OPTSRST) $(OPTBBL) $(OPTTRIPOLE) $(OPTIO) $(OPTEXMASK) $(OPTTOUZA) $(ACCOMP_ON)
 
 AR	= ar r
 RANLIB	= ranlib

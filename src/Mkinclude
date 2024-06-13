@@ -2,9 +2,14 @@ OGCMDIR	= /home/G10206/komuro/coco_latest
 RM	= rm -f
 
 #SYSTEM	= fugaku
- SYSTEM	= ifort
-#SYSTEM	= nvhpc
+#SYSTEM	= ifort
+ SYSTEM	= nvhpc
 #SYSTEM = gfortran
+
+#NODES = 8x4
+#NODES = 1x1
+ NODES = 2x1
+#NODES = 8x8
 
 #MODEL = coco
 MODEL = icedcoco
@@ -19,10 +24,20 @@ OPTEXMASK = -DOPT_EXMASK
 #OPTIO   = -DOPT_IO_COCOMPI -DOPT_IO_BYTESWAP -DOPT_IO_SEQUENTIAL
 #MPI=.mpi
 
-### OpenMP ###
-OMP=.omp
+### OpenACC ###
+#ACC=.acc
+ ACC=
 
-#OPTTOUZA = -DOPT_TOUZA
+### OpenMP ###
+#OMP=.omp
+ OMP=
+
+### ACC/OMP_ON ###
+#ACCOMP_ON = -DACC_ON
+#ACCOMP_ON = -DOMP_ON
+ ACCOMP_ON = 
+ 
+ OPTTOUZA = -DOPT_TOUZA
 
 TSTAG=.tstag
 
@@ -35,10 +50,12 @@ TSTAG=.tstag
 # CORE global simple
 #SRCOPT = tflxt.iso-ut aocea.icedcoco.nmlwtr dvdif.nk-c0lat csrvl.bblmzns cvisc.amh2d fshlw.novis ipthm.linrmp ipmmt.pice aprdc.icedcoco.tundf$(TSTAG) tslvt.icedcoco.tundf.para sfcng.CORE utint.CORE
 
-SRCOPT	= tflxt.iso-ut dvdif.nk sfcng.CORE utint.CORE
+#SRCOPT	= tflxt.iso-ut dvdif.nk sfcng.CORE utint.CORE
+ SRCOPT = tflxt.iso-som       dvdif.gls csrvl.bblmzns cvisc.amh2d fshlw.novis ipthm.linrmp ipmmt.pice aprdc.icedcoco.tundf$(TSTAG)_filter tslvt.icedcoco.tundf sfcng.JRA.direct utint.JRA.direct
+IDENTIFER=
 
 SRCENS  = 
 #SRCENS	= aocea.$(MODEL) aprdc.$(MODEL)$(TSTAG) binst.$(MODEL) bstbc.$(MODEL) cadvc$(TSTAG) ctnuv$(TSTAG) dvlva
 
-TARGET	= $(OGCMDIR)/bin/$(MODEL)
+TARGET	= $(OGCMDIR)/bin/$(MODEL).$(NODES)$(IDENTIFER)$(ACC)$(OMP)$(NODE)
 LIBOGCM	= $(OGCMDIR)/lib/lib$(MODEL).a

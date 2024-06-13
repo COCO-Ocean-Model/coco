@@ -116,7 +116,7 @@ program icedcoco
 #ifdef _OPENACC
   ngpus = acc_get_num_devices(acc_device_nvidia)
   gpuid = mod(myrank, ngpus)
-  call acc_set_device_num(gpuid, acc_device_nvidia)
+! call acc_set_device_num(gpuid, acc_device_nvidia)
   write(nfstdo, *) 'ngpus, gpuid', ngpus, gpuid
 #endif
 

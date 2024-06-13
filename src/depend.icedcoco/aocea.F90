@@ -63,6 +63,13 @@ subroutine ocstup ( &
   use tslvt
   use ufile
 !$ use omp_lib
+#ifdef _OPENACC
+  use cudafor
+  use openacc
+  use zocnod, only : ierr
+
+#include "mpif.h"
+#endif
 
   real(8), intent(out) ::     tb(nxyzdm, ntdim)
   real(8), intent(out) ::     ub(nxyzdm)
@@ -80,6 +87,21 @@ subroutine ocstup ( &
   integer ::  ifpar,  jfpar
 
   integer ::  num_threads
+
+#ifdef _OPENACC
+! acc device id
+
+  integer ::  istat
+  integer :: device_affinity 
+  data device_affinity / 0 / ! default 0, device id set to 0
+                             !         1, id = mod(rank, 2 or 4)
+  INTEGER :: deviceid
+  INTEGER :: g_deviceid
+
+  namelist / nmdevice / device_affinity
+
+  integer     ::  ist
+#endif
 
   call rewnml(ifpar, jfpar)
   write(jfpar, *) '*** ocstup ***'
@@ -134,6 +156,61 @@ subroutine ocstup ( &
 !$ num_threads = omp_get_num_threads()
 !$omp end parallel
 !$ write(jfpar, *) "OMP_NUM_THREADS=", num_threads
+#ifdef _OPENACC
+
+! call accconfigout
+
+! acc device id
+
+  IF(myrank.eq.0) THEN
+    call rewnml(ifpar, jfpar)
+    read(ifpar, nmdevice, iostat = istat )
+    call cstnml( jfpar, 'ocstup', 'nmdevice', istat )
+  END IF
+
+  CALL mpi_bcast(device_affinity, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
+
+  IF(device_affinity .eq. 0) then  ! all devices are set to id 0
+    deviceid = 0
+    write(jfpar,*)'device_affinity = 0, id = 0'
+    write(jfpar,*)'myrank, cuda deviceid = ', myrank, deviceid
+!   ISTAT = CUDASETDEVICE( deviceid )
+!!$acc set device_num(deviceid)
+    CALL acc_set_device_num(deviceid, acc_device_nvidia)
+    g_deviceid = acc_get_device_num(acc_device_nvidia)
+    write(jfpar,*)'get cuda deviceid = ', myrank, g_deviceid
+  ELSE IF(device_affinity.eq.1) THEN
+    deviceid = mod(myrank,2)
+    write(jfpar,*)'device_affinity = 1, id = mod(rank,2^1)'
+    write(jfpar,*)'myrank, cuda deviceid = ', myrank, deviceid
+!   ISTAT = CUDASETDEVICE( deviceid )
+!   ISTAT = CUDASETDEVICE( 0 )
+!!$acc set device_num(deviceid)
+!!$acc set device_num(0)
+!!$acc set device_num(1)
+    CALL acc_set_device_num(deviceid, acc_device_nvidia)
+    g_deviceid = acc_get_device_num(acc_device_nvidia)
+    write(jfpar,*)'get cuda deviceid = ', myrank, g_deviceid
+  ELSE IF(device_affinity.eq.2) THEN
+    deviceid = mod(myrank,4)
+    write(jfpar,*)'device_affinity = 2, id = mod(rank,2^2)'
+    write(jfpar,*)'myrank, cuda deviceid = ', myrank, deviceid
+    CALL acc_set_device_num(deviceid, acc_device_nvidia)
+    g_deviceid = acc_get_device_num(acc_device_nvidia)
+    write(jfpar,*)'get cuda deviceid = ', myrank, g_deviceid
+  ELSE IF(device_affinity.eq.3) THEN
+    deviceid = mod(myrank,8)
+    write(jfpar,*)'device_affinity = 3, id = mod(rank,2^3)'
+    write(jfpar,*)'myrank, cuda deviceid = ', myrank, deviceid
+    CALL acc_set_device_num(deviceid, acc_device_nvidia)
+    g_deviceid = acc_get_device_num(acc_device_nvidia)
+    write(jfpar,*)'get cuda deviceid = ', myrank, g_deviceid
+  ELSE
+    write(jfpar,*)'device_affinity should be set, stop'
+    STOP
+  END IF
+
+#endif ! _OPENACC
 
   return
 end subroutine ocstup
