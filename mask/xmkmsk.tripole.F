@@ -71,7 +71,10 @@ c ---------------------------------------------------------------------
       RADIUS = 6370.D5
       OMEGA = 2.D0 * PI / 8.64D4
       CUNITI = (0.D0, 1.D0)
-
+      
+      OPEN(JFILE, file='MASK', form='unformatted')
+      REWIND(JFILE)
+      
       CALL GETGEO(
      O               ALD,    BLD,   DGEO,   NBOT,
      O              IBBL,
@@ -139,6 +142,7 @@ C
       WRITE(JFILE) GLATT
       WRITE(JFILE) RANGT
 #endif
+      CLOSE(JFILE)
       END
 
 c =====================================================================
