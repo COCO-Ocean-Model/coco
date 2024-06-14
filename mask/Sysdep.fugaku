@@ -9,7 +9,6 @@ FFLAGS  = -cpp -mcmodel=large -fconvert=big-endian -O3 -DOPT_PARALLEL
 #RUNOPT	= -Wl,T
 
 FOPTION = $(FFLAGS)
-UNIT22	= fort.22
 
 .F.o:
 	$(FC) $(FOPTION) -c $<

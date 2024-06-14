@@ -1,7 +1,6 @@
 FC	= gfortran
 FFLAGS = -cpp -fconvert=big-endian -O3 -ffree-line-length-none -DOPT_PARALLEL
 FOPTION = $(FFLAGS)
-UNIT22	= fort.22
 RUNOPT	=
 
 .F.o:
