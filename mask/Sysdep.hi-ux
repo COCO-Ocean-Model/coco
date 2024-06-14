@@ -1,8 +1,0 @@
-FC	= f90
-FFLAGS	= list(s,p),langlvl(hf(77))
-FOPTION = -W0,'$(FFLAGS)'
-UNIT22	= ft.22
-RUNOPT	= 
-
-.F.o:
-	$(FC) $(FOPTION) -c $<
