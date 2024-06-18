@@ -116,6 +116,7 @@ subroutine predci( &
   use qckot
   use ufile
   use bshft
+  use zocite
 
   real(8), intent(inout) ::     ax(nxydim, 0:nic)
   real(8), intent(inout) ::    hix(nxydim, 0:nic)
@@ -200,6 +201,9 @@ subroutine predci( &
   integer ::     ij,      k,      l
   integer ::  ifpar,  jfpar,  istat
 
+  real(8), save :: si = 5.0d0
+  namelist /nmislt/ si
+
   call clcstr('ICE')
 
   if (      (myrank .ge. ijnode) &
@@ -216,7 +220,11 @@ subroutine predci( &
      read (ifpar, nmmpnd, iostat=istat)
      call cstnml(jfpar, 'predci', 'nmmpnd', istat)
      write(jfpar, nmmpnd)
-
+     call rewnml(ifpar, jfpar)
+     read (ifpar, nmislt, iostat=istat)
+     call cstnml(jfpar, 'predci', 'nmislt', istat)
+     write(jfpar, nmislt)
+     
      do l = 0, nic
         do ij = 1, nxydim
            asx(ij, l) = 0.0d0 !! assume fresh snow
@@ -225,6 +233,8 @@ subroutine predci( &
            frmpx(ij, l) = 0.0d0
            dsdx(ij, l) = 0.0d0   !! assume no dust
            dsbx(ij, l) = 0.0d0   !! assume no dust
+
+           eix(ij, l) = ei(tix(ij, l), si) * hix(ij, l) !used in shift3 (oinit=.true.)
         end do
      end do
 #ifdef OPT_TRIPOLE
