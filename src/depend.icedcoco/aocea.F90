@@ -57,7 +57,6 @@ subroutine ocstup ( &
   &                    dt1 ) 
 
   use binst
-  use brdge
   use qckot
   use tovtr
   use tslvt
@@ -107,7 +106,6 @@ subroutine ocstup ( &
 
   DT = DT1
 
-  call rdgeo
   call svtset
   call ovtset(r, tb)
   call chkset

@@ -35,7 +35,8 @@ program icedcoco
   use ucaln
   use ucloc
   use ufile
-
+  use brdge
+  
 #ifdef OPT_TOUZA
   use TOUZA_Std_log, only: msg
 #else
@@ -132,6 +133,7 @@ program icedcoco
 
   ofinal = .false.
   oinit = .false.
+  call rdgeo
   call tmstup( &
     &           tstrt,   tend,     dt)
   call restrt( &
