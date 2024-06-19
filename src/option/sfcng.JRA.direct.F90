@@ -250,7 +250,7 @@ subroutine sfcflx( &
   real(8) ::   grice(nxydim),  grsnw(nxydim),  gricr(nxydim)
   real(8) ::   grasn(nxydim),  grvmp(nxydim), grfrmp(nxydim)
   real(8) ::    grz0(nxydim, ntyz0)
-  real(8) ::  gfluxs(nxydim), tfluxs(nxydim)=0.d0, qfluxs(nxydim)
+  real(8) ::  gfluxs(nxydim), tfluxs(nxydim)=0.d0, qfluxs(nxydim)=0.d0
   real(8) ::  wfluxs(nxydim, 2)
   real(8) ::  rflxlu(nxydim)=0.d0, sflxbl(nxydim)
   real(8) ::   dgfds(nxydim),  dtfdt(nxydim),  dtfds(nxydim)
@@ -568,6 +568,8 @@ subroutine sfcflx( &
            albswg(ij) = albswg(ij) + ralbsw(ij) * a(ij, l)
 !           ftatm(ij) = ftatm(ij) + qai(ij, l) * fm(ij)
 !           swntwa(ij) = swntwa(ij) + swdn(ij) * fm(ij)
+        end do
+        do ij = 1, nxydim
            latfx(ij, l) = qfluxs(ij) * esub
         end do
      else
@@ -584,6 +586,8 @@ subroutine sfcflx( &
            albsw(ij, l) = ralbsw(ij)
 !           ftatm(ij) = ftatm(ij) + gfluxs(ij) * facth * a(ij, 0)
 !           swntwa(ij) = swntwa(ij) + swdn(ij) * a(ij, 0)
+        end do
+        do ij = 1, nxydim
            latfx(ij, l) = qfluxs(ij) * el
         end do
      end if
