@@ -2575,7 +2575,8 @@ CORE (Large and Yeager, 2004) のプロトコルに沿った境界条件を、
 与える場合は sfcng.CORE.direct と utint.CORE.direct を、JRA55-do
 データセット (Tsujino et al., 2018) を与える場合は sfcng.CORE.direct
 と utint.JRA.direct を用いる。現在 sfcng.CORE.direct および
-utint.CORE.direct は未実装である。
+utint.CORE.direct は未実装である。なお、このスキームを使用する際には、
+拡張マスキングファイル (詳細は 2.1 節と 2.6 節) を用いる必要がある。
 
 標準的に与えるべきパラメータは sfcng.CORE, utint.CORE と同様だが、
 以下のネームリストのみ異なる
