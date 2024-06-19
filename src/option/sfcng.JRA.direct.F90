@@ -425,15 +425,14 @@ subroutine sfcflx( &
   dfdu(:) = 0.0d0
   dfbc(:) = 0.0d0
 
-!!!!!! kurogi 2009.11.27
 #ifdef OPT_TRIPOLE
-  call shift1( &
-    &            psfc, &
+  call shift2( &
+    &            psfc,   roff,         &
     &           nxdim,  nydim,      1, &
     &            1.d0,      0,      0 )
 #else
-  call shift1( &
-    &            psfc, &
+  call shift2( &
+    &            psfc,   roff,         &
     &           nxdim,  nydim,      1 )
 #endif
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
