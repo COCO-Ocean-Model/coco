@@ -127,7 +127,7 @@ subroutine predci( &
   
   real(8), intent(out)   ::     ft(nxydim, ntdim),     fs(nxydim)
   real(8), intent(out)   ::   taux(nxydim),   tauy(nxydim)
-  real(8), intent(out)   ::   ptop(nxydim)
+  real(8), intent(inout) ::   ptop(nxydim)
 
   real(8), intent(in)    ::     ay(nxydim, 0:nic)
   real(8), intent(in)    ::    hiy(nxydim, 0:nic)
