@@ -257,7 +257,7 @@ subroutine sfcflx( &
   real(8) ::   dqfds(nxydim),   swdn(nxydim)
   real(8) ::      fm(nxydim)
 
-  real(8) ::    swup(nxydim)
+  real(8) ::    swup(nxydim)=0.d0
   real(8) ::   swdnw(nxydim, 0:nic),           swupw(nxydim, 0:nic)
   real(8) ::   lwdnw(nxydim, 0:nic),           lwupw(nxydim, 0:nic)
   real(8) ::  swdnwg(nxydim), swupwg(nxydim)
