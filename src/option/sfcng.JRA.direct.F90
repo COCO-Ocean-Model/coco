@@ -252,7 +252,7 @@ subroutine sfcflx( &
   real(8) ::    grz0(nxydim, ntyz0)
   real(8) ::  gfluxs(nxydim), tfluxs(nxydim), qfluxs(nxydim)
   real(8) ::  wfluxs(nxydim, 2)
-  real(8) ::  rflxlu(nxydim), sflxbl(nxydim)
+  real(8) ::  rflxlu(nxydim)=0.d0, sflxbl(nxydim)
   real(8) ::   dgfds(nxydim),  dtfdt(nxydim),  dtfds(nxydim)
   real(8) ::   dqfds(nxydim),   swdn(nxydim)
   real(8) ::      fm(nxydim)
