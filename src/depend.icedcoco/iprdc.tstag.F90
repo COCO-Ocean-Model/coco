@@ -549,13 +549,15 @@ subroutine predci( &
      return
   end if
 
-  do l = 1, nic
-     do ij = 1, nxydim
-        ptop(ij) = ptop(ij) &
-          &      + gravit * ay(ij, l) * &
-          &        (rhoi * hiy(ij, l) + rhos * hsy(ij, l))
+  if (.not. oinit ) then
+     do l = 1, nic
+        do ij = 1, nxydim
+           ptop(ij) = ptop(ij) &
+                &      + gravit * ay(ij, l) * &
+                &        (rhoi * hiy(ij, l) + rhos * hsy(ij, l))
+        end do
      end do
-  end do
+  end if
 
   call clcend('ICE')
 
