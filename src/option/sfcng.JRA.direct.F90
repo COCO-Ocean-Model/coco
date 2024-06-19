@@ -587,7 +587,7 @@ subroutine sfcflx( &
            latfx(ij, l) = qfluxs(ij) * el
         end do
      end if
-     do ij = ijstr, ijend
+     do ij = 1, nxydim
         swdnw(ij, l) = swnt(ij)
         swupw(ij, l) = swup(ij)
         lwdnw(ij, l) = dwlw(ij)
