@@ -403,6 +403,7 @@ subroutine sfcflx( &
           &                    dz(ij, kstr) * amskt(ij, kstr)
      end do
   end do
+  roff(:)=0.d0
   call tmintp_direct(   u10,      1)
   call tmintp_direct(   v10,      2)
   call tmintp_direct(  tsfc,      3)
@@ -437,7 +438,7 @@ subroutine sfcflx( &
 #endif
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-  do ij = ijstr, ijend
+  do ij = 1, nxydim
      tauaix(ij) = 0.0d0
      tauaiy(ij) = 0.0d0
      prec(ij) = pplr(ij) * factfw ! prec: downward is positive
