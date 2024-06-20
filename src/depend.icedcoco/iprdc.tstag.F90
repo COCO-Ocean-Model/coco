@@ -192,7 +192,6 @@ subroutine predci( &
   real(8), save :: improf(nxydim, 0:nic)
   real(8), save ::    fdd(nxydim),    fdb(nxydim)
   real(8), save :: sitfrc(nxydim), siuabs(nxydim)
-
   logical, save ::  oeof
 
 !! for check
@@ -202,7 +201,10 @@ subroutine predci( &
   integer ::  ifpar,  jfpar,  istat
 
   real(8), save :: si = 5.0d0
+  real(8), save ::  p0 = 2.0d5,  cp = 2.0d1
+  real(8) ::   mice(nxydim),   aice(nxydim)
   namelist /nmislt/ si
+  namelist /nmpice/ p0, cp
 
   call clcstr('ICE')
 
@@ -224,7 +226,11 @@ subroutine predci( &
      read (ifpar, nmislt, iostat=istat)
      call cstnml(jfpar, 'predci', 'nmislt', istat)
      write(jfpar, nmislt)
-     
+     call rewnml(ifpar, jfpar)
+     read (ifpar, nmpice, iostat=istat)
+     call cstnml(jfpar, 'predci', 'nmpice', istat)
+     write(jfpar, nmpice)
+
      do l = 0, nic
         do ij = 1, nxydim
            asx(ij, l) = 0.0d0 !! assume fresh snow
@@ -278,6 +284,19 @@ subroutine predci( &
        &         improf, &
        &             ax,    hix,    hsx)
      if (oeof) then
+        mice(:)=0.d0
+        do l = 1, nic
+           do ij = 1, nxydim
+              mice(ij) = mice(ij) + ax(ij, l) * hix(ij, l)
+           end do
+        end do
+        do ij = 1, nxydim
+           aice (ij) = 1.d0 - ax(ij, 0)
+           pice(ij) = p0 * mice(ij) * exp(- cp * (1.d0 - aice(ij)))
+        end do
+        ! 2024.06.20 m_kurogi
+        ! when oinit=.true., pice is evaluated as above.
+        ! pridge below return without calculating pice when oinit=.true.
         do l = 0, nic
            do ij = 1, nxydim
               az  (ij, l) =  ax  (ij, l)
