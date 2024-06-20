@@ -383,6 +383,7 @@ subroutine sfcflx( &
      albswg(ij) = 0.0d0
      tauaox(ij) = 0.0d0
      tauaoy(ij) = 0.0d0
+     wev(ij) = 0.0d0
   end do
   do l = 0, nic
      do ij = 1, nxydim
