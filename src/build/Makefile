@@ -94,7 +94,7 @@ OBJLIST: FORCE
 	@sh $(DIRETC)/fetch.sh ../enstr $(SRCS_ENSTR)
 	@sh $(DIRETC)/fetch.sh ../option $(SRCS_OPTION)
 	@python3 $(DIRETC)/print_uniq_objs.py $(SRCS) > OBJLIST
-	@python2 $(DIRETC)/fort_depend.py -w -o $(DEPENDENCY) \
+	@python3 $(DIRETC)/fort_depend.py -w -o $(DEPENDENCY) \
 		-f `cat OBJLIST | $(DIRETC)/srclist.sh` > /dev/null
 
 clean:
