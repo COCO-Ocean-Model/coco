@@ -282,6 +282,8 @@ subroutine ptherm( &
      imrsmi(ij) = 0.0d0
      imrisf(ij) = 0.0d0
      imribs(ij) = 0.0d0
+     ws(    ij) = 0.0d0
+     wi(    ij) = 0.0d0
   end do
 
   do k = 0, nic
