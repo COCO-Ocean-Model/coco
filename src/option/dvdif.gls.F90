@@ -1289,7 +1289,7 @@ subroutine puttao( &
 
   integer ::     ij
 
-  do ij = ijvstr, ijvend
+  do ij = 1, nxydim
      tauaox(ij) = ( taox(ij) * caic &
        &          - taoy(ij) * sign(cais, cor(ij))) * &
        &          amskv(ij, kstr)
