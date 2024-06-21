@@ -352,7 +352,7 @@ subroutine vdiff( &
      bfq   = 5.24d-3        ! /sec
 
      do k = kstr, kend
-        do ij = ijstr, ijend
+        do ij = ijstr-nxdim-1, ijend
            cort=(cor(ij)+cor(ij+lw)+cor(ij+lsw)+cor(ij+ls))*0.25d0
            cort=abs(cort)
            if(cort.gt.cor30) then
@@ -377,7 +377,7 @@ subroutine vdiff( &
      if ( ovdfao ) then
         corao = 2.D0 * omega * sin( pi * 65.D0 / 180.D0 )
         do k = kstr, kstr+mzao-1
-           do ij = ijstr, ijend
+           do ij = ijstr-nxdim-1, ijend
               cort = (  cor(ij)     + cor(ij+lw) &
                    &  + cor(ij+lsw) + cor(ij+ls) ) * 0.25d0
               if ( cort > corao ) then
