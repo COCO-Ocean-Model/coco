@@ -9,51 +9,59 @@ c  HISTORY
 c     '03.04.24  H.Hasumi: from COCO3.4
 c     '07.09.25  H.Hasumi: multi-category sea ice
 c     '07.12.20  H.Hasumi: output file format is modified
+c     '09.04.01  T.Suzuki: for tri-pole 
+c     '10.04.14  M.kurogi (xmkmsk-tri.mod5 by Dr. Suzuki)
 c     '12.04.18  Y.Komuro: bug fix (argument inconsistency)
+c     '16.04.18  T.Suzuki: small bug fix (Thanks for Kurogi-san)
+c     '18.09.25  M.Kurogi: grid info (lat, lon, rang)
+c     '24.06.26  T.Kawasaki: tripole code is merged & delete dimocn.F
 c
 c ---------------------------------------------------------------------
 
-#include "dimocn.F"
+c *** Write here the number of tracer.
+c *** The minimum number is 2, for temperature and salinity.
+      INTEGER   NTDIM
+      PARAMETER(NTDIM = 2)
+c ***
+      
+      INTEGER     NX,     NY,     NZ,     KZ,    NIC
+      INTEGER    NY1,    NY2
 
       INTEGER   ISTR, JSTR, KSTR
       PARAMETER(ISTR = 3, JSTR = 3, KSTR = 2)
       INTEGER   IEND, JEND, KEND
-      PARAMETER(IEND = ISTR+NX-1, JEND = JSTR+NY-1, KEND = KSTR+NZ-1)
       INTEGER   NXDIM, NYDIM
-      PARAMETER(NXDIM = NX+2*(ISTR-1), NYDIM = NY+2*(JSTR-1))
       INTEGER   NZDIM
-      PARAMETER(NZDIM = NZ+KSTR)
-      INTEGER   NXYDIM, NXYZDM
-      PARAMETER(NXYDIM = NXDIM*NYDIM, NXYZDM = NXYDIM*NZDIM)
       INTEGER   ISSTR, JSSTR
       PARAMETER(ISSTR = 3, JSSTR = 3)
 
-      REAL*8     ALD(NXYZDM),    BLD(NXYZDM)
-      REAL*8      DY(NYDIM) ,     DZ(NZDIM)
-      REAL*8     HIC(NIC+1)
-      REAL*8     DZZ(NXYZDM),    DZV(NXYZDM)
-      REAL*8    DGEO(NXYDIM)
-      INTEGER   NBOT(NXYDIM),  NBOTV(NXYDIM)
+      REAL*8,  ALLOCATABLE ::  ALD(:,:,:),   BLD(:,:,:)
+      REAL*8,  ALLOCATABLE ::   DY(:),        DZ(:)
+      REAL*8,  ALLOCATABLE ::  HIC(:)
+      REAL*8,  ALLOCATABLE ::  DZZ(:,:,:),   DZV(:,:,:)
+      REAL*8,  ALLOCATABLE :: DGEO(:,:)
+      INTEGER, ALLOCATABLE :: NBOT(:,:),   NBOTV(:,:)
       INTEGER   IBBL,  IMERC, ITHIRD
       REAL*8      DX
       REAL*8   ALONW,  ALONE,  ALATS,  ALATN
       REAL*8    PLON,   PLAT,   QLON,   QLAT,   ELON,   ELAT
+      REAL*8    SLAT
 
       INTEGER INODES, JNODES
 
-      REAL*8  MSK1D1(NZDIM ), MSK1D2(NZDIM )
-      REAL*8  MSK1D3(NZDIM ), MSK1D4(NZDIM )
-      REAL*8  MSK2D1(NXYDIM), MSK2D2(NXYDIM), MSK2D3(NXYDIM)
-      REAL*8  MSK2D4(NXYDIM), MSK2D5(NXYDIM), MSK2D6(NXYDIM)
-      REAL*8  MSK2D7(NXYDIM), MSK2D8(NXYDIM), MSK2D9(NXYDIM)
-      REAL*8  MSK2DA(NXYDIM), MSK2DB(NXYDIM), MSK2DC(NXYDIM)
-      REAL*8  MSK2DD(NXYDIM)
-      REAL*8  MSK3D1(NXYZDM), MSK3D2(NXYZDM), MSK3D3(NXYZDM)
-      REAL*8  MSK3D4(NXYZDM)
-      INTEGER IMS2D1(NXYDIM)
+      REAL*8,  ALLOCATABLE :: MSK1D1(:),     MSK1D2(:)
+      REAL*8,  ALLOCATABLE :: MSK1D3(:),     MSK1D4(:)
+      REAL*8,  ALLOCATABLE :: MSK2D1(:,:),   MSK2D2(:,:),   MSK2D3(:,:)
+      REAL*8,  ALLOCATABLE :: MSK2D4(:,:),   MSK2D5(:,:),   MSK2D6(:,:)
+      REAL*8,  ALLOCATABLE :: MSK2D7(:,:),   MSK2D8(:,:),   MSK2D9(:,:)
+      REAL*8,  ALLOCATABLE :: MSK2DA(:,:),   MSK2DB(:,:),   MSK2DC(:,:)
+      REAL*8,  ALLOCATABLE :: MSK2DD(:,:)
+      REAL*8,  ALLOCATABLE :: MSK3D1(:,:,:), MSK3D2(:,:,:)
+      REAL*8,  ALLOCATABLE :: MSK3D3(:,:,:), MSK3D4(:,:,:)
+      INTEGER, ALLOCATABLE :: IMS2D1(:,:)
 
 #ifdef OPT_EXMASK
-      REAL*8  GLONT(NXYDIM), GLATT(NXYDIM), RANGT(NXYDIM)
+      REAL*8, ALLOCATABLE ::   GLONT(:,:),    GLATT(:,:),    RANGT(:,:)
 #endif
 
       REAL*8      PI,    RAD, RADIUS,  OMEGA
@@ -62,24 +70,67 @@ c ---------------------------------------------------------------------
 
       INTEGER   JFILE
       PARAMETER(JFILE = 22)
+      INTEGER   IGFILE
+      PARAMETER(IGFILE = 5)
 
       PI = ATAN(1.D0) * 4.D0
       RAD = PI / 1.8D2
+
       RADIUS = 6370.D5
       OMEGA = 2.D0 * PI / 8.64D4
       CUNITI = (0.D0, 1.D0)
 
-      OPEN(JFILE, file='MASK', form='unformatted')
-      REWIND(JFILE)
+      READ(IGFILE, *) NX
+#ifdef OPT_TRIPOLE
+      READ(IGFILE, *) NY1, NY2
+      NY=NY1+NY2
+#else
+      READ(IGFILE, *) NY
+#endif
+      READ(IGFILE, *) NZ
+      READ(IGFILE, *) KZ
+      READ(IGFILE, *) NIC
+
+      IEND = ISTR+NX-1
+      JEND = JSTR+NY-1
+      KEND = KSTR+NZ-1
+      NXDIM = NX+2*(ISTR-1)
+      NYDIM = NY+2*(JSTR-1)
+      NZDIM = NZ+2*(KSTR-1)
+
+      ALLOCATE(   ALD(NXDIM,NYDIM,NZDIM),    BLD(NXDIM,NYDIM,NZDIM))
+      ALLOCATE(    DY(NYDIM) ,                DZ(NZDIM) )
+      ALLOCATE(   HIC(NIC+1))
+      ALLOCATE(   DZZ(NXDIM,NYDIM,NZDIM),    DZV(NXDIM,NYDIM,NZDIM))
+      ALLOCATE(  DGEO(NXDIM,NYDIM))
+      ALLOCATE(  NBOT(NXDIM,NYDIM),        NBOTV(NXDIM,NYDIM))
+      ALLOCATE(MSK1D1(NZDIM),             MSK1D2(NZDIM))
+      ALLOCATE(MSK1D3(NZDIM),             MSK1D4(NZDIM))
+      ALLOCATE(MSK2D1(NXDIM,NYDIM),       MSK2D2(NXDIM,NYDIM))
+      ALLOCATE(MSK2D3(NXDIM,NYDIM),       MSK2D4(NXDIM,NYDIM))
+      ALLOCATE(MSK2D5(NXDIM,NYDIM),       MSK2D6(NXDIM,NYDIM))
+      ALLOCATE(MSK2D7(NXDIM,NYDIM),       MSK2D8(NXDIM,NYDIM))
+      ALLOCATE(MSK2D9(NXDIM,NYDIM))
+      ALLOCATE(MSK2DA(NXDIM,NYDIM),       MSK2DB(NXDIM,NYDIM))
+      ALLOCATE(MSK2DC(NXDIM,NYDIM),       MSK2DD(NXDIM,NYDIM))
+      ALLOCATE(MSK3D1(NXDIM,NYDIM,NZDIM), MSK3D2(NXDIM,NYDIM,NZDIM))
+      ALLOCATE(MSK3D3(NXDIM,NYDIM,NZDIM), MSK3D4(NXDIM,NYDIM,NZDIM))
+      ALLOCATE(IMS2D1(NXDIM,NYDIM))
+#ifdef OPT_EXMASK
+      ALLOCATE( GLONT(NXDIM,NYDIM),        GLATT(NXDIM,NYDIM))
+      ALLOCATE( RANGT(NXDIM,NYDIM))
+#endif
 
       CALL GETGEO(
      O               ALD,    BLD,   DGEO,   NBOT,
      O             IMERC, ITHIRD,   IBBL,
      O                DX,     DY,     DZ,    HIC,
      O             ALONW,  ALONE,  ALATS,  ALATN,
+     O              SLAT,
      O              PLON,   PLAT,   QLON,   QLAT,   ELON,   ELAT,
      O            INODES, JNODES,
      D                NX,     NY,     NZ,     KZ,    NIC,
+     D               NY1,    NY2,
      D             NXDIM,  NYDIM,  NZDIM,
      C              ISTR,   JSTR,   KSTR,   IEND,   JEND,   KEND,
      W            MSK2D1, MSK2D2, IMS2D1)
@@ -90,9 +141,11 @@ c ---------------------------------------------------------------------
      I                DX,     DY,     DZ,    HIC,
      I             IMERC, ITHIRD,   IBBL,
      I             ALONW,  ALONE,  ALATS,  ALATN,
+     I              SLAT,
      I              PLON,   PLAT,   QLON,   QLAT,   ELON,   ELAT,
      I            INODES, JNODES,
      D                NX,     NY,     NZ,     KZ,    NIC,
+     D               NY1,    NY2,
      D             NXDIM,  NYDIM,  NZDIM,  NTDIM,
      C              ISTR,   JSTR,   KSTR,   IEND,   JEND,   KEND,
      C             ISSTR,  JSSTR,
@@ -137,8 +190,7 @@ c ---------------------------------------------------------------------
       WRITE(JFILE) GLATT
       WRITE(JFILE) RANGT
 #endif
-      CLOSE(JFILE)
-      END
+      CONTAINS
 
 c =====================================================================
 
@@ -155,9 +207,9 @@ c =====================================================================
       INTEGER   ISTR,   JSTR,   KSTR
       INTEGER   IEND,   JEND,   KEND
       INTEGER   IBBL
-      REAL*8     ALD(NXDIM, NYDIM, NZDIM)
-      REAL*8     BLD(NXDIM, NYDIM, NZDIM)
-      REAL*8   AMSKB(NXDIM, NYDIM, NZDIM)
+      REAL*8     ALD(:,:,:)
+      REAL*8     BLD(:,:,:)
+      REAL*8   AMSKB(:,:,:)
 
       INTEGER      I,      J,      K
       REAL*8      AL,     AD
@@ -184,7 +236,7 @@ c =====================================================================
       RETURN
       END
 
-c =====================================================================
+c=====================================================================
 
       SUBROUTINE VMASK(
      I               ALD,    BLD,    DZV,   NBOT,  NBOTV,   IBBL,
@@ -200,15 +252,13 @@ c =====================================================================
       INTEGER   ISTR,   JSTR,   KSTR
       INTEGER   IEND,   JEND,   KEND
       INTEGER   IBBL
-      INTEGER   NBOT(NXDIM, NYDIM),  NBOTV(NXDIM, NYDIM)
-      REAL*8     ALD(NXDIM, NYDIM, NZDIM)
-      REAL*8     BLD(NXDIM, NYDIM, NZDIM)
-      REAL*8     DZV(NXDIM, NYDIM, NZDIM)
-      REAL*8   AMSKV(NXDIM, NYDIM, NZDIM)
-      REAL*8   AMFVX(NXDIM, NYDIM, NZDIM),  AMFVY(NXDIM, NYDIM, NZDIM)
-      REAL*8   AMFVZ(NXDIM, NYDIM, NZDIM)
-      REAL*8  AMSKVB(NXDIM, NYDIM)
-      REAL*8  AMSKV0(NXDIM, NYDIM), AMSKV1(NXDIM, NYDIM)
+      INTEGER  NBOT(:,:),    NBOTV(:,:)
+      REAL*8    ALD(:,:,:)
+      REAL*8    BLD(:,:,:)
+      REAL*8    DZV(:,:,:)
+      REAL*8  AMSKV(:,:,:)
+      REAL*8  AMFVX(:,:,:),  AMFVY(:,:,:),  AMFVZ(:,:,:)
+      REAL*8 AMSKVB(:,:),   AMSKV0(:,:),   AMSKV1(:,:)
 
       INTEGER      I,      J,      K
       INTEGER     KE,     KN,    KNE
@@ -372,10 +422,12 @@ c =====================================================================
          END DO
       END IF
 
+#ifndef OPT_TRIPOLE
       WRITE(*, '(2X,A,A8,I7,A,A8,I7)')
      & 'integer, parameter :: ',
      & 'ijvgst =', IJVSTR, ', ',
      & 'ijvged =', IJVEND
+#endif
 
 c      WRITE(JFILE) AMSKV, AMFVX, AMFVY, AMFVZ
       WRITE(JFILE) AMSKV
@@ -408,15 +460,10 @@ c =====================================================================
       INTEGER   ISTR,   JSTR,   KSTR
       INTEGER   IEND,   JEND,   KEND
       INTEGER   IBBL
-      INTEGER   NBOT(NXDIM, NYDIM)
-      REAL*8     ALD(NXDIM, NYDIM, NZDIM)
-      REAL*8     BLD(NXDIM, NYDIM, NZDIM)
-      REAL*8     DZZ(NXDIM, NYDIM, NZDIM)
-      REAL*8   AMSKT(NXDIM, NYDIM, NZDIM)
-      REAL*8   AMFTX(NXDIM, NYDIM, NZDIM),  AMFTY(NXDIM, NYDIM, NZDIM)
-      REAL*8   AMFTZ(NXDIM, NYDIM, NZDIM)
-      REAL*8  AMSKTB(NXDIM, NYDIM)
-      REAL*8  AMSKT0(NXDIM, NYDIM), AMSKT1(NXDIM, NYDIM)
+      INTEGER   NBOT(:,:)
+      REAL*8     ALD(:,:,:),   BLD(:,:,:),   DZZ(:,:,:)
+      REAL*8   AMSKT(:,:,:), AMFTX(:,:,:), AMFTY(:,:,:), AMFTZ(:,:,:)
+      REAL*8  AMSKTB(:,:),  AMSKT0(:,:),  AMSKT1(:,:)
 
       INTEGER      I,      J,      K
       INTEGER IJTSTR, IJTEND
@@ -520,18 +567,18 @@ c =====================================================================
          END DO
       END IF
 
+#ifndef OPT_TRIPOLE
       WRITE(*, '(2X,A,A8,I7,A,A8,I7)')
      & 'integer, parameter :: ',
      & 'ijtgst =', IJTSTR, ', ',
      & 'ijtged =', IJTEND
+#endif
 
-c      WRITE(JFILE) AMSKT, AMFTX, AMFTY, AMFTZ
       WRITE(JFILE) AMSKT
       WRITE(JFILE) AMFTX
       WRITE(JFILE) AMFTY
       WRITE(JFILE) AMFTZ
       IF (IBBL .NE. 0) THEN
-c         WRITE(JFILE) AMSKTB, AMSKT0, AMSKT1
          WRITE(JFILE) AMSKTB
          WRITE(JFILE) AMSKT0
          WRITE(JFILE) AMSKT1
@@ -548,9 +595,11 @@ c =====================================================================
      I                DX,     DY,     DZ,    HIC,
      I             IMERC, ITHIRD,   IBBL,
      I             ALONW,  ALONE,  ALATS,  ALATN,
+     I              SLAT,
      I              PLON,   PLAT,   QLON,   QLAT,   ELON,   ELAT,
      I            INODES, JNODES,
      D                NX,     NY,     NZ,     KZ,    NIC,
+     D               NY1,    NY2,
      D             NXDIM,  NYDIM,  NZDIM,  NTDIM,
      C              ISTR,   JSTR,   KSTR,   IEND,   JEND,   KEND,
      C             ISSTR,  JSSTR,
@@ -569,41 +618,40 @@ c =====================================================================
       PARAMETER(JFILE = 22)
 
       INTEGER     NX,     NY,     NZ,     KZ,    NIC
+      INTEGER    NY1,    NY2
       INTEGER  NXDIM,  NYDIM,  NZDIM,  NTDIM
       INTEGER   ISTR,   JSTR,   KSTR
       INTEGER   IEND,   JEND,   KEND
       INTEGER  ISSTR,  JSSTR
       INTEGER  IMERC, ITHIRD,   IBBL
-      REAL*8     ALD(NXDIM, NYDIM, NZDIM)
-      REAL*8     BLD(NXDIM, NYDIM, NZDIM)
-      REAL*8    DGEO(NXDIM, NYDIM)
-      INTEGER   NBOT(NXDIM, NYDIM),  NBOTV(NXDIM, NYDIM)
-      REAL*8      DX,     DY(NYDIM),     DZ(NZDIM)
-      REAL*8     HIC(NIC+1)
+      REAL*8     ALD(:,:,:),   BLD(:,:,:),  DGEO(:,:)
+      INTEGER   NBOT(:,:),   NBOTV(:,:)
+      REAL*8      DX
+      REAL*8      DY(:),        DZ(:)
+      REAL*8     HIC(:)
       REAL*8   ALONW,  ALONE,  ALATS,  ALATN
+      REAL*8    SLAT
       REAL*8    PLON,   PLAT,   QLON,   QLAT,   ELON,   ELAT
       INTEGER INODES, JNODES
-      REAL*8     DZM(NZDIM),  DEPTH(NZDIM)
-      REAL*8      DS(NZDIM),    DSM(NZDIM)
-      REAL*8     DYY(NXDIM, NYDIM),   DYYM(NXDIM, NYDIM)
-      REAL*8     DZZ(NXDIM, NYDIM, NZDIM)
-      REAL*8     DZV(NXDIM, NYDIM, NZDIM)
-      REAL*8    DZZM(NXDIM, NYDIM, NZDIM)
+      REAL*8     DZM(:),     DEPTH(:)
+      REAL*8      DS(:),       DSM(:)
+      REAL*8     DYY(:,:),    DYYM(:,:)
+      REAL*8     DZZ(:,:,:)
+      REAL*8     DZV(:,:,:)
+      REAL*8    DZZM(:,:,:)
 
 #ifdef OPT_EXMASK
-      REAL*8  GLONT(NXDIM, NYDIM)
-      REAL*8  GLATT(NXDIM, NYDIM)
-      REAL*8  RANGT(NXDIM, NYDIM)
+      REAL*8   GLONT(:,:),   GLATT(:,:),   RANGT(:,:)
       COMPLEX*16    DFQ
 #endif
 
       REAL*8    ZBOT
-      REAL*8     COR(NXDIM, NYDIM)
-      REAL*8    DEPT(NXDIM, NYDIM),  RDEPV(NXDIM, NYDIM)
-      REAL*8     HXT(NXDIM, NYDIM),    HXU(NXDIM, NYDIM)
-      REAL*8     HYT(NXDIM, NYDIM),    HYU(NXDIM, NYDIM)
-      REAL*8    HXYT(NXDIM, NYDIM),   HXYU(NXDIM, NYDIM)
-      REAL*8    HYXT(NXDIM, NYDIM),   HYXU(NXDIM, NYDIM)
+      REAL*8     COR(:,:)
+      REAL*8    DEPT(:,:),   RDEPV(:,:)
+      REAL*8     HXT(:,:),     HXU(:,:)
+      REAL*8     HYT(:,:),     HYU(:,:)
+      REAL*8    HXYT(:,:),    HXYU(:,:)
+      REAL*8    HYXT(:,:),    HYXU(:,:)
 
       REAL*8      CX,     CY,     CZ
       COMPLEX*16    ZPT,    ZPV,    ZQT,    ZQV
@@ -622,6 +670,8 @@ c =====================================================================
       INTEGER    NXS,    NYS, NXSDIM, NYSDIM
       INTEGER  ISEND,  JSEND, IJSSTR, IJSEND
 
+      REAL*8   FACTY
+      SAVE     FACTY        
 
       REAL*8      PI,    RAD, RADIUS,  OMEGA
       COMPLEX*16 CUNITI
@@ -658,6 +708,7 @@ c     &     / ABS(DCONF(ZQ, ZA, ZB, ZC, WC))
       RADIUS = 6370.D5
       OMEGA = 2.D0 * PI / 8.64D4
 
+#ifndef OPT_TRIPOLE
       ALONW = ALONW * RAD
       ALONE = ALONE * RAD
       ALATS = ALATS * RAD
@@ -668,9 +719,9 @@ c     &     / ABS(DCONF(ZQ, ZA, ZB, ZC, WC))
       QLAT = QLAT * RAD
       ELON = ELON * RAD
       ELAT = ELAT * RAD
-
       DX = (ALONE - ALONW) / DBLE(NX)
-
+#endif
+      
       IF (IMERC .EQ. 2) THEN
          DO J = JSTR, JEND
             DY(J) = DY(J) * RAD
@@ -696,16 +747,34 @@ c     &     / ABS(DCONF(ZQ, ZA, ZB, ZC, WC))
          DY(J) = DY(JEND)
       END DO
 
+#ifdef OPT_TRIPOLE
+      FACTY=COS(PLAT*RAD)
+      DO 100 J = 1, NYDIM
+         DO 100 I = 1, NXDIM
+            IF( J .GE. JSTR+NY1 ) THEN
+               DYY(I, J) = DY(J) * FACTY
+            ELSE
+               DYY(I, J) = DY(J)
+            ENDIF
+  100 CONTINUE
+#else
+      FACTY=1.D0
       DO 100 J = 1, NYDIM
          DO 100 I = 1, NXDIM
             DYY(I, J) = DY(J)
   100 CONTINUE
+#endif
       DO 110 J = 1, NYDIM-1
          DO 110 I = 1, NXDIM
             DYYM(I, J) = 0.5D0 * (DYY(I, J) + DYY(I, J+1))
   110 CONTINUE
+         
       DO 120 I = 1, NXDIM
+#ifdef OPT_TRIPOLE
+         DYYM(I, NYDIM) = DYY(I, NYDIM)
+#else
          DYYM(I, NYDIM) = 0.5D0 * DYY(I, NYDIM)
+#endif
   120 CONTINUE
 
       DO 200 K = 1, NZDIM
@@ -842,10 +911,12 @@ c     &     / ABS(DCONF(ZQ, ZA, ZB, ZC, WC))
      & 'igend  =', IEND, ', ',
      & 'jgend  =', JEND, ', ',
      & 'kend   =', KEND
+#ifndef OPT_TRIPOLE
       WRITE(*, '(2X,A,A8,I7,A,A8,I7)')
      & 'integer, parameter :: ',
      & 'ijgstr =', ISTR+(JSTR-1)*NXDIM, ', ',
      & 'ijgend =', IEND+(JEND-1)*NXDIM
+#endif
       WRITE(*, *)
 
       WRITE(*, '(2X,A)')
@@ -940,6 +1011,227 @@ c     &     / ABS(DCONF(ZQ, ZA, ZB, ZC, WC))
      & 'integer, parameter :: icomm = istr-1, jcomm = jstr-1'
       WRITE(*, *)
 
+#ifdef OPT_TRIPOLE
+      ALONW = -90.0D0
+      ALONE =  90.0D0
+      ALATS = -90.0D0
+      ALATN =  90.0D0
+      ALONW = ALONW * RAD
+      ALONE = ALONE * RAD
+      ALATS = ALATS * RAD
+      ALATN = ALATN * RAD
+      PLON = PLON * RAD
+      PLAT = PLAT * RAD
+      QLON = QLON * RAD
+      QLAT = QLAT * RAD
+
+      W3 = ( 1.D0, 0.D0)
+      CX = COS(PLON) * COS(PLAT) + COS(QLON) * COS(QLAT)
+      CY = SIN(PLON) * COS(PLAT) + SIN(QLON) * COS(QLAT)
+      CZ = SIN(PLAT) + SIN(QLAT)
+      ELON = ATAN2(CY, CX)
+      CX = SQRT(CX * CX + CY * CY)
+      ELAT = ATAN2(CZ, CX)
+      Z1 = TAN(PI * 0.25D0 - PLAT * 0.5D0) * EXP(PLON * CUNITI)
+      Z2 = TAN(PI * 0.25D0 - QLAT * 0.5D0) * EXP(QLON * CUNITI)
+      Z3 = TAN(PI * 0.25D0 - ELAT * 0.5D0) * EXP(ELON * CUNITI)
+      
+C
+C     I direction :  North to South ( 90S - 90N )  ALATN -> ALATS
+C     J direction :  West to East   ( 90W  -  0 )  ALONW -> ALONE
+C
+      DX = 2.0*PI / DBLE(NX)
+      RLATV = ALATN
+C      DELX = DX * 0.1D0
+
+      DO I = ISTR, NXDIM/2
+
+         RLATT = RLATV - DX * 0.5D0
+         RLATV = RLATV - DX
+         DELY = DX * 0.1D0
+
+            RLONV = ALONW
+         DO J = JSTR + NY1, NYDIM
+            RLONT = RLONV + DY(J) * 0.5D0
+            RLONV = RLONV + DY(J)
+            DELX = DY(J) * 0.1D0
+
+            ZQT = STOZ(RLONT, RLATT)
+            ZPT = CONF(ZQT, Z1, Z2, Z3, W3)
+            ZQV = STOZ(RLONV, RLATV)
+            ZPV = CONF(ZQV, Z1, Z2, Z3, W3)
+            GLATV = ZTOLAT(ZPV)
+
+#ifdef OPT_EXMASK
+            GLONT(I,J) = ZTOLON(ZPT)
+            GLATT(I,J) = ZTOLAT(ZPT)
+            DFQ=DCONF(ZQT, Z1, Z2, Z3, W3)
+            RANGT(I,J) =  -(
+     &          ATAN2(DIMAG(ZQT), DREAL(ZQT) )
+     &        - ATAN2(DIMAG(ZPT), DREAL(ZPT) )
+     &        + ATAN2(DIMAG(DFQ), DREAL(DFQ) )  -0.5D0*PI )
+#endif
+
+            COR(I, J) = 2.D0 * OMEGA * SIN(GLATV)
+            HXT(I, J) = RADIUS * FMTRC(ZPT, ZQT, Z1, Z2, Z3, W3)
+            HYT(I, J) = HXT(I, J) * COS(RLATT) / FACTY
+            HXU(I, J) = RADIUS * FMTRC(ZPV, ZQV, Z1, Z2, Z3, W3)
+            HYU(I, J) = HXU(I, J) * COS(RLATV) / FACTY
+C
+            RLON1 = RLONT + DELX * 0.5D0
+            RLON2 = RLONT - DELX * 0.5D0
+            ZQ1 = STOZ(RLON1, RLATT)
+            ZQ2 = STOZ(RLON2, RLATT)
+            ZP1 = CONF(ZQ1, Z1, Z2, Z3, W3)
+            ZP2 = CONF(ZQ2, Z1, Z2, Z3, W3)
+            HX1 = FMTRC(ZP1, ZQ1, Z1, Z2, Z3, W3)
+            HX2 = FMTRC(ZP2, ZQ2, Z1, Z2, Z3, W3)
+            HXYT(I,J) = RADIUS * (HX1 - HX2) / DELX / FACTY
+     &                   / HXT(I, J) / HYT(I, J)
+
+            RLON1 = RLONV + DELX * 0.5D0
+            RLON2 = RLONV - DELX * 0.5D0
+            ZQ1 = STOZ(RLON1, RLATV)
+            ZQ2 = STOZ(RLON2, RLATV)
+            ZP1 = CONF(ZQ1, Z1, Z2, Z3, W3)
+            ZP2 = CONF(ZQ2, Z1, Z2, Z3, W3)
+            HX1 = FMTRC(ZP1, ZQ1, Z1, Z2, Z3, W3)
+            HX2 = FMTRC(ZP2, ZQ2, Z1, Z2, Z3, W3)
+            HXYU(I, J) = RADIUS * (HX1 - HX2) / DELX / FACTY
+     &                   / HXU(I, J) / HYU(I, J)
+C
+            RLAT1 = RLATT - DELY * 0.5D0
+            RLAT2 = RLATT + DELY * 0.5D0
+            ZQ1 = STOZ(RLONT, RLAT1)
+            ZQ2 = STOZ(RLONT, RLAT2)
+            ZP1 = CONF(ZQ1, Z1, Z2, Z3, W3)
+            ZP2 = CONF(ZQ2, Z1, Z2, Z3, W3)
+            HY1 = FMTRC(ZP1, ZQ1, Z1, Z2, Z3, W3)*COS(RLAT1)/FACTY
+            HY2 = FMTRC(ZP2, ZQ2, Z1, Z2, Z3, W3)*COS(RLAT2)/FACTY
+            HYXT(I, J) = RADIUS * (HY1 - HY2) / DELY
+     &                   / HXT(I, J) / HYT(I, J)
+
+            RLAT1 = RLATV - DELY * 0.5D0
+            RLAT2 = RLATV + DELY * 0.5D0
+            ZQ1 = STOZ(RLONV, RLAT1)
+            ZQ2 = STOZ(RLONV, RLAT2)
+            ZP1 = CONF(ZQ1, Z1, Z2, Z3, W3)
+            ZP2 = CONF(ZQ2, Z1, Z2, Z3, W3)
+            HY1 = FMTRC(ZP1, ZQ1, Z1, Z2, Z3, W3)*COS(RLAT1)/FACTY
+            HY2 = FMTRC(ZP2, ZQ2, Z1, Z2, Z3, W3)*COS(RLAT2)/FACTY
+            HYXU(I, J) = RADIUS * (HY1 - HY2) / DELY
+     &                   / HXU(I, J) / HYU(I, J)
+            
+         END DO
+      END DO
+
+C
+C     I direction :  South to North ( 90N - 90S )  ALATS -> ALATN
+C     J direction :  East to West   ( 90E -  0 )  ALONE -> ALONW
+C
+      RLATV = ALATS
+C      DELX = DX * 0.1D0
+
+      DO I = NXDIM/2+1, IEND
+
+         RLATT = RLATV + DX * 0.5D0
+         RLATV = RLATV + DX
+         DELY = DX * 0.1D0
+
+            RLONV = ALONE
+         DO J = JSTR + NY1, NYDIM
+            RLONT = RLONV - DY(J) * 0.5D0
+            RLONV = RLONV - DY(J)
+            DELX = DY(J) * 0.1D0
+
+            ZQT = STOZ(RLONT, RLATT)
+            ZPT = CONF(ZQT, Z1, Z2, Z3, W3)
+            ZQV = STOZ(RLONV, RLATV)
+            ZPV = CONF(ZQV, Z1, Z2, Z3, W3)
+            GLATV = ZTOLAT(ZPV)
+
+#ifdef OPT_EXMASK
+            GLONT(I,J) = ZTOLON(ZPT)
+            GLATT(I,J) = ZTOLAT(ZPT)
+            DFQ=DCONF(ZQT, Z1, Z2, Z3, W3)
+            RANGT(I,J) =  -(
+     &          ATAN2(DIMAG(ZQT), DREAL(ZQT) )
+     &        - ATAN2(DIMAG(ZPT), DREAL(ZPT) )
+     &        + ATAN2(DIMAG(DFQ), DREAL(DFQ) )  +0.5D0*PI )
+#endif
+C
+            COR(I, J) = 2.D0 * OMEGA * SIN(GLATV)
+            HXT(I, J) = RADIUS * FMTRC(ZPT, ZQT, Z1, Z2, Z3, W3)
+            HYT(I, J) = HXT(I, J) * COS(RLATT) / FACTY
+            HXU(I, J) = RADIUS * FMTRC(ZPV, ZQV, Z1, Z2, Z3, W3)
+            HYU(I, J) = HXU(I, J) * COS(RLATV) / FACTY
+C
+            RLON1 = RLONT - DELX * 0.5D0
+            RLON2 = RLONT + DELX * 0.5D0
+            ZQ1 = STOZ(RLON1, RLATT)
+            ZQ2 = STOZ(RLON2, RLATT)
+            ZP1 = CONF(ZQ1, Z1, Z2, Z3, W3)
+            ZP2 = CONF(ZQ2, Z1, Z2, Z3, W3)
+            HX1 = FMTRC(ZP1, ZQ1, Z1, Z2, Z3, W3)
+            HX2 = FMTRC(ZP2, ZQ2, Z1, Z2, Z3, W3)
+            HXYT(I, J) = RADIUS * (HX1 - HX2) / DELX / FACTY
+     &                   / HXT(I, J) / HYT(I, J)
+
+            RLON1 = RLONV - DELX * 0.5D0
+            RLON2 = RLONV + DELX * 0.5D0
+            ZQ1 = STOZ(RLON1, RLATV)
+            ZQ2 = STOZ(RLON2, RLATV)
+            ZP1 = CONF(ZQ1, Z1, Z2, Z3, W3)
+            ZP2 = CONF(ZQ2, Z1, Z2, Z3, W3)
+            HX1 = FMTRC(ZP1, ZQ1, Z1, Z2, Z3, W3)
+            HX2 = FMTRC(ZP2, ZQ2, Z1, Z2, Z3, W3)
+            HXYU(I, J) = RADIUS * (HX1 - HX2) / DELX / FACTY
+     &                   / HXU(I, J) / HYU(I, J)
+
+            RLAT1 = RLATT + DELY * 0.5D0
+            RLAT2 = RLATT - DELY * 0.5D0
+            ZQ1 = STOZ(RLONT, RLAT1)
+            ZQ2 = STOZ(RLONT, RLAT2)
+            ZP1 = CONF(ZQ1, Z1, Z2, Z3, W3)
+            ZP2 = CONF(ZQ2, Z1, Z2, Z3, W3)
+            HY1 = FMTRC(ZP1, ZQ1, Z1, Z2, Z3, W3)*COS(RLAT1)/FACTY
+            HY2 = FMTRC(ZP2, ZQ2, Z1, Z2, Z3, W3)*COS(RLAT2)/FACTY
+            HYXT(I, J) = RADIUS * (HY1 - HY2) / DELY
+     &                   / HXT(I, J) / HYT(I, J)
+
+            RLAT1 = RLATV + DELY * 0.5D0
+            RLAT2 = RLATV - DELY * 0.5D0
+            ZQ1 = STOZ(RLONV, RLAT1)
+            ZQ2 = STOZ(RLONV, RLAT2)
+            ZP1 = CONF(ZQ1, Z1, Z2, Z3, W3)
+            ZP2 = CONF(ZQ2, Z1, Z2, Z3, W3)
+            HY1 = FMTRC(ZP1, ZQ1, Z1, Z2, Z3, W3)*COS(RLAT1)/FACTY
+            HY2 = FMTRC(ZP2, ZQ2, Z1, Z2, Z3, W3)*COS(RLAT2)/FACTY
+            HYXU(I, J) = RADIUS * (HY1 - HY2) / DELY
+     &                   / HXU(I, J) / HYU(I, J)
+         ENDDO
+      ENDDO
+#endif
+
+#ifdef OPT_TRIPOLE
+C
+C     set grid in lat-lon area.
+C
+      ALATS = SLAT
+      ALATN = 90.0D0
+      ALONW=PLON
+      ALONE=ALONW +2.D0* PI
+
+      ALATS = ALATS * RAD
+      ALATN = ALATN * RAD
+      PLON =   0.0D0 * RAD
+      PLAT =  90.0D0 * RAD
+      QLON =   0.0D0 * RAD
+      QLAT = -90.0D0 * RAD
+      W3 = (1.D0, 0.D0)
+      ELON = 0.0D0
+      ELAT = 0.0D0
+#else
       IF (ITHIRD .EQ. 0) THEN
          W3 = (-1.D0, 0.D0)
          CX = COS(PLON) * COS(PLAT) + COS(QLON) * COS(QLAT)
@@ -951,13 +1243,18 @@ c     &     / ABS(DCONF(ZQ, ZA, ZB, ZC, WC))
       ELSE
          W3 = EXP(PLON * CUNITI)
       END IF
+#endif
       Z1 = TAN(PI * 0.25D0 - PLAT * 0.5D0) * EXP(PLON * CUNITI)
       Z2 = TAN(PI * 0.25D0 - QLAT * 0.5D0) * EXP(QLON * CUNITI)
       Z3 = TAN(PI * 0.25D0 - ELAT * 0.5D0) * EXP(ELON * CUNITI)
-
+      
       RLATV = ALATS
       DELX = DX * 0.1D0
+#ifdef OPT_TRIPOLE
+      DO J = JSTR, JSTR + NY1-1
+#else
       DO J = JSTR, JEND
+#endif
          RLATT = RLATV + DY(J) * 0.5D0
          RLATV = RLATV + DY(J)
          DELY = DY(J) * 0.1D0
@@ -974,11 +1271,15 @@ ccc         DO I = ISTR, IEND
 #ifdef OPT_EXMASK
             GLONT(I,J) = ZTOLON(ZPT)
             GLATT(I,J) = ZTOLAT(ZPT)
+#ifdef OPT_TRIPOLE
+            RANGT(I,J) = 0.D0
+#else
             DFQ=DCONF(ZQT, Z1, Z2, Z3, W3)
             RANGT(I,J) =  -(
      &          ATAN2(DIMAG(ZQT), DREAL(ZQT) )
      &        - ATAN2(DIMAG(ZPT), DREAL(ZPT) )
      &        + ATAN2(DIMAG(DFQ), DREAL(DFQ) ) )
+#endif
 #endif
 
             COR(I, J) = 2.D0 * OMEGA * SIN(GLATV)
@@ -997,7 +1298,6 @@ ccc         DO I = ISTR, IEND
             HY2 = FMTRC(ZP2, ZQ2, Z1, Z2, Z3, W3)
             HYXT(I, J) = RADIUS * (HY1 - HY2) / DELX
      &                   / HXT(I, J) / HYT(I, J)
-            
             
             RLON1 = RLONV + DELX * 0.5D0
             RLON2 = RLONV - DELX * 0.5D0
@@ -1035,6 +1335,7 @@ ccc         DO I = ISTR, IEND
          END DO
       END DO
 
+! southern boundary
       DO J = 1, JSTR-1
          DO I = 1, NXDIM
             COR(I, J) = COR(I, JSTR)
@@ -1053,6 +1354,52 @@ ccc         DO I = ISTR, IEND
 #endif
          END DO
       END DO
+! northern boundary
+#ifdef OPT_TRIPOLE
+      DO J = JEND+1, NYDIM
+         DO I = ISTR, NXDIM/2
+            HXT(I, J)  =  HXT(NXDIM+1-I, 2*JEND+1-J)
+            HYT(I, J)  =  HYT(NXDIM+1-I, 2*JEND+1-J)
+            HXYT(I, J) = -HXYT(NXDIM+1-I, 2*JEND+1-J)
+            HYXT(I, J) = -HYXT(NXDIM+1-I, 2*JEND+1-J)
+            HXT(NXDIM+1-I,J)  =  HXT(I,2*JEND+1-J)
+            HYT(NXDIM+1-I,J)  =  HYT(I,2*JEND+1-J)
+            HXYT(NXDIM+1-I,J) = -HXYT(I,2*JEND+1-J)
+            HYXT(NXDIM+1-I,J) = -HYXT(I,2*JEND+1-J)
+
+#ifdef OPT_EXMASK
+            GLONT(I, J) =  GLONT(NXDIM+1-I, 2*JEND+1-J)
+            GLATT(I, J) =  GLATT(NXDIM+1-I, 2*JEND+1-J)
+            RANGT(I, J) = -RANGT(NXDIM+1-I, 2*JEND+1-J)
+
+            GLONT(NXDIM+1-I,J)  =  GLONT(I,2*JEND+1-J)
+            GLATT(NXDIM+1-I,J)  =  GLATT(I,2*JEND+1-J)
+            RANGT(NXDIM+1-I,J)  = -RANGT(I,2*JEND+1-J)
+#endif
+         END DO
+      END DO
+      DO J = JEND+1, NYDIM
+         DO I = ISTR, NXDIM/2
+            COR(I, J)  =  COR(NXDIM  -I, 2*JEND -J)
+            HXU(I, J)  =  HXU(NXDIM  -I, 2*JEND -J)
+            HYU(I, J)  =  HYU(NXDIM  -I, 2*JEND -J)
+            HXYU(I, J) = -HXYU(NXDIM  -I, 2*JEND -J)
+            HYXU(I, J) = -HYXU(NXDIM  -I, 2*JEND -J)
+            COR(NXDIM+1-I,J)  =  COR(I-1,2*JEND -J)
+            HXU(NXDIM+1-I,J)  =  HXU(I-1,2*JEND -J)
+            HYU(NXDIM+1-I,J)  =  HYU(I-1,2*JEND -J)
+            HXYU(NXDIM+1-I,J) = -HXYU(I-1,2*JEND -J)
+            HYXU(NXDIM+1-I,J) = -HYXU(I-1,2*JEND -J)
+         END DO
+      END DO
+         DO I = NXDIM/2+1, IEND-1
+            COR(I, JEND)  =  COR(NXDIM  -I, JEND)
+            HXU(I, JEND)  =  HXU(NXDIM  -I, JEND)
+            HYU(I, JEND)  =  HYU(NXDIM  -I, JEND)
+            HXYU(I, JEND) = -HXYU(NXDIM  -I, JEND)
+            HYXU(I, JEND) = -HYXU(NXDIM  -I, JEND)
+         ENDDO
+#else
       DO J = JEND+1, NYDIM
          DO I = 1, NXDIM
             COR(I, J) = COR(I, JEND)
@@ -1071,7 +1418,71 @@ ccc         DO I = ISTR, IEND
 #endif
          END DO
       END DO
+#endif
 
+#ifdef OPT_TRIPOLE
+      DO J = JSTR + NY1, NYDIM
+! eastern boundary
+         DO I = 1, ISTR-1
+            COR(I, J) = COR(ISTR, J)
+            HXT(I, J) = HXT(ISTR, J)
+            HXU(I, J) = HXU(ISTR, J)
+            HYT(I, J) = HYT(ISTR, J)
+            HYU(I, J) = HYU(ISTR, J)
+            HXYT(I, J) = HXYT(ISTR, J)
+            HXYU(I, J) = HXYU(ISTR, J)
+            HYXT(I, J) = HYXT(ISTR, J)
+            HYXU(I, J) = HYXU(ISTR, J)
+#ifdef OPT_EXMASK
+            GLONT(I, J) =  GLONT(ISTR, J)
+            GLATT(I, J) =  GLATT(ISTR, J)
+            RANGT(I, J) =  RANGT(ISTR, J)
+#endif
+         ENDDO
+! western boundary
+         DO I = IEND+1, NXDIM
+            COR(I, J) = COR(IEND, J)
+            HXT(I, J) = HXT(IEND, J)
+            HXU(I, J) = HXU(IEND, J)
+            HYT(I, J) = HYT(IEND, J)
+            HYU(I, J) = HYU(IEND, J)
+            HXYT(I, J) = HXYT(IEND, J)
+            HXYU(I, J) = HXYU(IEND, J)
+            HYXT(I, J) = HYXT(IEND, J)
+            HYXU(I, J) = HYXU(IEND, J)
+#ifdef OPT_EXMASK
+            GLONT(I, J) =  GLONT(IEND, J)
+            GLATT(I, J) =  GLATT(IEND, J)
+            RANGT(I, J) =  RANGT(IEND, J)
+#endif
+         ENDDO
+      ENDDO
+! northern boundary of lat-lon coordinate
+      J=JSTR+NY1-1
+      DO I = ISTR, IEND
+      HYU (I, J) = ( DYY(I,   J+1)*HYT(I,  J+1) 
+     &             + DYY(I+1, J+1)*HYT(I+1,J+1)
+     &             + DYY(I,   J  )*HYT(I,  J )
+     &             + DYY(I+1, J  )*HYT(I+1,J ))
+     &              * 0.25 / DYYM(I, J)
+
+      HYXU(I, J) = ( - DYY(I  , J+1)*HYT(I  , J+1)
+     &               + DYY(I+1, J+1)*HYT(I+1, J+1)
+     &               - DYY(I  , J  )*HYT(I  , J  ) 
+     &               + DYY(I+1, J  )*HYT(I+1, J ) )
+     &            * 0.5 / DYYM(I, J) / DX 
+     &             / HXU(I, J) / HYU(I, J)
+      ENDDO
+      DO I=1,ISTR-1
+         HYU(I,JSTR+NY1-1) = HYU(ISTR, JSTR+NY1-1)
+         HYXU(I,JSTR+NY1-1) = HYXU(ISTR, JSTR+NY1-1)
+      ENDDO
+      DO I=IEND+1, NXDIM
+         HYU(I,JSTR+NY1-1) = HYU(ISTR, JSTR+NY1-1)
+         HYXU(I,JSTR+NY1-1) = HYXU(ISTR, JSTR+NY1-1)
+      ENDDO
+#endif
+      
       DO 400 J = 1, NYDIM
          DO 400 I = 1, NXDIM
             RDEPV(I, J) = -999.D0
@@ -1122,7 +1533,6 @@ ccc         DO I = ISTR, IEND
          END DO
       END DO
 
-c      WRITE(JFILE) DX, DYY, DYYM, DZZ, DZZM, DZV, DZ, DS, DSM, HIC
       WRITE(JFILE) DX
       WRITE(JFILE) DYY
       WRITE(JFILE) DYYM
@@ -1133,14 +1543,11 @@ c      WRITE(JFILE) DX, DYY, DYYM, DZZ, DZZM, DZV, DZ, DS, DSM, HIC
       WRITE(JFILE) DS
       WRITE(JFILE) DSM
       WRITE(JFILE) HIC
-c      WRITE(JFILE) RADIUS, ZBOT
       WRITE(JFILE) RADIUS
       WRITE(JFILE) ZBOT
-c      WRITE(JFILE) COR, DEPT, RDEPV
       WRITE(JFILE) COR
       WRITE(JFILE) DEPT
       WRITE(JFILE) RDEPV
-c      WRITE(JFILE) HXT, HXU, HYT, HYU, HXYT, HXYU, HYXT, HYXU
       WRITE(JFILE) HXT
       WRITE(JFILE) HXU
       WRITE(JFILE) HYT
@@ -1182,9 +1589,11 @@ c =====================================================================
      O             IMERC, ITHIRD,   IBBL,
      O                DX,     DY,     DZ,    HIC,
      O             ALONW,  ALONE,  ALATS,  ALATN,
+     O              SLAT,
      O              PLON,   PLAT,   QLON,   QLAT,   ELON,   ELAT,
      O            INODES, JNODES,
      D                NX,     NY,     NZ,     KZ,    NIC,
+     D               NY1,    NY2,
      D             NXDIM,  NYDIM,  NZDIM,
      C              ISTR,   JSTR,   KSTR,   IEND,   JEND,   KEND,
      W              AGEO,   BGEO,   IGEO)
@@ -1195,16 +1604,18 @@ c =====================================================================
       PARAMETER(NROUND = 1000)
 
       INTEGER     NX,     NY,     NZ,     KZ,    NIC
+      INTEGER    NY1,    NY2
       INTEGER  NXDIM,  NYDIM,  NZDIM
-      REAL*8     ALD(NXDIM, NYDIM, NZDIM)
-      REAL*8     BLD(NXDIM, NYDIM, NZDIM)
-      REAL*8    AGEO(NXDIM, NYDIM)
-      REAL*8    BGEO(NXDIM, NYDIM)
-      REAL*8    DGEO(NXDIM, NYDIM)
-      INTEGER   IGEO(NXDIM, NYDIM),   NBOT(NXDIM, NYDIM)
-      REAL*8      DX,     DY(NYDIM),     DZ(NZDIM)
-      REAL*8     HIC(NIC+1)
-      REAL*8   ALONW,  ALONE,  ALATS,  ALATN
+      REAL*8     ALD(:,:,:)
+      REAL*8     BLD(:,:,:)
+      REAL*8    AGEO(:,:)
+      REAL*8    BGEO(:,:)
+      REAL*8    DGEO(:,:)
+      INTEGER   IGEO(:,:),   NBOT(:,:)
+      REAL*8      DX
+      REAL*8      DY(:),       DZ(:)
+      REAL*8     HIC(:)
+      REAL*8   ALONW,  ALONE,  ALATS,  ALATN,  SLAT
       REAL*8    PLON,   PLAT,   QLON,   QLAT
       REAL*8    ELON,   ELAT
       INTEGER INODES, JNODES
@@ -1212,23 +1623,16 @@ c =====================================================================
       INTEGER   ISTR,   JSTR,   KSTR
       INTEGER   IEND,   JEND,   KEND
 
-      INTEGER     LX,     LY,     LZ,     JZ,    LIC
       INTEGER      I,      J,      K
 
       IBBL = 0
 
-      READ(IGFILE, *) LX
-      READ(IGFILE, *) LY
-      READ(IGFILE, *) LZ
-      READ(IGFILE, *) JZ
-      READ(IGFILE, *) LIC
-      IF (     (LX .NE. NX) .OR. (LY .NE. NY)
-     &    .OR. (LZ .NE. NZ) .OR. (JZ .NE. KZ)
-     &    .OR. (LIC .NE. NIC)) THEN
-         WRITE(*, *) ' #### BAD GEOMETRY FILE #### '
-         WRITE(*, *) ' #### DIMENSION ERROR   #### '
+#ifdef OPT_TRIPOLE
+      IF(MOD(NX,2) .ne. 0) THEN
+         WRITE(*,*)'#### NX shold be even number for tripole grid'
          STOP
       END IF
+#endif
       READ(IGFILE, *) INODES, JNODES
 
       IF (     (MOD(NX, INODES) .NE. 0)
@@ -1238,9 +1642,18 @@ c =====================================================================
          STOP
       END IF
 
+#ifdef OPT_TRIPOLE
+      READ(IGFILE, *) SLAT
+      ALONW = -90.0D0
+      ALONE =  90.0D0
+      ALATS = -90.0D0
+      ALATN =  90.0D0
+      IMERC = 2
+#else
       READ(IGFILE, *) ALONW, ALONE
       READ(IGFILE, *) ALATS, ALATN
       READ(IGFILE, *) IMERC
+#endif
       IF (IMERC .EQ. 2) THEN
          READ(IGFILE, *) (DY(J), J = JSTR, JEND)
       END IF
@@ -1248,12 +1661,17 @@ c =====================================================================
       READ(IGFILE, *) (HIC(K), K = 1, NIC)
       HIC(NIC+1) = 1.D+30
       READ(IGFILE, *) PLON, PLAT
+#ifdef OPT_TRIPOLE
+      QLON=PLON+180.
+      QLAT=PLAT
+      ITHIRD=0
+#else
       READ(IGFILE, *) QLON, QLAT
       READ(IGFILE, *) ITHIRD
+#endif
       IF (ITHIRD .EQ. 1) THEN
          READ(IGFILE, *) ELON, ELAT
       END IF
-
       DO J = JEND, JSTR, -1
          READ(IGFILE, *) (AGEO(I, J), I = ISTR, IEND)
       END DO
@@ -1307,7 +1725,19 @@ c =====================================================================
             DGEO(I, J) = 0.D0
             BGEO(I, J) = 0.D0
   240    CONTINUE
-  230 CONTINUE
+  230  CONTINUE
+#ifdef OPT_TRIPOLE
+      DO 250, J = JEND+1, NYDIM
+         DO 260 I  = 1, NXDIM/2
+            IGEO(I,J)=IGEO(NXDIM+1-I,2*JEND+1-J)
+            DGEO(I,J)=DGEO(NXDIM+1-I,2*JEND+1-J)
+            BGEO(I,J)=BGEO(NXDIM+1-I,2*JEND+1-J)
+            IGEO(NXDIM+1-I,J)=IGEO(I,2*JEND+1-j)
+            DGEO(NXDIM+1-I,J)=DGEO(I,2*JEND+1-j)
+            BGEO(NXDIM+1-I,J)=BGEO(I,2*JEND+1-j)
+ 260  CONTINUE
+ 250  CONTINUE
+#else
       DO 250 J = JEND+1, NYDIM
          DO 260 I = 1, NXDIM
             IGEO(I, J) = 0
@@ -1315,7 +1745,8 @@ c =====================================================================
             BGEO(I, J) = 0.D0
   260    CONTINUE
   250 CONTINUE
-
+#endif
+      
       DO 300 K = KSTR, KEND
          DO 300 J = 1, NYDIM
             DO 300 I = 1, NXDIM
@@ -1380,4 +1811,5 @@ c =====================================================================
       END IF
 
       RETURN
+      END
       END

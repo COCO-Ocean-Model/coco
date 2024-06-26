@@ -5,12 +5,10 @@ GEO	= GEO
 OUT	= zocdim.F90
 
 xmkmsk:
-ifeq ($(OPTTRIPOLE), -DOPT_TRIPOLE)
-	$(FC) $(FOPTION) $(OPTEXMASK) -o $@ xmkmsk.tripole.F
-else
-	$(FC) $(FOPTION) $(OPTEXMASK) -o $@ xmkmsk.F
-endif
+	$(FC) $(FOPTION) $(OPTEXMASK) $(OPTTRIPOLE) -o $@ xmkmsk.F
+	ln -s MASK $(UNIT22)
 	./xmkmsk $(RUNOPT) < $(GEO) > $(OUT)
+	$(RM) $(UNIT22)
 
 clean:
-	$(RM) xmkmsk *.o *~ core *.trace *.cpp
+	$(RM) xmkmsk *.o *~ core *.trace *.cpp $(UNIT22)
