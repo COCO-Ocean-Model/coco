@@ -18,14 +18,11 @@ c     '24.06.26  T.Kawasaki: tripole code is merged & delete dimocn.F
 c
 c ---------------------------------------------------------------------
 
-c *** Write here the number of tracer.
-c *** The minimum number is 2, for temperature and salinity.
-      INTEGER   NTDIM
-      PARAMETER(NTDIM = 2)
-c ***
-      
       INTEGER     NX,     NY,     NZ,     KZ,    NIC
       INTEGER    NY1,    NY2
+
+      INTEGER   NTDIM
+      PARAMETER(NTDIM = 2)
 
       INTEGER   ISTR, JSTR, KSTR
       PARAMETER(ISTR = 3, JSTR = 3, KSTR = 2)
@@ -964,9 +961,14 @@ c     &     / ABS(DCONF(ZQ, ZA, ZB, ZC, WC))
      & 'ijend  =', IJSEND
       WRITE(*, *)
 
+      WRITE(*, '(A)') '! *** Write here the number of tracer.'
+      WRITE(*, '(A)')
+     & '! *** The minimum number is 2, for temperature and salinity.'
+
       WRITE(*, '(2X,A,I7)')
      & 'integer, parameter :: ntdim =', NTDIM
       WRITE(*, *)
+      WRITE(*, '(A)') '! ***'
 
       WRITE(*, '(2X,A)')
      & 'integer, parameter :: nxy = nx*ny, nxyz = nxy*nz'
