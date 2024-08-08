@@ -18,8 +18,6 @@ OPTEXMASK = -DOPT_EXMASK
 
 #OPTTOUZA = -DOPT_TOUZA
 
-TSTAG=.tstag
-
 # coco default
 #SRCOPT  = tflxt.iso-ut dvdif.nk
 
@@ -27,7 +25,7 @@ TSTAG=.tstag
 #SRCOPT  = tflxt.iso-ut dvdif.nk ipthm.linrmp 
 
 # CORE global simple
-#SRCOPT = tflxt.iso-ut aocea.icedcoco.nmlwtr dvdif.nk-c0lat csrvl.bblmzns cvisc.amh2d fshlw.novis ipthm.linrmp ipmmt.pice aprdc.icedcoco.tundf$(TSTAG) tslvt.icedcoco.tundf.para sfcng.CORE utint.CORE
+#SRCOPT = tflxt.iso-ut aocea.icedcoco.nmlwtr dvdif.nk-c0lat csrvl.bblmzns cvisc.amh2d fshlw.novis ipthm.linrmp ipmmt.pice aprdc.icedcoco.tundf tslvt.icedcoco.tundf.para sfcng.CORE utint.CORE
 
 SRCOPT	= tflxt.iso-ut dvdif.nk sfcng.CORE utint.CORE
 

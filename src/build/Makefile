@@ -4,16 +4,16 @@ include $(OGCMDIR)/src/Sysdep.$(SYSTEM)
 DIRETC = ../etc
 
 SRCS_SHARED = \
-	atmct$(TSTAG).F90 \
+	atmct.F90 \
 	bchmk.F90 \
 	bgs2d.F90 \
 	bgs3d$(MPI).F90 \
 	brdge$(MPI).F90 \
 	bshfi.F90 \
 	bshft.F90 \
-	cadvc$(TSTAG).F90 \
+	cadvc.F90 \
 	csrvl.F90 \
-	ctnuv$(TSTAG).F90 \
+	ctnuv.F90 \
 	cvisc.F90 \
 	cvlrd.F90 \
 	dvdif.F90 \
@@ -37,7 +37,7 @@ SRCS_SHARED = \
 
 SRCS_coco = \
 	aocea.F90 \
-	aprdc$(TSTAG).F90 \
+	aprdc.F90 \
 	bfrch.F90 \
 	binst.F90 \
 	brstt.F90 \
@@ -48,7 +48,7 @@ SRCS_coco = \
 
 SRCS_icedcoco = \
 	aocea.F90 \
-	aprdc$(TSTAG).F90 \
+	aprdc.F90 \
 	bfrch.F90 \
 	bgsid$(MPI).F90 \
 	binst.F90 \
@@ -59,7 +59,7 @@ SRCS_icedcoco = \
 	ifwtr.F90 \
 	ipadv.F90 \
 	ipmmt.F90 \
-	iprdc$(TSTAG).F90 \
+	iprdc.F90 \
 	iprdg.F90 \
 	ipthm.F90 \
 	iptmp.F90 \
