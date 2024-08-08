@@ -51,6 +51,7 @@ module tslvt
   integer(4), parameter ::  ntngr = ntunnel
   integer(4), parameter ::  ntigr = ntunnel
   real(8),                 save  ::   crst(ntngr),  crsti(ntigr)
+  integer(4),              save  ::   ntni
   integer(4),              save  ::   ntns,         ntnis
   integer(4),              save  ::   ltns(ntunnel*nzdim*2+1)
   integer(4),              save  ::  ltnsd(ntunnel*nzdim*2+1)
@@ -753,7 +754,8 @@ contains
 
 #include "mpif.h"
 
-    integer(4), save  ::  ntni,ntn
+!    integer(4), save  ::  ntni,ntn
+    integer(4), save  ::  ntn
     integer(4), save  ::  ltnig (ntunnel),       ltnigd(ntunnel)
     integer(4), save  ::  ltnigg(ntunnel)
     integer(4), save  ::    ltng(ntunnel*nzdim),  ltngd(ntunnel*nzdim)
@@ -854,15 +856,19 @@ contains
           end do
        end do
        write(jfpar,*) '  TOTAL TUNNEL NUMBER = ',ntun
-       write(jfpar,*) '( I1, J1 ) .. ( I2, J2) KLEV DMP DMPSH'
-       do l = 1, ntun
-          write(jfpar,*) '(',itun1(l),',',jtun1(l),') .. (',          &
-    &        itun2(l),',',jtun2(l),') ',ktun(l),dmptun(l),dshtun(l)
-       enddo
+       if (ntun /= 0) then
+          write(jfpar,*) '( I1, J1 ) .. ( I2, J2) KLEV DMP DMPSH'
+          do l = 1, ntun
+             write(jfpar,*) '(',itun1(l),',',jtun1(l),') .. (',          &
+          &        itun2(l),',',jtun2(l),') ',ktun(l),dmptun(l),dshtun(l)
+          enddo
+       end if
     end if
 
     n = 1
     call mpi_bcast(ntni  ,n,mpi_integer,iroot,mpi_comm_ogcm,ierr)
+    if ( ntni == 0 ) return
+
     if ( ntni > 0 ) then
        n = ntni
        call mpi_bcast(ltnig ,n,mpi_integer,iroot,mpi_comm_ogcm,ierr)
@@ -1062,6 +1068,8 @@ contains
     if ( oinit .or. ofinal ) then
        return
     end if
+
+    if ( ntni == 0 ) return
 
     do n = 1, ntdim
        do k = kstr, kstr+kz-1
