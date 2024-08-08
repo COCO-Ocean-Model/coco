@@ -1,30 +1,24 @@
 module atmct
 ! --- information -----------------------------------------------------
 !
-!  controling the scheme of time integration and the timing of output
+!  Controling the scheme of time integration and the timing of output
 !
-!  history
-!     '00.05.30  h.hasumi: parallelized coco3
-!     '00.12.07  h.hasumi: combine par and non-par routines
-!     '01.12.07  h.hasumi
-!     '03.06.04  h.hasumi: allow to specify the time step by the unit
+!  HISTORY
+!     '00.05.30  H.Hasumi: parallelized COCO3
+!     '00.12.07  H.Hasumi: combine par and non-par routines
+!     '01.12.07  H.Hasumi
+!     '03.06.04  H.Hasumi: allow to specify the time step by the unit
 !                          other than 'hour'
-!     '07.04.23  h.hasumi
+!     '07.04.23  H.Hasumi
+!     '10.04.14  M.Kurogi: staggered time stepping
 !     '12.07.18  M.kurogi: for COCO5.0
-!
 ! ---------------------------------------------------------------------
 
-
  use zocfil, only : nfomax, ncf
- use zocnod, only : mpi_comm_ogcm
  implicit none
 
  private
  public :: tmstup, tmstpc
- 
- integer, parameter :: ntscyc = 100
- integer, save :: itscyc, itstt(0:ntscyc-1)
-
  real(8), save :: dt
  integer, save :: ionext(6, nfomax)
  integer, save :: irnext(6)
@@ -40,9 +34,9 @@ module atmct
 contains
   subroutine tmstup(                                                           &
    &             tstrt,   tend,    dtt)
-  use zocnod, only : ierr
-  use ucaln
+  use zocnod, only : ierr, mpi_comm_ogcm
   use ufile
+  use ucaln
 
   implicit none
 #include "mpif.h"
@@ -53,8 +47,6 @@ contains
    & (/ 'year  ', 'month ', 'day   ', 'hour  ', 'minute', 'second' /)
   integer   :: iohitm
   character (16) :: citem(nfomax)
-
-  integer :: ieb=9, ileap=10
 
   integer :: itstrt(6)=(/ 0, 0, 0, 0, 0, 0 /)
   integer ::  itend(6)=(/ 0, 0, 0, 0, 0, 0 /)
@@ -73,12 +65,11 @@ contains
   character(ncf) :: cohfil
   character(16) :: cohitm='   not-specified'
   character(16) :: cohvco='   not-specified'
-  character(16) ::  ddfmt = 'UR4'
-  character(16) ::   dfmt
+  character(16) :: ddfmt = 'UR4'
+  character(16) ::  dfmt
   integer :: ifpar,  jfpar
   integer :: istat 
 
-  namelist /nmschm/ ieb, ileap
   namelist /nmtime/ itstrt, itend, tmstp, iutstp, ntsplt
   namelist /nmcaln/ icaln
   namelist /nmrstr/ irintv, iurint, irsrwd
@@ -87,11 +78,6 @@ contains
    &                  iohstr, iohend, iohint, iuhint, iohavr, iohsng,          &
    &                  ioxstr, ioxend, ioystr, ioyend, iozstr, iozend, iosvin,  &
    &                    dfmt
-  ileap  = ntscyc - ieb - 1
-
-  call rewnml(ifpar, jfpar)
-  read(ifpar, nmschm, iostat=istat)
-  call cstnml(jfpar, 'tmstup', 'nmschm', istat)
 
   call rewnml(ifpar, jfpar)
   read(ifpar, nmtime, iostat=istat)
@@ -154,29 +140,6 @@ contains
       end if
   end do
 
-  itscyc= ieb + 1 + ileap
-  if ( itscyc .gt. ntscyc ) then
-     write(jfpar, *) '### workspace over : ntscyc (tmstup) ###'
-     call mpi_abort(mpi_comm_ogcm, 1, ierr)
-  end if
-
-!     ***** making scheme table *****
-!
-!     itstt = 1 : euler-backward
-!             2 : forward
-!             3 : leapfrog b --> a
-!             4 : leapfrog a --> b
-
-  itstt(0) = 4
-  do i = 1, ieb
-     itstt(i) = 1
-  end do
-  itstt(ieb+1) = 2
-  do i = ieb+2, itscyc-2, 2
-     itstt(i  ) = 3
-     itstt(i+1) = 4
-  end do
-  itstt(itscyc-1) = 3
 
 
 
@@ -257,6 +220,7 @@ contains
   end if
 
   write(jfpar, *) '***** time control parameters *****'
+  write(jfpar, *) '***** time staggering  version ****'
   write(jfpar, *) 
   write(jfpar, *) '     start time  :', itstrt
   write(jfpar, *) '       end time  :', itend
@@ -266,9 +230,6 @@ contains
   write(jfpar, *)
   write(jfpar, *) 'restart interval :', irintv, ' ', cunit(iurint)
   write(jfpar, *)
-  write(jfpar, *) ' euler-backward :',ieb   ,' step'
-  write(jfpar, *) ' leap-frog      :',ileap ,' step'
-  write(jfpar, *) ' 1 cycle        :',itscyc,' step'
 
   do iitem = 1, nohitm
      if (iflout(iitem) == 1) then
@@ -283,6 +244,10 @@ contains
      end if
   end do
 
+  if( mod(ntsplt,2) /= 0) then
+     write(jfpar, *) "error: ntsplt mut be even number !"
+     call mpi_abort(mpi_comm_ogcm, 1, ierr)
+  end if
 
   return
   end subroutine tmstup
@@ -306,22 +271,11 @@ contains
   real(8), intent (in) :: tt
   integer :: iitem
 
-
-!     ***** selection of the time integration scheme *****
-
-  itst = itstt( mod (nt,itscyc) )
-  if ( itst .ge. 3 ) then
-     ts  = 2.0d+0 * dt
-     its = 2
-     ntss = ntsplt
-     tss  = ts / dble(ntss)
-  else
-     ts  = dt
-     its = 1
-     ntss = ntsplt / 2
-     tss  = ts / dble(ntss)
-  end if
-
+  itst = 2
+  ts  = dt
+  its = 1
+  ntss = ntsplt 
+  tss  = ts / dble(ntss)
 
   do iitem = 1, nohitm
      if (iflout(iitem) == 1) then

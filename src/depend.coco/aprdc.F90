@@ -102,13 +102,34 @@ contains
     real(8)               ::    tmp(1:nxyzdm,1:ntdim)
     real(8)               ::     hz(1:nxydim),   htmp(1:nxydim)
     real(8)               ::  ubtmp(1:nxydim),  vbtmp(1:nxydim)
+    real(8)               ::    hxb(1:nxydim)
     real(8),        save  ::  ubtav(1:nxydim),  vbtav(1:nxydim)
+    real(8),        save  ::     h1(1:nxydim)
     integer(4)            ::  itsplt,     ij,    ijk,      n
+    logical               ::    oeof
 
     if ( ( myrank >= ijnode ) .and.                                  &
     &    ( .not. oinit      ) .and.                                  &
     &    ( .not. ofinal     )        ) return
 
+    if ( oinit ) then
+#ifdef OPT_TRIPOLE
+       call rstadd(  h1, oeof, nxdim, nydim, 1, 'H1', 'SFC',         &
+    &              1.D0,    0,     0   )
+#else
+       call rstadd(  h1, oeof, nxdim, nydim, 1, 'H1', 'SFC' )
+#endif
+       if ( oeof ) then
+          do ij = 1, nxydim
+             h1(ij) = hx(ij)
+          end do
+       end if
+    end if
+    
+    if ( ofinal ) then
+       call finadd(h1, nxdim, nydim, 1, 'H1', 'SFC')
+    end if
+    
 ! *** vertical diffusivity and viscosity ***
 
     call clcstr('COEFF')
@@ -140,14 +161,15 @@ contains
 #endif
     call srcvel(    gx,     gy,     xx,     yy,                       &
     &               ux,     vx )
+
     call vscvel(    gx,     gy,     xx,     yy,                       &
     &               uy,     ux,     vy,     vx,                       &
-    &               hx,     hy,                                       &
+    &               h1,     hy,                                       &
     &              amv,   taux,   tauy )
     call advvel(                                                      &
     &               gx,     gy,     xx,     yy,                       &    
     &               uy,     ux,     vy,     vx,                       &
-    &               hx,     hy,                                       &
+    &               h1,     hy,                                       &
     &             uadv,   vadv,   wadv )
 #ifdef OPT_BBL
     call srcvlb(    gx,     gy,     xx,     yy,                       &
@@ -175,7 +197,7 @@ contains
 #endif
     call velrds(    ux,     vx,                                       &
     &               gx,     gy,    amv,                               &
-    &               hx )
+    &               h1 )
 #ifdef OPT_BBL
     call stbbuv(   ux,     vx )
 #endif
@@ -213,7 +235,7 @@ contains
 #else
           call shift2(   gxx,    gyy,   nxdim,  nydim,      1 )
 #endif
-          call btavst( ubtav,  vbtav )
+          CALL BTAVST( ubtav,  vbtav )
           do itsplt = 1, ntss
 
              do ij = 1, nxydim
@@ -251,6 +273,12 @@ contains
              call shift3(   hx,   ubtx,   vbtx,                       &
     &                    nxdim,  nydim,      1 )
 #endif
+             if ( itsplt == ntss/2 ) then
+                do ij = 1, nxydim
+                   h1(ij) = hx(ij)
+                end do
+             end if
+
           end do
 #ifdef OPT_TRIPOLE
           call shift2( ubtav,  vbtav,                                 &
@@ -261,6 +289,10 @@ contains
     &                  nxdim,  nydim,      1  )
 #endif
        end if
+       do ij = 1, nxydim
+          hxb(ij) = hx(ij)
+       end do
+
     end if
     call clcend('BRTRO')
 
@@ -272,7 +304,7 @@ contains
     call admkvb
 #endif
     call veltad(   uadv,   vadv,                                      &
-    &             ubtav,  vbtav,     uy,     vy  )
+    &             ubtav,  vbtav,     ux,     vx  )
 #ifdef OPT_TRIPOLE
     if ( .not. ( oinit .or. ofinal ) ) then
        call shift2(   uadv,    vadv,                                  &
@@ -324,7 +356,7 @@ contains
              end do
           end do
        else
-          call flxtrc(   tmp,    xx,                                  &
+          call flxtrc(   tmp,     xx,                                 &
     &                    tx,     hx,                                  &
     &                    ty,     hz,                                  &
     &                  uadv,   vadv,   wadv,                          &
@@ -400,7 +432,7 @@ contains
        end do
     end if
     call veltad(    ux,     vx,                                       &
-    &             ubtx,   vbtx,   uadv,   vadv )
+    &            ubtav,   vbtav,   uadv,   vadv )
 #ifdef OPT_TRIPOLE
     call shift2(    ux,     vx,                                       &
     &            nxdim,  nydim,  nzdim,                               &
@@ -415,7 +447,7 @@ contains
 #endif
     call wdenst(    w,                                                &
     &              ux,     vx,                                        &
-    &              hx,     hz )
+    &             hxb,     hz )
 #ifdef OPT_BBL
     call admskv
 #endif
@@ -449,6 +481,15 @@ contains
     &            nxdim,  nydim,  nzdim )
 #endif
     call clcend('VDIAG')
+
+    if ( ( .not. oinit ) .and. ( .not. ofinal) ) then
+       call chekin(  ubtav,  'UBTAV',                                 &
+            &      'ocean zonal transport', 'cm^2/s', &    
+            &           nx,     ny,      1, nxydim, 'OCSFCV')
+       call chekin(  vbtav,  'VBTAV',                                 &
+            & 'ocean meridional transport', 'cm^2/s', &    
+            &           nx,     ny,      1, nxydim, 'OCSFCV')
+    end if
 
   end subroutine predco
   
