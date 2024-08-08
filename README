@@ -2334,8 +2334,6 @@ ipthk.clat)をグリッド幅に比例して変化させる。
 
 ● tunnel diffusion
 
-* aprdc.$(MODEL).tundf, tslvt.$(MODEL).tundf
-
 tunnel diffusion とは、指定した 2 つのグリッド間でトレーサー及び
 海面高度を拡散的に交換するスキームのことである。通常は、解像度不足で
 陽に表現できない海峡を介しての水のやりとりを、モデルの陸グリッド越しに
