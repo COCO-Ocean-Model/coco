@@ -44,10 +44,10 @@ Ver.4.3 で海氷モデルは従来の 2-category 0-layer から multi-category
 (ice thickness distribution) 1-layer へと変更された。
 Ver.4.9 では、時間発展のスキームとして staggered time-stepping を
 選択可能になった。また、水平座標系として三極座標系 tripolar grid 
-system に対応した。モデルコンパイル時のオプションにより、
-従来の leap-frog + Eular backward + Eular forward スキームによる
-時間発展、および水平一般曲線直交座標系（極 2 つ）もそれぞれ利用可能で
-ある。このうち水平座標系については、モデルのソースコード自体は水平方向に
+system に対応した。その後、従来の leap-frog + Eular backward + Eular
+forward スキームによる時間発展は廃止された。モデルコンパイル時のオプション
+により、水平一般曲線直交座標系（極 2 つ）は引き続き利用可能である。
+このうち水平座標系については、モデルのソースコード自体は水平方向に
 一般の曲線直交座標系上で定式化されているが、具体的な水平座標系の生成方法、
 および三極座標系における座標系の選び方についてこのパッケージで対応して
 いる方法には制限がある。詳しくは「2.2 地形の設定とマスキングファイルの
@@ -815,17 +815,6 @@ OPTEXMASK = -DOPT_EXMASK
 逆にオプションを指定しない場合、拡張マスキングファイルを読み込ませても
 正常に動作する。
 
-時間方向の差分として従来の leap-frog + Eular backward + Eular
-forward スキームを用いる場合には、TSTAG に何も指定しない、すなわち
-
-TSTAG =
-
-とし、staggered time-stepping を用いる場合には
-
-TSTAG = .tstag
-
-と指定する。
-
 ファイルの入出力に MPI-I/O を用いる場合は
 
 OPTIO = -DOPT_IO_COCOMPI -DOPT_IO_BYTESWAP -DOPT_IO_SEQUENTIAL
@@ -843,8 +832,8 @@ SRCENS =
 と何も指定せず、疑似エンストロフィー保存・斜面方向運動量移流スキームを用
 いる場合には
 
-SRCENS = aocea.$(MODEL) aprdc.$(MODEL)$(TSTAG) binst.$(MODEL)
-bstbc.$(MODEL) cadvc$(TSTAG) ctnuv$(TSTAG) dvlva
+SRCENS = aocea.$(MODEL) aprdc.$(MODEL) binst.$(MODEL)
+bstbc.$(MODEL) cadvc ctnuv dvlva
 
 と指定する。本来は option/ ディレクトリに置いて SRCOPT で指定すべきとこ
 ろだが、変更箇所が多いのでこのような形にした。このスキームを用いることに
@@ -909,7 +898,6 @@ CRUN:
          TMSTP=24, IUTSTP=4, NTSPLT=40 &END
  &NMCALN ICALN=0 &END
  &NMRSTR IRINTV=1, IURINT=1, IRSRWD=1 &END
- &NMSCHM IEB=9, ILEAP=90 &END
 
 ITSTRT:
 積分開始時刻(年・月・日・時・分・秒)
@@ -937,12 +925,6 @@ IRSRWD:
 リスタートファイルを上書きするか否か
 0: 上書きしない
 1: 上書きする
-IEB   :
-Euler-backward scheme を続ける回数。TSTAG オプション無しで
-モデルをコンパイルした時のみ有効である。
-ILEAP :
-leap-frog scheme を続ける回数。TSTAG オプション無しで
-モデルをコンパイルした時のみ有効である。
 
 ● 初期条件・リスタートファイル
 
@@ -2127,9 +2109,8 @@ SRCOPT = dvdif.nk
 などとすることによって使用することができる。
 以下のリストで、同一の項に 2 つ以上のルーチン名が挙げられている場合、
 そのスキームを利用するには全てのルーチンを SRCOPT に記述する。また、
-設定するルーチンのうちのいくつかは、モデルの選択（MODEL）や時間発展
-スキームの選択（TSTAG）に応じて実際に適用すべきルーチン名が異なることに
-注意せよ。
+設定するルーチンのうちのいくつかは、モデルの選択（MODEL）に応じて実際に
+適用すべきルーチン名が異なることに注意せよ。
 
 なお、以下のスキームの中には、（主として歴史的理由から）非標準スキーム
 とされてはいるが事実上の標準となっているものもいくつか存在する。具体的
@@ -2353,7 +2334,7 @@ ipthk.clat)をグリッド幅に比例して変化させる。
 
 ● tunnel diffusion
 
-* aprdc.$(MODEL).tundf$(TSTAG), tslvt.$(MODEL).tundf
+* aprdc.$(MODEL).tundf, tslvt.$(MODEL).tundf
 
 tunnel diffusion とは、指定した 2 つのグリッド間でトレーサー及び
 海面高度を拡散的に交換するスキームのことである。通常は、解像度不足で
