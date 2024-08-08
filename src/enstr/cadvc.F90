@@ -10,8 +10,10 @@ module cadvc
 !     '07.04.23  H.Hasumi
 !     '08.06.11  H.Hasumi: initial/final processing
 !     '08.07.10  H.Hasumi: initial/final processing
-!     '10.04.14  M.kurogi
-!     '12.10.22. T.Suzuki: for COCO5.0
+!     '10.04.14  M.Kurogi: staggered time stepping
+!     '10.04.14  M.Kurogi: (COCO4.4 tripolar code by Dr. Suzuki)
+!     '12.10.23. T.Suzuki: for COCO5.0
+!
 ! ---------------------------------------------------------------------
   implicit none
 
@@ -31,7 +33,7 @@ contains
          &             hx,     hy,                                    &
          &           uadv,   vadv,   wadv)
     use zocdim,  only :                                               &
-         &  nxydim,  nxdim,  nzdim,                                   &
+         &  nxydim,  nxdim,  nydim,   nzdim,                          &
          &    kstr,   kend,     kz,                                   &
          &   ijvstr, ijvend,                                          &
          &      le,     lw,     ln,     ls,    lne,                   &
@@ -50,7 +52,14 @@ contains
     use zocmsk,  only :  amskv,  amfvx,  amfvy
 #endif
     use bchmk
+    use brstt
 
+    real(8), parameter :: c1=23.d0/12.d0, c2=-16.d0/12.d0, c3=5.d0/12.d0
+    real(8), save ::      xx1(nxydim, nzdim),     yy1(nxydim, nzdim)
+    real(8), save ::      xx2(nxydim, nzdim),     yy2(nxydim, nzdim)
+    real(8), save ::      xx3(nxydim, nzdim),     yy3(nxydim, nzdim)
+    integer, save :: ncall = 0
+    logical, save :: oeof
     real(8),intent(in) ::      uy(nxydim, nzdim),     ux(nxydim, nzdim)
     real(8),intent(in) ::      vy(nxydim, nzdim),     vx(nxydim, nzdim)
     real(8),intent(in) ::      hy(nxydim),            hx(nxydim)
@@ -71,23 +80,55 @@ contains
     real(8) ::    fuzu(nxydim, nzdim),   fvzu(nxydim, nzdim)
     real(8) ::    fuzd(nxydim, nzdim),   fvzd(nxydim, nzdim)
     real(8) ::      rz(nxydim, nzdim),    rzm(nxydim, nzdim)
-!      common /work/ fuz, fuzu, fuzd, fvz, fvzu, fvzd, rz, rzm
-
+ 
     real(8) ::     div(nxydim, kstr:kstr+kz-1)
     real(8) ::   hvbot(nxydim), hvbotx(nxydim)
     integer     ij,      k
 
     logical, save :: ofirst = .true.
 
+    if (oinit) then
+       do k=1,nzdim
+       do ij=1,nxydim
+          xx1(ij,k)=0.d0
+          xx2(ij,k)=0.d0
+          xx3(ij,k)=0.d0
+          yy1(ij,k)=0.d0
+          yy2(ij,k)=0.d0
+          yy3(ij,k)=0.d0
+       end do
+       end do
+#ifdef OPT_TRIPOLE
+      call rstadd(xx2, oeof, nxdim, nydim, nzdim, 'XX2', 'OCN', &
+     &                                           -1.d0,  -1,  -1)
+      call rstadd(xx3, oeof, nxdim, nydim, nzdim, 'XX3', 'OCN', &
+     &                                           -1.d0,  -1,  -1)
+      call rstadd(yy2, oeof, nxdim, nydim, nzdim, 'YY2', 'OCN', &
+     &                                           -1.d0,  -1,  -1)
+      call rstadd(yy3, oeof, nxdim, nydim, nzdim, 'YY3', 'OCN', &
+     &                                           -1.d0,  -1,  -1)
+#else
+      call rstadd(xx2, oeof, nxdim, nydim, nzdim, 'XX2', 'OCN')
+      call rstadd(xx3, oeof, nxdim, nydim, nzdim, 'XX3', 'OCN')
+      call rstadd(yy2, oeof, nxdim, nydim, nzdim, 'YY2', 'OCN')
+      call rstadd(yy3, oeof, nxdim, nydim, nzdim, 'YY3', 'OCN')
+#endif
+         return
+      end if
 
-    if (oinit .or. ofinal) then
-      return
-    end if
+      if (ofinal) then
+         call finadd(xx2, nxdim, nydim, nzdim, 'XX2', 'OCN')
+         call finadd(xx3, nxdim, nydim, nzdim, 'XX3', 'OCN')
+         call finadd(yy2, nxdim, nydim, nzdim, 'YY2', 'OCN')
+         call finadd(yy3, nxdim, nydim, nzdim, 'YY3', 'OCN')
+         return
+      end if
+
 
     if (ofirst) then
        ofirst = .false.
 #ifdef OPT_BBL
-       call rmmskv
+    call rmmskv
 #endif
     do k = 1, nzdim
        do ij = 1, nxydim
@@ -99,7 +140,6 @@ contains
           cse(ij, k) = 0.d0
        enddo
     enddo
-
     do k = kstr, kend
        do ij = ijvstr-nxdim-1, ijvend+nxdim+1
           cxn(ij, k) = amskv(ij, k) * amskv(ij+lw, k) *          &
@@ -145,101 +185,101 @@ contains
        enddo
     enddo
 
-    do ij = ijvstr, ijvend
-         hvbot(ij) = (  (hy(ij)    + hy(ij+le) ) * dy(ij)       &
-    &                 + (hy(ij+ln) + hy(ij+lne)) * dy(ij+ln)) * &
-    &                rym(ij) * 0.25d0                           &
-    &              + zbot
+      do ij = ijvstr, ijvend
+         hvbot(ij) = (  (hy(ij)    + hy(ij+le) ) * dy(ij) &
+     &                + (hy(ij+ln) + hy(ij+lne)) * dy(ij+ln)) * &
+     &               rym(ij) * 0.25d0 &
+     &             + zbot
          hvbot(ij) = 1.d0 / hvbot(ij)
-         hvbotx(ij) = (  (hx(ij)    + hx(ij+le) ) * dy(ij)      &
-    &                 + (hx(ij+ln) + hx(ij+lne)) * dy(ij+ln)) * &
-    &                rym(ij) * 0.25d0                           &
-    &              + zbot
+         hvbotx(ij) = (  (hx(ij)    + hx(ij+le) ) * dy(ij) &
+     &                + (hx(ij+ln) + hx(ij+lne)) * dy(ij+ln)) * &
+     &               rym(ij) * 0.25d0 &
+     &             + zbot
          hvbotx(ij) = 1.d0 / hvbotx(ij)
-    end do
+      end do
 
-    do k = kstr, kstr+kz-1
-       do ij = ijvstr, ijvend
-          rz (ij, k) = 1.d0 * rs (k) * hvbotx(ij)
-       end do
-    end do
-    do k = kstr+kz, kend
-       do ij = ijvstr, ijvend
-          rz (ij, k) = 1.d0 / dzv(ij, k)
-       end do
-    end do
+      do k = kstr, kstr+kz-1
+         do ij = ijvstr, ijvend
+            rz (ij, k) = 1.d0 * rs (k) * hvbotx(ij)
+         end do
+      end do
+      do k = kstr+kz, kend
+         do ij = ijvstr, ijvend
+            rz (ij, k) = 1.d0 / dzv(ij, k)
+         end do
+      end do
 
-    do k = kstr, kstr+kz-1
-       do ij = ijvstr, ijvend+nxdim+1
-          fvy(ij, k) = (  cye(ij, k) * vadv(ij, k) * hxt(ij)           &
-    &                   + cyw(ij+le, k) * vadv(ij+le, k) * hxt(ij+le)) &
-    &                  / 6.d0
-          fvx(ij, k) = (  cxn(ij, k) * uadv(ij, k) * hyt(ij)           &
-    &                   + cxs(ij+ln, k) * uadv(ij+ln, k) * hyt(ij+ln)) &
-    &                  / 6.d0
-          fvne(ij, k) = cne(ij, k) / 6.d0 *               &
-    &                   (  uadv(ij, k) * dy(ij) * hyt(ij) &
-    &                    + vadv(ij, k) * dx * hxt(ij))
-          fvse(ij, k) = cse(ij, k) / 6.d0 *               &
-    &                   (  uadv(ij, k) * dy(ij) * hyt(ij) &
-    &                    - vadv(ij, k) * dx * hxt(ij))
-       end do
-    end do
+      do k = kstr, kstr+kz-1
+         do ij = ijvstr, ijvend+nxdim+1
+            fvy(ij, k) = (  cye(ij, k) * vadv(ij, k) * hxt(ij) &
+     &                    + cyw(ij+le, k) * vadv(ij+le, k) * hxt(ij+le)) &
+     &                   / 6.d0
+            fvx(ij, k) = (  cxn(ij, k) * uadv(ij, k) * hyt(ij) &
+     &                    + cxs(ij+ln, k) * uadv(ij+ln, k) * hyt(ij+ln)) &
+     &                   / 6.d0
+            fvne(ij, k) = cne(ij, k) / 6.d0 * &
+     &                    (  uadv(ij, k) * dy(ij) * hyt(ij) &
+     &                     + vadv(ij, k) * dx * hxt(ij))
+            fvse(ij, k) = cse(ij, k) / 6.d0 * &
+     &                    (  uadv(ij, k) * dy(ij) * hyt(ij) &
+     &                     - vadv(ij, k) * dx * hxt(ij))
+         end do
+      end do
 
-    do k = kstr+1, kstr+kz-1
-       do ij = ijvstr, ijvend
-            fvz(ij, k) = wadv(ij, k, 1) 
-           fvzu(ij, k) = wadv(ij, k, 2) &
-    &                  + wadv(ij, k, 3) &
-    &                  + wadv(ij, k, 4) &
-    &                  + wadv(ij, k, 5) &
-    &                  + wadv(ij, k, 6) &
-    &                  + wadv(ij, k, 7) & 
-    &                  + wadv(ij, k, 8) &
-    &                  + wadv(ij, k, 9) 
-           fvzd(ij, k) = wadv(ij+ln , k+1, 6) & 
-    &                  + wadv(ij+lne, k+1, 7) &
-    &                  + wadv(ij+le , k+1, 8) &  
-    &                  + wadv(ij+lse, k+1, 9) &
-    &                  + wadv(ij+ls , k+1, 2) &
-    &                  + wadv(ij+lsw, k+1, 3) &
-    &                  + wadv(ij+lw , k+1, 4) &
-    &                  + wadv(ij+lnw, k+1, 5)
-       end do
-    end do
-    do ij = ijvstr, ijvend
-        fvz(ij, kstr+kz) = wadv(ij, kstr+kz, 1) * hvbot(ij)
-        fvzd(ij, kstr) = wadv(ij+ln , kstr+1, 6) &
-    &                  + wadv(ij+lne, kstr+1, 7) &
-    &                  + wadv(ij+le , kstr+1, 8) &
-    &                  + wadv(ij+lse, kstr+1, 9) &
-    &                  + wadv(ij+ls , kstr+1, 2) &
-    &                  + wadv(ij+lsw, kstr+1, 3) &
-    &                  + wadv(ij+lw , kstr+1, 4) &
-    &                  + wadv(ij+lnw, kstr+1, 5)
-        fvzd(ij, kstr+kz-1) = (  wadv(ij+ln , kstr+kz, 6) &
-    &                          + wadv(ij+lne, kstr+kz, 7) &
-    &                          + wadv(ij+le , kstr+kz, 8) &
-    &                          + wadv(ij+lse, kstr+kz, 9) &
-    &                          + wadv(ij+ls , kstr+kz, 2) &
-    &                          + wadv(ij+lsw, kstr+kz, 3) &
-    &                          + wadv(ij+lw , kstr+kz, 4) &
-    &                          + wadv(ij+lnw, kstr+kz, 5)) * hvbot(ij)
-    end do
+      do k = kstr+1, kstr+kz-1
+         do ij = ijvstr, ijvend
+            fvz(ij, k) = wadv(ij, k, 1)
+            fvzu(ij, k) = wadv(ij, k, 2) &
+     &                  + wadv(ij, k, 3) &
+     &                  + wadv(ij, k, 4) &
+     &                  + wadv(ij, k, 5) &
+     &                  + wadv(ij, k, 6) &
+     &                  + wadv(ij, k, 7) &
+     &                  + wadv(ij, k, 8) &
+     &                  + wadv(ij, k, 9)
+            fvzd(ij, k) = wadv(ij+ln , k+1, 6) &
+     &                  + wadv(ij+lne, k+1, 7) &
+     &                  + wadv(ij+le , k+1, 8) &
+     &                  + wadv(ij+lse, k+1, 9) &
+     &                  + wadv(ij+ls , k+1, 2) &
+     &                  + wadv(ij+lsw, k+1, 3) &
+     &                  + wadv(ij+lw , k+1, 4) &
+     &                  + wadv(ij+lnw, k+1, 5) 
+         end do 
+      end do
+      do ij = ijvstr, ijvend
+         fvz(ij, kstr+kz) = wadv(ij, kstr+kz, 1) * hvbot(ij)
+         fvzd(ij, kstr) = wadv(ij+ln , kstr+1, 6) &
+     &                  + wadv(ij+lne, kstr+1, 7) &
+     &                  + wadv(ij+le , kstr+1, 8) &
+     &                  + wadv(ij+lse, kstr+1, 9) &
+     &                  + wadv(ij+ls , kstr+1, 2) &
+     &                  + wadv(ij+lsw, kstr+1, 3) &
+     &                  + wadv(ij+lw , kstr+1, 4) &
+     &                  + wadv(ij+lnw, kstr+1, 5) 
+         fvzd(ij, kstr+kz-1) = (  wadv(ij+ln , kstr+kz, 6) &
+     &                          + wadv(ij+lne, kstr+kz, 7) &
+     &                          + wadv(ij+le , kstr+kz, 8) &
+     &                          + wadv(ij+lse, kstr+kz, 9) &
+     &                          + wadv(ij+ls , kstr+kz, 2) &
+     &                          + wadv(ij+lsw, kstr+kz, 3) &
+     &                          + wadv(ij+lw , kstr+kz, 4) &
+     &                          + wadv(ij+lnw, kstr+kz, 5)) * hvbot(ij)
+      end do
 
-    do k = kstr, kstr+kz-1
-       do ij = ijvstr, ijvend
-           div(ij, k) = (  (  (fvx(ij+le, k) - fvx(ij, k)) * rx         &
-    &                       + (fvy(ij+ln, k) - fvy(ij, k)) * rym(ij)) * &
-    &                      rxu(ij) * ryu(ij)                            &
-    &                    + (  fvne(ij+lne, k) - fvne(ij, k)             &
-    &                       + fvse(ij+le, k) - fvse(ij+ln, k)) *        &
-    &                      rx * rym(ij) * rxu(ij) * ryu(ij)             &
-    &                    + (fvz(ij, k) - fvz(ij, k+1)) * rs(k)          &
-    &                    + (fvzu(ij, k) - fvzd(ij, k)) * rs(k)) *       &
-    &                   amskv(ij, k)
-       end do
-    end do
+      do k = kstr, kstr+kz-1
+         do ij = ijvstr, ijvend
+            div(ij, k) = (  (  (fvx(ij+le, k) - fvx(ij, k)) * rx &
+     &                       + (fvy(ij+ln, k) - fvy(ij, k)) * rym(ij)) * &
+     &                      rxu(ij) * ryu(ij) &
+     &                    + (  fvne(ij+lne, k) - fvne(ij, k) &
+     &                       + fvse(ij+le, k) - fvse(ij+ln, k)) * &
+     &                      rx * rym(ij) * rxu(ij) * ryu(ij) &
+     &                    + (fvz(ij, k) - fvz(ij, k+1)) * rs(k) &
+     &                    + (fvzu(ij, k) - fvzd(ij, k)) * rs(k)) * &
+     &                   amskv(ij, k)
+         end do
+      end do
 
     do ij = ijvstr, ijvend
         fuzd(ij, kstr) = - 0.5d0 *             &
@@ -327,7 +367,6 @@ contains
     &       + wadv(ij+lnw, k+1, 5) * (vy(ij+lnw, k+1) + vy(ij, k)))
        enddo
     enddo
-
 #ifdef OPT_BBL
     do ij = ijvstr, ijvend
        fuzd(ij,kend-1) = 0.d0
@@ -412,7 +451,8 @@ contains
 
     do k = kstr, kstr+kz-2
        do ij = ijvstr, ijvend
-            gx(ij, k) = (  gx(ij, k)                                   &
+!            gx(ij, k) = (  gx(ij, k)                                   &
+            xx1(ij, k) = ( &
     &                   + (  (fux(ij+le, k) - fux(ij, k)) * rx         &
     &                      + (fuy(ij+ln, k) - fuy(ij, k)) * rym(ij)) * &
     &                     rxu(ij) * ryu(ij)                            &
@@ -425,7 +465,8 @@ contains
     &                   + vy(ij, k) * vy(ij, k) * hyxu(ij)             &
     &                   - uy(ij, k) * vy(ij, k) * hxyu(ij)) *          &
     &                  amskv(ij, k)
-           gy(ij, k) = (  gy(ij, k)                                    &
+!           gy(ij, k) = (  gy(ij, k)                                    &
+           yy1(ij, k) = ( &
     &                   + (  (fvx(ij+le, k) - fvx(ij, k)) * rx         &
     &                      + (fvy(ij+ln, k) - fvy(ij, k)) * rym(ij)) * &
     &                     rxu(ij) * ryu(ij)                            &
@@ -443,7 +484,8 @@ contains
 
     k = kstr+kz-1
     do ij = ijvstr, ijvend
-           gx(ij, k) = (  gx(ij, k)                                   &
+!           gx(ij, k) = (  gx(ij, k)                                   &
+            xx1(ij, k) = ( &
     &                  + (  (fux(ij+le, k) - fux(ij, k)) * rx         &
     &                     + (fuy(ij+ln, k) - fuy(ij, k)) * rym(ij)) * &
     &                    rxu(ij) * ryu(ij)                            &
@@ -458,7 +500,8 @@ contains
     &                  + vy(ij, k) * vy(ij, k) * hyxu(ij)             &
     &                  - uy(ij, k) * vy(ij, k) * hxyu(ij)) *          &
     &                 amskv(ij, k)
-           gy(ij, k) = (  gy(ij, k)                                   &
+!           gy(ij, k) = (  gy(ij, k)                                   &
+            yy1(ij, k) = ( &
     &                  + (  (fvx(ij+le, k) - fvx(ij, k)) * rx         &
     &                     + (fvy(ij+ln, k) - fvy(ij, k)) * rym(ij)) * &
     &                    rxu(ij) * ryu(ij)                            &
@@ -477,7 +520,8 @@ contains
 
     do k = kstr+kz, kend
        do ij = ijvstr, ijvend
-            gx(ij, k) = (  gx(ij, k)                                &
+!            gx(ij, k) = (  gx(ij, k)                                &
+            xx1(ij, k) = ( &            
     &                   + (  (  (  fux(ij+le, k)                    &
     &                            - fux(ij, k)) * rx                 &
     &                         + (  fuy(ij+ln, k)                    &
@@ -491,7 +535,8 @@ contains
     &                   + vy(ij, k) * vy(ij, k) * hyxu(ij)          &
     &                   - uy(ij, k) * vy(ij, k) * hxyu(ij)) *       &
     &                  amskv(ij, k)
-           gy(ij, k) = (  gy(ij, k)                                 &
+!           gy(ij, k) = (  gy(ij, k)                                 &
+            yy1(ij, k) = ( &
     &                   + (   (  (  fvx(ij+le, k)                   &
     &                             - fvx(ij, k)) * rx                &
     &                          + (  fvy(ij+ln, k)                   &
@@ -508,8 +553,54 @@ contains
        enddo
     enddo
 
-    return
-  end subroutine advvel
+! ---- Adams-Bashforth scheme
+      ncall=ncall +1
+      if( (ncall .ge. 3) .or. (.not. oeof)) then
+        ncall=3
+        do k = kstr, kend
+        do ij = ijvstr, ijvend
+            gx(ij, k) =  gx(ij, k) &
+     & +  c1 *xx1(ij, k)  + c2* xx2(ij, k) + c3*xx3(ij, k) 
+
+            gy(ij, k) =  gy(ij, k) &
+     & +  c1 *yy1(ij, k)  + c2* yy2(ij, k) + c3*yy3(ij, k) 
+        end do
+        end do
+      else 
+         if(ncall .eq. 1) then ! forward
+            do k = kstr, kend
+            do ij = ijvstr, ijvend
+            gx(ij, k) =  gx(ij, k)  +  xx1(ij, k)
+            gy(ij, k) =  gy(ij, k)  +  yy1(ij, k)
+            end do
+            end do
+         else if(ncall .eq. 2) then !2nd order ab
+            do k = kstr, kend
+            do ij = ijvstr, ijvend
+               gx(ij, k) =  gx(ij, k) & 
+     &       +  1.5d0 *xx1(ij, k)  - 0.5d0* xx2(ij, k)
+
+               gy(ij, k) =  gy(ij, k) & 
+     &       +  1.5d0 *yy1(ij, k)  - 0.5d0* yy2(ij, k)
+            end do
+            end do
+         end if
+      end if
+
+
+      do k = kstr, kend
+      do ij = ijvstr, ijvend
+          xx3(ij, k)=xx2(ij, k) !n-1 > n-2
+          yy3(ij, k)=yy2(ij, k)
+
+          xx2(ij, k)=xx1(ij, k) !n> n-1
+          yy2(ij, k)=yy1(ij, k)
+      end do
+      end do
+
+      return
+
+   end subroutine advvel
 #ifdef OPT_BBL
 ! *********************************************************************
   subroutine advvlb(                                                  &
@@ -519,7 +610,7 @@ contains
          &             uy,     ux,     vy,     vx,                    &
          &           uadv,   vadv,   wadv)
     use zocdim,  only :                                               &
-         &  nxydim,  nxdim,  nzdim,                                   &
+         &  nxydim,  nxdim,  nydim,  nzdim,                           &
          &    kstr,   kend,     kz,                                   &
          &  ijvstr, ijvend,                                           &
          &      le,     lw,     ln,     ls,                           &
@@ -533,8 +624,17 @@ contains
          &     hxu,    hyu,   hxyu,   hyxu,                           &
          &     rxu,    ryu   
     use zocmsk,  only :  amskvb,  nbotv
-    
+
+    use brstt
+
     implicit none
+
+    real(8), parameter :: c1=23.d0/12.d0, c2=-16.d0/12.d0, c3=5.d0/12.d0
+    real(8), save ::      xx1(nxydim),     yy1(nxydim)
+    real(8), save ::      xx2(nxydim),     yy2(nxydim)
+    real(8), save ::      xx3(nxydim),     yy3(nxydim)
+    integer, save :: ncall = 0
+    logical, save :: oeof
 
     real(8),intent(in) ::      uy(nxydim, nzdim),     ux(nxydim, nzdim)
     real(8),intent(in) ::      vy(nxydim, nzdim),     vx(nxydim, nzdim)
@@ -560,26 +660,58 @@ contains
 
     logical, save :: ofirst = .true.
 
-    if (oinit .or. ofinal) then
-       return
-    end if
+      if (oinit) then
+         do ij=1,nxydim
+            xx1(ij)=0.d0
+            xx2(ij)=0.d0
+            xx3(ij)=0.d0
+            yy1(ij)=0.d0
+            yy2(ij)=0.d0
+            yy3(ij)=0.d0
+         end do
+#ifdef OPT_TRIPOLE
+      call rstadd(xx2, oeof, nxdim, nydim, 1, 'XX2', 'SFC', &
+     &                                        -1.d0,  -1,  -1)
+      call rstadd(xx3, oeof, nxdim, nydim, 1, 'XX3', 'SFC', &
+     &                                        -1.d0,  -1,  -1)
+      call rstadd(yy2, oeof, nxdim, nydim, 1, 'YY2', 'SFC', &
+     &                                        -1.d0,  -1,  -1)
+      call rstadd(yy3, oeof, nxdim, nydim, 1, 'YY3', 'SFC', &
+     &                                        -1.d0,  -1,  -1)
+#else
+      call rstadd(xx2, oeof, nxdim, nydim, 1, 'XX2', 'SFC')
+      call rstadd(xx3, oeof, nxdim, nydim, 1, 'XX3', 'SFC')
+      call rstadd(yy2, oeof, nxdim, nydim, 1, 'YY2', 'SFC')
+      call rstadd(yy3, oeof, nxdim, nydim, 1, 'YY3', 'SFC')
+#endif
+         return
+      end if
+
+      if (ofinal) then
+         call finadd(xx2, nxdim, nydim, 1, 'XX2', 'SFC')
+         call finadd(xx3, nxdim, nydim, 1, 'XX3', 'SFC')
+         call finadd(yy2, nxdim, nydim, 1, 'YY2', 'SFC')
+         call finadd(yy3, nxdim, nydim, 1, 'YY3', 'SFC')
+         return
+      end if
+
 
     if (ofirst) then
        ofirst = .false.
 
     do ij = 1, nxydim
-       rz   (ij) = 1.d0 / dzv(ij, kend)
-       rzm  (ij) = 1.d0 / dzm(ij, kend)
+         rz   (ij) = 1.d0 / dzv(ij, kend)
+         rzm  (ij) = 1.d0 / dzm(ij, kend)
     end do
 
-    do ij = 1, nxydim
-       cxn(ij) = 0.d0
-       cxs(ij) = 0.d0
-       cye(ij) = 0.d0
-       cyw(ij) = 0.d0
-       cne(ij) = 0.d0
-       cse(ij) = 0.d0
-    enddo 
+    do  ij = 1, nxydim
+         cxn(ij) = 0.d0
+         cxs(ij) = 0.d0
+         cye(ij) = 0.d0
+         cyw(ij) = 0.d0
+         cne(ij) = 0.d0
+         cse(ij) = 0.d0
+    enddo
     do ij = ijvstr-nxdim-1, ijvend+nxdim+1
         cxn(ij) = amskvb(ij) * amskvb(ij+lw) *           &
     &             (3.d0 - amskvb(ij+ls) - amskvb(ij+lsw) &
@@ -599,7 +731,6 @@ contains
     &             (3.d0 - amskvb(ij) - amskvb(ij+lsw))
     enddo
     end if
-
     do ij = ijvstr, ijvend
        kup = max(nbotv(ij)-1, 1)
        fuz(ij, kend) = &
@@ -711,9 +842,9 @@ contains
     &                     - vadv(ij, kend) * dx * hxt(ij)) *  &
     &                    (vy(ij+lw, kend) + vy(ij+ls, kend)) * 0.5d0
     end do
-
     do ij = ijvstr, ijvend
-       gx(ij, kend) = (  gx(ij, kend)                               &
+!       gx(ij, kend) = (  gx(ij, kend)                               &
+        xx1(ij) = ( &
     &                   + (  (  (  fux(ij+le, kend)                 &
     &                            - fux(ij, kend)) * rx              &
     &                         + (  fuy(ij+ln, kend)                 &
@@ -728,7 +859,8 @@ contains
     &                   + vy(ij, kend) * vy(ij, kend) * hyxu(ij)    &
     &                   - uy(ij, kend) * vy(ij, kend) * hxyu(ij)) * &
     &                  amskvb(ij)
-       gy(ij, kend) = (  gy(ij, kend)                               &
+!       gy(ij, kend) = (  gy(ij, kend)                               &
+        yy1(ij) = ( &
     &                   + (   (  (  fvx(ij+le, kend)                &
     &                             - fvx(ij, kend)) * rx             &
     &                          + (  fvy(ij+ln, kend)                &
@@ -745,7 +877,48 @@ contains
     &                  amskvb(ij)
     end do
 
-    return
+! --- Adams-Bashforth scheme
+
+      ncall=ncall +1
+
+      if( (ncall .ge. 3) .or. (.not. oeof)) then
+      ncall=3
+        do ij = ijvstr, ijvend
+            gx(ij, kend) =  gx(ij, kend) &
+     & +  c1 *xx1(ij)  + c2* xx2(ij) + c3*xx3(ij) 
+
+            gy(ij, kend) =  gy(ij, kend) &
+     & +  c1 *yy1(ij)  + c2* yy2(ij) + c3*yy3(ij) 
+        end do
+      else
+        if(ncall .eq. 1) then ! forward
+           do ij = ijvstr, ijvend
+            gx(ij, kend) =  gx(ij, kend) + xx1(ij)
+            gy(ij, kend) =  gy(ij, kend) + yy1(ij)
+           end do
+        else if(ncall .eq. 2) then !2nd order ab       
+          do ij = ijvstr, ijvend
+            gx(ij, kend) =  gx(ij, kend) & 
+     &    +  1.5d0 *xx1(ij)  -0.5d0* xx2(ij)
+
+            gy(ij, kend) =  gy(ij, kend) &
+     &    +  1.5d0 *yy1(ij)  -0.5d0* yy2(ij)
+          end do
+        end if
+      end if
+
+
+
+
+      do ij = ijvstr, ijvend
+          xx3(ij)=xx2(ij) !n-1 > n-2
+          yy3(ij)=yy2(ij)
+
+          xx2(ij)=xx1(ij) !n> n-1
+          yy2(ij)=yy1(ij)
+      end do
+
+      return
   end subroutine advvlb
 #endif
 end module cadvc
