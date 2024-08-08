@@ -395,6 +395,9 @@ contains
     &                   nxdim,  nydim,      1 )
 #endif
           call shdiff(     tx,     hx )
+          call clcstr('TUNDIF')
+          call tundif(     tx,     hx)
+          call clcend('TUNDIF')
           call ovturn(      r,     tx,    hx )
 #ifdef OPT_BBL
           call stbbtr(     tx )
