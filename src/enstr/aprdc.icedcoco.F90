@@ -2,16 +2,17 @@ module aprdc
 
 ! --- information -----------------------------------------------------
 !
-!  HISTORY
 !     '02.10.10  H.Hasumi: from MIROC3.1-OMIP
 !     '07.04.23  H.Hasumi
 !     '08.06.11  H.Hasumi: initial/final processing
 !     '08.07.10  H.Hasumi: initial/final processing
 !     '09.01.20  T.Suzuki: bug fix (SHIFT UX/VX after STBBVT)
 !     '09.10.06  Y.Komuro: bug fix (skip barotro. part when INIT/FINAL)
+!     '10.04.14  M.Kurogi: staggered time stepping
 !     '10.04.14  M.Kurogi: (COCO4.4 tripolar code by Dr. Suzuki)
 !     '12.09.04  Y.Komuro: (change surface water flux by T. Suzuki)
-!     '12.10.19  T.Suzuki: for COCO5.0 in F90
+!     '12.10.23  T.Suzuki: for COCO5.0 in F90
+!
 ! ---------------------------------------------------------------------
 
   use zocdim,  only  :   nxyzdm,   nxydim,   ntdim
@@ -69,6 +70,7 @@ contains
     use bstbc
     use brstt
     use bchmk
+    use qckot
     use bshft
 
     implicit none
@@ -81,7 +83,7 @@ contains
     real(8),    intent(inout)  ::    amv(nxyzdm),    ahv(nxyzdm)
     real(8),    intent(in)     ::   taux(nxydim),   tauy(nxydim)
     real(8),    intent(in)     ::   ptop(nxydim)
-    real(8),    intent(in)     ::     ft(nxydim, ntdim)
+    real(8),    intent(inout)  ::     ft(nxydim, ntdim)
     real(8),    intent(in)     ::  swabs(nxydim),     fs(nxydim)
     real(8),    intent(in)     ::   ssfc(nxydim)
 #ifdef OPT_BODY
@@ -99,11 +101,32 @@ contains
     real(8),    intent(inout)  ::   wadv(nxyzdm, 9)
 
 !---- local variables
+    real(8)     ::    hxb(nxydim)
+    real(8), save ::   h1(nxydim) 
     integer(4)  ::  itsplt,     ij,    ijk,      n
     logical     ::    oeof
 
+    call clcstr('OCEAN')
+    
     if (       ( myrank >= ijnode )                                   &
     &    .and. (.not. oinit) .and. (.not. ofinal)) return
+      if(oinit) then
+#ifdef OPT_TRIPOLE
+    call rstadd(h1, oeof, nxdim, nydim, 1, 'H1', 'SFC',     &
+    &                                        1.d0,  0,  0 )
+#else
+    call rstadd(h1, oeof, nxdim, nydim, 1, 'H1', 'SFC')
+#endif
+    if(oeof) then
+      do ij = 1, nxydim
+         h1(ij) = hx(ij)
+      end do
+    end if
+    end if
+
+   if (ofinal) then
+      call finadd(h1, nxdim, nydim, 1, 'H1', 'SFC')
+   end if
 
 ! *** vertical diffusivity and viscosity ***
     
@@ -139,14 +162,14 @@ contains
     call vscvel(                                                      &
     &                   gx,     gy,     xx,     yy,                   &
     &                   uy,     ux,     vy,     vx,                   &
-    &                   hx,     hy,                                   &
+    &                   h1,     hy,                                   &
     &                  amv,   taux,   tauy  )
     call advvel(                                                      &
     &                  fux,    fuy,   fune,   fuse,                   &
     &                  fvx,    fvy,   fvne,   fvse,                   &
     &                   gx,     gy,     xx,     yy,                   &
     &                   uy,     ux,     vy,     vx,                   &
-    &                   hx,     hy,                                   &
+    &                   h1,     hy,                                   &
     &                 uadv,   vadv,   wadv  )
 #ifdef OPT_BBL
     call srcvlb(                                                      &
@@ -186,7 +209,7 @@ contains
     call velrds(                                                      &
     &                   ux,     vx,                                   &
     &                   gx,     gy,    amv,                           &
-    &                   hx )
+    &                   h1 )
 #ifdef OPT_BBL
     call stbbuv(       ux,     vx  )
 #endif
@@ -221,10 +244,15 @@ contains
           call shift2(   gxx,    gyy,                                 &
     &                  nxdim,  nydim,      1,                         &
     &                  -1.D0,     -1,     -1 )
+          call shift1(ft(1,2),                                        &
+    &                   nxdim,  nydim,      1,                        &
+    &                    1.d0,      0,      0 )
 #else
           call shift2(                                                &
     &                  gxx,    gyy,                                   &
     &                nxdim,  nydim,      1)
+          call shift1(ft(1,2),                                        &
+    &                   nxdim,  nydim,      1)
 #endif
           call btavst( ubtav,  vbtav )
           do itsplt = 1, ntss
@@ -269,7 +297,13 @@ contains
     &                    nxdim,  nydim,      1)
 #endif
 
-          end do
+        if (itsplt .eq. ntss/2) then
+            do ij = 1, nxydim
+               h1(ij) = hx(ij)
+            end do
+         end if
+
+         end do
 #ifdef OPT_TRIPOLE
           call shift2( ubtav,  vbtav,                                 &
     &                  nxdim,  nydim,      1,                         &
@@ -280,6 +314,11 @@ contains
     &                 nxdim,  nydim,      1)
 #endif
        end if
+
+       do ij = 1, nxydim
+          hxb(ij) = hx(ij)
+       end do
+
     end if
     call clcend('BRTRO')
 
@@ -292,7 +331,8 @@ contains
 #endif
     call veltad(                                                      &
     &                 UADV,   VADV,                                   &
-                     UBTAV,  VBTAV,     UY,     VY)
+    &                 UBTAV,  VBTAV,     UX,     VX)
+!                     UBTAV,  VBTAV,     UY,     VY)
 #ifdef OPT_TRIPOLE
     if (.not.(oinit .or. ofinal)) then
        call shift2(   uadv,    vadv,                                  &
@@ -438,7 +478,8 @@ contains
     end if
     call veltad(                                                      &
     &               ux,     vx,                                       &
-    &             ubtx,   vbtx,   uadv,   vadv)
+    &             ubtav, vbtav,   uadv,   vadv)
+!    &             ubtx,   vbtx,   uadv,   vadv)
 #ifdef OPT_TRIPOLE
     call shift2(    ux,     vx,                                       &
     &            nxdim,  nydim,  nzdim,                               &
@@ -455,7 +496,8 @@ contains
     call wdenst(                                                      &
     &              w,                                                 &
     &             ux,     vx,                                         &
-    &             hx,     hz)
+    &            hxb,     hz)
+!    &             hx,     hz)
 #ifdef OPT_BBL
     call admskv
 #endif
@@ -513,6 +555,17 @@ contains
 #endif
     call clcend('VDIAG')
 
+      if ( (.not. oinit) .and. (.not. ofinal)) then
+         call chekin(  ubtav,  'UBTAV',                                 &
+              &      'ocean zonal transport', 'cm^2/s', &    
+              &           nx,     ny,      1, nxydim, 'OCSFCV')
+         call chekin(  vbtav,  'VBTAV',                                 &
+              & 'ocean meridional transport', 'cm^2/s', &    
+              &           nx,     ny,      1, nxydim, 'OCSFCV')
+      end if
+
+    call clcend('OCEAN')
+      
   end subroutine predco
 
 end module aprdc
