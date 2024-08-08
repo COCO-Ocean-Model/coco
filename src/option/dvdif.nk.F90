@@ -62,8 +62,8 @@ subroutine vdiff( &
   &                   uy,     vy,      r,   taux,   tauy, &
   &                   ty,     hy )
 
-  use brstt
   use xprst
+  use brstt
   use ufile
   use bshft
 
@@ -77,7 +77,7 @@ subroutine vdiff( &
   real(8), save ::     tke(nxydim, nzdim)
   real(8), save ::  ahvbak(nxydim, nzdim)
   real(8), save ::  ahv03d(nxydim, nzdim)
-  real(8), save ::  alplat(nxydim)
+  real(8), save ::  alplat(nxydim),  c0lat(nxydim)
 
   real(8) ::    drdz(nxydim, nzdim),  duvdz(nxydim, nzdim)
   real(8) ::   dzsig(nxydim, nzdim), rzmsig(nxydim, nzdim)
@@ -117,16 +117,18 @@ subroutine vdiff( &
   integer ::  ifpar,  jfpar,  istat
 
   real(8), save ::  amv0(nz) = 0.d0,  ahv0(nz) = 0.d0
-  real(8), save ::  rahv(nz) = 1.d0
-  real(8), save ::  sm0 = 0.39d0,  c0 = 0.06d0,  pr0 = 0.8d0,  sg = 1.95d0
+  real(8), save ::  rahv(nz) = 0.d0
+  real(8), save ::  sm0 = 0.39d0,  c0 = 0.06d0,  c0eq = -999.0D0
+  real(8), save ::  pr0 = 0.8d0,  sg = 1.95d0
   real(8), save ::  eps = 1.0d-5,  z0 = 1.0d2,  alph = 3.0d0,  cftke = 1.0d2
   real(8), save ::  alphc = -999.0d0,  beta = 0.0d0,  betac = -999.0d0
-  real(8), save ::  pr1 = 7.0d0,  prmax = 20.0d0
+  real(8), save ::  pr1 = 0.5d0,  prmax = 20.0d0
   real(8), save ::  ahvb = 0.1d0,  amvmax = 1000.0d0,  aflt = 1.0d0
   real(8), save ::  alsc = 999.0d0,  ritc = 1.0d0
   real(8), save ::  latal = 30.0d0,  lateq = 5.0d0,  al = 1.0d0,  aleq =0.1d0
+  real(8), save ::  latc0 = 15.0D0,  latceq = 5.0D0
   integer, save ::  mz = nz,  nitr = 1
-  logical, save ::  oallat = .false.
+  logical, save ::  oallat = .false.,  oc0lat = .false.
   logical, save ::  oswnoi = .false.
 
   namelist /nmvisv/ amv0
@@ -134,8 +136,9 @@ subroutine vdiff( &
   namelist /nmdfre/ rahv
   namelist /nmdvnk/ eps, z0, alph, alphc, beta, betac, &
     &               cftke, mz, nitr, pr0, pr1, prmax, &
-    &               sm0, c0, sg, ahvb, amvmax, aflt, &
-    &               alsc, ritc, oallat, al, aleq, latal, lateq, oswnoi
+    &               sm0, c0, c0eq, sg, ahvb, amvmax, aflt, &
+    &               alsc, ritc, oallat, al, aleq, latal, lateq, &
+    &               oc0lat, latc0, latceq, oswnoi
 
   if (oinit) then
      do k = 1, nzdim
@@ -231,6 +234,13 @@ subroutine vdiff( &
         nlatn = +latal
         do ij = ijstr-nxdim-1, ijend+nxdim+1
            cort = (cor(ij)+cor(ij+lw)+cor(ij+lsw)+cor(ij+ls)) * 0.25d0
+           if ( cort/(2.d0*omega) .gt.  1.d0 ) then
+              cort =   2.d0 * omega
+           end if
+           if ( cort/(2.d0*omega) .lt. -1.d0 ) then
+              cort = - 2.d0 * omega
+           end if
+
            lat = asin( cort/2.d0/omega ) * 180.d0 / pi
            if ( (lat >= nlatn) .or. (lat <= slats) ) then
               alplat(ij) = al
@@ -249,6 +259,41 @@ subroutine vdiff( &
           &  '   : DML is calculated following Noh et al.(2002)'
         do ij=ijstr-nxdim-1, ijend+nxdim+1
            alplat(ij) = al  !! dummy
+        enddo
+     endif
+
+!    ---- increasing TKE dissipation coefficient around EQ.
+     if (oc0lat) then
+        write(jfpar, *) &
+          &  '   : C0 around the equator is enhanced'
+        slatn = -latceq
+        slats = -latc0
+        nlats = +latceq
+        nlatn = +latc0
+        do ij = ijstr, ijend
+           cort = (cor(ij)+cor(ij+lw)+cor(ij+lsw)+cor(ij+ls)) * 0.25d0
+           if ( cort/(2.d0*omega) .gt.  1.d0 ) then
+              cort =   2.d0 * omega
+           end if
+           if ( cort/(2.d0*omega) .lt. -1.d0 ) then
+              cort = - 2.d0 * omega
+           end if
+           lat = asin( cort/2.0/omega ) * 180.d0 / pi
+           if ( lat.ge.nlatn .or. lat.le.slats ) then
+              c0lat(ij)  = c0
+           elseif ( lat.ge.slats .and. lat.lt.slatn ) then
+              c0lat(ij) = (c0*(slatn-lat) &
+                &       + c0eq*(lat-slats))/(slatn-slats)
+           elseif ( lat.gt.nlats .and. lat.le.nlatn ) then
+              c0lat(ij) = (c0*(lat-nlats) &
+                &       + c0eq*(nlatn-lat))/(nlatn-nlats)
+           else
+              c0lat(ij) = c0eq
+           endif
+        enddo
+     else
+        do ij = ijstr, ijend
+           c0lat(ij) = c0
         enddo
      endif
   end if
@@ -367,8 +412,10 @@ subroutine vdiff( &
   if (ofirst .and. oeof) then
      do k = kstr+1, kstr+mz-1
         do ij = ijstr-nxdim-1, ijend+nxdim+1
+!          ---- using definition of Kondoh et. (1978) for Pr first guess,
+!               since the method of Noh et al. (2005) requires TKE. ---
            pr(ij, k) =  min ( prmax, &
-             &                pr0 + pr1 * drdz(ij, k) &
+             &                pr0 + 7.d0 * drdz(ij, k) &
              &                    / max( duvdz(ij, k), eps ) )
            fkls = ckarm * (depth(ij, k) + z0)
            tls(ij, k) = fkls / (1.d0 + fkls / dml(ij))
@@ -392,9 +439,12 @@ subroutine vdiff( &
            tls(ij, k) = fkls / (1.d0 + fkls / dml(ij))
            rit(ij, k) = drdz(ij, k) * tls(ij, k) * tls(ij, k) &
              &        / tke(ij,k) * 0.5d0
+!          ---- Prantle number by definition of Noh et al. (2005, GRL)
            pr(ij, k) =  min ( prmax, &
-             &                pr0 + pr1 * drdz(ij, k) &
-             &                      / max( duvdz(ij, k), eps ) )
+             &                pr0 * sqrt( 1.d0 + pr1 * rit(ij, k) )  )
+!           pr(ij, k) =  min ( prmax, &
+!             &                pr0 + pr1 * drdz(ij, k) &
+!             &                      / max( duvdz(ij, k), eps ) )
         enddo
      enddo
      do k = kstr+1, kstr+mz-1
@@ -414,7 +464,7 @@ subroutine vdiff( &
 !           cdmp(ij, k) = ( 4.d0 * c0 * tke(ij, k) / tls(ij, k) / ri &
 !             &           ) * amftz(ij, k)
            cdmp(ij, k) = &
-             &         ( c0 * sqrt( 1.0d0 + alphc * ri ) &
+             &         ( c0lat(ij) * sqrt( 1.0d0 + alphc * ri ) &
              &              * 2.0d0 * q / tls(ij, k) &
              &         ) * amftz(ij, k)
            c(ij, k)    = &
@@ -456,7 +506,7 @@ subroutine vdiff( &
         end do
      end do
      do ij = ijstr-nxdim-1, ijend+nxdim+1
-        if ( oswnoi ) then
+        if (oswnoi) then
            avrtx = (  tauaox(ij)    + tauaox(ij+lw) &
                 &   + tauaox(ij+ls) + tauaox(ij+lsw)) * 0.25d0
            avrty = (  tauaoy(ij)    + tauaoy(ij+lw) &
@@ -470,7 +520,6 @@ subroutine vdiff( &
         fez(ij, kstr+1) = ((avrtx * avrtx + avrty * avrty) &
           &               / rhoo / rhoo) ** 0.75d0 * cftke
      end do
-
      do k = kstr+2, kstr+mz-1
         do ij = ijstr-nxdim-1, ijend+nxdim+1
            diffz(ij, k) = (amv(ij, k-1) + amv(ij, k)) * &
@@ -625,7 +674,7 @@ end subroutine puttao
 
 subroutine vdiffb( &
   &                   amv,    ahv )
-  
+
 ! --- information -----------------------------------------------------
 !
 !  Vertical viscosity and diffusion coefficients for the bottom
