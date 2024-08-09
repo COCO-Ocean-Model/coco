@@ -1145,7 +1145,7 @@ BTMFRC:
  &NMBBVH AMHBBL=5.D+9 &END
  &NMBBDH AHHBBL=1.D+7 &END
  &NMBBDV AMVBBL=5.D0, AHVBBL=5.D0 &END
- &NMBBRF RAYFRC=1.D0, MZ=15 &END
+ &NMBBRF RAYFRC=1.D0, MZN=15, MZS=15 &END
 
 AMHBBL:
 水平渦粘性係数 (cm^2/s)
@@ -1163,13 +1163,15 @@ RAYFRC:
 Rayleigh 摩擦の factor (無次元)
 海底境界層に対する Rayleigh 摩擦の係数はその場の Coriolis paramter の絶
 対値に RAYFRC をかけた値が適用される。
-MZ:
-Rayleigh 摩擦を適用する層
-ここで指定した層の深さまでに存在する海底境界層に対してのみ Rayleigh 摩擦
-が適用される。なお、摩擦係数の値も含め、必ずしもこのデフォルトの設定方法
-を推奨しているわけではない。実際には Rayleigh 摩擦を適用する深さの下限に
-地域依存性を考慮する方がよいかもしれないが、それを標準的に与えることがで
-きるような形でのパッケージ整備は行なわない。
+MZN, MZS:
+Rayleigh 摩擦を適用する層の下限
+北半球(MZN)および南半球(MZS)において、ここで指定した層の深さまでに存在する
+海底境界層に対してのみ Rayleigh 摩擦が適用される。default の値は
+MZN, MZS ともに NZ。
+なお、摩擦係数・下限層とも、必ずしもこのデフォルトの設定方法を推奨している
+わけではない。実際には Rayleigh 摩擦を適用する深さの下限により複雑な地域
+依存性を考慮する方がよいかもしれないが、それを標準的に与えることができるような
+パッケージは整備されていない。
 
 ● 数値計算の技術上のパラメータ
 
@@ -2375,21 +2377,6 @@ DSHTUN:
   海面高度の交換の時定数は 100 日。
 という 2 組の tunnel diffusion が独立に適用されることになる。
 もちろん、1 組のみの設定でも動作に問題はない。
-
-● BBL
-
-* csrvl.bblmzns
-
-海底境界層で Rayleigh 摩擦を適用する下限深さを南北半球別に設定する。
-標準の &NMBBRF の代わりに以下を設定する。
-
- &NMBBRF RAYFRC=1.D0, MZN=37, MZS=45 &END
-
-RAYFRC:
-Rayleigh 摩擦の factor (無次元)。標準スキームと同様。
-MZN, MZS:
-Rayleigh 摩擦を適用する層の下限。MZN は北半球に、MZS は南半球に、
-それぞれ適用される。
 
 ● 海氷
 
