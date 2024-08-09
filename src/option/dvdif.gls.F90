@@ -65,7 +65,6 @@ subroutine vdiff( &
   use bchmk
   use qckot
   use bshft
-  use qckot
 #ifdef OPT_IO_COCOMPI
   use mpiio
 #else
@@ -189,7 +188,7 @@ subroutine vdiff( &
   real(8), allocatable :: buf2(:, :),  g2d(:, :)
 #endif
   real(8), save ::  depth0(nxydim, nzdim)
-!  real(8)       ::  dzmsig(nxydim, nzdim)
+  real(8)       ::  dzmsig(nxydim, nzdim)
   real(8)       ::    gint(nxydim)
   real(8)       ::  ahvted(nxydim, nzdim),  tedr(nxydim, nzdim)
   real(8)       ::     dep ! [cm]
@@ -505,14 +504,14 @@ subroutine vdiff( &
      do ij = 1, nxydim
         dzsig (ij, k) = (hy(ij) + zbot) * ds(k)
         rzmsig(ij, k) = 1.d0 / (hy(ij) + zbot) / dsm(k)
-!        dzmsig(ij, k) = (hy(ij) + zbot) * dsm(k)
+        dzmsig(ij, k) = (hy(ij) + zbot) * dsm(k)
      end do
   end do
   do k = kstr+kz, kend
      do ij = 1, nxydim
         dzsig (ij, k) = dz(ij, k)
         rzmsig(ij, k) = 1.d0 / dzm(ij, k)
-!        dzmsig(ij, k) = dzm(ij, k)
+        dzmsig(ij, k) = dzm(ij, k)
      end do
   end do
   do k = 1, nzdim
@@ -1125,7 +1124,21 @@ subroutine vdiff( &
      end do
   end do
 
+#ifdef OPT_TRIPOLE
+  call shift2(   tke,    psi, &
+    &          nxdim,  nydim,  nzdim, &
+    &           1.d0,      0,      0 )
+#endif
 
+  
+!!--- sea-surface elevation is not considered
+!!---   for vertical structure function of energy dissipation rate
+!  if ( iamn /= 0 .or. iamf /= 0 ) then
+!     dzmsig = dzm
+!     depth = depth0
+!  end if
+!!---
+  
 !--- tidal turbulent energy dissipation rate
 ! near-field
   if ( iamn /= 0 ) then
@@ -1134,20 +1147,16 @@ subroutine vdiff( &
      end do
      do k = kstr+1, kend
         do ij = 1, nxydim
-!           dep = depth(ij, nbot(ij) + 1) ! depth of bottom
-           dep = depth0(ij, nbot(ij) + 1) ! depth of bottom
+           dep = depth(ij, nbot(ij) + 1) ! depth of bottom
            gint(ij) = gint(ij) + &
-                & dzm(ij, k) * exp((depth0(ij, k) - dep) * rzeta) * amftz(ij, k)
-!                & dzmsig(ij, k) * exp((depth(ij, k) - dep) * rzeta) * amftz(ij, k)
+                & dzmsig(ij, k) * exp((depth(ij, k) - dep) * rzeta) * amftz(ij, k)
         end do
      end do
      where(gint /= 0.d0) gint = 1.d0 / gint
      do k = kstr+1, kend
         do ij = 1, nxydim
-!           dep = depth(ij, nbot(ij) + 1) ! depth of bottom
-!           tedn3d(ij, k) = gint(ij) * tedn2d(ij) * exp((depth(ij, k) - dep) * rzeta) * amftz(ij, k)
-           dep = depth0(ij, nbot(ij) + 1) ! depth of bottom
-           tedn3d(ij, k) = gint(ij) * tedn2d(ij) * exp((depth0(ij, k) - dep) * rzeta) * amftz(ij, k)
+           dep = depth(ij, nbot(ij) + 1) ! depth of bottom
+           tedn3d(ij, k) = gint(ij) * tedn2d(ij) * exp((depth(ij, k) - dep) * rzeta) * amftz(ij, k)
         end do
      end do
   end if
@@ -1160,8 +1169,7 @@ subroutine vdiff( &
         do k = kstr+1, kend
            do ij = 1, nxydim
               gint(ij) = gint(ij) + &
-                   & dzm(ij, k) * amftz(ij, k)
-!                   & dzmsig(ij, k) * amftz(ij, k)
+                   & dzmsig(ij, k) * amftz(ij, k)
            end do
         end do
         do ij = ijstr, ijend
@@ -1179,8 +1187,7 @@ subroutine vdiff( &
            do k = kstr+1, kend
               do ij = 1, nxydim
                  gint(ij) = gint(ij) + &
-                      & dzm(ij, k) * sqrt(abs(drdz(ij, k))) * amftz(ij, k)
-!                      & dzmsig(ij, k) * sqrt(abs(drdz(ij, k))) * amftz(ij, k)
+                      & dzmsig(ij, k) * sqrt(abs(drdz(ij, k))) * amftz(ij, k)
               end do
            end do
            do ij = ijstr, ijend
@@ -1197,8 +1204,7 @@ subroutine vdiff( &
            do k = kstr+1, kend
               do ij = 1, nxydim
                  gint(ij) = gint(ij) + &
-                      & dzm(ij, k) * drdz(ij, k) * amftz(ij, k)
-!                      & dzmsig(ij, k) * drdz(ij, k) * amftz(ij, k)
+                      & dzmsig(ij, k) * drdz(ij, k) * amftz(ij, k)
               end do
            end do
            do ij = ijstr, ijend
@@ -1267,12 +1273,6 @@ subroutine vdiff( &
 !    &         nx,     ny,     nz, nxyzdm, 'OCN')      
 !  call chekin(ctkemn, 'CTKEMN', &
 !    &         nx,     ny,     nz, nxyzdm, 'OCN')
-
-#ifdef OPT_TRIPOLE
-  call shift2(   tke,    psi, &
-    &          nxdim,  nydim,  nzdim, &
-    &           1.d0,      0,      0 )
-#endif
 
   return
 
