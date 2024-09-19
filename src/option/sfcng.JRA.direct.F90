@@ -806,8 +806,8 @@ subroutine ocnslv_core ( &
   real(8) ::     ff, fi, dtx
   real(8) ::     emis
   real(8) ::     x, albx, albsw, icealb
-  real(8) ::     mpdalb, snwalb, smpalb, brialb
-  real(8) ::     fbarei, fmpnd, fsnow, fsnwmp
+  real(8) ::     mpdalb, snwalb, brialb
+  real(8) ::     fbarei, fmpnd, fsnow, fsnwmp, fsmpsn, fsmpsl
   real(8) ::     hsneff, grsref, hslash, slsalb
   real(8) ::     omega, sinij, cort
   integer ::    ij, l
@@ -929,32 +929,51 @@ subroutine ocnslv_core ( &
         fmpnd  = grfrmp(ij) * (1.0d0 - grsnr(ij))
         fsnwmp = grfrmp(ij) * grsnr(ij)
         fbarei = 1.0d0 - (fsnow + fmpnd + fsnwmp)  !! = (1-grfrmp) * (1-grsnr)
-        if (rp(ij) <= 0.15d0) then  !! all the MP water retained in snow
-           smpalb = snwalb
-        else
-           if (grsnr(ij) > 0.0d0) then
+        if (fsnwmp > 0.0d0) then
+           if (rp(ij) <= 0.15d0) then  !! all the MP water retained in snow
+              hsneff = hsnow(ij)
+              hslash = 0.0d0
+              fsmpsn = fsnwmp
+              fsmpsl = 0.0d0
+              slsalb = alcice
+            else
               hsneff = hsnow(ij) - hmp(ij) * rorros
-              grsref = max( 0.0d0, min( 1.0d0, &
-                &      ( hsneff / (tsdpt + hsneff) ) / grsnr(ij) ) )
-           else
-              grsref = 0.0d0
+              if ((hsnow(ij) > 0.0d0) .and. (hsneff > 0.0d0)) then
+                 hslash = hmp(ij) * rorros
+
+                 fsmpsn = fsnwmp
+                 fsmpsl = 0.0d0
+               else
+                 hsneff = 0.0d0
+                 hslash = hmp(ij) + rsrro * hsnow(ij)
+                 fsmpsn = 0.0d0
+                 fsmpsl = fsnwmp
+              end if
+              albx = fmpnd * min( max( &
+                &            (hslash - falmdp) / dalmdp, 0.0d0), 1.0d0)
+              slsalb = alcice * (1.0d0 - albx) + alcmpd * albx
            end if
-           hslash = hmp(ij) + rsrro * hsnow(ij)
-           albx = fmpnd * min( max( &
-           &            (hslash - falmdp) / dalmdp, 0.0d0), 1.0d0)
-           slsalb = alcice * (1.0d0 - albx) + alcmpd * albx
-           smpalb = grsref * snwalb + (1.0d0 - grsref) * slsalb
+        else
+           hsneff = hsnow(ij)
+           hslash = 0.0d0
+           fsmpsn = 0.0d0
+           fsmpsl = 0.0d0
+           slsalb = alcice
         end if
      else
         fsnow  = grsnr(ij)
         fmpnd  = min(grfrmp(ij), 1.0d0-grsnr(ij))
         fbarei = 1.0d0 - (fsnow + fmpnd)
         fsnwmp = 0.0d0
-        smpalb = 0.0d0
+        hsneff = hsnow(ij)
+        hslash = 0.0d0
+        fsmpsn = 0.0d0
+        fsmpsl = 0.0d0
+        slsalb = alcice
      end if
-     icealb = snwalb * fsnow  &
+     icealb = snwalb * (fsnow+fsmpsn)  &
        &    + mpdalb * fmpnd  &
-       &    + smpalb * fsnwmp &
+       &    + slsalb * fsmpsl &
        &    + brialb * fbarei
      albsw = (aswo2d(ij) * (1.0d0 - gricr(ij)) + icealb * gricr(ij)) &
        &     * fswalb
