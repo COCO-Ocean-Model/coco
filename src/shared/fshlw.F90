@@ -28,14 +28,12 @@ module fshlw
   real(8),     save  ::    sxy(nxydim),     syx(nxydim)
   real(8),     save  ::     gh(nxydim)
 
-  real(8),     save  ::    amh
-  data amh / 0.d0 /
-
+  real(8),     save  :: amhmod(nxydim)
   real(8),     save  ::   accb,   acc
   data accb, acc / -1.d0, 1.d0 /
 
   logical,     save  ::  ofirst
-  character(len=64)  ::  chead(1:16)
+  character(len=16)  ::  chead(1:64)
   data ofirst / .true. /
 
 contains
@@ -45,7 +43,8 @@ contains
          &      ubtx,   vbtx  )
 
     use zocdim,  only :                                               &
-         &  nxydim,  nxdim,  nzdim,                                   &
+         &     nxg,    nyg, nxgdim, nygdim,                           &
+         &  nxydim,  nxdim,  nydim,  nzdim,                           &
          &    kstr,   kend,     kz,                                   &
          &   ijstr,  ijend, ijvstr, ijvend,                           &
          &   igstr,  jgstr,                                           &
@@ -60,8 +59,18 @@ contains
          &     hxu,    hyu,   hxyu,   hyxu,                           &
          &     rxu,    ryu   
     use zocmsk,  only :  amskv,  amfvx,  amfvy
+    use zocnod,  only :  iroot,  myrank
+    use zocfil,  only :  ncf
     use ufile
+#ifdef OPT_IO_COCOMPI
+    use mpiio
+#else
+    use bgs2d
+#endif
+    use bshft
+
     implicit none
+#include "mpif.h"
     
     real(8),   intent(inout)  ::    gxx(nxydim),   gyy(nxydim)
     real(8),   intent(in)     ::   ubtx(nxydim),  vbtx(nxydim)
@@ -74,7 +83,24 @@ contains
 
     namelist /nmaccb/ accb
     namelist /nmaccv/ acc
-    namelist /nmvish/ amh
+
+    real(8),     save  ::  amh
+    integer(4)         ::  iam,    nfamh
+    logical            ::  lnovis
+    character(len=ncf) ::  cfamh
+    namelist /nmvish/  amh
+    namelist /nmcvis/  iam, cfamh
+    namelist /nmnovis/ lnovis
+    data amh, iam, cfamh / 0.d0, 0, 'not-specified' /
+    data lnovis / .false. /
+
+#ifdef OPT_IO_COCOMPI
+    integer :: mpi_fh
+    integer :: icread
+    integer (kind = mpi_offset_kind) :: disp
+#else
+    real(8), allocatable :: buf2(:, :),  g2d(:, :)
+#endif
 
     if ( oinit .or. ofinal ) then
        return
@@ -95,6 +121,13 @@ contains
        read( ifpar, nmvish, iostat = istat ) 
        call cstnml( jfpar, 'modgxy', 'nmvish', istat )
        write( jfpar, nmvish )
+       call rewnml( ifpar, jfpar )
+       read( ifpar, nmcvis, iostat = istat ) 
+       call cstnml( jfpar, 'modgxy', 'nmcvis', istat )
+       write( jfpar, nmcvis )
+       read( ifpar, nmnovis, iostat = istat ) 
+       call cstnml( jfpar, 'modgxy', 'nmnovis', istat )
+       write( jfpar, nmnovis )
        
        if ( accb <= 0.d0 ) then
           accb = acc
@@ -103,16 +136,87 @@ contains
        do ij = 1, nxydim
           gh(ij) = gravit / rdepv(ij)
        end do
+
+       if ( lnovis ) then
+!---- fshlw.novis setting
+          amhmod(1:nxydim) = 0.d0
+          write(jfpar,*) ' AMH is zero in fshlw'
+          goto 9
+       end if
+       
+       if ( iam < 0 ) then
+!---- spatially constant
+          write(jfpar,*) 'spatially constant AMH'
+          amhmod(1:nxydim) = amh
+       end if
+       if ( iam == 0 ) then
+!---- zonal resolution dependent (cvisc.clat setting)
+          write(jfpar,*) 'dx dependent AMH'
+          do ij = 1, nxydim
+             amhmod(ij) = amh * hxt(ij) / rea
+          end do
+       end if
+       if ( iam == 1 ) then
+!---- given by input file
+          write(jfpar,*) 'AMH is given by a file'          
+#ifdef OPT_IO_COCOMPI
+          call mpi_filopn(mpi_fh, cfamh, 'READ')
+          disp=0
+          call mpi_read_chead(chead, mpi_fh, disp, icread)
+          call mpi_read_2d(amhmod, mpi_fh  , disp)
+          call mpi_filcls(mpi_fh)
+#else
+          allocate ( buf2(1:nxg,1:nyg), g2d(1:nxgdim,1:nygdim) )
+          buf2(1:nxg,1:nyg) = 0.d0
+          g2d (1:nxgdim,1:nygdim) = 0.d0
+          if ( myrank == iroot ) then
+             call filopn( nfamh, cfamh, 'READ' )
+!---- for MIROC
+!               CALL IFLOPN(
+!     O                     NFAMH,    IERR,
+!     I                     CFAMH,  'READ', 'UNFORMATTED') 
+             rewind( nfamh )
+             read( nfamh ) chead
+             read( nfamh ) buf2
+             do j = 1, nyg
+                do i = 1, nxg
+                   g2d(igstr+i-1, jgstr+j-1) = buf2(i, j)
+                end do
+             end do
+             call filcls( nfamh )
+!---- for MIROC
+!               CLOSE(NFAMH)
+          end if
+          call scatter_2d( amhmod, g2d )
+          deallocate ( buf2, g2d )
+#endif
+
+#ifdef OPT_TRIPOLE
+          call shift1(amhmod,                                      &
+    &                  nxdim,  nydim,      1,                      &
+    &                   1.d0,      0,      0 )
+#else
+          call shift1(                                             &
+    &                 amhmod,                                      &
+    &                  nxdim,  nydim,      1)
+#endif
+          
+       end if
+9      continue
        
     end if
 
+!$omp parallel do privete( ij )
     do ij = 1, nxydim
        fux(ij) = 0.d0
        fuy(ij) = 0.d0
        fvx(ij) = 0.d0
        fvy(ij) = 0.d0
     end do
+!$omp end parallel do
        
+!$omp parallel do &
+!$omp private( ij, ijls, ijlw, ijln, ijle, ijnw, ijse, ijsw )
     do ij = ijstr-nxdim-1, ijend+nxdim+1
        ijls = ij + ls
        ijlw = ij + lw
@@ -121,44 +225,47 @@ contains
        ijnw = ij + lnw
        ijse = ij + lse
        ijsw = ij + lsw
-       sxx(ij) = (ubtx(ij) - ubtx(ijlw)) * amh *                      &
+       sxx(ij) = (ubtx(ij) - ubtx(ijlw)) * amhmod(ij) *               &
     &             rx / (hxu(ij) + hxu(ijlw)) * 2.d0                   &
-    &          + (vbtx(ij) + vbtx(ijlw)) * amh *                      &
+    &          + (vbtx(ij) + vbtx(ijlw)) * amhmod(ij) *               &
     &            (hxyu(ij) + hxyu(ijlw)) * 0.25d0                     &
     &          - (  vbtx(ijln) + vbtx(ijnw)                           & 
-    &             - vbtx(ijls) - vbtx(ijsw)) * amh                    &
+    &             - vbtx(ijls) - vbtx(ijsw)) * amhmod(ij)             &
     &            / (hyu(ij) + hyu(ijlw)) / (dy(ij) + dy(ijln))        &
-    &          - (ubtx(ij) + ubtx(ijlw)) * amh *                      &
+    &          - (ubtx(ij) + ubtx(ijlw)) * amhmod(ij) *               &
     &            (hyxu(ij) + hyxu(ijlw)) * 0.25d0
-       sxy(ij) = (ubtx(ij) - ubtx(ijls)) * amh *                      &
+       sxy(ij) = (ubtx(ij) - ubtx(ijls)) * amhmod(ij) *               &
     &            ry(ij) / (hyu(ij) + hyu(ijls)) * 2.d0                &
-    &          - (ubtx(ij) + ubtx(ijls)) * amh *                      &
+    &          - (ubtx(ij) + ubtx(ijls)) * amhmod(ij) *               &
     &            (hxyu(ij) + hxyu(ijls)) * 0.25d0                     &
     &          + (  vbtx(ijle) + vbtx(ijse)                           &
-    &             - vbtx(ijlw) - vbtx(ijsw)) * amh                    &
+    &             - vbtx(ijlw) - vbtx(ijsw)) * amhmod(ij)             &
     &            / (hxu(ij) + hxu(ijls)) * rx * 0.5d0                 &
-    &          - (vbtx(ij) + vbtx(ijls)) * amh *                      &
+    &          - (vbtx(ij) + vbtx(ijls)) * amhmod(ij) *               &
     &           (hyxu(ij) + hyxu(ijls)) * 0.25d0
-       syy(ij) = (vbtx(ij) - vbtx(ijls)) * amh *                      &
+       syy(ij) = (vbtx(ij) - vbtx(ijls)) * amhmod(ij) *               &
     &            ry(ij) / (hyu(ij) + hyu(ijls)) * 2.d0                &
-    &          + (ubtx(ij) + ubtx(ijls)) * amh *                      &
+    &          + (ubtx(ij) + ubtx(ijls)) * amhmod(ij) *               &
     &            (hyxu(ij) + hyxu(ijls)) * 0.25d0                     &
     &          - (  ubtx(ijle) + ubtx(ijse)                           &
-    &             - ubtx(ijlw) - ubtx(ijsw)) * amh                    &
+    &             - ubtx(ijlw) - ubtx(ijsw)) * amhmod(ij)             &
     &            / (hxu(ij) + hxu(ijls)) * rx * 0.5d0                 &
-    &          - (vbtx(ij) + vbtx(ijls)) * amh *                      & 
+    &          - (vbtx(ij) + vbtx(ijls)) * amhmod(ij) *               & 
     &            (hxyu(ij) + hxyu(ijls)) * 0.25d0
-       syx(ij) = (vbtx(ij) - vbtx(ijlw)) * amh *                      &
+       syx(ij) = (vbtx(ij) - vbtx(ijlw)) * amhmod(ij) *               &
     &            rx / (hxu(ij) + hxu(ijlw)) * 2.d0                    &
-    &          - (vbtx(ij) + vbtx(ijlw)) * amh *                      &
+    &          - (vbtx(ij) + vbtx(ijlw)) * amhmod(ij) *               &
     &            (hyxu(ij) + hyxu(ijlw)) * 0.25d0                     &
     &          + (  ubtx(ijln) + ubtx(ijnw)                           &
-    &             - ubtx(ijls) - ubtx(ijsw)) * amh                    &
+    &             - ubtx(ijls) - ubtx(ijsw)) * amhmod(ij)             &
     &            / (hyu(ij) + hyu(ijlw)) / (dy(ij) + dy(ijln))        &
-    &          - (ubtx(ij) + ubtx(ijlw)) * amh *                      &
+    &          - (ubtx(ij) + ubtx(ijlw)) * amhmod(ij) *               &
     &            (hxyu(ij) + hxyu(ijlw)) * 0.25d0
     end do
-
+!$omp end parallel do
+    
+!$omp parallel do &
+!$omp private( ij, ijlw )
     do ij = ijvstr-nxdim-1, ijvend+1
        ijlw = ij + lw
        fux(ij) = sxx(ij) * (hyu(ij) + hyu(ijlw)) *                   &
@@ -166,6 +273,9 @@ contains
        fvx(ij) = syx(ij) * (hyu(ij) + hyu(ijlw)) *                   &
     &                      (hyu(ij) + hyu(ijlw)) * 0.25d0
     end do
+!$omp end parallel do
+!$omp parallel do &
+!$omp private( ij, ijls )
     do ij = ijvstr-nxdim-1, ijvend+nxdim
        ijls = ij + ls
        fuy(ij) = sxy(ij) * (hxu(ij) + hxu(ijls)) *                   &
@@ -173,7 +283,9 @@ contains
        fvy(ij) = syy(ij) * (hxu(ij) + hxu(ijls)) *                   &
     &                      (hxu(ij) + hxu(ijls)) * 0.25d0
     end do
+!$omp end parallel do
 
+!$omp parallel do private( ij )
     do ij = ijvstr-nxdim-1, ijvend+nxdim+1
        gxx(ij) = gxx(ij)                                             &
     &          - (  (fux(ij+le) - fux(ij)) * rx * ryu(ij)            & 
@@ -184,6 +296,7 @@ contains
     &             + (fvy(ij+ln) - fvy(ij)) * rym(ij) * rxu(ij)) *    &
     &            rxu(ij) * ryu(ij) * amskv(ij, kstr)
     end do
+!$omp end parallel do
 
   end subroutine modgxy
 
@@ -193,6 +306,7 @@ contains
          &       hy,   ubty,   vbty,                                  &
          &      gxx,    gyy,   ptop,  fw  )
     use zocdim,  only :                                               &
+         &     nxg,    nyg, nxgdim, nygdim,                           &
          &  nxydim,  nxdim,  nzdim,                                   &
          &    kstr,   kend,     kz,                                   &
          &   ijstr,  ijend, ijtstr, ijtend, ijvstr, ijvend,           &
@@ -206,7 +320,9 @@ contains
          &     hxu,    hyu,   hxyu,   hyxu,                           &
          &     rxu,    ryu,    rxt,    ryt
     use zocmsk,  only :  amskt,  amskv
-
+    use zocnod,  only :  iroot,  myrank
+    use zocfil,  only :  ncf
+ 
     implicit none
  
     real(8),   intent(inout)  ::    hx(nxydim),  ubtx(nxydim),  vbtx(nxydim)
@@ -221,6 +337,7 @@ contains
     integer(4)  ::   ijnw,   ijse,   ijsw
     integer(4)  ::  ifpar,  jfpar,   istat
      
+!$omp parallel do private( ij )
     do ij = 1, nxydim
        fux(ij) = 0.d0
        fuy(ij) = 0.d0
@@ -229,16 +346,22 @@ contains
        fhx(ij) = 0.d0
        fhy(ij) = 0.d0
     end do
- 
+!$omp end parallel do
+    
+!$omp parallel do private( ij )
     do ij = ijtstr-nxdim-1, ijtend+nxdim+2
        fhx(ij) =  - (  ubty(ij+lw) * hyu(ij+lw)                       &
     &                + ubty(ij+lsw) * hyu(ij+lsw)) * 0.5d0
     end do
+!$omp end parallel do
+!$omp parallel do private( ij )
     do ij = ijtstr-nxdim-1, ijtend+nxdim+nxdim+1
        fhy(ij) = - (  vbty(ij+ls) * hxu(ij+ls)                        &
     &               + vbty(ij+lsw) * hxu(ij+lsw)) * 0.5d0
     end do
+!$omp end parallel do
  
+!$omp parallel do private( ij )
     do ij = ijtstr-nxdim-1, ijtend+nxdim+1
        hx(ij) = hx(ij)                                                &
     &         + tss * (  (fhx(ij+le) - fhx(ij)) * rx                  &
@@ -246,7 +369,10 @@ contains
     &           rxt(ij) * ryt(ij) * amskt(ij, kstr)                   &
     &         - tss * fw(ij) * amskt(ij, kstr)
     end do
+!$omp end parallel do
  
+!$omp parallel do &
+!$omp private( ij, ijls, ijlw, ijln, ijle, ijnw, ijse, ijsw )
     do ij = ijstr-nxdim-1, ijend+nxdim+1
        ijls = ij + ls
        ijlw = ij + lw
@@ -255,44 +381,46 @@ contains
        ijnw = ij + lnw
        ijse = ij + lse
        ijsw = ij + lsw
-       sxx(ij) = (ubtx(ij) - ubtx(ijlw)) * amh *                      &
+       sxx(ij) = (ubtx(ij) - ubtx(ijlw)) * amhmod(ij) *               &
     &             rx / (hxu(ij) + hxu(ijlw)) * 2.d0                   &
-    &          + (vbtx(ij) + vbtx(ijlw)) * amh *                      &
+    &          + (vbtx(ij) + vbtx(ijlw)) * amhmod(ij) *               &
     &            (hxyu(ij) + hxyu(ijlw)) * 0.25d0                     &
     &          - (  vbtx(ijln) + vbtx(ijnw)                           &
-    &             - vbtx(ijls) - vbtx(ijsw)) * amh                    &
+    &             - vbtx(ijls) - vbtx(ijsw)) * amhmod(ij)             &
     &            / (hyu(ij) + hyu(ijlw)) / (dy(ij) + dy(ijln))        &
-    &          - (ubtx(ij) + ubtx(ijlw)) * amh *                      &
+    &          - (ubtx(ij) + ubtx(ijlw)) * amhmod(ij) *               &
     &            (hyxu(ij) + hyxu(ijlw)) * 0.25d0                     
-       sxy(ij) = (ubtx(ij) - ubtx(ijls)) * amh *                      &
+       sxy(ij) = (ubtx(ij) - ubtx(ijls)) * amhmod(ij) *               &
     &            ry(ij) / (hyu(ij) + hyu(ijls)) * 2.d0                &
-    &          - (ubtx(ij) + ubtx(ijls)) * amh *                      & 
+    &          - (ubtx(ij) + ubtx(ijls)) * amhmod(ij) *               & 
     &            (hxyu(ij) + hxyu(ijls)) * 0.25d0                     &
     &          + (  vbtx(ijle) + vbtx(ijse)                           &
-    &             - vbtx(ijlw) - vbtx(ijsw)) * amh                    &
+    &             - vbtx(ijlw) - vbtx(ijsw)) * amhmod(ij)             &
     &            / (hxu(ij) + hxu(ijls)) * rx * 0.5d0                 &
-    &          - (vbtx(ij) + vbtx(ijls)) * amh *                      &
+    &          - (vbtx(ij) + vbtx(ijls)) * amhmod(ij) *               &
     &            (hyxu(ij) + hyxu(ijls)) * 0.25d0                     
-       syy(ij) = (vbtx(ij) - vbtx(ijls)) * amh *                      &
+       syy(ij) = (vbtx(ij) - vbtx(ijls)) * amhmod(ij) *               &
     &            ry(ij) / (hyu(ij) + hyu(ijls)) * 2.d0                &
-    &          + (ubtx(ij) + ubtx(ijls)) * amh *                      &
+    &          + (ubtx(ij) + ubtx(ijls)) * amhmod(ij) *               &
     &            (hyxu(ij) + hyxu(ijls)) * 0.25d0                     &
     &          - (  ubtx(ijle) + ubtx(ijse)                           &
-    &             - ubtx(ijlw) - ubtx(ijsw)) * amh                    &
+    &             - ubtx(ijlw) - ubtx(ijsw)) * amhmod(ij)             &
     &            / (hxu(ij) + hxu(ijls)) * rx * 0.5d0                 &
-    &          - (vbtx(ij) + vbtx(ijls)) * amh *                      &
+    &          - (vbtx(ij) + vbtx(ijls)) * amhmod(ij) *               &
     &            (hxyu(ij) + hxyu(ijls)) * 0.25d0                     
-       syx(ij) = (vbtx(ij) - vbtx(ijlw)) * amh *                      &
+       syx(ij) = (vbtx(ij) - vbtx(ijlw)) * amhmod(ij) *               &
     &            rx / (hxu(ij) + hxu(ijlw)) * 2.d0                    &
-    &          - (vbtx(ij) + vbtx(ijlw)) * amh *                      &
+    &          - (vbtx(ij) + vbtx(ijlw)) * amhmod(ij) *               &
     &            (hyxu(ij) + hyxu(ijlw)) * 0.25d0                     &
     &          + (  ubtx(ijln) + ubtx(ijnw)                           &
-    &             - ubtx(ijls) - ubtx(ijsw)) * amh                    &
+    &             - ubtx(ijls) - ubtx(ijsw)) * amhmod(ij)             &
     &            / (hyu(ij) + hyu(ijlw)) / (dy(ij) + dy(ijln))        &
-    &          - (ubtx(ij) + ubtx(ijlw)) * amh *                      &
+    &          - (ubtx(ij) + ubtx(ijlw)) * amhmod(ij) *               &
     &            (hxyu(ij) + hxyu(ijlw)) * 0.25d0
     end do
+!$omp end parallel do
  
+!$omp parallel do private( ij, ijlw )
     do ij = ijvstr-nxdim-1, ijvend+1
        ijlw = ij + lw
        fux(ij) = sxx(ij) * (hyu(ij) + hyu(ijlw)) *                    &
@@ -300,7 +428,9 @@ contains
        fvx(ij) = syx(ij) * (hyu(ij) + hyu(ijlw)) *                    &
     &                      (hyu(ij) + hyu(ijlw)) * 0.25d0
     end do
+!$omp end parallel do
  
+!$omp parallel do private( ij, ijls )
     do ij = ijvstr-nxdim-1, ijvend+nxdim
        ijls = ij + ls
        fuy(ij) = sxy(ij) * (hxu(ij) + hxu(ijls)) *                    & 
@@ -308,7 +438,9 @@ contains
        fvy(ij) = syy(ij) * (hxu(ij) + hxu(ijls)) *                    &
     &                      (hxu(ij) + hxu(ijls)) * 0.25d0
     end do
+!$omp end parallel do
  
+!$omp parallel do private( ij )
     do ij = ijstr-nxdim-1, ijend
        gu(ij) = gxx(ij) + cor(ij) * vbtx(ij)                         &
     &         + (  (fux(ij+le) - fux(ij)) * rx * ryu(ij)             &
@@ -331,7 +463,9 @@ contains
     &              / rdepv(ij) / rhoo                                &
     &           ) * 0.5d0 * rym(ij) * ryu(ij)
     end do
+!$omp end parallel do
  
+!$omp parallel do private( ij, cf )
     do ij = ijstr-nxdim-1, ijend
        cf = cor(ij) * tss / accb * 0.5d0
        ubtx(ij) = ubtx(ij)                                           &
@@ -341,6 +475,7 @@ contains
     &           + tss / accb / (1.d0 + cf * cf) *                    &
     &             (gv(ij) - cf * gu(ij)) * amskv(ij, kstr)
     end do
+!$omp end parallel do
 
   end subroutine shalow
 

@@ -16,7 +16,6 @@ module cvisc
 ! ---------------------------------------------------------------------
 
   use zocdim,  only :  nxydim,  nzdim
-  use ufile
 
   implicit none
 
@@ -27,10 +26,10 @@ module cvisc
   real(8),     save  ::    szx(nxydim),          szy(nxydim)
   real(8),     save  ::  hvbot(nxydim)
   logical,     save  ::  ofirst, ofirst_bbl       
-  character(len=64)  ::  chead(1:16)
+  character(len=16)  ::  chead(1:64)
   data ofirst, ofirst_bbl / .true., .true. /
-
   public  ::  vscvel
+
 #ifdef OPT_BBL
   public  ::  vscvlb
 #endif
@@ -44,7 +43,7 @@ contains
          &     amv,   taux,   tauy        )
     use zocdim,  only :                                               &
          &     nxg,    nyg, nxgdim, nygdim,                           &
-         &  nxydim,  nxdim,  nzdim,                                   &
+         &  nxydim,  nxdim,  nydim,  nzdim,                           &
          &    kstr,   kend,     kz,                                   &
          &   ijstr,  ijend, ijvstr, ijvend,                           &
          &   igstr,  jgstr,  igend,  jgend,                           &
@@ -60,8 +59,16 @@ contains
     use zocnod,  only :  iroot,  myrank
     use zocmsk,  only :  amskv,  amfvx,  amfvy
     use zocfil,  only :  ncf
-    
+    use ufile
+#ifdef OPT_IO_COCOMPI
+    use mpiio
+#else
+    use bgs2d
+#endif
+    use bshft
+ 
     implicit none
+#include "mpif.h"
 
     real(8),   intent(inout)  ::     gx(nxydim,nzdim),    gy(nxydim,nzdim)
     real(8),   intent(inout)  ::     xx(nxydim,nzdim),    yy(nxydim,nzdim)
@@ -83,8 +90,21 @@ contains
     integer(4)         ::  ifpar,  jfpar,  istat
 
     real(8),     save  ::  amh
+    real(8),     save  ::  amhmod(nxydim)
+    integer(4)         ::  iam,    nfamh
+    character(len=ncf) ::  cfamh
     namelist /nmvish/ amh
-    data amh / 0.d0 /
+    namelist /nmcvis/ iam, cfamh
+    data amh, iam, cfamh / 0.d0, -1, 'not-specified' /
+
+#ifdef OPT_IO_COCOMPI
+    integer :: mpi_fh
+    integer :: icread
+    integer (kind = mpi_offset_kind) :: disp
+#else
+    real(8), allocatable :: buf2(:, :),  g2d(:, :)
+#endif
+
 
     if ( oinit .or. ofinal ) then
        return
@@ -97,6 +117,69 @@ contains
        read( ifpar, nmvish, iostat = istat )
        call cstnml( jfpar, 'vscvel', 'nmvish', istat )
        write( jfpar, nmvish )
+       call rewnml( ifpar, jfpar )
+       read( ifpar, nmcvis, iostat = istat )
+       call cstnml( jfpar, 'vscvel', 'nmcvis', istat )
+       write( jfpar, nmcvis )
+
+       if ( iam < 0 ) then
+!---- spatially constant
+          write(jfpar,*) 'spatially constant AMH'
+          amhmod(1:nxydim) = amh
+       end if
+       if ( iam == 0 ) then
+!---- zonal resolution dependent (cvisc.clat setting)
+          write(jfpar,*) 'dx dependent AMH'
+          do ij = 1, nxydim
+             amhmod(ij) = amh * hxt(ij) / rea
+          end do
+       end if
+       if ( iam == 1 ) then
+!---- given by input file
+          write(jfpar,*) 'AMH is given by a file'          
+#ifdef OPT_IO_COCOMPI
+          call mpi_filopn(mpi_fh, cfamh, 'READ')
+          disp=0
+          call mpi_read_chead(chead, mpi_fh, disp, icread)
+          call mpi_read_2d(amhmod, mpi_fh  , disp)
+          call mpi_filcls(mpi_fh)
+#else
+          allocate ( buf2(1:nxg,1:nyg), g2d(1:nxgdim,1:nygdim) )
+          buf2(1:nxg,1:nyg) = 0.d0
+          g2d (1:nxgdim,1:nygdim) = 0.d0
+          if ( myrank == iroot ) then
+             call filopn( nfamh, cfamh, 'READ' )
+!---- for MIROC
+!               CALL IFLOPN(
+!     O                     NFAMH,    IERR,
+!     I                     CFAMH,  'READ', 'UNFORMATTED') 
+             rewind( nfamh )
+             read( nfamh ) chead
+             read( nfamh ) buf2
+             do j = 1, nyg
+                do i = 1, nxg
+                   g2d(igstr+i-1, jgstr+j-1) = buf2(i, j)
+                end do
+             end do
+             call filcls( nfamh )
+!---- for MIROC
+!               CLOSE(NFAMH)
+          end if
+          call scatter_2d( amhmod, g2d )
+          deallocate ( buf2, g2d )
+#endif
+
+#ifdef OPT_TRIPOLE
+          call shift1(amhmod,                                      &
+    &                  nxdim,  nydim,      1,                      &
+    &                   1.d0,      0,      0 )
+#else
+          call shift1(                                             &
+    &                 amhmod,                                      &
+    &                  nxdim,  nydim,      1)
+#endif
+          
+       end if
        
     end if
 
@@ -159,41 +242,41 @@ contains
           ijnw = ij + lnw
           ijse = ij + lse
           ijsw = ij + lsw
-          sxx(ij) = (ux(ij, k) - ux(ijlw, k)) * amh *                 &
+          sxx(ij) = (ux(ij, k) - ux(ijlw, k)) * amhmod(ij) *          &
     &               rx / (hxu(ij) + hxu(ijlw)) * 2.d0                 &
-    &             + (vx(ij, k) + vx(ijlw, k)) * amh *                 &
+    &             + (vx(ij, k) + vx(ijlw, k)) * amhmod(ij) *          &
     &               (hxyu(ij) + hxyu(ijlw)) * 0.25d0                  &
     &             - (  vx(ijln, k) + vx(ijnw, k)                      &
-    &                - vx(ijls, k) - vx(ijsw, k)) * amh               &
+    &                - vx(ijls, k) - vx(ijsw, k)) * amhmod(ij)        &
     &               / (hyu(ij) + hyu(ijlw)) / (dy(ij) + dy(ijln))     &
-    &             - (ux(ij, k) + ux(ijlw, k)) * amh *                 &
+    &             - (ux(ij, k) + ux(ijlw, k)) * amhmod(ij) *          &
     &               (hyxu(ij) + hyxu(ijlw)) * 0.25d0                  
-          sxy(ij) = (ux(ij, k) - ux(ijls, k)) * amh *                 &
+          sxy(ij) = (ux(ij, k) - ux(ijls, k)) * amhmod(ij) *          &
     &               ry(ij) / (hyu(ij) + hyu(ijls)) * 2.d0             &
-    &             - (ux(ij, k) + ux(ijls, k)) * amh *                 &
+    &             - (ux(ij, k) + ux(ijls, k)) * amhmod(ij) *          &
     &               (hxyu(ij) + hxyu(ijls)) * 0.25d0                  &
     &             + (  vx(ijle, k) + vx(ijse, k)                      &
-    &                - vx(ijlw, k) - vx(ijsw, k)) * amh               &
+    &                - vx(ijlw, k) - vx(ijsw, k)) * amhmod(ij)        &
     &               / (hxu(ij) + hxu(ijls)) * rx * 0.5d0              &
-    &             - (vx(ij, k) + vx(ijls, k)) * amh *                 &
+    &             - (vx(ij, k) + vx(ijls, k)) * amhmod(ij) *          &
     &               (hyxu(ij) + hyxu(ijls)) * 0.25d0                  
-          syy(ij) = (vx(ij, k) - vx(ijls, k)) * amh *                 &
+          syy(ij) = (vx(ij, k) - vx(ijls, k)) * amhmod(ij) *          &
     &               ry(ij) / (hyu(ij) + hyu(ijls)) * 2.d0             &
-    &             + (ux(ij, k) + ux(ijls, k)) * amh *                 &
+    &             + (ux(ij, k) + ux(ijls, k)) * amhmod(ij) *          &
     &               (hyxu(ij) + hyxu(ijls)) * 0.25d0                  &
     &             - (  ux(ijle, k) + ux(ijse, k)                      &
-    &                - ux(ijlw, k) - ux(ijsw, k)) * amh               &
+    &                - ux(ijlw, k) - ux(ijsw, k)) * amhmod(ij)        &
     &               / (hxu(ij) + hxu(ijls)) * rx * 0.5d0              &
-    &             - (vx(ij, k) + vx(ijls, k)) * amh *                 &
+    &             - (vx(ij, k) + vx(ijls, k)) * amhmod(ij) *          &
     &               (hxyu(ij) + hxyu(ijls)) * 0.25d0                  
-          syx(ij) = (vx(ij, k) - vx(ijlw, k)) * amh *                 &
+          syx(ij) = (vx(ij, k) - vx(ijlw, k)) * amhmod(ij) *          &
     &               rx / (hxu(ij) + hxu(ijlw)) * 2.d0                 &
-    &             - (vx(ij, k) + vx(ijlw, k)) * amh *                 &
+    &             - (vx(ij, k) + vx(ijlw, k)) * amhmod(ij) *          &
     &               (hyxu(ij) + hyxu(ijlw)) * 0.25d0                  &
     &             + (  ux(ijln, k) + ux(ijnw, k)                      &
-    &                - ux(ijls, k) - ux(ijsw, k)) * amh               &
+    &                - ux(ijls, k) - ux(ijsw, k)) * amhmod(ij)        &
     &               / (hyu(ij) + hyu(ijlw)) / (dy(ij) + dy(ijln))     &
-    &             - (ux(ij, k) + ux(ijlw, k)) * amh *                 &
+    &             - (ux(ij, k) + ux(ijlw, k)) * amhmod(ij) *          &
     &               (hxyu(ij) + hxyu(ijlw)) * 0.25d0                  
           szx(ij) = - ux(ij, k) *                                     &
     &                 (  (amv(ij, k) + amv(ij, k+1)) * 0.5d0 / rea    &
@@ -288,7 +371,7 @@ contains
          &     amv  )
     use zocdim,  only :                                               &
          &     nxg,    nyg, nxgdim, nygdim,                           &
-         &  nxydim,  nxdim,  nzdim,                                   &
+         &  nxydim,  nxdim,  nydim,  nzdim,                           &
          &    kstr,   kend,     kz,                                   &
          &   ijstr,  ijend, ijvstr, ijvend,                           &
          &   igstr,  jgstr,  igend,  jgend,                           &
@@ -305,8 +388,15 @@ contains
     use zocmsk,  only :  amskvb,  amfvx, amfvy, nbotv
     use zocfil,  only :  ncf
     use ufile
+#ifdef OPT_IO_COCOMPI
+    use mpiio
+#else
+    use bgs2d
+#endif
+    use bshft
 
     implicit none
+#include "mpif.h"
 
     real(8),   intent(inout)  ::     gx(nxydim,nzdim),    gy(nxydim,nzdim)
     real(8),   intent(inout)  ::     xx(nxydim,nzdim),    yy(nxydim,nzdim)
@@ -326,9 +416,21 @@ contains
     integer(4)         ::    kup
     integer(4)         ::  ifpar,  jfpar,  istat
 
+    real(8),     save  ::  amhmod(nxydim)
     real(8),     save  ::  amhbbl
-    namelist /nmbbvh/ amhbbl
-    data amhbbl / 0.d0 /
+    integer(4)         ::  iam,    nfamh
+    character(len=ncf) ::  cfamh
+    namelist /nmbbvh/ amhbbl, iam, cfamh
+    data amhbbl, iam, cfamh / 0.d0, 0, 'not-specified' /
+
+#ifdef OPT_IO_COCOMPI
+    integer :: mpi_fh
+    integer :: icread
+    integer (kind = mpi_offset_kind) :: disp
+#else
+    real(8), allocatable :: buf2(:, :),  g2d(:, :)
+#endif
+
 
     if ( oinit .or. ofinal ) then
        return
@@ -346,6 +448,57 @@ contains
           rz   (ij) = 1.d0 / dzv(ij, kend)
           rzm  (ij) = 1.d0 / dzm(ij, kend)
        end do
+       
+       if ( iam == 0 ) then
+
+          write(jfpar, *) ' amhbbl = ', amhbbl
+          do ij = 1, nxydim
+             amhmod(ij) = amhbbl * hxt(ij) / rea
+          end do
+          
+       else
+
+#ifdef OPT_IO_COCOMPI
+          call mpi_filopn(mpi_fh, cfamh, 'read')
+          disp=0
+          call mpi_read_chead(chead, mpi_fh, disp, icread)
+          call mpi_read_2d(amhmod, mpi_fh  , disp)
+          call mpi_filcls(mpi_fh)
+#else
+!---- reading file of viscosity coefficient (i,j)
+          allocate ( buf2(1:nxg,1:nyg) )
+          allocate ( g2d(1:nxgdim,1:nygdim) )
+          if ( myrank == iroot ) then
+             call filopn( nfamh, cfamh, 'read' )
+!---- for MIROC
+!               CALL IFLOPN(
+!     O                     NFAMH,    IERR,
+!     I                     CFAMH,  'READ', 'UNFORMATTED') 
+             rewind( nfamh )
+             read( nfamh ) chead
+             read( nfamh ) buf2
+             do j = 1, nyg
+                do i = 1, nxg
+                   g2d(igstr+i-1, jgstr+j-1) = buf2(i, j)
+                end do
+             end do
+             call filcls( nfamh )
+!---- for MIROC
+!               CLOSE(NFAMH)
+          end if
+          call scatter_2d( amhmod, g2d )
+          deallocate ( buf2, g2d )
+#endif
+#ifdef OPT_TRIPOLE
+          call shift1(amhmod,                                      &
+    &                  nxdim,  nydim,      1,                      &
+    &                   1.d0,      0,      0 )
+#else
+          call shift1(                                             &
+    &                 amhmod,                                      &
+    &                  nxdim,  nydim,      1)
+#endif
+       end if
        
     end if
 
@@ -372,41 +525,41 @@ contains
        ijnw = ij + lnw
        ijse = ij + lse
        ijsw = ij + lsw
-       sxx(ij) = (ux(ij, k) - ux(ijlw, k)) * amhbbl *                 &
+       sxx(ij) = (ux(ij, k) - ux(ijlw, k)) * amhmod(ij) *             &
     &            rx / (hxu(ij) + hxu(ijlw)) * 2.d0                    &
-    &          + (vx(ij, k) + vx(ijlw, k)) * amhbbl *                 &
+    &          + (vx(ij, k) + vx(ijlw, k)) * amhmod(ij) *             &
     &            (hxyu(ij) + hxyu(ijlw)) * 0.25d0                     &
     &          - (  vx(ijln, k) + vx(ijnw, k)                         &
-    &             - vx(ijls, k) - vx(ijsw, k)) * amhbbl               &
+    &             - vx(ijls, k) - vx(ijsw, k)) * amhmod(ij)           &
     &            / (hyu(ij) + hyu(ijlw)) / (dy(ij) + dy(ijln))        &
-    &          - (ux(ij, k) + ux(ijlw, k)) * amhbbl *                 & 
+    &          - (ux(ij, k) + ux(ijlw, k)) * amhmod(ij) *             & 
     &            (hyxu(ij) + hyxu(ijlw)) * 0.25d0
-       sxy(ij) = (ux(ij, k) - ux(ijls, k)) * amhbbl *                 &
+       sxy(ij) = (ux(ij, k) - ux(ijls, k)) * amhmod(ij) *             &
     &            ry(ij) / (hyu(ij) + hyu(ijls)) * 2.d0                &
-    &          - (ux(ij, k) + ux(ijls, k)) * amhbbl *                 &
+    &          - (ux(ij, k) + ux(ijls, k)) * amhmod(ij) *             &
     &           (hxyu(ij) + hxyu(ijls)) * 0.25d0                      &
     &          + (  vx(ijle, k) + vx(ijse, k)                         &
-    &             - vx(ijlw, k) - vx(ijsw, k)) * amhbbl               &
+    &             - vx(ijlw, k) - vx(ijsw, k)) * amhmod(ij)           &
     &            / (hxu(ij) + hxu(ijls)) * rx * 0.5d0                 &
-    &          - (vx(ij, k) + vx(ijls, k)) * amhbbl *                 & 
+    &          - (vx(ij, k) + vx(ijls, k)) * amhmod(ij) *             & 
     &            (hyxu(ij) + hyxu(ijls)) * 0.25d0
-       syy(ij) = (vx(ij, k) - vx(ijls, k)) * amhbbl *                 &
+       syy(ij) = (vx(ij, k) - vx(ijls, k)) * amhmod(ij) *             &
     &            ry(ij) / (hyu(ij) + hyu(ijls)) * 2.d0                &
-    &          + (ux(ij, k) + ux(ijls, k)) * amhbbl *                 &
+    &          + (ux(ij, k) + ux(ijls, k)) * amhmod(ij) *             &
     &            (hyxu(ij) + hyxu(ijls)) * 0.25d0                     &
     &          - (  ux(ijle, k) + ux(ijse, k)                         &
-    &             - ux(ijlw, k) - ux(ijsw, k)) * amhbbl               &
+    &             - ux(ijlw, k) - ux(ijsw, k)) * amhmod(ij)           &
     &            / (hxu(ij) + hxu(ijls)) * rx * 0.5d0                 &
-    &          - (vx(ij, k) + vx(ijls, k)) * amhbbl *                 &
+    &          - (vx(ij, k) + vx(ijls, k)) * amhmod(ij) *             &
     &            (hxyu(ij) + hxyu(ijls)) * 0.25d0                     
-       syx(ij) = (vx(ij, k) - vx(ijlw, k)) * amhbbl *                 &
+       syx(ij) = (vx(ij, k) - vx(ijlw, k)) * amhmod(ij) *             &
     &            rx / (hxu(ij) + hxu(ijlw)) * 2.d0                    &
-    &          - (vx(ij, k) + vx(ijlw, k)) * amhbbl *                 &
+    &          - (vx(ij, k) + vx(ijlw, k)) * amhmod(ij) *             &
     &            (hyxu(ij) + hyxu(ijlw)) * 0.25d0                     &
     &          + (  ux(ijln, k) + ux(ijnw, k)                         &
-    &             - ux(ijls, k) - ux(ijsw, k)) * amhbbl               &
+    &             - ux(ijls, k) - ux(ijsw, k)) * amhmod(ij)           &
     &            / (hyu(ij) + hyu(ijlw)) / (dy(ij) + dy(ijln))        &
-    &          - (ux(ij, k) + ux(ijlw, k)) * amhbbl *                 &
+    &          - (ux(ij, k) + ux(ijlw, k)) * amhmod(ij) *             &
     &            (hxyu(ij) + hxyu(ijlw)) * 0.25d0
        szx(ij) = - ux(ij, k) * amv(ij, k) / rea
        szy(ij) = - vx(ij, k) * amv(ij, k) / rea
