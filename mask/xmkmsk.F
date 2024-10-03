@@ -117,7 +117,9 @@ c ---------------------------------------------------------------------
       ALLOCATE( GLONT(NXDIM,NYDIM),        GLATT(NXDIM,NYDIM))
       ALLOCATE( RANGT(NXDIM,NYDIM))
 #endif
-
+      OPEN(JFILE, FILE='MASK', FORM='UNFORMATTED')
+      REWIND(JFILE)
+      
       CALL GETGEO(
      O               ALD,    BLD,   DGEO,   NBOT,
      O             IMERC, ITHIRD,   IBBL,
@@ -187,6 +189,7 @@ c ---------------------------------------------------------------------
       WRITE(JFILE) GLATT
       WRITE(JFILE) RANGT
 #endif
+      CLOSE(JFILE)
       CONTAINS
 
 c =====================================================================
