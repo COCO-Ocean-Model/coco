@@ -637,7 +637,7 @@ subroutine dnsgrd( &
   integer, save ::  nfltdm = 0,  nfltps = 0,  nfltrm = 0
   logical, save ::  ofltdm = .false.,  ofltps = .false.
   logical, save ::  ofltrm = .false.,  ocoamp = .true.
-  logical, save ::  omlep  = .true.
+  logical, save ::  omlep  = .false.
 
   namelist /nmslpm/ slpmax
   namelist /nmmlep/ cm, ce, mz, ofltdm, nfltdm, &
