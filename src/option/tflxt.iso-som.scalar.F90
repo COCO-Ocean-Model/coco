@@ -15,7 +15,6 @@ module tflxt
 !     '13.02.13  Y.Komuro: remove non-parallel code 
 !     '13.09.24  s.urakawa: bug fix (overshoot limiter)
 !     '15.03.25  M.Kurogi: scalar tuning
-!     '15.04.08  M.Kurogi: for MPI-IO
 !
 ! ---------------------------------------------------------------------
 
@@ -33,9 +32,8 @@ module tflxt
   use zocgrd, only: &
     &     dy,    dym,     dz,    dz0,    dzm,    dzv,     ds,    dsm, &
     &     dx,     rx,     ry,    rym, &
-    &     ts,   zbot, &
-    &    hxt,    hxu,    hyt,    hyu,    rxt,    ryt, &
-    &    cor
+    &     ts,   zbot,    cor, &
+    &    hxt,    hxu,    hyt,    hyu,    rxt,    ryt
   use zocmsk, only: &
 #ifdef OPT_BBL
     & amsktb, &
@@ -44,6 +42,9 @@ module tflxt
     &   nbot
   use zocfil, only: &
     &    ncf
+  use zocphy, only: &
+    & gravit,   rhoo
+
   use brstt
 
   implicit none
@@ -115,7 +116,7 @@ subroutine flxtrc( &
   real(8) ::  ftxis(nxydim, nzdim, ntdim)
   real(8) ::  ftyis(nxydim, nzdim, ntdim)
   real(8) ::  ftzis(nxydim, nzdim, ntdim)
-
+ 
 ! ---- spatially varying isopycnal diffusion coefficient
   real(8), save ::   ahh3d(nxydim, nzdim),  ahi3d(nxydim, nzdim)
   real(8), save ::   ahg3d(nxydim, nzdim) 
@@ -175,6 +176,12 @@ subroutine flxtrc( &
 
   logical, save :: ofirst = .true.,   oeof
 
+! for mixed layer eddy parameterization
+  real(8) :: psigmx(nxydim, nzdim), psigmy(nxydim, nzdim)
+  real(8) ::  xpsiy(nxydim, nzdim),  ypsix(nxydim, nzdim)
+  real(8) ::  zpsix(nxydim, nzdim),  zpsiy(nxydim, nzdim)
+  real(8) ::   igsy(nxydim, nzdim),   igsx(nxydim, nzdim)
+
   real(8), save ::  ahh = 0.0d0,  ahi = 0.0d0,  ahg = 0.0d0
 
   namelist /nmdifh/ ahh
@@ -200,6 +207,17 @@ subroutine flxtrc( &
 
   namelist /nmcah/ cfahi, cfahg, iah
 
+!---- latitudinally varying GM diffusivity
+  integer :: isvgm = -1
+  real(8), save ::  ahgno = 1.d7, nlats =  40.d0, nlatn =  50.d0
+  real(8), save ::  ahgso = 1.d7, slatn = -40.d0, slats = -50.d0
+  real(8) :: pi, lat
+  real(8) :: cort, omega
+
+  namelist /nmsvgm/ isvgm
+  namelist /nmdifn/ ahgno, nlats, nlatn
+  namelist /nmdifs/ ahgso, slatn, slats
+
 #ifdef OPT_BBL
   real(8), save :: ahhbbl = 0.0d0
 
@@ -207,17 +225,6 @@ subroutine flxtrc( &
 #endif
   real(8) :: ss, d1, d2
   integer :: l, ll(nxydim, nzdim)
-
-!---- latitudinally varying GM diffusivity
-  integer :: isvgm = -1
-  real(8), save ::  ahgno = 1.d7, nlats =  40.d0, nlatn =  50.d0
-  real(8), save ::  ahgso = 1.d7, slatn = -40.d0, slats = -50.d0
-  real(8) :: pi, lat
-  real(8) :: cort, omega
-  
-  namelist /nmsvgm/ isvgm
-  namelist /nmdifn/ ahgno, nlats, nlatn
-  namelist /nmdifs/ ahgso, slatn, slats
 
   if (oinit) then
      do n = 1, ntdim
@@ -392,7 +399,6 @@ subroutine flxtrc( &
         end do
 
         if ( isvgm > 0 ) then
-        
            write(jfpar, *) 'latitudinally varying GM diffusivity is used.'
            pi = atan( 1.d0 )*4.d0
            omega = 2.d0 * pi / 86400.d0
@@ -512,7 +518,9 @@ subroutine flxtrc( &
   call dnsgrd( &
      &  xdzdx,  ydzdy,  zdzdx,  zdzdy, &
      &  xdtdz,  ydtdz,  zdtdx,  zdtdy, &
-     &     ty,     tx )
+     &  xpsiy,  ypsix, &
+     &  zpsix,  zpsiy, &
+     &     ty,     tx,     hz )
 
 !$omp parallel private(k, n, ij, kuu, ku, kd, ijls, ijlw)
 !$omp do
@@ -599,12 +607,13 @@ subroutine flxtrc( &
              &                    + zdzdy(ij, k) * zdzdy(ij, k) ) ) * &
              & rzm(ij, k) * amftz(ij, k)
 
-        ftz(ij, k, n) = &
+        ftz(ij, k, n) =  &
              & (  diffz(ij, k) * (tx(ij, ku, n) - tx(ij, k, n)) &
-             &  - ( ahi3d(ij, k) + ahg3d(ij, k) ) * &
-             &    (  zdzdx(ij, k) * zdtdx(ij, k, n) &
-             &     + zdzdy(ij, k) * zdtdy(ij, k, n) ) &
-             & ) * amftz(ij, k)
+             &  - ( ( ahi3d(ij, k) + ahg3d(ij, k) ) * &
+             &     zdzdx(ij, k) - zpsiy(ij, k) ) * zdtdx(ij, k, n) &
+             &  - ( ( ahi3d(ij, k) + ahg3d(ij, k) ) * &
+             &     zdzdy(ij, k) + zpsix(ij, k) ) * zdtdy(ij, k, n) &
+             &  ) * amftz(ij, k)
         ftzd(ij, k, n) = ftz(ij, k, n)
         ftzgm(ij, k, n) =  &
              &   - ahg3d(ij, k) * &
@@ -634,12 +643,12 @@ subroutine flxtrc( &
         ijls = ij + ls
 
         fty(ij, k, n) = &
-             &   (  ( ahh3d(ij, k) + ahi3d(ij, k) ) * rym(ijls) &
-             &    / ( hyt(ij) + hyt(ijls) ) * &
-             &      ( tx(ij, k, n) - tx(ijls, k, n) ) * 2.d0 &
-             &    - ( ahi3d(ij, k) - ahg3d(ij, k) ) &
-             &    * ydzdy(ij, k) * ydtdz(ij, k, n) ) &
-             &    * ( hxu(ijls) + hxu(ij+lsw) ) * 0.5d0 * amfty(ij, k)
+             &     (  ( ahh3d(ij, k) + ahi3d(ij, k) ) * rym(ijls) &
+             &      / ( hyt(ij) + hyt(ijls) ) * &
+             &        ( tx(ij, k, n) - tx(ijls, k, n) ) * 2.d0 &
+             &      - ( ( ahi3d(ij, k) - ahg3d(ij, k) ) &
+             &        * ydzdy(ij, k) - ypsix(ij, k) ) * ydtdz(ij, k, n) ) &
+             &      * ( hxu(ijls) + hxu(ij+lsw) ) * 0.5d0 * amfty(ij, k)
         ftyd(ij, k, n) = fty(ij, k, n)
         ftyah(ij, k, n) = &
              &     (  ahh3d(ij, k) * rym(ijls) &
@@ -657,21 +666,22 @@ subroutine flxtrc( &
              &      - ahi3d(ij, k) &
              &      * ydzdy(ij, k) * ydtdz(ij, k, n) ) &
              &      * ( hxu(ijls) + hxu(ij+lsw) ) * 0.5d0 * amfty(ij, k)
+
      end do
 
 ! ---- x diffusion flux of GM
-     
+
      do ij = ijtstr, ijtend+1
 
         ijlw = ij + lw
            
         ftx(ij, k, n) = &
-             &   (  ( ahh3d(ij, k) + ahi3d(ij, k) ) * rx &
-             &    / ( hxt(ij) + hxt(ijlw) ) &
-             &    * ( tx(ij, k, n) - tx(ijlw, k, n) ) * 2.d0 &
-             &    - ( ahi3d(ij, k) - ahg3d(ij, k) ) &
-             &    * xdzdx(ij, k) * xdtdz(ij, k, n) ) &
-             &    * ( hyu(ijlw) + hyu(ij+lsw) ) * 0.5d0 * amftx(ij, k)
+             &     (  ( ahh3d(ij, k) + ahi3d(ij, k) ) * rx &
+             &      / ( hxt(ij) + hxt(ijlw) ) &
+             &      * ( tx(ij, k, n) - tx(ijlw, k, n) ) * 2.d0 &
+             &      - ( ( ahi3d(ij, k) - ahg3d(ij, k) ) &
+             &      * xdzdx(ij, k) + xpsiy(ij, k) ) * xdtdz(ij, k, n) ) &
+             &      * ( hyu(ijlw) + hyu(ij+lsw) ) * 0.5d0 * amftx(ij, k)
         ftxd(ij, k, n) = ftx(ij, k, n)
         ftxah(ij, k, n) = &
              &     (  ahh3d(ij, k) * rx &
@@ -766,10 +776,44 @@ subroutine flxtrc( &
           &   amftx(ij, kend) 
         ftxah(ij, kend, n) = ftx(ij, kend, n)
      end do
+
   end do
 !$omp end do
 
 #endif
+
+!$omp do
+  do k = kstr, kend
+     do ij=1, nxydim
+        igsx(ij, k) = ( ahi3d(ij, k) - ahg3d(ij, k) ) * xdzdx(ij, k)
+        igsy(ij, k) = ( ahi3d(ij, k) - ahg3d(ij, k) ) * ydzdy(ij, k)
+     end do
+  end do
+!$omp end do
+!  call chekin(igsx, 'IGSX', nx, ny, nz, nxyzdm, 'OCN')
+!  call chekin(igsy, 'IGSY', nx, ny, nz, nxyzdm, 'OCN')
+
+!$omp do
+  do k = 1, nzdim
+     do ij = 1, nxydim
+        psigmx(ij, k) = 0.0d0
+        psigmy(ij, k) = 0.0d0
+     end do
+  end do
+!$omp end do
+
+!$omp do
+  do k = kstr, kend
+     do ij = ijtstr, ijtend+nxdim
+        psigmx(ij, k) = ahg3d(ij, k) * ydzdy(ij, k)
+        psigmy(ij, k) = - ahg3d(ij, k) * xdzdx(ij, k)
+     end do
+  end do
+!$omp end do
+!$omp end parallel
+
+!  call chekin(psigmx, 'PSIGMX', nx, ny, nz, nxyzdm, 'OCN')
+!  call chekin(psigmy, 'PSIGMY', nx, ny, nz, nxyzdm, 'OCN')
 
 !---- SOM 
 !---- mass contained in a tracer grid
@@ -933,9 +977,9 @@ subroutine flxtrc( &
            fzz(ijlw) = alf(ij) * szz(ij+l, k, n)
            fyz(ijlw) = alf(ij) * syz(ij+l, k, n)
 
-           ftx2(ij, k, n) = - ss * f0(ijlw) * tsiv * ry(ijlw)
+           ftx2(ij, k, n) = - ss * f0(ijlw) * tsiv * ry(ijlw)          
 !           ftx (ij, k, n) = ftx(ij, k, n) + ftx2(ij, k, n) 
-           ftx (ij, k, n) = ftx(ij, k, n) - ss * f0(ijlw) * tsiv * ry(ijlw)
+           ftx (ij, k, n) = ftx(ij, k, n) - ss * f0(ijlw) * tsiv * ry(ijlw)          
         end do
 
 !---- calculating flux and moments between box (I-1,J,K) <---> (I,J,K)                  
@@ -1316,7 +1360,6 @@ subroutine flxtrc( &
 
 !$omp do
   do k = kstr, kend
-
      do ij = ijtstr, ijtend
           !if w>0 ll=-1, else l=0
            ll(ij,k)= - nint(0.5d0 +dsign(0.5d0, uv(ij,k))) 
@@ -1451,8 +1494,8 @@ subroutine flxtrc( &
               zfxy(ij-ij1+1, ku) = zalf(ij-ij1+1, k)*sxy(ij, k+l, n)
                   
               ftz2(ij, k, n) = ss * zf0(ij-ij1+1, ku) * tsiv / vlmz(ij)
-!              ftz (ij, k, n) = ftz(ij, k, n) + ftz2(ij, k, n) 
-              ftz (ij, k, n) = ftz(ij, k, n) + ss * zf0(ij-ij1+1, ku) * tsiv / vlmz(ij)
+              ftz (ij, k, n) = ftz(ij, k, n) + &
+                   & ss * zf0(ij-ij1+1, ku) * tsiv / vlmz(ij)
            end do
         end do
 !---- calculating flux between box (i,j,k-1) <---> (i,j,k)
@@ -1582,6 +1625,7 @@ subroutine flxtrc( &
              &   + (ftyis(ij+ln, k, n) - ftyis(ij, k,   n)) * ry(ij)) * &
              &      rxt(ij) * ryt(ij) &
              &    + ftzis(ij,    k, n) - ftzis(ij, k+1, n)) / dz(ij, k)
+
      end do
   end do
   end do
@@ -1784,6 +1828,7 @@ subroutine flxtrc( &
        &            'tendency of salt by advection', 'psu/sec', &
        &            nx, ny, nz, nxyzdm, 'OCLVTT')
 
+
   return
 
 end subroutine flxtrc
@@ -1793,10 +1838,14 @@ end subroutine flxtrc
 subroutine dnsgrd( &
   &  xdzdx,  ydzdy,  zdzdx,  zdzdy, &
   &  xdtdz,  ydtdz,  zdtdx,  zdtdy, &
-  &     ty,     tx )
+  &  xpsiy,  ypsix, &
+  &  zpsix,  zpsiy, &
+  &     ty,     tx,     hz )
 
-  use xprst
+  use bshft
+  use qckot
   use ufile
+  use xprst
 
   real(8), intent(out) ::  xdzdx(nxydim, nzdim),  ydzdy(nxydim, nzdim)
   real(8), intent(out) ::  zdzdx(nxydim, nzdim),  zdzdy(nxydim, nzdim)
@@ -1813,9 +1862,37 @@ subroutine dnsgrd( &
   real(8), save :: d5(nzdim), d6(nzdim), d7(nzdim), d8(nzdim), d9(nzdim)
   real(8), save :: eps = 1.d-20
   logical, save :: ofirst = .true.
+  logical, save :: ofirst2 = .true.
+
+  real(8), save ::  cxpsy(nxydim), cypsx(nxydim) 
+  real(8), save ::  czpsx(nxydim), czpsy(nxydim) 
+  integer, save ::  kzmin
+
+  real(8) ::      r(nxydim, nzdim)
+  real(8) ::   hmld(nxydim), hmld1(nxydim)
+  real(8) :: rmavez(nxydim), rmav1(nxydim)
+  real(8) ::  dzsig(nxydim, nzdim), dzmsig(nxydim, nzdim)
+  real(8) ::     zt(nxydim, nzdim),    ztm(nxydim, nzdim)
+  real(8) :: rsigth(nxydim, nzdim)
+  real(8) ::    nbv(nxydim),            lf(nxydim)
+  real(8) :: xpsiy1(nxydim, nzdim), ypsix1(nxydim, nzdim)
+  real(8) :: zpsix1(nxydim, nzdim), zpsiy1(nxydim, nzdim)
+  real(8) ::  zmld0(nxydim),         zhmld(nxydim, nzdim)
+  real(8) ::  hmldx(nxydim),         hmldy(nxydim)
+  real(8) :: xpsiyz(nxydim, nzdim), ypsixz(nxydim, nzdim)
+  integer ::   kmld(nxydim)
+
+  real(8) :: rmavdx(nxydim), rmavdy(nxydim)
+  real(8) ::   muzx(nxydim, nzdim),   muzy(nxydim, nzdim)
+
+  real(8), save :: r2taum
+
+  real(8) ::  xpsiy(nxydim, nzdim),  ypsix(nxydim, nzdim)
+  real(8) ::  zpsix(nxydim, nzdim),  zpsiy(nxydim, nzdim)
+  real(8) ::     hz(nxydim)
 
   real(8) ::   dtdx(nxydim, nzdim, ntdim),   dtdy(nxydim, nzdim, ntdim)
-  real(8) ::   dtdz(nxydim, nzdim, ntdim)
+  real(8) ::  dtfdz(nxydim, nzdim, ntdim)
   real(8) ::     p1,     p2
   real(8) ::     tl,     sl
   real(8) ::     rl,    rlw,    rls,    rlu
@@ -1823,13 +1900,24 @@ subroutine dnsgrd( &
   integer ::     ij,      k,      n
   integer ::  ifpar,  jfpar,  istat
 
-  real(8), save ::   slpz(nzdim)
-  real(8) ::   dzm0(nzdim)
+  real(8) ::   muzh,  in2dz, n2min, n2l, hmldt
+  real(8) :: rsigdf, rsigbt,  dhmld, cpsi
+  real(8) ::     pi,  omega
 
   real(8), save :: slpmax = 1.d-2
-  integer :: kslp = -999
+  real(8), save ::  cm = 8.0d0,  ce = 0.06d0
+  real(8), save ::  lfmin = 1.0d5,  taumle = 10.0d0,  vscl = 50.0d0
+  real(8), save ::  drsig = 0.1d0
+  integer, save ::  mz = nz,  mzmin = 1,  kref = 1
+  integer, save ::  nfltdm = 0,  nfltps = 0,  nfltrm = 0
+  logical, save ::  ofltdm = .false.,  ofltps = .false.
+  logical, save ::  ofltrm = .false.,  ocoamp = .true.
+  logical, save ::  omlep  = .false.
 
-  namelist /nmslpm/ slpmax, kslp
+  namelist /nmslpm/ slpmax
+  namelist /nmmlep/ cm, ce, mz, ofltdm, nfltdm, &
+    &               lfmin, taumle, vscl, ofltps, nfltps, mzmin, &
+    &               drsig, ocoamp, ofltrm, nfltrm, kref, omlep
 
   if (ofirst) then
      ofirst = .false.
@@ -1837,68 +1925,53 @@ subroutine dnsgrd( &
      read(ifpar, nmslpm, iostat=istat)
      call cstnml(jfpar, 'dnsgrd', 'nmslpm', istat)
      write(jfpar, nmslpm)
+     call rewnml(ifpar, jfpar)
+     read(ifpar, nmmlep, iostat=istat)
+     call cstnml(jfpar, 'dnsgrd', 'nmmlep', istat)
+     write(jfpar, nmmlep)
 
      call secoef( &
         &   c0(kstr), c1(kstr), c2(kstr), c3(kstr), &
         &   c4(kstr), c5(kstr), c6(kstr), &
         &   d0(kstr), d1(kstr), d2(kstr), d3(kstr),  d4(kstr), &
         &   d5(kstr), d6(kstr), d7(kstr), d8(kstr),  d9(kstr))
-
-     if ( kslp < 0 ) then
-
-        do k = 1, nzdim
-           slpz(k) = slpmax
-        end do
-
-     else
-
-!       ---- vertically varying slpmax (like OPA)
-        do k = 1, kstr-1
-           dzm0(k) = 0.5d0 * dz0(k)
-        end do
-        do k = kstr, nzdim
-           dzm0(k) = 0.5d0 * (dz0(k-1) + dz0(k))
-        end do
-
-        p1 = 0.d0
-        do k = kstr, kstr+kslp-1
-           p1 = p1 + dzm0(k)
-        end do
-
-        p2 = 0.d0
-        do k = kstr, kstr+kslp-1
-           p2 = p2 + dzm0(k)
-!           slpz(k) = slpmax * exp( - 10.d0 * ( p1 - p2 ) / p1 )
-           slpz(k) = ( slpmax - 0.d0 ) / ( p1 - 0.d0 ) * p2
-        end do
-
-        do k = 1, kstr-1
-           slpz(k) = slpz(kstr)
-        end do
-
-        do k = kstr+kslp, nzdim
-           slpz(k) = slpz(kstr+kslp-1)
-        end do
-
-        write(jfpar, *) 'depth dependent Maximum slope:'
-        do k = 1, nzdim
-           write(jfpar, '(i6,f10.3)') k, slpz(k)
-        end do
-
-     end if
-
   end if
 
 !$omp parallel private(n, k, ij, &
 !$omp tl, sl, p1, p2, rl, rlw, rls, rlu, dzdx, dzdy)
 !$omp do
+  do k = 1, nzdim
   do n = 1, ntdim
-     do k = 1, nzdim
-        do ij = 1, nxydim
-           dtdx(ij, k, n) = 0.d0
-           dtdy(ij, k, n) = 0.d0
-           dtdz(ij, k, n) = 0.d0
-        end do
+     do ij = 1, nxydim
+        dtdx(ij, k, n) = 0.d0
+        dtdy(ij, k, n) = 0.d0
+        dtfdz(ij, k, n) = 0.d0
+     end do
+  end do
+  end do
+
+!$omp do
+  do k = kstr, kend
+     do ij = 1, nxydim
+        tl = ty(ij, k, 1)
+        sl = ty(ij, k, 2)
+        p1 = c0(k) &
+          &  + (c1(k) + (c2(k) + c3(k) * tl) * tl) * tl &
+          &  + (c4(k) + c5(k) * tl + c6(k) * sl) * sl
+        p2 = d0(k) &
+          &  + (d1(k) + (d2(k) + (d3(k) + d4(k) * tl) * tl) * tl) * tl &
+          &  + (d5(k) + (d6(k) + d7(k) * tl * tl) * tl &
+          &           + (d8(k) + d9(k) * tl * tl) * sqrt(sl)) * sl
+        r(ij, k) = p1 / p2
+        p1 = c0(kstr) &
+          &  + (c1(kstr) + (c2(kstr) + c3(kstr) * tl) * tl) * tl &
+          &  + (c4(kstr) + c5(kstr) * tl + c6(kstr) * sl) * sl
+        p2 = d0(kstr) &
+          &  + (d1(kstr) + (d2(kstr) + &
+          &                (d3(kstr) + d4(kstr) * tl) * tl) * tl) * tl &
+          &  + (d5(kstr) + (d6(kstr) + d7(kstr) * tl * tl) * tl &
+          &         + (d8(kstr) + d9(kstr) * tl * tl) * sqrt(sl)) * sl
+        rsigth(ij, k) = p1 / p2
      end do
   end do
 
@@ -1908,42 +1981,42 @@ subroutine dnsgrd( &
         tl = ty(ij, k, 1)
         sl = ty(ij, k, 2)
         p1 = c0(k) &
-           &   + (c1(k) + (c2(k) + c3(k) * tl) * tl) * tl &
-           &   + (c4(k) + c5(k) * tl + c6(k) * sl) * sl 
+          &  + (c1(k) + (c2(k) + c3(k) * tl) * tl) * tl &
+          &  + (c4(k) + c5(k) * tl + c6(k) * sl) * sl 
         p2 = d0(k) &
-           &   + (d1(k) + (d2(k) + (d3(k) + d4(k) * tl) * tl) * tl) * tl &
-           &   + (d5(k) + (d6(k) + d7(k) * tl * tl) * tl &
-           &            + (d8(k) + d9(k) * tl * tl) * sqrt(sl)) * sl 
+          &  + (d1(k) + (d2(k) + (d3(k) + d4(k) * tl) * tl) * tl) * tl &
+          &  + (d5(k) + (d6(k) + d7(k) * tl * tl) * tl &
+          &           + (d8(k) + d9(k) * tl * tl) * sqrt(sl)) * sl 
         rl = p1 / p2
 
         tl = ty(ij+lw, k, 1)
         sl = ty(ij+lw, k, 2)
         p1 = c0(k) &
-           &   + (c1(k) + (c2(k) + c3(k) * tl) * tl) * tl &
-           &   + (c4(k) + c5(k) * tl + c6(k) * sl) * sl
+          &  + (c1(k) + (c2(k) + c3(k) * tl) * tl) * tl &
+          &  + (c4(k) + c5(k) * tl + c6(k) * sl) * sl
         p2 = d0(k) &
-           &   + (d1(k) + (d2(k) + (d3(k) + d4(k) * tl) * tl) * tl) * tl &
-           &   + (d5(k) + (d6(k) + d7(k) * tl * tl) * tl &
-           &            + (d8(k) + d9(k) * tl * tl) * sqrt(sl)) * sl
+          &  + (d1(k) + (d2(k) + (d3(k) + d4(k) * tl) * tl) * tl) * tl &
+          &  + (d5(k) + (d6(k) + d7(k) * tl * tl) * tl &
+          &           + (d8(k) + d9(k) * tl * tl) * sqrt(sl)) * sl
         rlw = p1 / p2
 
         tl = ty(ij+ls, k, 1)
         sl = ty(ij+ls, k, 2)
         p1 = c0(k) &
-           &   + (c1(k) + (c2(k) + c3(k) * tl) * tl) * tl &
-           &   + (c4(k) + c5(k) * tl + c6(k) * sl) * sl
+          &  + (c1(k) + (c2(k) + c3(k) * tl) * tl) * tl &
+          &  + (c4(k) + c5(k) * tl + c6(k) * sl) * sl
         p2 = d0(k) &
-           &   + (d1(k) + (d2(k) + (d3(k) + d4(k) * tl) * tl) * tl) * tl &
-           &   + (d5(k) + (d6(k) + d7(k) * tl * tl) * tl &
-           &            + (d8(k) + d9(k) * tl * tl) * sqrt(sl)) * sl
+          &  + (d1(k) + (d2(k) + (d3(k) + d4(k) * tl) * tl) * tl) * tl &
+          &  + (d5(k) + (d6(k) + d7(k) * tl * tl) * tl &
+          &           + (d8(k) + d9(k) * tl * tl) * sqrt(sl)) * sl
         rls = p1 / p2
 
         dtdx(ij, k, 1) = (rl - rlw) * rx * 2.d0 &
-           &             / (hxt(ij) + hxt(ij+lw)) * &
-           &             amskt(ij, k) * amskt(ij+lw, k)
+          &              / (hxt(ij) + hxt(ij+lw)) * &
+          &              amskt(ij, k) * amskt(ij+lw, k)
         dtdy(ij, k, 1) = (rl - rls) * rym(ij+ls) * 2.d0 &
-           &             / (hyt(ij) + hyt(ij+ls)) * &
-           &             amskt(ij, k) * amskt(ij+ls, k)
+          &              / (hyt(ij) + hyt(ij+ls)) * &
+          &              amskt(ij, k) * amskt(ij+ls, k)
      end do
   end do
 !$omp end do nowait
@@ -1973,8 +2046,8 @@ subroutine dnsgrd( &
            &            + (d8(k) + d9(k) * tl * tl) * sqrt(sl)) * sl
         rlu = p1 / p2
 
-        dtdz(ij, k, 1) = min((rlu - rl) / dzm(ij, k), 0.d0) * &
-           &             amftz(ij, k)
+        dtfdz(ij, k, 1) = min((rlu - rl) / dzm(ij, k), 0.d0) * &
+           &              amftz(ij, k)
      end do
   end do
 
@@ -1982,14 +2055,14 @@ subroutine dnsgrd( &
   do k = kstr, kend
      do ij = ijtstr, ijtend+nxdim
         dzdx = dtdx(ij, k, 1) * 4.d0 &
-           &   / (  dtdz(ij, k  , 1) + dtdz(ij+lw, k ,  1) &
-           &      + dtdz(ij, k+1, 1) + dtdz(ij+lw, k+1, 1) - eps)
-        xdzdx(ij, k) = min(slpz(k), max(-slpz(k), dzdx))
+           &   / (  dtfdz(ij, k  , 1) + dtfdz(ij+lw, k ,  1) &
+           &      + dtfdz(ij, k+1, 1) + dtfdz(ij+lw, k+1, 1) - eps)
+        xdzdx(ij, k) = min(slpmax, max(-slpmax, dzdx))
         dzdy = dtdy(ij, k, 1) * 4.d0 * dym(ij+ls) &
-           &   / (  (dtdz(ij, k, 1) + dtdz(ij, k+1, 1)) * dy(ij) &
-           &   + (dtdz(ij+ls, k, 1) + dtdz(ij+ls, k+1, 1)) * dy(ij+ls) &
+           &   / (  (dtfdz(ij, k, 1) + dtfdz(ij, k+1, 1)) * dy(ij) &
+           &   + (dtfdz(ij+ls, k, 1) + dtfdz(ij+ls, k+1, 1)) * dy(ij+ls) &
            &      - eps)
-        ydzdy(ij, k) = min(slpz(k), max(-slpz(k), dzdy))
+        ydzdy(ij, k) = min(slpmax, max(-slpmax, dzdy))
      end do
   end do
 
@@ -1998,27 +2071,27 @@ subroutine dnsgrd( &
      do ij = ijtstr, ijtend
         dzdx = ((dtdx(ij, k-1, 1)+dtdx(ij+le, k-1, 1))*dz(ij, k-1) &
            &  + (dtdx(ij, k  , 1)+dtdx(ij+le, k  , 1))*dz(ij, k)) * &
-           &   0.25d0 / dzm(ij, k) / (dtdz(ij, k, 1) - eps)
-        zdzdx(ij, k) = min(slpz(k), max(-slpz(k), dzdx)) * &
+           &   0.25d0 / dzm(ij, k) / (dtfdz(ij, k, 1) - eps)
+        zdzdx(ij, k) = min(slpmax, max(-slpmax, dzdx)) * &
            &           amftz(ij, k)
         dzdy = &
            &   (  (dtdy(ij, k-1, 1)+dtdy(ij+ln, k-1, 1))*dz(ij, k-1) &
            &    + (dtdy(ij, k  , 1)+dtdy(ij+ln, k  , 1))*dz(ij, k)) * &
-           &     0.25d0 / dzm(ij, k) / (dtdz(ij, k, 1) - eps)
-        zdzdy(ij, k) = min(slpz(k), max(-slpz(k), dzdy)) * &
+           &     0.25d0 / dzm(ij, k) / (dtfdz(ij, k, 1) - eps)
+        zdzdy(ij, k) = min(slpmax, max(-slpmax, dzdy)) * &
            &           amftz(ij, k)
      end do
   end do
 
 !$omp do
+  do k = 1, nzdim
   do n = 1, ntdim
-     do k = 1, nzdim
-        do ij = 1, nxydim
-           dtdx(ij, k, n) = 0.d0
-           dtdy(ij, k, n) = 0.d0
-           dtdz(ij, k, n) = 0.d0
-        end do
+     do ij = 1, nxydim
+        dtdx(ij, k, n) = 0.d0
+        dtdy(ij, k, n) = 0.d0
+        dtfdz(ij, k, n) = 0.d0
      end do
+  end do
   end do
 
 !$omp do
@@ -2041,8 +2114,8 @@ subroutine dnsgrd( &
   do n = 1, ntdim
      do k = kstr+1, kend
         do ij = ijtstr-nxdim, ijtend+nxdim
-           dtdz(ij, k, n) = (tx(ij, k-1, n) - tx(ij, k, n)) &
-              &             / dzm(ij, k) * amftz(ij, k)
+           dtfdz(ij, k, n) = (tx(ij, k-1, n) - tx(ij, k, n)) &
+              &              / dzm(ij, k) * amftz(ij, k)
         end do
      end do
   end do
@@ -2052,12 +2125,12 @@ subroutine dnsgrd( &
      do k = kstr, kend
         do ij = ijtstr, ijtend+nxdim
            xdtdz(ij, k, n) = &
-              &   (  dtdz(ij, k, n)   + dtdz(ij+lw, k, n) &
-              &    + dtdz(ij, k+1, n) + dtdz(ij+lw, k+1, n)) *  0.25d0
+              &   (  dtfdz(ij, k, n)   + dtfdz(ij+lw, k, n) &
+              &    + dtfdz(ij, k+1, n) + dtfdz(ij+lw, k+1, n)) *  0.25d0
            ydtdz(ij, k, n) = &
-              &   (  (dtdz(ij, k, n)    + dtdz(ij, k+1, n)) * &
+              &   (  (dtfdz(ij, k, n)    + dtfdz(ij, k+1, n)) * &
               &      dy(ij) &
-              &    + (dtdz(ij+ls, k, n) + dtdz(ij+ls, k+1, n)) * &
+              &    + (dtfdz(ij+ls, k, n) + dtfdz(ij+ls, k+1, n)) * &
               &      dy(ij+ls)) * &
               &   rym(ij+ls) * 0.25d0
         end do
@@ -2086,10 +2159,462 @@ subroutine dnsgrd( &
   end do
 !$omp end parallel
 
+!$omp workshare
+  xpsiy(:,:) = 0.d0
+  ypsix(:,:) = 0.d0
+  zpsix(:,:) = 0.d0
+  zpsiy(:,:) = 0.d0
+!$omp end workshare
+  if (.not. omlep) return
+
+  if (ofirst2) then
+     ofirst2 = .false.
+!    === Mixed layer eddy parameterization
+!        from Fox-Kemper and Ferrari(2008) ===
+!    *** Coarse-resolution modification is applied.
+!        The last row in CXPSY/CYPSX corresponds to ds,
+!        and is cancelled out by the row just before it. *** 
+     pi = atan( 1.d0 )*4.d0
+     omega = 2.d0 * pi / 86400.d0
+     r2taum = 1.0d0 / (8.64d4 * taumle)**2.0d0
+     kzmin = mzmin + kstr - 1
+
+     do ij = nxdim+2, nxydim
+        cxpsy(ij) = ce &
+          &       / sqrt( (0.5d0*(cor(ij+lsw)+cor(ij+lw)))**2.0d0 &
+          &               + r2taum )
+        cypsx(ij) = ce &
+          &       / sqrt( (0.5d0*(cor(ij+lsw)+cor(ij+ls)))**2.0d0 &
+          &               + r2taum )
+        czpsy(ij) = ce &
+          &       / sqrt( ( 0.25d0* &
+          &                 ( cor(ij    ) + cor(ij+lw ) &
+          &                 + cor(ij+ls ) + cor(ij+lsw)))**2.0d0 &
+          &               + r2taum )
+        czpsx(ij) = ce &
+          &       / sqrt( ( 0.25d0* &
+          &                 ( cor(ij    ) + cor(ij+lw ) &
+          &                 + cor(ij+ls ) + cor(ij+lsw)))**2.0d0 &
+          &               + r2taum )
+        if (ocoamp) then
+           cxpsy(ij) = cxpsy(ij) &
+          &          * dx * 0.5d0 * (hxt(ij) + hxt(ij+lw))
+           cypsx(ij) = cypsx(ij) &
+          &          * dym(ij+ls) * 0.5d0 * (hyt(ij) + hyt(ij+ls))        
+           czpsy(ij) = czpsy(ij) * dx * hxt(ij)
+           czpsx(ij) = czpsx(ij) * dy(ij) * hyt(ij)        
+        end if
+     end do
+  end if
+  
+! === Mixed layer eddy parameterization
+!     from Fox-Kemper and Ferrari(2008) ===
+
+  do k = kstr, kstr+kz-1
+     do ij = 1, nxydim
+        dzsig (ij, k) = zbot * ds(k)
+        dzmsig(ij, k) = zbot * dsm(k)
+     end do
+  end do
+  do k = kstr+kz, kend
+     do ij = 1, nxydim
+        dzsig (ij, k) = dz(ij, k)
+        dzmsig(ij, k) = dzm(ij, k)
+     end do
+  end do
+  do k = kend+1, nzdim
+     do ij = 1, nxydim
+        dzsig (ij, k) = dzsig(ij, kend)
+        dzmsig(ij, k) = dzmsig(ij, kend)
+     end do
+  end do
+  
+  do ij = 1, nxydim
+     zt(ij, kstr) = 0.d0
+     ztm(ij, kstr) = 0.5d0 * dzsig(ij, kstr)
+  end do
+  do k = kstr, kend
+     do ij = 1, nxydim
+        zt(ij, k+1) = zt(ij, k) + dzsig(ij, k)
+        ztm(ij, k+1) = ztm(ij, k) + dzmsig(ij, k+1)
+     end do
+  end do
+
+  do k = kstr, kend
+     do ij = 1, nxydim
+        zhmld(ij, k) = 0.0d0
+     end do
+  end do
+  
+  do ij = 1, nxydim
+     rmavdx(ij) = 0.0d0
+     rmavdy(ij) = 0.0d0
+     hmldx(ij) = 0.0d0
+     hmldy(ij) = 0.0d0
+  end do
+
+! calculating mixed layer depth hmld and mld-averaged buoyancy rmavez
+
+!  determine HMLD by N^2
+!  do ij = 1, nxydim
+!     in2dz = (-1.0d-3) * gravit / rhoo &
+!       &   * dtfdz(ij, kstr+1, 1) * ztm(ij, kstr+1)
+!     n2min = (-1.0d-3) * gravit / rhoo &
+!       &   * dtfdz(ij, kstr+1, 1)
+!     hmld(ij) = ztm(ij, kstr+1)
+!     rmavez(ij) = r(ij, kstr) * dzsig(ij, kstr) &
+!       &        + 0.5d0 * r(ij, kstr+1) * dzsig(ij, kstr+1)
+!     do k = kstr+2, min(nbot(ij), mz)
+!        n2l = (-1.0d-3) * gravit / rhoo * dtfdz(ij, k, 1)
+!        in2dz = in2dz + n2l * dzmsig(ij, k)
+!        n2min = min(n2min, n2l)
+!        if (      ( (n2l - n2min) * ztm(ij, k) ) &
+!          &  .ge. (cm * in2dz) ) then
+!           exit
+!        end if
+!        hmld(ij) = ztm(ij, k)
+!        rmavez(ij) = rmavez(ij) + 0.5d0 *  &
+!          &        (  r(ij, k-1) * dzsig(ij, k-1) &
+!          &         + r(ij, k) * dzsig(ij, k) )
+!     end do
+!     rmavez(ij) = rmavez(ij) / hmld(ij)
+!  end do
+
+! determine HMLD by sigma_theta
+  do ij = 1, nxydim
+     rmavez(ij) = rsigth(ij, kstr) * 0.5d0 * dzsig(ij, kstr)
+  end do
+  do k = kstr+1, kref+kstr-1
+     do ij = 1, nxydim
+        rmavez(ij) = rmavez(ij) + 0.5d0 * &
+        &             ( rsigth(ij, k-1) * dzsig(ij, k-1) &
+        &             + rsigth(ij, k  ) * dzsig(ij, k  ) )
+     end do
+  end do
+
+  do ij = 1, nxydim
+     hmld(ij) = ztm(ij, kref+kstr-1)
+     zhmld(ij, kstr) = ztm(ij, kref+kstr-1)
+     kmld(ij) = kref+kstr-1
+     rsigbt = rsigth(ij, kref+kstr-1) + drsig
+     rsigdf = 0.d0
+     do k = kstr+kref, min(nbot(ij), mz+kstr-1)
+        if ( rsigth(ij, k) .ge. rsigbt ) then
+           dhmld = dzmsig(ij, k) * (rsigbt - rsigth(ij, k-1)) &
+             &   / (rsigth(ij, k) - rsigth(ij, k-1))
+           hmld(ij) = hmld(ij) + dhmld
+           if (dhmld .le. 0.5d0*dzsig(ij, k-1)) then
+              zhmld(ij, k-1) = zhmld(ij, k-1) + dhmld
+           else
+              zhmld(ij, k-1) = dzsig(ij, k-1)
+              zhmld(ij, k) = dhmld - 0.5d0 * dzsig(ij, k-1)
+           end if
+           rmavez(ij) = rmavez(ij) + &
+             &          0.5d0 * (rsigth(ij, k-1)+rsigbt) * dhmld
+           rsigdf = drsig
+           exit
+        end if
+        hmld(ij) = hmld(ij) + dzmsig(ij, k)
+        zhmld(ij, k-1) = dzsig(ij, k-1)
+        zhmld(ij, k) = 0.5d0 * dzsig(ij, k)
+        kmld(ij) = k
+        rmavez(ij) = rmavez(ij) + 0.5d0 * &
+          &        ( rsigth(ij, k-1) * dzsig(ij, k-1) &
+          &        + rsigth(ij, k  ) * dzsig(ij, k  ) )
+        rsigdf = rsigth(ij, k) - rsigth(ij, kstr)
+     end do
+     rmavez(ij) = rmavez(ij) / hmld(ij)
+     nbv(ij) = sqrt(max(1.0d-3*gravit/rhoo*rsigdf/hmld(ij),0.0d0))
+  end do
+
+  do ij = ijtstr-nxdim, ijtend+nxdim
+     if (ocoamp) then
+        lf(ij) = max( &
+          &          nbv(ij) * hmld(ij) / &
+          &          sqrt((0.25d0*(cor(ij   )+cor(ij+lw ) &
+          &                       +cor(ij+ls)+cor(ij+lsw)))**2.0d0 &
+          &               + r2taum ), &
+          &          lfmin)
+     else
+        lf(ij) = 1.0d0
+     end if
+  end do
+
+!  if (ofltdm) then
+!#ifdef OPT_TRIPOLE
+!     call shift1( &
+!       &            hmld, &
+!       &           nxdim,  nydim,      1, &
+!       &           1.0d0,      0,      0 )
+!#else
+!     call shift1( &
+!       &            hmld, &
+!       &           nxdim,  nydim,      1)
+!#endif
+!     do n = 1, nfltdm
+!        do ij = ijstr, ijend
+!           if (amskt(ij, kstr) .eq. 1.0d0) then
+!              hmld1(ij) = ( 4.0d0 * hmld(ij) * amskt(ij, kstr) &
+!                &         + hmld(ij+ls) * amskt(ij+ls, kstr) &
+!                &         + hmld(ij+ln) * amskt(ij+ln, kstr) &
+!                &         + hmld(ij+lw) * amskt(ij+lw, kstr) &
+!                &         + hmld(ij+le) * amskt(ij+le, kstr) ) &
+!                &       / ( 4.0d0 * amskt(ij, kstr) &
+!                &         + amskt(ij+ls, kstr) + amskt(ij+ln, kstr) &
+!                &         + amskt(ij+lw, kstr) + amskt(ij+le, kstr) )
+!           else
+!              hmld1(ij) = hmld(ij)
+!           end if
+!        end do
+!        do ij = ijstr, ijend
+!           hmld(ij) = hmld1(ij)
+!        end do
+!#ifdef OPT_TRIPOLE
+!     call shift1( &
+!       &            hmld, &
+!       &           nxdim,  nydim,      1, &
+!       &           1.0d0,      0,      0 )
+!#else
+!     call shift1( &
+!       &            hmld, &
+!       &           nxdim,  nydim,      1)
+!#endif
+!     end do
+!  end if
+
+!  if (ofltrm) then
+!#ifdef OPT_TRIPOLE
+!     call shift1( &
+!       &          rmavez, &
+!       &           nxdim,  nydim,      1, &
+!       &           1.0d0,      0,      0 )
+!#else
+!     call shift1( &
+!       &          rmavez, &
+!       &           nxdim,  nydim,      1)
+!#endif
+!     do n = 1, nfltrm
+!        do ij = ijstr, ijend
+!           if (amskt(ij, kstr) .eq. 1.0d0) then
+!              rmav1(ij) = ( 4.0d0 * rmavez(ij) * amskt(ij, kstr) &
+!                &         + rmavez(ij+ls) * amskt(ij+ls, kstr) &
+!                &         + rmavez(ij+ln) * amskt(ij+ln, kstr) &
+!                &         + rmavez(ij+lw) * amskt(ij+lw, kstr) &
+!                &         + rmavez(ij+le) * amskt(ij+le, kstr) ) &
+!                &       / ( 4.0d0 * amskt(ij, kstr) &
+!                &         + amskt(ij+ls, kstr) + amskt(ij+ln, kstr) &
+!                &         + amskt(ij+lw, kstr) + amskt(ij+le, kstr) )
+!           else
+!              rmav1(ij) = rmavez(ij)
+!           end if
+!        end do
+!        do ij = ijstr, ijend
+!           rmavez(ij) = rmav1(ij)
+!        end do
+!#ifdef OPT_TRIPOLE
+!        call shift1( &
+!          &          rmavez, &
+!          &           nxdim,  nydim,      1, &
+!          &           1.0d0,      0,      0 )
+!#else
+!        call shift1( &
+!          &          rmavez, &
+!          &           nxdim,  nydim,      1)
+!#endif
+!     end do
+!  end if
+
+  do ij = 1, nxydim
+     if (kmld(ij) .lt. kzmin) then
+        hmld(ij) = 0.0d0
+     end if
+     zmld0(ij) = kmld(ij) - kstr + 1
+  end do
+
+! for diagnosis
+!  call chekin(   hmld,   'HMLD', nx, ny,  1, nxydim, 'SFC')
+!  call chekin(  zmld0,   'KMLD', nx, ny,  1, nxydim, 'SFC')
+!  call chekin( rmavez, 'RMAVEZ', nx, ny,  1, nxydim, 'SFC')
+!  call chekin(      r,      'R', nx, ny, nz, nxyzdm, 'OCN')
+!  call chekin(     lf,     'LF', nx, ny,  1, nxydim, 'SFC')
+
+  do k = kstr, mz+kstr-1
+     do ij = ijtstr, ijtend+nxdim
+        dhmld = min(zhmld(ij, k), zhmld(ij+lw, k))
+        rmavdx(ij) = rmavdx(ij) + &
+          &          dhmld * (-1.0d-3) * gravit / rhoo &
+          &        * rx * 2.d0 / (hxt(ij) + hxt(ij+lw)) &
+          &        * (rsigth(ij, k) - rsigth(ij+lw, k))
+        hmldx(ij) = hmldx(ij) + dhmld
+        dhmld = min(zhmld(ij, k), zhmld(ij+ls, k))
+        rmavdy(ij) = rmavdy(ij) + &
+          &          dhmld * (-1.0d-3) * gravit / rhoo &
+          &        * rym(ij+ls) * 2.d0 / (hyt(ij) + hyt(ij+ls)) &
+          &        * (rsigth(ij, k) - rsigth(ij+ls, k))
+        hmldy(ij) = hmldy(ij) + dhmld
+     end do
+  end do
+
+  do ij = ijtstr, ijtend+nxdim
+     rmavdx(ij) = rmavdx(ij) / max(hmldx(ij), eps) &
+       &        * amskt(ij, kstr) * amskt(ij+lw, kstr)
+     rmavdy(ij) = rmavdy(ij) / max(hmldy(ij), eps) &
+       &        * amskt(ij, kstr) * amskt(ij+ls, kstr)
+  end do
+
+! calculating xpsiy and ypsix
+  do k = kstr, kend
+     do ij = ijtstr, ijtend+nxdim
+        hmldt = min(hmld(ij), hmld(ij+lw))
+        cpsi = cxpsy(ij) &
+          &  * 2.0d0 / (lf(ij) + lf(ij+lw)) &
+          &  * hmldt * hmldt &
+          &  * (-1.0d0) * rmavdx(ij)
+        muzh = ( 1.0d0 - 2.0d0 * &
+          &      min(min(ztm(ij, k), ztm(ij+lw, k)) &
+          &      / max(hmldt, eps), 1.0d0) &
+          &    ) ** 2.0d0
+        muzx(ij, k) = ( 1.0d0 - muzh ) &
+          &         * ( 1.0d0 + 5.0d0 / 21.0d0 * muzh )
+        xpsiy(ij, k) = cpsi &
+          &          * ( 1.0d0 - muzh ) * ( 1.0d0 + 5.0d0 / 21.0d0 * muzh ) &
+          &          * amskt(ij, k) * amskt(ij+lw, k)
+        xpsiy(ij, k) = sign(1.0d0, xpsiy(ij, k)) * &
+          &            min(abs(xpsiy(ij, k)), vscl*dzsig(ij, k))
+        muzh = ( 1.0d0 - 2.0d0 * &
+          &      min(min(zt(ij, k+1), zt(ij+lw, k+1)) &
+          &      / max(hmldt, eps), 1.0d0) &
+          &    ) ** 2.0d0
+        xpsiyz(ij, k+1) = cpsi &
+          &          * ( 1.0d0 - muzh ) * ( 1.0d0 + 5.0d0 / 21.0d0 * muzh ) &
+          &          * amskt(ij, k+1) * amskt(ij+lw, k+1)
+        xpsiyz(ij, k+1) = sign(1.0d0, xpsiyz(ij, k+1)) * &
+          &            min(abs(xpsiyz(ij, k+1)), vscl*dzmsig(ij, k+1))
+     end do
+  end do
+  do k = kstr, kend
+     do ij = ijtstr, ijtend+nxdim
+        hmldt = min(hmld(ij), hmld(ij+ls))
+        cpsi = cypsx(ij) &
+          &  * 2.0d0 / (lf(ij) + lf(ij+ls)) &
+          &  * hmldt * hmldt &
+          &  * rmavdy(ij)
+        muzh = ( 1.0d0 - 2.0d0 * &
+          &      min(min(ztm(ij, k), ztm(ij+ls, k)) &
+          &      / max(hmldt, eps), 1.0d0) &
+          &    ) ** 2.0d0
+        muzy(ij, k) = ( 1.0d0 - muzh ) &
+          &         * ( 1.0d0 + 5.0d0 / 21.0d0 * muzh )
+        ypsix(ij, k) = cpsi &
+          &          * ( 1.0d0 - muzh ) * ( 1.0d0 + 5.0d0 / 21.0d0 * muzh ) &
+          &          * amskt(ij, k) * amskt(ij+ls, k)
+        ypsix(ij, k) = sign(1.0d0, ypsix(ij, k)) * &
+          &            min(abs(ypsix(ij, k)), vscl*dzsig(ij, k))
+        muzh = ( 1.0d0 - 2.0d0 * &
+          &      min(min(zt(ij, k+1), zt(ij+ls, k+1)) &
+          &      / max(hmldt, eps), 1.0d0) &
+          &    ) ** 2.0d0
+        ypsixz(ij, k+1) = cpsi &
+          &          * ( 1.0d0 - muzh ) * ( 1.0d0 + 5.0d0 / 21.0d0 * muzh ) &
+          &          * amskt(ij, k+1) * amskt(ij+ls, k+1)
+        ypsixz(ij, k+1) = sign(1.0d0, ypsixz(ij, k+1)) * &
+          &            min(abs(ypsixz(ij, k+1)), vscl*dzmsig(ij, k+1))
+     end do
+  end do
+
+!  if (ofltps) then
+!#ifdef OPT_TRIPOLE
+!     call shift1( &
+!       &           xpsiy, &
+!       &           nxdim,  nydim,  nzdim, &
+!       &          -1.0d0,      1,      0 )
+!     call shift1( &
+!       &           ypsix, &
+!       &           nxdim,  nydim,  nzdim, &
+!       &          -1.0d0,      0,      1 )
+!#else
+!     call shift2( &
+!       &           xpsiy,  ypsix, &
+!       &           nxdim,  nydim,  nzdim)
+!#endif
+!     do n = 1, nfltps
+!        do k = kstr, kend
+!           do ij = ijstr, ijend
+!              if (amftx(ij, k) .eq. 1.0d0) then
+!                 xpsiy1(ij, k) = &
+!                   &           ( 4.0d0 * xpsiy(ij, k) * amftx(ij, k) &
+!                   &           + xpsiy(ij+ls, k) * amftx(ij+ls, k) &
+!                   &           + xpsiy(ij+ln, k) * amftx(ij+ln, k) &
+!                   &           + xpsiy(ij+lw, k) * amftx(ij+lw, k) &
+!                   &           + xpsiy(ij+le, k) * amftx(ij+le, k) ) &
+!                   &         / ( 4.0d0 * amftx(ij, k) &
+!                   &           + amftx(ij+ls, k) + amftx(ij+ln, k) &
+!                   &           + amftx(ij+lw, k) + amftx(ij+le, k) )
+!              else
+!                 xpsiy1(ij, k) = xpsiy(ij, k)
+!              end if
+!              if (amfty(ij, k) .eq. 1.0d0) then
+!                 ypsix1(ij, k) = &
+!                   &           ( 4.0d0 * ypsix(ij, k) * amfty(ij, k) &
+!                   &           + ypsix(ij+ls, k) * amfty(ij+ls, k) &
+!                   &           + ypsix(ij+ln, k) * amfty(ij+ln, k) &
+!                   &           + ypsix(ij+lw, k) * amfty(ij+lw, k) &
+!                   &           + ypsix(ij+le, k) * amfty(ij+le, k) ) &
+!                   &         / ( 4.0d0 * amfty(ij, k) &
+!                   &           + amfty(ij+ls, k) + amfty(ij+ln, k) &
+!                   &           + amfty(ij+lw, k) + amfty(ij+le, k) )
+!              else
+!                 ypsix1(ij, k) = ypsix(ij, k)
+!              end if
+!           end do
+!        end do
+!        do k = kstr, kend
+!           do ij = ijstr, ijend
+!              xpsiy(ij, k) = xpsiy1(ij, k)
+!              ypsix(ij, k) = ypsix1(ij, k)
+!           end do
+!        end do
+!#ifdef OPT_TRIPOLE
+!     call shift1( &
+!       &           xpsiy, &
+!       &           nxdim,  nydim,  nzdim, &
+!       &          -1.0d0,      1,      0 )
+!     call shift1( &
+!       &           ypsix, &
+!       &           nxdim,  nydim,  nzdim, &
+!       &          -1.0d0,      0,      1 )
+!#else
+!     call shift2( &
+!       &           xpsiy,  ypsix, &
+!       &           nxdim,  nydim,  nzdim)
+!#endif
+!     end do
+!  end if
+        
+  do k = kstr+1, kend
+     do ij = ijtstr, ijtend
+        zpsix(ij, k) = 0.5d0 * &
+          &   ( ypsixz(ij, k) + ypsixz(ij+ln, k) ) * amftz(ij, k)
+        zpsiy(ij, k) = 0.5d0 * &
+          &   ( xpsiyz(ij, k) + xpsiyz(ij+le, k) ) * amftz(ij, k)
+     end do
+  end do
+
+! for diagnosis
+!  call chekin(  cxpsy,  'CXPSY', nx, ny,  1, nxydim, 'SFC')
+!  call chekin(  cypsx,  'CYPSX', nx, ny,  1, nxydim, 'SFC')
+!  call chekin(  xpsiy,  'XPSIY', nx, ny, nz, nxyzdm, 'OCN')
+!  call chekin(  ypsix,  'YPSIX', nx, ny, nz, nxyzdm, 'OCN')
+!  call chekin(  zpsix,  'ZPSIX', nx, ny, nz, nxyzdm, 'OCN')
+!  call chekin(  zpsiy,  'ZPSIY', nx, ny, nz, nxyzdm, 'OCN')
+!  call chekin( rmavdx, 'RMAVDX', nx, ny,  1, nxydim, 'SFC')
+!  call chekin( rmavdy, 'RMAVDY', nx, ny,  1, nxydim, 'SFC')
+!  call chekin(   muzx,   'MUZX', nx, ny, nz, nxyzdm, 'OCN')
+!  call chekin(   muzy,   'MUZY', nx, ny, nz, nxyzdm, 'OCN')
+
   return
 
 end subroutine dnsgrd
-
 #ifdef OPT_BBL
 ! *********************************************************************
 
