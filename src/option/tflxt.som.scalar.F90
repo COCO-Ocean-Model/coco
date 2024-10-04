@@ -91,6 +91,7 @@ subroutine flxtrc( &
   real(8), intent(in)     ::      w(nxydim, nzdim),    ahv(nxydim, nzdim)
 
   real(8) ::    wzc(nxydim, nzdim),    rzm(nxydim, nzdim)
+  real(8) :: fharmx(nxydim), fharmy(nxydim),   harm(nxydim)
   real(8) ::  hzbot(nxydim)
   real(8) ::     dh(nxydim)
 
@@ -182,8 +183,10 @@ subroutine flxtrc( &
   real(8) ::  zpsix(nxydim, nzdim),  zpsiy(nxydim, nzdim)
   real(8) ::   igsy(nxydim, nzdim),   igsx(nxydim, nzdim)
 
+  real(8), save ::  ahb = 0.0d0
   real(8), save ::  ahh = 0.0d0,  ahi = 0.0d0,  ahg = 0.0d0
 
+  namelist /nmdifb/ ahb
   namelist /nmdifh/ ahh
   namelist /nmdifi/ ahi
   namelist /nmdifg/ ahg
@@ -297,6 +300,10 @@ subroutine flxtrc( &
 
   if (ofirst) then
      ofirst = .false.
+     call rewnml(ifpar, jfpar)
+     read(ifpar, nmdifb, iostat=istat)
+     call cstnml(jfpar, 'flxtrc', 'nmdifb', istat)
+     write(jfpar, nmdifb)
      call rewnml(ifpar, jfpar)
      read(ifpar, nmdifh, iostat=istat)
      call cstnml(jfpar, 'flxtrc', 'nmdifh', istat)
@@ -563,6 +570,47 @@ subroutine flxtrc( &
   end do
 !$omp end do nowait
 
+  do n = 1, ntdim
+!$omp parallel private( &
+!$omp k, ij, ijls, ijlw, &
+!$omp fharmx, fharmy, harm &
+!$omp )
+!$omp do
+     do k = kstr, kend
+        do ij = ijtstr-nxdim, ijtend+nxdim+nxdim
+           ijlw = ij + lw
+           ijls = ij + ls
+           fharmx(ij) = ahb * (hyu(ijlw) + hyu(ij+lsw)) &
+             &              / (hxt(ij) + hxt(ijlw)) * &
+             &          (tx(ij, k, n) - tx(ijlw, k, n)) * rx * &
+             &          amskt(ij, k) * amskt(ijlw, k)
+           fharmy(ij) = ahb * (hxu(ijls) + hxu(ij+lsw)) &
+             &              / (hyt(ij) + hyt(ijls)) * &
+             &          (tx(ij, k, n) - tx(ijls, k, n)) * rym(ij) * &
+             &          amskt(ij, k) * amskt(ijls, k)
+        end do
+        do ij = ijtstr-nxdim, ijtend+nxdim
+           harm(ij) = (  (fharmx(ij+le) - fharmx(ij)) * rx &
+             &         + (fharmy(ij+ln) - fharmy(ij)) * ry(ij)) * &
+             &        rxt(ij) * ryt(ij)
+        end do
+        do ij = ijtstr, ijtend+nxdim
+           ijlw = ij + lw
+           ijls = ij + ls
+           ftx(ij, k, n) = - (harm(ij) - harm(ijlw)) * rx * &
+             &             (hyu(ijlw) + hyu(ij+lsw)) &
+!             &             / (hxt(ij) + hxt(ijlw)) * amftx(ij, kstr) &
+             &             / (hxt(ij) + hxt(ijlw)) * amftx(ij, k)
+           fty(ij, k, n) = - (harm(ij) - harm(ijls)) * rym(ij) * &
+             &             (hxu(ijls) + hxu(ij+lsw)) &
+!             &             / (hyt(ij) + hyt(ijls)) * amfty(ij, kstr) &
+             &             / (hyt(ij) + hyt(ijls)) * amfty(ij, k)
+        end do
+     end do
+!$omp end do
+!$omp end parallel
+  end do
+
 !$omp do
   do ij = 1, nxydim
      hzbot(ij) = hz(ij) + zbot
@@ -642,7 +690,7 @@ subroutine flxtrc( &
 
         ijls = ij + ls
 
-        fty(ij, k, n) = &
+        fty(ij, k, n) = fty(ij, k, n) + &
              &     (  ( ahh3d(ij, k) + ahi3d(ij, k) ) * rym(ijls) &
              &      / ( hyt(ij) + hyt(ijls) ) * &
              &        ( tx(ij, k, n) - tx(ijls, k, n) ) * 2.d0 &
@@ -675,7 +723,7 @@ subroutine flxtrc( &
 
         ijlw = ij + lw
            
-        ftx(ij, k, n) = &
+        ftx(ij, k, n) = ftx(ij, k, n) + &
              &     (  ( ahh3d(ij, k) + ahi3d(ij, k) ) * rx &
              &      / ( hxt(ij) + hxt(ijlw) ) &
              &      * ( tx(ij, k, n) - tx(ijlw, k, n) ) * 2.d0 &
