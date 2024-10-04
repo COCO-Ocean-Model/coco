@@ -101,6 +101,7 @@ subroutine pridge( &
   integer ::   ifpar,  jfpar,  istat
 
   real(8), save ::  ecc = 2.0d0,  dmin = 2.0d-7,  floss = 17.0d0
+  logical, save ::  opt_pice = .false.
   real(8), save ::  cs = 0.5d0,  gridge = 0.15d0,  hridge = 1.0d4
   real(8), save ::  si = 5.0d0
 ! namelist nmmpnd
@@ -126,7 +127,7 @@ subroutine pridge( &
   real(8), save :: frmpmn = 1.0d-14  !! empirical limiter for frmpx [ND]
   real(8), save :: vmpmin = 1.0d-12  !! empirical limiter for vmpx [cm]
 
-  namelist /nmidyn/ ecc, dmin, floss
+  namelist /nmidyn/ ecc, dmin, floss, opt_pice
   namelist /nmirdg/ cs, gridge, hridge
   namelist /nmislt/ si
   namelist /nmmpnd/   impnd, hminmp, rtdpmp, rtmxmp,  dpscl, &

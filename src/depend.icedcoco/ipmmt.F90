@@ -70,7 +70,7 @@ subroutine pmomnt( &
   real(8), intent(in)    ::    hsx(nxydim, 0:nic),    hsy(nxydim, 0:nic)
   real(8), intent(in)    ::    hsz(nxydim, 0:nic)
   real(8), intent(in)    ::    uiy(nxydim),           viy(nxydim)
-  real(8), intent(in)    ::   pice(nxydim)
+  real(8), intent(inout) ::   pice(nxydim)
   real(8), intent(in)    ::     ux(nxydim, nzdim),     vx(nxydim, nzdim)
   real(8), intent(in)    ::     hy(nxydim)
   real(8), intent(in)    ::   ptop(nxydim)
@@ -112,8 +112,9 @@ subroutine pmomnt( &
   integer, save ::  kglev = 1
   integer, save ::  nsplit = 60
   real(8), save ::  ecc = 2.0d0,  dmin = 2.0d-7,  floss = 17.0d0
-
-  namelist /nmidyn/ ecc, dmin, floss
+  logical, save ::  opt_pice = .false.
+  
+  namelist /nmidyn/ ecc, dmin, floss, opt_pice
   namelist /nmiprm/ thetaa, thetao, cwdrag, elast0, kglev
   namelist /nmitsp/ nsplit
 
@@ -221,9 +222,16 @@ subroutine pmomnt( &
   call strain( &
     &             exx,    eyy,    exy, &
     &             uix,    vix)
-  call rheolo( &
-    &            zeta,    eta,    emz,    epz, &
-    &             exx,    eyy,    exy,   pice)
+
+  if (opt_pice) then
+     call rheolo_pice( &
+          &            zeta,    eta,    emz,    epz,   pice, &
+          &            aice,   mice,    exx,    eyy,    exy )
+  else
+     call rheolo( &
+          &            zeta,    eta,    emz,    epz, &
+          &             exx,    eyy,    exy,   pice)
+  end if
 
   if (ofirst) then
      ofirst = .false.
@@ -371,10 +379,15 @@ subroutine pmomnt( &
      call strain( &
        &            exx,    eyy,    exy, &
        &            uix,    vix)
-     call rheolo( &
-       &           zeta,    eta,    emz,    epz, &
-       &            exx,    eyy,    exy,   pice)
-
+     if (opt_pice) then
+        call rheolo_pice( &
+             &            zeta,    eta,    emz,    epz,   pice, &
+             &            aice,   mice,    exx,    eyy,    exy )
+     else
+        call rheolo( &
+             &           zeta,    eta,    emz,    epz, &
+             &            exx,    eyy,    exy,   pice)
+     end if
   end do
 
   do ij = ijvstr, ijvend
@@ -486,8 +499,9 @@ subroutine rheolo( &
   integer ::  ifpar,  jfpar,  istat
 
   real(8), save ::  ecc = 2.0d0,  dmin = 2.0d-7,  floss = 17.0d0
-
-  namelist /nmidyn/ ecc, dmin, floss
+  logical, save ::  opt_pice = .false.
+  
+  namelist /nmidyn/ ecc, dmin, floss, opt_pice
 
   if (ofirst) then
      ofirst = .false.
@@ -515,5 +529,66 @@ subroutine rheolo( &
 
   return
 end subroutine rheolo
+
+
+subroutine rheolo_pice( &
+  &            zeta,    eta,    emz,    epz,   pice, &
+  &            aice,   mice,    exx,    eyy,    exy )
+
+  use ufile
+
+  real(8), intent(out) ::   zeta(nxydim),    eta(nxydim)
+  real(8), intent(out) ::    emz(nxydim),    epz(nxydim)
+  real(8), intent(out) ::   pice(nxydim)
+  real(8), intent(in)  ::   aice(nxydim),   mice(nxydim)
+  real(8), intent(in)  ::    exx(nxydim),    eyy(nxydim),    exy(nxydim)
+
+  real(8) ::  delta(nxydim)
+
+  real(8), save ::     c1,     c2,     c3,     c4
+  logical, save :: ofirst = .true.
+
+  real(8) ::    del
+  integer ::     ij
+  integer ::  ifpar,  jfpar,  istat
+
+  real(8), save ::  ecc = 2.0d0,  dmin = 2.0d-7,  floss = 17.0d0
+  real(8), save ::  p0 = 2.0d5,  cp = 2.0d1
+  logical, save ::  opt_pice = .false.
+  
+  namelist /nmidyn/ ecc, dmin, floss, opt_pice
+  namelist /nmpice/ p0, cp
+
+  if (ofirst) then
+     ofirst = .false.
+     call rewnml(ifpar, jfpar)
+     read (ifpar, nmidyn, iostat=istat)
+     call cstnml(jfpar, 'rheolo', 'nmidyn', istat)
+     write(jfpar, nmidyn)
+     call rewnml(ifpar, jfpar)
+     read (ifpar, nmpice, iostat=istat)
+     call cstnml(jfpar, 'rheolo', 'nmpice', istat)
+     write(jfpar, nmpice)
+
+     c1 = 1.d0 + 1.d0 / ecc / ecc
+     c2 = 4.d0 / ecc / ecc
+     c3 = 2.d0 * (1.d0 - 1.d0 / ecc / ecc)
+     c4 = 1.d0 / ecc / ecc
+  end if
+
+  do ij = ijtstr, ijtend+nxdim+1
+     pice(ij) = p0 * mice(ij) * exp(- cp * (1.d0 - aice(ij)))
+     del = sqrt(  c1 * (exx(ij) * exx(ij) + eyy(ij) * eyy(ij)) &
+       &        + c2 * exy(ij) * exy(ij) &
+       &        + c3 * exx(ij) * eyy(ij))
+     delta(ij) = max(del, dmin)
+     zeta(ij) = pice(ij) / delta(ij) * 0.5d0
+     eta (ij) = zeta(ij) * c4
+     emz (ij) = eta(ij) - zeta(ij)
+     epz (ij) = eta(ij) + zeta(ij)
+  end do
+
+  return
+end subroutine rheolo_pice
 
 end module ipmmt
