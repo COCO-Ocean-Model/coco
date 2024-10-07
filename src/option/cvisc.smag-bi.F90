@@ -23,6 +23,8 @@ module cvisc
 
   real(8),     save  ::    sxx(nxydim),          syy(nxydim)
   real(8),     save  ::    sxy(nxydim),          syx(nxydim)
+  real(8),     save  ::    bxx(nxydim),          byy(nxydim)
+  real(8),     save  ::    bxy(nxydim),          byx(nxydim)
   real(8),     save  ::  hvbot(nxydim)
   logical,     save  ::  ofirst, ofirst_bbl       
   character(len=64)  ::  chead(1:16)
@@ -74,16 +76,18 @@ contains
     real(8)            ::    fuz(nxydim,nzdim),    fvz(nxydim,nzdim)
     real(8),     save  ::     rz(nxydim,nzdim),    rzm(nxydim,nzdim)
     real(8),     save  ::    szx(nxydim,nzdim),    szy(nxydim,nzdim)
-    real(8)            ::     dd(nxydim,nzdim)
-    real(8)            ::     hu(nxydim,nzdim),    hv(nxydim,nzdim)
-
+    real(8)            ::     db(nxydim)
+    real(8)            ::     hu(nxydim),          hv(nxydim)
+    real(8)            ::    hux(nxydim),         hvx(nxydim)
+    real(8)            ::    huy(nxydim),         hvy(nxydim)
+    
     real(8)            ::    exx,    eyy,    exy,     ez
     integer(4)         ::     ij,      k,      i,      j
     integer(4)         ::   ijln,   ijls,   ijle,   ijlw
     integer(4)         ::   ijnw,   ijse,   ijsw,   ijlsw
     integer(4)         ::  ifpar,  jfpar,  istat
 
-    real(8),     save  ::    asm(nxydim)
+    real(8),     save  ::    asmb(nxydim)
     real(8),     save  ::    csmb
     real(8)            ::     pi
     namelist /nmsmab/ csmb
@@ -103,7 +107,7 @@ contains
 
        pi = 4.d0 * atan(1.d0)
        do ij = 1, nxydim
-          asm(ij) = csmb * min( dx*hxt(ij), dy(ij)*hyt(ij))**2        &
+          asmb(ij) = csmb * min( dx*hxt(ij), dy(ij)*hyt(ij))**2        &
    &              / pi / sqrt(8.d0)
        end do
       
@@ -190,85 +194,79 @@ contains
     &            + vx(ijls, k) + vx(ijlsw, k)) * 0.25d0 *             &
     &           hyxt(ij)
 
-          dd(ij, k) = sqrt(sqrt(                                      &
-    &                  (exx - eyy) * (exx - eyy) + exy * exy))
+          db(ij) = sqrt(sqrt((exx - eyy) * (exx - eyy) + exy * exy))
 
-          sxx(ij) = asm(ij) * dd(ij, k) * (exx - eyy)
-          syy(ij) = asm(ij) * dd(ij, k) * (eyy - exx)
-          sxy(ij) = asm(ij) * dd(ij, k) * exy
+          bxx(ij) = asmb(ij) * db(ij) * (exx - eyy)
+          byy(ij) = asmb(ij) * db(ij) * (eyy - exx)
+          bxy(ij) = asmb(ij) * db(ij) * exy
 
        end do
 
        do ij = ijstr-nxdim-1, ijend+nxdim+2
           ijln = ij + ln
-          fux(ij, k) = (  sxx(ij)   * hyt(ij)   * hyt(ij)             &
-    &                   + sxx(ijln) * hyt(ijln) * hyt(ijln))          & 
-    &                  * 0.5d0
-          fvx(ij, k) = (  sxy(ij)   * hyt(ij)   * hyt(ij)             &
-    &                   + sxy(ijln) * hyt(ijln) * hyt(ijln))          &
-    &                  * 0.5d0
+          hux(ij) = (  bxx(ij)   * hyt(ij)   * hyt(ij)             &
+    &                + bxx(ijln) * hyt(ijln) * hyt(ijln))          & 
+    &               * 0.5d0
+          hvx(ij) = (  bxy(ij)   * hyt(ij)   * hyt(ij)             &
+    &                + bxy(ijln) * hyt(ijln) * hyt(ijln))          &
+    &               * 0.5d0
        end do
 
        do ij = ijstr-nxdim-1, ijend+nxdim+nxdim+1
           ijle = ij + le
-          fuy(ij, k) = (  sxy(ij)   * hxt(ij)   * hxt(ij)             &
-    &                   + sxy(ijle) * hxt(ijle) * hxt(ijle))          &
-    &                * 0.5d0
-          fvy(ij, k) = (  syy(ij)   * hxt(ij)   * hxt(ij)             &
-    &                   + syy(ijle) * hxt(ijle) * hxt(ijle))          &
-    &                * 0.5d0
+          huy(ij) = (  bxy(ij)   * hxt(ij)   * hxt(ij)             &
+    &                + bxy(ijle) * hxt(ijle) * hxt(ijle))          &
+    &             * 0.5d0
+          hvy(ij) = (  byy(ij)   * hxt(ij)   * hxt(ij)             &
+    &                + byy(ijle) * hxt(ijle) * hxt(ijle))          &
+    &             * 0.5d0
        end do
 
-    end do
-
-    do k = kstr, kend
        do ij = ijstr-nxdim-1, ijend+nxdim+1
-          hu(ij, k) = - (  (fux(ij+le, k) - fux(ij, k)) *             &
-    &                       rx * ryu(ij)                              &
-    &                    + (fuy(ij+ln, k) - fuy(ij, k)) *             &   
-    &                       rym(ij) * rxu(ij)) *                      &
-    &                     rxu(ij) * ryu(ij) * amskv(ij, k)            
-          hv(ij, k) = - (  (fvx(ij+le, k) - fvx(ij, k)) *             &
-    &                       rx * ryu(ij)                              &
-    &                    + (fvy(ij+ln, k) - fvy(ij, k)) *             &
-    &                       rym(ij) * rxu(ij)) *                      &
+          hu(ij) = - (  (hux(ij+le) - hux(ij)) *             &
+    &                    rx * ryu(ij)                        &
+    &                 + (huy(ij+ln) - huy(ij)) *             &   
+    &                    rym(ij) * rxu(ij)) *                &
+    &                  rxu(ij) * ryu(ij) * amskv(ij, k)            
+          hv(ij) = - (  (hvx(ij+le) - hvx(ij)) *             &
+    &                    rx * ryu(ij)                        &
+    &                 + (hvy(ij+ln) - hvy(ij)) *             &
+    &                    rym(ij) * rxu(ij)) *                &
     &                  rxu(ij) * ryu(ij) * amskv(ij, k)
        end do
-    end do
 
-    do k = kstr, kend
        do ij = ijstr, ijend+nxdim+1
           ijls = ij + ls
           ijlw = ij + lw
           ijlsw = ij + lsw
-          exx = (  hu(ij  , k) + hu(ijls , k)                          &
-    &            - hu(ijlw, k) - hu(ijlsw, k)) * 0.5d0 *               &
-    &           rx * rxt(ij)                                           &
-    &         + (  hv(ij  , k) + hv(ijls , k)                          &
-    &            + hv(ijlw, k) + hv(ijlsw, k)) * 0.25d0 *              &
+          exx = (  hu(ij  ) + hu(ijls )                          &
+    &            - hu(ijlw) - hu(ijlsw)) * 0.5d0 *               &
+    &           rx * rxt(ij)                                     &
+    &         + (  hv(ij  ) + hv(ijls )                          &
+    &            + hv(ijlw) + hv(ijlsw)) * 0.25d0 *              &
     &           hxyt(ij)                                            
-          eyy = (  hv(ij  , k) + hv(ijlw , k)                          & 
-    &            - hv(ijls, k) - hv(ijlsw, k)) * 0.5d0 *               &
-    &           ry(ij) * ryt(ij)                                       &
-    &         + (  hu(ij  , k) + hu(ijlw , k)                          &
-    &            + hu(ijls, k) + hu(ijlsw, k)) * 0.25d0 *              &
+          eyy = (  hv(ij  ) + hv(ijlw )                          & 
+    &            - hv(ijls) - hv(ijlsw)) * 0.5d0 *               &
+    &           ry(ij) * ryt(ij)                                 &
+    &         + (  hu(ij  ) + hu(ijlw )                          &
+    &            + hu(ijls) + hu(ijlsw)) * 0.25d0 *              &
     &           hyxt(ij)                                            
-          exy = (  hu(ij  , k) + hu(ijlw , k)                          &
-    &            - hu(ijls, k) - hu(ijlsw, k)) * 0.5d0 *               &
-    &           ry(ij) * ryt(ij)                                       &
-    &         + (  hv(ij  , k) + hv(ijls , k)                          &
-    &            - hv(ijlw, k) - hv(ijlsw, k)) * 0.5d0 *               &
-    &           rx * rxt(ij)                                           &
-    &         - (  hu(ij  , k) + hu(ijlw , k)                          &
-    &            + hu(ijls, k) + hu(ijlsw, k)) * 0.25d0 *              &
-    &           hxyt(ij)                                               &
-    &         - (  hv(ij  , k) + hv(ijlw , k)                          &
-    &            + hv(ijls, k) + hv(ijlsw, k)) * 0.25d0 *              &
+          exy = (  hu(ij  ) + hu(ijlw )                          &
+    &            - hu(ijls) - hu(ijlsw)) * 0.5d0 *               &
+    &           ry(ij) * ryt(ij)                                 &
+    &         + (  hv(ij  ) + hv(ijls )                          &
+    &            - hv(ijlw) - hv(ijlsw)) * 0.5d0 *               &
+    &           rx * rxt(ij)                                     &
+    &         - (  hu(ij  ) + hu(ijlw )                          &
+    &            + hu(ijls) + hu(ijlsw)) * 0.25d0 *              &
+    &           hxyt(ij)                                         &
+    &         - (  hv(ij  ) + hv(ijlw )                          &
+    &            + hv(ijls) + hv(ijlsw)) * 0.25d0 *              &
     &           hyxt(ij)
 
-          sxx(ij) = asm(ij) * dd(ij, k) * (exx - eyy)
-          syy(ij) = asm(ij) * dd(ij, k) * (eyy - exx)
-          sxy(ij) = asm(ij) * dd(ij, k) * exy
+          sxx(ij) = asmb(ij) * db(ij) * (exx - eyy)
+          syy(ij) = asmb(ij) * db(ij) * (eyy - exx)
+          sxy(ij) = asmb(ij) * db(ij) * exy
        end do
 
        do ij = ijvstr, ijvend+1
@@ -388,8 +386,11 @@ contains
     real(8)            ::    fuz(nxydim),    fvz(nxydim)
     real(8),     save  ::     rz(nxydim),    rzm(nxydim)
     real(8)            ::    szx(nxydim),    szy(nxydim)
-    real(8)            ::     dd(nxydim)
+    real(8)            ::     db(nxydim)
     real(8)            ::     hu(nxydim),    hv(nxydim)
+    real(8)            ::    hux(nxydim),   hvx(nxydim)
+    real(8)            ::    huy(nxydim),   hvy(nxydim)
+
     real(8)            ::    exx,    eyy,    exy,     ez
     integer(4)         ::     ij,      k,      i,      j
     integer(4)         ::   ijln,   ijls,   ijle,   ijlw
@@ -397,7 +398,7 @@ contains
     integer(4)         ::  ifpar,  jfpar,  istat
     integer(4)         ::    kup
 
-    real(8),     save  ::    asm(nxydim)
+    real(8),     save  ::    asmb(nxydim)
     real(8),     save  :: csmbbb
     real(8)            ::     pi
     namelist /nmsmmb/ csmbbb
@@ -417,7 +418,7 @@ contains
 
        pi = 4.d0 * atan(1.d0)
        do ij = 1, nxydim
-          asm(ij) = csmbbb * min(dx*hxt(ij), dy(ij)*hyt(ij))**2       &
+          asmb(ij) = csmbbb * min(dx*hxt(ij), dy(ij)*hyt(ij))**2       &
      &            / pi / sqrt(8.d0)
 
           rz (ij) = 1.d0 / dzv(ij, kend)
@@ -427,6 +428,13 @@ contains
     end if
        
     k = kend
+
+    do ij = 1, nxydim
+       fux(ij) = 0.d0
+       fvx(ij) = 0.d0
+       fuy(ij) = 0.d0
+       fvy(ij) = 0.d0
+    end do
 
     do ij = ijvstr, ijvend
        kup = max( nbotv(ij)-1, 1 )
@@ -463,39 +471,39 @@ contains
     &         + vx(ijls, k) + vx(ijlsw, k)) * 0.25d0 *                &
     &        hyxt(ij)
 
-       dd(ij) = sqrt(sqrt((exx - eyy) * (exx - eyy) + exy * exy))
+       db(ij) = sqrt(sqrt((exx - eyy) * (exx - eyy) + exy * exy))
 
-       sxx(ij) = asm(ij) * dd(ij) * (exx - eyy)
-       syy(ij) = asm(ij) * dd(ij) * (eyy - exx)
-       sxy(ij) = asm(ij) * dd(ij) * exy
+       bxx(ij) = asmb(ij) * db(ij) * (exx - eyy)
+       byy(ij) = asmb(ij) * db(ij) * (eyy - exx)
+       bxy(ij) = asmb(ij) * db(ij) * exy
 
     end do
      
     do ij = ijstr-nxdim-1, ijend+nxdim+2
        ijln = ij + ln
-       fux(ij) = (  sxx(ij) * hyt(ij) * hyt(ij)                       &
-    &             + sxx(ijln) * hyt(ijln) * hyt(ijln)) * 0.5d0
-       fvx(ij) = (  sxy(ij) * hyt(ij) * hyt(ij)                       &
-    &             + sxy(ijln) * hyt(ijln) * hyt(ijln)) * 0.5d0
+       hux(ij) = (  bxx(ij) * hyt(ij) * hyt(ij)                       &
+    &             + bxx(ijln) * hyt(ijln) * hyt(ijln)) * 0.5d0
+       hvx(ij) = (  bxy(ij) * hyt(ij) * hyt(ij)                       &
+    &             + bxy(ijln) * hyt(ijln) * hyt(ijln)) * 0.5d0
     end do
 
     do ij = ijstr-nxdim-1, ijend+nxdim+nxdim+1
        ijle = ij + le
-       fuy(ij) = (  sxy(ij) * hxt(ij) * hxt(ij)                       &
-    &             + sxy(ijle) * hxt(ijle) * hxt(ijle)) * 0.5d0
-       fvy(ij) = (  syy(ij) * hxt(ij) * hxt(ij)                       &
-    &             + syy(ijle) * hxt(ijle) * hxt(ijle)) * 0.5d0
+       huy(ij) = (  bxy(ij) * hxt(ij) * hxt(ij)                       &
+    &             + bxy(ijle) * hxt(ijle) * hxt(ijle)) * 0.5d0
+       hvy(ij) = (  byy(ij) * hxt(ij) * hxt(ij)                       &
+    &             + byy(ijle) * hxt(ijle) * hxt(ijle)) * 0.5d0
     end do
 
     do ij = ijstr-nxdim-1, ijend+nxdim+1
-       hu(ij) = - (  (fux(ij+le) - fux(ij)) *                         &
+       hu(ij) = - (  (hux(ij+le) - hux(ij)) *                         &
     &                 rx * ryu(ij)                                    &
-    &              + (fuy(ij+ln) - fuy(ij)) *                         &
+    &              + (huy(ij+ln) - huy(ij)) *                         &
     &                 rym(ij) * rxu(ij)) *                            &
     &              rxu(ij) * ryu(ij) * amskvb(ij)
-       hv(ij) = - (  (fvx(ij+le) - fvx(ij)) *                         &
+       hv(ij) = - (  (hvx(ij+le) - hvx(ij)) *                         &
     &                 rx * ryu(ij)                                    &
-    &              + (fvy(ij+ln) - fvy(ij)) *                         &
+    &              + (hvy(ij+ln) - hvy(ij)) *                         &
     &                 rym(ij) * rxu(ij)) *                            &
     &              rxu(ij) * ryu(ij) * amskvb(ij)
     end do
@@ -529,9 +537,9 @@ contains
     &          + hv(ijls) + hv(ijlsw)) * 0.25d0 *                     &
     &         hyxt(ij)
 
-        sxx(ij) = asm(ij) * dd(ij) * (exx - eyy)
-        syy(ij) = asm(ij) * dd(ij) * (eyy - exx)
-        sxy(ij) = asm(ij) * dd(ij) * exy
+        sxx(ij) = asmb(ij) * db(ij) * (exx - eyy)
+        syy(ij) = asmb(ij) * db(ij) * (eyy - exx)
+        sxy(ij) = asmb(ij) * db(ij) * exy
         
      end do
      
