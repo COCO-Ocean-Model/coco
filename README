@@ -2290,24 +2290,25 @@ FALSE の場合は浮力振動数の二乗に比例させる(Kawasaki et al., 20
 Smagorinsky (1963, MWR) による、速度依存の粘性係数を適用する。指定すべき
 パラメータは
 
- &NMSMAG CSM=3.D0 &END
+ &NMSMAG    CSM=3.D0,    CSMB=0.D0 &END
+ &NMSMGB CSMBBL=3.D0, CSMBBBB=0.D0 &END
 
 CSM   : 
   粘性係数を (CΔ/π)^2 D とするときの C。ここでΔは水平格子間隔(東西・
   南北のうち小さい方。緯度依存)で、D は 1/s の次元を持つ deformation
   rate。詳しくは Griffies and Hallberg (2000, MWR) を参照のこと。
-
-＊ cvisc.smag-bi
-
-Smagorinsky の方法を biharmonic 水平粘性の形で適用する。指定すべきパラメー
-タは
-
- &NMSMAB CSMB=3.D0 &END
+  
+CSMBBL : CSMに同じ. ただしBBLにおける係数.
 
 CSMB  :
+  Smagorinsky の方法を biharmonic 水平粘性の形で適用した場合の、
   Harmonic Smagorinsky で与える CSM と同じ。粘性係数は (CΔ/π)^2 D *
-  Δ^2 / 8 で与えられる。詳しくは Griffies and Hallberg (2000, MWR) を参
-  照のこと。
+  Δ^2 / 8 で与えられる。詳しくは Griffies and Hallberg (2000, MWR) を
+  参照のこと。
+
+CSMBBBB: CSMBに同じ. ただしBBLにおける係数.
+
+
 
 ＊ fshlw.novis
 
