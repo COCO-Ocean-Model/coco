@@ -127,6 +127,7 @@ subroutine vdiff( &
   real(8) ::  avrtx,  avrty
   real(8) ::     fc
   integer ::     ij,      k,   iitr
+  integer ::      i,      j 
   integer ::     kt
   integer ::  ifpar,  jfpar,  istat
 

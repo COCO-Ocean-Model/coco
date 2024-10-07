@@ -125,6 +125,7 @@ contains
        read( ifpar, nmcvis, iostat = istat ) 
        call cstnml( jfpar, 'modgxy', 'nmcvis', istat )
        write( jfpar, nmcvis )
+       call rewnml( ifpar, jfpar )
        read( ifpar, nmnovis, iostat = istat ) 
        call cstnml( jfpar, 'modgxy', 'nmnovis', istat )
        write( jfpar, nmnovis )
