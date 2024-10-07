@@ -283,18 +283,15 @@ contains
           ijle = ij + le
           fuy(ij, k) = (  sxy(ij)   * hxt(ij)   * hxt(ij)             &
     &                   + sxy(ijle) * hxt(ijle) * hxt(ijle))          &
-    &                * 0.5d0 * amfvy(ij, k)                           
+    &                * 0.5d0 * amfvy(ij, k)
           fvy(ij, k) = (  syy(ij)   * hxt(ij)   * hxt(ij)             &
     &                   + syy(ijle) * hxt(ijle) * hxt(ijle))          &
     &                * 0.5d0 * amfvy(ij, k)
        end do
 
-    end do
-
-    do k = kstr, kend
        do ij = ijvstr, ijvend
           ez = (  (amv(ij, k) + amv(ij, k+1)) * 0.5d0 / rea           &
-     &          + (amv(ij, k) - amv(ij, k+1)) * rz(ij, k))
+    &           + (amv(ij, k) - amv(ij, k+1)) * rz(ij, k))
           szx(ij, k) = - ux(ij, k) * ez
           szy(ij, k) = - vx(ij, k) * ez
        end do
