@@ -371,7 +371,7 @@ contains
          &      rx,     ry,    rym,     rs,   rsm,                    & 
          &     hxt,    hyt,   hxyt,   hyxt,                           &
          &     rxu,    ryu,    rxt,    ryt
-    use zocmsk,  only :  amskv,   amskvb,  amfvx, amfvy, nbotv
+    use zocmsk,  only :  amskvb,  amfvx, amfvy, nbotv
     use ufile
   
     implicit none
@@ -492,12 +492,12 @@ contains
     &                 rx * ryu(ij)                                    &
     &              + (fuy(ij+ln) - fuy(ij)) *                         &
     &                 rym(ij) * rxu(ij)) *                            &
-    &              rxu(ij) * ryu(ij) * amskv(ij, k)
+    &              rxu(ij) * ryu(ij) * amskvb(ij)
        hv(ij) = - (  (fvx(ij+le) - fvx(ij)) *                         &
     &                 rx * ryu(ij)                                    &
     &              + (fvy(ij+ln) - fvy(ij)) *                         &
     &                 rym(ij) * rxu(ij)) *                            &
-    &              rxu(ij) * ryu(ij) * amskv(ij, k)
+    &              rxu(ij) * ryu(ij) * amskvb(ij)
     end do
 
     do ij = ijstr, ijend+nxdim+1
@@ -567,7 +567,7 @@ contains
     &                   + (fuy(ij+ln) - fuy(ij)) *                    &
     &                     rym(ij) * rxu(ij)                           &
     &                  ) * rxu(ij) * ryu(ij) * rz(ij)                 &  
-    &                + szx(ij) / rea ) * amskv(ij,k)
+    &                + szx(ij) / rea ) * amskvb(ij)
         gy(ij, k) = (  gy(ij, k)                                      &
     &                + fvz(ij) * rz(ij)                               &
     &                + (  (fvx(ij+le) - fvx(ij)) *                    &
@@ -575,7 +575,7 @@ contains
     &                   + (fvy(ij+ln) - fvy(ij)) *                    &
     &                     rym(ij) * rxu(ij)                           &
     &                  ) * rxu(ij) * ryu(ij) * rz(ij)                 &
-    &                + szy(ij) / rea ) * amskv(ij,k)
+    &                + szy(ij) / rea ) * amskvb(ij)
      end do
 
      do ij = ijvstr, ijvend
