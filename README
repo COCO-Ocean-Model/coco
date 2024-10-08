@@ -1770,7 +1770,7 @@ KREF: 密度を計算する基準の深さ (鉛直グリッド番号)
 ・潜熱フラックス (LATFXG)
 
 移流に second order moment scheme (Prather, 1988) を用いている場合
-(tflxt.iso-som、tflxt.iso-som-mlecm など)、以下も出力可能である。
+(tflxt.som)、以下も出力可能である。
 
 ・移流による水温の時間変化項 (DTDTV) (degC/s)
 ・移流による塩分の時間変化項 (DSDTV) (psu/s)
@@ -2126,13 +2126,13 @@ SRCOPT = dvdif.nk
 
 なお、以下のスキームの中には、（主として歴史的理由から）非標準スキーム
 とされてはいるが事実上の標準となっているものもいくつか存在する。具体的
-にはtflxt.iso-ut と dvdif.nkが該当する。通常の使用では、同種の異なるス
+にはtflxt.ut と dvdif.nkが該当する。通常の使用では、同種の異なるス
 キーム（たとえば dvdif.nk の代わりに dvdif.gls）を用いるのでない限り、
 これらのスキームを用いることを強く推奨する。
 
 ● トレーサー移流・(水平)拡散
 
-＊ tflxt.iso-ut
+＊ tflxt.ut
 
 トレーサーの拡散に等密度面拡散および Gent et al. (1995) による isopycnal
 layer thickness diffusion を、移流に UTOPIA/QUICKEST (水平 2 次元に関し
@@ -2151,7 +2151,7 @@ AHG   :
 SLPMAX:
   等密度面の水平面からの傾きの最大値
 
-SLPM は指定されなければ 0.01 がデフォルト値として使われる。通常の
+SLPMAX は指定されなければ 0.01 がデフォルト値として使われる。通常の
 Laplacian 水平拡散も同時に適用され、その係数は 2.7 に挙げた AHH で指定す
 る。
 
@@ -2163,35 +2163,21 @@ AHI = AHG = 0 として AHH のみを指定すれば単純な水平拡散ルー�
 いることができるが、この場合には等密度面拡散に関する計算が省略されるわけ
 ではないので、無駄な計算をすることになる。
 
-＊ tflxt.bih-ut
-
 トレーサーの水平拡散を biharmonic で扱い、移流に UTOPIA/QUICKEST を用い
-る。指定すべきパラメータは
+る場合には、以下のパラメータを指定する。
 
  &NMDIFB AHB = 1.D+18 &END
 
 AHB:
   Biharmonic 拡散係数
 
-である。通常の Laplacian 拡散は適用されない。
+通常の Laplacian 拡散を適用しない場合は、 AHH = 0 を指定する必要がある。
 
-＊ tflxt.iso-bih-ut
+Fox-Kemper et al. (2008) の mixed layer eddy parameterization を適用する
+場合は以下のパラメータを指定する。
 
-トレーサーの拡散に biharmonic 水平拡散、等密度面拡散および Gent et al.
-(1995) による isopycnal layer thickness diffusion を、移流に 
-UTOPIA/QUICKEST (水平 2 次元に関して UTOPIA, 鉛直に関して QUICKEST) 
-を適用する。指定すべきパラメータは上二項を参照のこと。
+&NMMLEP OMLEP = T &END
 
-* tflxt.iso-som
-トレーサーの拡散に等密度面拡散および Gent et al. (1995) による isopycnal
-layer thickness diffusion を、移流に second order moment scheme
-(Prather, 1988) を用いる。指定すべきパラメータは tflxt.iso-ut の
-項を参照のこと
-
-* tflxt.iso-ut-mlecm, tflxt.iso-som-mlecm
-
-tflxt.iso-ut または tflxt.iso-som で用いられる全てのスキームに加えて、
-Fox-Kemper et al. (2008) の mixed layer eddy parameterization を適用する。
 実装は Fox-Kemper et al. (2011) の coarse resolution model への修正を
 含んでいる（この修正を含んでいても、高解像度設定でも問題なく使用できる）。
 指定できるパラメータはいろいろあるが、通常はデフォルト値でよい。ただし
@@ -2203,6 +2189,15 @@ NMMLEP:
   mixed layer eddy parameterization を適用する最深の level
 
 を設定してもよい。
+
+* tflxt.som
+tflxt.ut のうち、移流に second order moment scheme　(Prather, 1988) を用いる。
+他の指定すべきパラメータは tflxt.ut の項を参照のこと。
+
+* tflxt.som.scalar
+tflxt.som にスカラー機用のチューニングを施したもの。他の指定すべきパラメータは
+tflxt.ut の項を参照のこと。
+
 
 ● 鉛直混合／鉛直対流
 
@@ -2218,10 +2213,7 @@ MZ:
 
 以外はデフォルトを用いる。詳しくは COCO4 documentation を参照。
 
-* dvdif.nk-c0lat
-
-dvdif.nk に、指定した緯度より赤道よりで TKE の消散率を高くする設定を
-加えたルーチン。これを用いる場合、以下を設定する。
+指定した緯度より赤道よりで TKE の消散率を高くする場合、以下を設定する。
 
  &NMDVNK OC0LAT=T, LATCEQ=5.0D0, LATC0=15.0D0,
          C0=0.06D0, C0EQ=0.6D0 &END
@@ -2235,30 +2227,8 @@ LATC0, C0:
   緯度の絶対値が LATC0 より大きい場所で、消散率を決める係数として
   C0 を用いる。LATC0 から LATCEQ の間は、線形に補間する。
 
-* dvdif.gls
-混合層モデルの一種である Umlauf and Burchard (2003, JMR) の 
-generic length scale parameterization を適用する。ここでの
-実装には、Carniel et al. (2009, OM) に従って砕波による TKE input の
-効果が加えられている。多くのパラメータがあるが、通常指定すべきは
-以下の値である。
-
- &NMDVGL OSFCWV=T, OSWNOI=T, OBTKEI=f, TKEMIN=3.0D-2 &end
-
-OSFCWV:
-海面での砕波による TKE input を考慮する場合 T を指定する。
-OSWNOI:
-TRUE の場合海氷下では砕波による TKE input を与えない。OSFCWV=T の
-時のみ有効な設定。
-OBTKEI:
-海底でも摩擦に応じて TKE input を与えるかどうか。
-TKEMIN:
-TKE のバックグラウンド値。このルーチンで予報される TKE の最小値として
-用いられる。
-
-dvdif.gls では、エネルギー散逸率の水平2次元分布と成層を考慮して
-鉛直拡散係数の3次元分布を計算して与えることもできる。エネルギー散逸率の分布は、
-潮汐モデル(e.g., Niwa and Hibiya 2014, OM)の計算結果などを基に別途
-用意する必要がある。
+エネルギー散逸率の水平2次元分布と成層を考慮して鉛直拡散係数の3次元分布を
+計算して与えるには、以下のパラメータを指定する。
 
  &NMDVED IAMN = 1, IAMF = 1, CFTEDN="TEDN", CFTEDF="TEDF", CGAMMA=0.2, ZETA=500.D0,
          OFVCNT = F, OFVPN = F &END
@@ -2282,6 +2252,30 @@ OFVPN:
 TRUE の場合、遠隔的なエネルギー散逸率の鉛直分布を浮力振動数に比例させ、
 FALSE の場合は浮力振動数の二乗に比例させる(Kawasaki et al., 2021, JO)。
 
+ここで与えているエネルギー散逸率の分布は、潮汐モデル(e.g., Niwa and
+Hibiya 2014, OM)の計算結果などを基に別途用意する必要がある。
+
+* dvdif.gls
+混合層モデルの一種である Umlauf and Burchard (2003, JMR) の 
+generic length scale parameterization を適用する。ここでの
+実装には、Carniel et al. (2009, OM) に従って砕波による TKE input の
+効果が加えられている。多くのパラメータがあるが、通常指定すべきは
+以下の値である。
+
+ &NMDVGL OSFCWV=T, OSWNOI=T, OBTKEI=f, TKEMIN=3.0D-2 &end
+
+OSFCWV:
+海面での砕波による TKE input を考慮する場合 T を指定する。
+OSWNOI:
+TRUE の場合海氷下では砕波による TKE input を与えない。OSFCWV=T の
+時のみ有効な設定。
+OBTKEI:
+海底でも摩擦に応じて TKE input を与えるかどうか。
+TKEMIN:
+TKE のバックグラウンド値。このルーチンで予報される TKE の最小値として
+用いられる。
+
+他の指定すべきパラメータは dvdif.nk の項を参照のこと。
 
 ● 水平粘性
 
@@ -2307,8 +2301,6 @@ CSMB  :
   参照のこと。
 
 CSMBBBB: CSMBに同じ. ただしBBLにおける係数.
-
-
 
 ＊ fshlw.novis
 
@@ -2766,14 +2758,6 @@ aocea.F90 および aprdc.F90 におけるそれらの変数の通信部分を�
 の通信量は減少する。数十個以上のノードを使う、いわゆる massive parallel 
 では東西・南北両方向に均等に分割する方がよいかもしれない。南北方向のみに
 分割するのは避けるべきである、というのは確かであろう。
-
-9.3 ベクトル機の場合(ここに書くのは適当ではなかったか…)
-
-ほとんどのプログラムにおいては 3 次元変数の計算のループにおいて鉛直方向
-が外側で水平方向が内側になっているが、tovtr.F90 と tslvt.F90 ではそれが
-逆になっている。ベクトル機の場合にはループ長の問題などによりそれらのルー
-プが効率よくベクトル化されない（場合によっては全くベクトル化されない）。
-そのような場合、option/ にある tovtr.vec.F90 を用いる。
 
 10. 各種ユーティリティーについて
 
