@@ -91,7 +91,7 @@ contains
     namelist /nmvish/  amh
     namelist /nmcvis/  iam, cfamh
     namelist /nmnovis/ lnovis
-    data amh, iam, cfamh / 0.d0, 0, 'not-specified' /
+    data amh, iam, cfamh / 0.d0, -1, 'not-specified' /
     data lnovis / .false. /
 
 #ifdef OPT_IO_COCOMPI
