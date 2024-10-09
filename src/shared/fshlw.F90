@@ -91,7 +91,7 @@ contains
     namelist /nmvish/  amh
     namelist /nmcvis/  iam, cfamh
     namelist /nmnovis/ lnovis
-    data amh, iam, cfamh / 0.d0, -1, 'not-specified' /
+    data amh, iam, cfamh / 0.d0, 0, 'not-specified' /
     data lnovis / .false. /
 
 #ifdef OPT_IO_COCOMPI
@@ -142,8 +142,7 @@ contains
 !---- fshlw.novis setting
           amhmod(1:nxydim) = 0.d0
           write(jfpar,*) ' AMH is zero in fshlw'
-          goto 9
-       end if
+       else
        
        if ( iam < 0 ) then
 !---- spatially constant
@@ -202,10 +201,12 @@ contains
     &                  nxdim,  nydim,      1)
 #endif
           
-       end if
-9      continue
+       end if ! iam
+       end if ! lnovis
        
     end if
+
+    if (lnovis) return
 
 !$omp parallel do privete( ij )
     do ij = 1, nxydim
