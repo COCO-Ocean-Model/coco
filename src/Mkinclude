@@ -18,19 +18,22 @@ OPTEXMASK = -DOPT_EXMASK
 
 #OPTTOUZA = -DOPT_TOUZA
 
-# coco default
-#SRCOPT  = tflxt.iso-ut dvdif.nk
-
-# icedcoco default
-#SRCOPT  = tflxt.iso-ut dvdif.nk ipthm.linrmp 
+# default
+SRCOPT  = tflxt.ut dvdif.nk
 
 # CORE global simple
-#SRCOPT = tflxt.iso-ut aocea.icedcoco.nmlwtr dvdif.nk-c0lat csrvl.bblmzns cvisc.amh2d fshlw.novis ipthm.linrmp ipmmt.pice aprdc.icedcoco.tundf tslvt.icedcoco.tundf.para sfcng.CORE utint.CORE
+#SRCOPT = tflxt.iso-ut aocea.icedcoco.nmlwtr dvdif.nk-c0lat csrvl.bblmzns cvisc.amh2d fshlw.novis ipthm.linrmp ipmmt.pice aprdc.icedcoco.tundf tslvt.icedcoco.tundf.para sfcng.CORE utint.CORE ## old setting
+SRCOPT = tflxt.ut dvdif.nk sfcng.CORE utint.CORE
 
-SRCOPT	= tflxt.iso-ut dvdif.nk sfcng.CORE utint.CORE
+# JRA55-do global
+SRCOPT = tflxt.som dvdif.gls sfcng.JRA.direct utint.JRA.direct aprdc.$(MODEL).filter
 
 SRCENS  = 
-#SRCENS	= aocea.$(MODEL) aprdc.$(MODEL) binst.$(MODEL) bstbc.$(MODEL) cadvc ctnuv dvlva
+
+## high resolution (dx <= 1/4 deg)
+#SRCOPT += cvisc.smag
+##SRCENS = aocea.$(MODEL) aprdc.$(MODEL) binst.$(MODEL) bstbc.$(MODEL) cadvc ctnuv dvlva
+#SRCENS	= aocea.$(MODEL) aprdc.$(MODEL).filter binst.$(MODEL) bstbc.$(MODEL) cadvc ctnuv dvlva
 
 TARGET	= $(OGCMDIR)/bin/$(MODEL)
 LIBOGCM	= $(OGCMDIR)/lib/lib$(MODEL).a
