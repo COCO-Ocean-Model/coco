@@ -86,6 +86,8 @@ lib: $(shell cat OBJLIST)
 	$(AR) $(LIBOGCM) $(shell cat OBJLIST)
 	$(RANLIB) $(LIBOGCM)
 
+%.o : %.mod
+
 .PHONY: FORCE
 OBJLIST: FORCE
 	-@$(RM) *.F90
