@@ -88,11 +88,11 @@ contains
     integer, save :: imaxn
     integer, save, allocatable :: ipn(:), jpn(:), iqn(:), jqn(:)
     real(8), save, allocatable :: wtn(:)
-    logical, save :: odirect=.false.
+    logical, save :: odirect=.false., olint_wind=.false.
 
     namelist /nmsfbc/  cfusfc, cfvsfc, cftsfc, cfqsfc,                  &
     &                  cfprec, cfsflx, cfroff, cfswdw, cflwdw, cfpsfc, cfssfc,  &
-    &                  cftref, cftdmp, grid_jra, roff_map
+    &                  cftref, cftdmp, grid_jra, roff_map, olint_wind
     namelist /nmsfyr/  otyear
 
     data grid_jra /'not-specified'/
@@ -452,7 +452,6 @@ contains
        call cyh2ss( time, idatet )
 
       end subroutine read_runoff
-  end subroutine tmintp_direct
 
   function getdyr(idateb)
   use zocgrd, only: tt
@@ -494,7 +493,7 @@ contains
   use zocmsk
   use ufile
   implicit none
-#include "mpif.h"
+!#include "mpif.h"
 
   integer :: iitem
   integer, parameter :: nitem = (ntdim-2)*2+10
@@ -622,6 +621,8 @@ contains
 
   ofirst(iitem)=.false.
 
+  if (olint_wind) return
+  
   if(iitem .le. 2) then
      call intp_spline(alon, alat, mask, direct, data1)
   end if
@@ -914,6 +915,7 @@ end subroutine intpsfc
   return
   end subroutine tridag_cyclic
 
+  end subroutine tmintp_direct
 
 
 #ifndef OPT_IO_COCOMPI
@@ -966,10 +968,11 @@ end subroutine intpsfc
     character(len=ncf)  ::  cfswdw,   cflwdw,   cfpsfc,   cfssfc
     character(len=ncf)  ::  cftref(ntdim), cftdmp(ntdim)
     character(len=ncf)  ::  grid_jra, roff_map
+    logical             ::  olint_wind
 
     namelist /nmsfbc/  cfusfc, cfvsfc, cftsfc, cfqsfc,                  &
     &                  cfprec, cfsflx, cfroff, cfswdw, cflwdw, cfpsfc, cfssfc,  &
-    &                  cftref, cftdmp, grid_jra, roff_map
+    &                  cftref, cftdmp, grid_jra, roff_map, olint_wind
 
     data cfusfc, cfvsfc / 'not-specified', 'not-specified' /
     data cftsfc, cfqsfc / 'not-specified', 'not-specified' /
@@ -1589,10 +1592,11 @@ end subroutine intpsfc
     character(len=ncf)  ::  cfswdw,   cflwdw,   cfpsfc,   cfssfc
     character(len=ncf)  ::  cftref(ntdim), cftdmp(ntdim)
     character(len=ncf)  ::  grid_jra, roff_map
+    logical             ::  olint_wind
 
     namelist /nmsfbc/  cfusfc, cfvsfc, cftsfc, cfqsfc,                  &
     &                  cfprec, cfsflx, cfroff, cfswdw, cflwdw, cfpsfc, cfssfc,  &
-    &                  cftref, cftdmp, grid_jra, roff_map
+    &                  cftref, cftdmp, grid_jra, roff_map, olint_wind
 
     data cfusfc, cfvsfc / 'not-specified', 'not-specified' /
     data cftsfc, cfqsfc / 'not-specified', 'not-specified' /
