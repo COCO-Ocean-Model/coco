@@ -1,7 +1,8 @@
 FC	= ifort
-FFLAGS	= -convert big_endian
+FFLAGS	= -fp-model precise -mcmodel=large -shared-intel -convert big_endian -fpe0 -traceback
+#FFLAGS  = -check all -init=arrays,snan,minus_huge -fp-model precise -mcmodel=large -shared-intel -convert big_endian -fpe0 -traceback
+
 FOPTION = $(FFLAGS)
-UNIT22	= fort.22
 RUNOPT	=
 
 .F.o:

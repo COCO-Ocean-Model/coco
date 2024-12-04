@@ -14,7 +14,7 @@ module tflxt
 !     '12.08.02  Y.Komuro: for COCO5.0
 !     '13.02.13  Y.Komuro: remove non-parallel code 
 !     '13.09.24  s.urakawa: bug fix (overshoot limiter)
-!     '15.03.25  M.Kurogi: scalar tuning
+!     '15.04.07  M.Kurogi: for MPI-IO
 !
 ! ---------------------------------------------------------------------
 
@@ -23,7 +23,8 @@ module tflxt
     & nxgdim, nygdim, &
     &   kstr,   kend,     kz, &
     &     nx,     ny,     nz,    nxg,    nyg, &
-    & ijtstr, ijtend,  ijstr,  ijend, &
+    & ijtstr, ijtend, &
+    &  ijstr,  ijend, &
     &  igstr,  jgstr, &
     &     le,     lw,     ln,     ls, &
     &    lsw, &
@@ -32,7 +33,8 @@ module tflxt
   use zocgrd, only: &
     &     dy,    dym,     dz,    dz0,    dzm,    dzv,     ds,    dsm, &
     &     dx,     rx,     ry,    rym, &
-    &     ts,   zbot,    cor, &
+    &     ts,   zbot, &
+    &    cor, &
     &    hxt,    hxu,    hyt,    hyu,    rxt,    ryt
   use zocmsk, only: &
 #ifdef OPT_BBL
@@ -42,10 +44,9 @@ module tflxt
     &   nbot
   use zocfil, only: &
     &    ncf
+  use brstt
   use zocphy, only: &
     & gravit,   rhoo
-
-  use brstt
 
   implicit none
   private
@@ -79,7 +80,6 @@ subroutine flxtrc( &
 #endif
   use qckot
   use bshft
-  implicit none
 #include "mpif.h"
 
   real(8), intent(out)    ::    adt(nxydim, nzdim, ntdim)    
@@ -91,6 +91,7 @@ subroutine flxtrc( &
   real(8), intent(in)     ::      w(nxydim, nzdim),    ahv(nxydim, nzdim)
 
   real(8) ::    wzc(nxydim, nzdim),    rzm(nxydim, nzdim)
+  real(8) :: fharmx(nxydim), fharmy(nxydim),   harm(nxydim)
   real(8) ::  hzbot(nxydim)
   real(8) ::     dh(nxydim)
 
@@ -116,7 +117,7 @@ subroutine flxtrc( &
   real(8) ::  ftxis(nxydim, nzdim, ntdim)
   real(8) ::  ftyis(nxydim, nzdim, ntdim)
   real(8) ::  ftzis(nxydim, nzdim, ntdim)
- 
+
 ! ---- spatially varying isopycnal diffusion coefficient
   real(8), save ::   ahh3d(nxydim, nzdim),  ahi3d(nxydim, nzdim)
   real(8), save ::   ahg3d(nxydim, nzdim) 
@@ -135,32 +136,18 @@ subroutine flxtrc( &
   real(8), save ::  sxy(nxydim, nzdim, ntdim), sxz(nxydim, nzdim, ntdim)
   real(8), save ::  syz(nxydim, nzdim, ntdim)   
 
-  real(8), save :: alf(nxydim)=0.d0
-  real(8), save ::  f0(nxydim)=0.d0
-  real(8), save ::  fm(nxydim)=0.d0
-  real(8), save ::  fx(nxydim)=0.d0, fxx(nxydim)=0.d0
-  real(8), save ::  fy(nxydim)=0.d0, fyy(nxydim)=0.d0
-  real(8), save ::  fz(nxydim)=0.d0, fzz(nxydim)=0.d0
-  real(8), save :: fxy(nxydim)=0.d0, fxz(nxydim)=0.d0
-  real(8), save :: fyz(nxydim)=0.d0
-
-  integer :: ij1, ij2
-!                             L2(kb), dble,  , 3D var num
-  integer, parameter :: iblock=512000/ 8 /nz / 30
-
-  real(8), save :: zalf(iblock,nzdim)=0.d0
-  real(8), save ::  zf0(iblock,nzdim)=0.d0
-  real(8), save ::  zfm(iblock,nzdim)=0.d0
-  real(8), save ::  zfx(iblock,nzdim)=0.d0, zfxx(iblock,nzdim)=0.d0
-  real(8), save ::  zfy(iblock,nzdim)=0.d0, zfyy(iblock,nzdim)=0.d0
-  real(8), save ::  zfz(iblock,nzdim)=0.d0, zfzz(iblock,nzdim)=0.d0
-  real(8), save :: zfxy(iblock,nzdim)=0.d0, zfxz(iblock,nzdim)=0.d0
-  real(8), save :: zfyz(iblock,nzdim)=0.d0
+  real(8), save ::  f0 (nxydim, nzdim)=0.d0
+  real(8), save ::  fm (nxydim, nzdim)=0.d0
+  real(8), save ::  fx (nxydim, nzdim)=0.d0, fxx(nxydim, nzdim)=0.d0
+  real(8), save ::  fy (nxydim, nzdim)=0.d0, fyy(nxydim, nzdim)=0.d0
+  real(8), save ::  fz (nxydim, nzdim)=0.d0, fzz(nxydim, nzdim)=0.d0
+  real(8), save ::  fxy(nxydim, nzdim)=0.d0, fxz(nxydim, nzdim)=0.d0
+  real(8), save ::  fyz(nxydim, nzdim)=0.d0
 
   real(8), save ::  vlmx(nxydim, nzdim)=0.d0, vlmy(nxydim, nzdim)=0.d0
   real(8), save ::  vlmz(nxydim)=0.d0
   real(8), save ::  r(nxyzdm)
-  real(8), save ::  uv(nxydim, nzdim)
+  real(8), save ::  alf(nxydim, nzdim)=0.d0, uv(nxydim, nzdim)
 
   real(8) ::  s0m,    s1m,    s0p,    sxp
   real(8) ::  alfq,   alf1,   alf1q
@@ -182,8 +169,10 @@ subroutine flxtrc( &
   real(8) ::  zpsix(nxydim, nzdim),  zpsiy(nxydim, nzdim)
   real(8) ::   igsy(nxydim, nzdim),   igsx(nxydim, nzdim)
 
-  real(8), save ::  ahh = 0.0d0,  ahi = 0.0d0,  ahg = 0.0d0
+  real(8), save ::    ahb = 0.0d0
+  real(8), save ::    ahh = 0.0d0,    ahi = 0.0d0,    ahg = 0.0d0
 
+  namelist /nmdifb/ ahb
   namelist /nmdifh/ ahh
   namelist /nmdifi/ ahi
   namelist /nmdifg/ ahg
@@ -204,11 +193,10 @@ subroutine flxtrc( &
   character(len= 16) ::  chead(64) 
   integer :: iah = 0
   integer :: nfahi, nfahg
-
   namelist /nmcah/ cfahi, cfahg, iah
 
 !---- latitudinally varying GM diffusivity
-  integer :: isvgm = -1
+  integer, save ::  isvgm = -1
   real(8), save ::  ahgno = 1.d7, nlats =  40.d0, nlatn =  50.d0
   real(8), save ::  ahgso = 1.d7, slatn = -40.d0, slats = -50.d0
   real(8) :: pi, lat
@@ -223,8 +211,6 @@ subroutine flxtrc( &
 
   namelist /nmbbdh/ ahhbbl
 #endif
-  real(8) :: ss, d1, d2
-  integer :: l, ll(nxydim, nzdim)
 
   if (oinit) then
      do n = 1, ntdim
@@ -298,6 +284,10 @@ subroutine flxtrc( &
   if (ofirst) then
      ofirst = .false.
      call rewnml(ifpar, jfpar)
+     read(ifpar, nmdifb, iostat=istat)
+     call cstnml(jfpar, 'flxtrc', 'nmdifb', istat)
+     write(jfpar, nmdifb)
+     call rewnml(ifpar, jfpar)
      read(ifpar, nmdifh, iostat=istat)
      call cstnml(jfpar, 'flxtrc', 'nmdifh', istat)
      write(jfpar, nmdifh)
@@ -315,6 +305,7 @@ subroutine flxtrc( &
      ci3 = 1.d0 / 3.d0
 
 !----- initialization
+
      if (oeof) then
         do n = 1, ntdim
            do k = 1, nzdim
@@ -370,7 +361,6 @@ subroutine flxtrc( &
      read(ifpar, nmcah, iostat=istat)
      call cstnml(jfpar, 'flxtrc', 'nmcah', istat)
      write(jfpar, nmcah)
-
      call rewnml(ifpar, jfpar)
      read(ifpar, nmsvgm, iostat=istat)
      call cstnml(jfpar, 'flxtrc', 'nmsvgm', istat)
@@ -420,7 +410,7 @@ subroutine flxtrc( &
               endif
            end do
         end if
-        
+
      else
 
         do k = 1, nzdim
@@ -522,38 +512,39 @@ subroutine flxtrc( &
      &  zpsix,  zpsiy, &
      &     ty,     tx,     hz )
 
-!$omp parallel private(k, n, ij, kuu, ku, kd, ijls, ijlw)
+
+!$omp parallel
 !$omp do
-  do k = 1, nzdim
   do n = 1, ntdim
-     do ij = 1, nxydim
-        adt (ij, k, n) = 0.d0
-        ftx (ij, k, n) = 0.d0
-        fty (ij, k, n) = 0.d0
-        ftz (ij, k, n) = 0.d0
-        adt2 (ij, k, n) = 0.d0
-        ftx2 (ij, k, n) = 0.d0
-        fty2 (ij, k, n) = 0.d0
-        ftz2 (ij, k, n) = 0.d0
-        adtd (ij, k, n) = 0.d0
-        ftxd (ij, k, n) = 0.d0
-        ftyd (ij, k, n) = 0.d0
-        ftzd (ij, k, n) = 0.d0
-        ftxgm(ij, k, n) = 0.d0
-        ftygm(ij, k, n) = 0.d0
-        ftzgm(ij, k, n) = 0.d0
-        ftxis(ij, k, n) = 0.d0
-        ftyis(ij, k, n) = 0.d0
-        ftzis(ij, k, n) = 0.d0
-        ftxah(ij, k, n) = 0.d0
-        ftyah(ij, k, n) = 0.d0
-        adtgm(ij, k, n) = 0.d0
-        adtis(ij, k, n) = 0.d0
-        adtah(ij, k, n) = 0.d0
+     do k = 1, nzdim
+        do ij = 1, nxydim
+           adt (ij, k, n) = 0.d0
+           ftx (ij, k, n) = 0.d0
+           fty (ij, k, n) = 0.d0
+           ftz (ij, k, n) = 0.d0
+           adt2 (ij, k, n) = 0.d0
+           ftx2 (ij, k, n) = 0.d0
+           fty2 (ij, k, n) = 0.d0
+           ftz2 (ij, k, n) = 0.d0
+           adtd (ij, k, n) = 0.d0
+           ftxd (ij, k, n) = 0.d0
+           ftyd (ij, k, n) = 0.d0
+           ftzd (ij, k, n) = 0.d0
+           ftxgm(ij, k, n) = 0.d0
+           ftygm(ij, k, n) = 0.d0
+           ftzgm(ij, k, n) = 0.d0
+           ftxis(ij, k, n) = 0.d0
+           ftyis(ij, k, n) = 0.d0
+           ftzis(ij, k, n) = 0.d0
+           ftxah(ij, k, n) = 0.d0
+           ftyah(ij, k, n) = 0.d0
+           adtgm(ij, k, n) = 0.d0
+           adtis(ij, k, n) = 0.d0
+           adtah(ij, k, n) = 0.d0
+        end do
      end do
   end do
-  end do
-!$omp end do nowait
+!$omp end do
 
 !$omp do
   do k = 1, nzdim
@@ -561,8 +552,51 @@ subroutine flxtrc( &
         diffz(ij, k) = 0.d0
      end do
   end do
-!$omp end do nowait
+!$omp end do
+!$omp end parallel
 
+  do n = 1, ntdim
+!$omp parallel private( &
+!$omp k, ij, ijls, ijlw, &
+!$omp fharmx, fharmy, harm &
+!$omp )
+!$omp do
+     do k = kstr, kend
+        do ij = ijtstr-nxdim, ijtend+nxdim+nxdim
+           ijlw = ij + lw
+           ijls = ij + ls
+           fharmx(ij) = ahb * (hyu(ijlw) + hyu(ij+lsw)) &
+             &              / (hxt(ij) + hxt(ijlw)) * &
+             &          (tx(ij, k, n) - tx(ijlw, k, n)) * rx * &
+             &          amskt(ij, k) * amskt(ijlw, k)
+           fharmy(ij) = ahb * (hxu(ijls) + hxu(ij+lsw)) &
+             &              / (hyt(ij) + hyt(ijls)) * &
+             &          (tx(ij, k, n) - tx(ijls, k, n)) * rym(ij) * &
+             &          amskt(ij, k) * amskt(ijls, k)
+        end do
+        do ij = ijtstr-nxdim, ijtend+nxdim
+           harm(ij) = (  (fharmx(ij+le) - fharmx(ij)) * rx &
+             &         + (fharmy(ij+ln) - fharmy(ij)) * ry(ij)) * &
+             &        rxt(ij) * ryt(ij)
+        end do
+        do ij = ijtstr, ijtend+nxdim
+           ijlw = ij + lw
+           ijls = ij + ls
+           ftx(ij, k, n) = - (harm(ij) - harm(ijlw)) * rx * &
+             &             (hyu(ijlw) + hyu(ij+lsw)) &
+!             &             / (hxt(ij) + hxt(ijlw)) * amftx(ij, kstr) &
+             &             / (hxt(ij) + hxt(ijlw)) * amftx(ij, k)
+           fty(ij, k, n) = - (harm(ij) - harm(ijls)) * rym(ij) * &
+             &             (hxu(ijls) + hxu(ij+lsw)) &
+!             &             / (hyt(ij) + hyt(ijls)) * amfty(ij, kstr) &
+             &             / (hyt(ij) + hyt(ijls)) * amfty(ij, k)
+        end do
+     end do
+!$omp end do
+!$omp end parallel
+  end do
+  
+!$omp parallel
 !$omp do
   do ij = 1, nxydim
      hzbot(ij) = hz(ij) + zbot
@@ -586,41 +620,43 @@ subroutine flxtrc( &
      end do
   end do
 !$omp end do
-
+!$omp end parallel
+  
   call chekin(wzc, 'WZC', &
      &     'ocean vertical velocity on sigma coordinate', 'cm/s', &
      & nx, ny, nz, nxyzdm, 'OCLVMT')
 
 ! ======  GM  isopycnal and diapycnal diffusion  ======
 ! ---- z diffusion flux of GM
+!$omp parallel private(k, n, ij, kuu, ku, kd, ijls, ijlw, ijlsw)
 !$omp do
-  do k = kstr+1, kend
   do n = 1, ntdim
-     kuu = k - 2
-     ku  = k - 1
-     kd  = k + 1
-     do ij = ijtstr, ijtend
+     do k = kstr+1, kend
+        kuu = k - 2
+        ku  = k - 1
+        kd  = k + 1
+        do ij = ijtstr, ijtend
 
-        diffz(ij, k) = &
+           diffz(ij, k) = &
              & (  ahv(ij, k) &
              &  + ahi3d(ij, k) * (  zdzdx(ij, k) * zdzdx(ij, k) &
              &                    + zdzdy(ij, k) * zdzdy(ij, k) ) ) * &
              & rzm(ij, k) * amftz(ij, k)
 
-        ftz(ij, k, n) =  &
+           ftz(ij, k, n) =  &
              & (  diffz(ij, k) * (tx(ij, ku, n) - tx(ij, k, n)) &
              &  - ( ( ahi3d(ij, k) + ahg3d(ij, k) ) * &
              &     zdzdx(ij, k) - zpsiy(ij, k) ) * zdtdx(ij, k, n) &
              &  - ( ( ahi3d(ij, k) + ahg3d(ij, k) ) * &
              &     zdzdy(ij, k) + zpsix(ij, k) ) * zdtdy(ij, k, n) &
              &  ) * amftz(ij, k)
-        ftzd(ij, k, n) = ftz(ij, k, n)
-        ftzgm(ij, k, n) =  &
+           ftzd(ij, k, n) = ftz(ij, k, n)
+           ftzgm(ij, k, n) =  &
              &   - ahg3d(ij, k) * &
              &   ( zdzdx(ij, k) * zdtdx(ij, k, n) &
              &   + zdzdy(ij, k) * zdtdy(ij, k, n) ) &
              &   * amftz(ij, k)
-        ftzis(ij, k, n) =  &
+           ftzis(ij, k, n) =  &
              &  (  ahi3d(ij, k) * (  zdzdx(ij, k) * zdzdx(ij, k) &
              &                     + zdzdy(ij, k) * zdzdy(ij, k) ) * &
              &       rzm(ij, k) * (tx(ij, ku, n) - tx(ij, k, n)) &
@@ -629,70 +665,77 @@ subroutine flxtrc( &
              &   + zdzdy(ij, k) * zdtdy(ij, k, n) ) ) &
              &   * amftz(ij, k)
 
+        end do
      end do
-  end do
   end do
 !$omp end do
 
 ! ---- y diffusion flux of GM
 !$omp do
-  do k = kstr, kend
   do n = 1, ntdim
-     do ij = ijtstr, ijtend+nxdim
 
-        ijls = ij + ls
+     do k = kstr, kend
+        do ij = ijtstr, ijtend+nxdim
 
-        fty(ij, k, n) = &
+           ijls = ij + ls
+
+           fty(ij, k, n) = fty(ij, k, n) + &
              &     (  ( ahh3d(ij, k) + ahi3d(ij, k) ) * rym(ijls) &
              &      / ( hyt(ij) + hyt(ijls) ) * &
              &        ( tx(ij, k, n) - tx(ijls, k, n) ) * 2.d0 &
              &      - ( ( ahi3d(ij, k) - ahg3d(ij, k) ) &
              &        * ydzdy(ij, k) - ypsix(ij, k) ) * ydtdz(ij, k, n) ) &
              &      * ( hxu(ijls) + hxu(ij+lsw) ) * 0.5d0 * amfty(ij, k)
-        ftyd(ij, k, n) = fty(ij, k, n)
-        ftyah(ij, k, n) = &
+           ftyd(ij, k, n) = fty(ij, k, n)
+           ftyah(ij, k, n) = &
              &     (  ahh3d(ij, k) * rym(ijls) &
              &      / ( hyt(ij) + hyt(ijls) ) * &
              &        ( tx(ij, k, n) - tx(ijls, k, n) ) * 2.d0 ) &
              &      * ( hxu(ijls) + hxu(ij+lsw) ) * 0.5d0 * amfty(ij, k)
-        ftygm(ij, k, n) = &
+           ftygm(ij, k, n) = &
              &       (  ahg3d(ij, k) &
              &        * ydzdy(ij, k) * ydtdz(ij, k, n) ) &
              &        * ( hxu(ijls) + hxu(ij+lsw) ) * 0.5d0 * amfty(ij, k)
-        ftyis(ij, k, n) = &
+           ftyis(ij, k, n) = &
              &     (  ahi3d(ij, k) * rym(ijls) &
              &      / ( hyt(ij) + hyt(ijls) ) * &
              &        ( tx(ij, k, n) - tx(ijls, k, n) ) * 2.d0 &
              &      - ahi3d(ij, k) &
              &      * ydzdy(ij, k) * ydtdz(ij, k, n) ) &
              &      * ( hxu(ijls) + hxu(ij+lsw) ) * 0.5d0 * amfty(ij, k)
-
+        end do
      end do
 
+  end do
+!$omp end do
+
 ! ---- x diffusion flux of GM
+!$omp do
+  do n = 1, ntdim
 
-     do ij = ijtstr, ijtend+1
+     do k = kstr, kend
+        do ij = ijtstr, ijtend+1
 
-        ijlw = ij + lw
+           ijlw = ij + lw
            
-        ftx(ij, k, n) = &
+           ftx(ij, k, n) = ftx(ij, k, n) + &
              &     (  ( ahh3d(ij, k) + ahi3d(ij, k) ) * rx &
              &      / ( hxt(ij) + hxt(ijlw) ) &
              &      * ( tx(ij, k, n) - tx(ijlw, k, n) ) * 2.d0 &
              &      - ( ( ahi3d(ij, k) - ahg3d(ij, k) ) &
              &      * xdzdx(ij, k) + xpsiy(ij, k) ) * xdtdz(ij, k, n) ) &
              &      * ( hyu(ijlw) + hyu(ij+lsw) ) * 0.5d0 * amftx(ij, k)
-        ftxd(ij, k, n) = ftx(ij, k, n)
-        ftxah(ij, k, n) = &
+           ftxd(ij, k, n) = ftx(ij, k, n)
+           ftxah(ij, k, n) = &
              &     (  ahh3d(ij, k) * rx &
              &      / ( hxt(ij) + hxt(ijlw) ) &
              &      * ( tx(ij, k, n) - tx(ijlw, k, n) ) * 2.d0 ) &
              &      * ( hyu(ijlw) + hyu(ij+lsw) ) * 0.5d0 * amftx(ij, k)
-        ftxgm(ij, k, n) = &
+           ftxgm(ij, k, n) = &
              &     (  ahg3d(ij, k) &
              &      * xdzdx(ij, k) * xdtdz(ij, k, n) ) &
              &      * ( hyu(ijlw) + hyu(ij+lsw) ) * 0.5d0 * amftx(ij, k)
-        ftxis(ij, k, n) = &
+           ftxis(ij, k, n) = &
              &     (  ahi3d(ij, k) * rx &
              &      / ( hxt(ij) + hxt(ijlw) ) &
              &      * ( tx(ij, k, n) - tx(ijlw, k, n) ) * 2.d0 &
@@ -700,9 +743,21 @@ subroutine flxtrc( &
              &      * xdzdx(ij, k) * xdtdz(ij, k, n) ) &
              &      * ( hyu(ijlw) + hyu(ij+lsw) ) * 0.5d0 * amftx(ij, k)
 
+        end do
+
+! ---- divergence of diffusion fluxes
+
+!        do ij = ijtstr, ijtend
+!
+!           adt(ij, k, n) = &
+!             & (  (  (ftx(ij+le, k, n) - ftx(ij, k, n)) * rx &
+!             &     + (fty(ij+ln, k, n) - fty(ij, k, n)) * ry(ij)) * &
+!             &    rxt(ij) * ryt(ij) &
+!             &  + ftz(ij, k, n) - ftz(ij, k+1, n)) / dz(ij, k)
+!
+!        end do
      end do
 
-  end do
   end do
 !$omp end do
 
@@ -784,7 +839,7 @@ subroutine flxtrc( &
 
 !$omp do
   do k = kstr, kend
-     do ij=1, nxydim
+     do ij = ijtstr, ijtend+nxdim
         igsx(ij, k) = ( ahi3d(ij, k) - ahg3d(ij, k) ) * xdzdx(ij, k)
         igsy(ij, k) = ( ahi3d(ij, k) - ahg3d(ij, k) ) * ydzdy(ij, k)
      end do
@@ -815,20 +870,52 @@ subroutine flxtrc( &
 !  call chekin(psigmx, 'PSIGMX', nx, ny, nz, nxyzdm, 'OCN')
 !  call chekin(psigmy, 'PSIGMY', nx, ny, nz, nxyzdm, 'OCN')
 
-!---- SOM 
-!---- mass contained in a tracer grid
 
-!!*POPTION PARALLEL
-!$omp parallel do &
-!$omp private( &
-!$omp ij, ijlw, ijlsw, ijle, ijls, ijln, k, n, s0m, s1m, s0p, sxp, &
-!$omp alfq, alf1, alf1q, tmp, &
-!$omp fm, alf, f0, fx, fy, fz, &
-!$omp fxx, fyy, fzz, fxy, fxz, fyz &
-!$omp )
+! ---- SOM 
+
+! ---- mass contained in a tracer grid
+  
+!$omp do
+  do n = 1, ntdim
+
+     do k = kstr, kstr+kz-1
+        do ij = 1, nxydim
+
+           sm(ij, k, n) = vlmz(ij) * hzbot(ij) * ds(k)
+
+        end do
+     end do
+
+     do k = kstr+kz, kend
+        do ij = 1, nxydim
+
+           sm(ij, k, n) = vlmz(ij) * dz(ij, k)
+
+        end do
+     end do
+
+     do k = kstr, kend
+        do ij = 1, nxydim
+
+           s0(ij, k, n) = sm(ij, k, n) * tx(ij, k, n)
+               
+        end do
+     end do
+
+     do ij = 1, nxydim
+        sm(ij, kstr-1, n) = sm(ij, kstr, n)
+        sm(ij, kend+1, n) = sm(ij, kend, n)
+        s0(ij, kstr-1, n) = s0(ij, kstr, n)
+        s0(ij, kend+1, n) = s0(ij, kend, n)
+     end do
+
+  end do
+!$omp end do
+
+! ---- in X-direction
+
+!$omp do
   do k = kstr, kend
-
-!---- in X-direction
      do ij = ijtstr-nxdim-1, ijtend+nxdim+1
 
         ijlw  = ij + lw
@@ -838,41 +925,24 @@ subroutine flxtrc( &
           &         + uy(ijlsw, k) * vlmy(ijlsw, k) ) &
           &       * amskt(ij, k) * amskt(ijlw, k) * dy(ijlw)
 
-              !if u>0 LL=-1, else LL=0
-               ll(ij,k)= - nint(0.5d0 +dsign(0.5D0, uv(ij,k))) 
      end do
+  end do
+!$omp end do
+!$omp end parallel
 
-     do n = 1, ntdim
-        if(k .le. kstr+kz-1) then
-           do ij = 1, nxydim
-              sm(ij, k, n) = vlmz(ij) * hzbot(ij) * ds(k)
-           end do
-        else
-           do ij = 1, nxydim
-              sm(ij, k, n) = vlmz(ij) * dz(ij, k)
-           end do
-        end if
-
-        do ij = 1, nxydim
-           s0(ij, k, n) = sm(ij, k, n) * tx(ij, k, n)               
-        end do
-
-        if(k == kend) then
-           do ij = 1, nxydim
-              sm(ij, kstr-1, n) = sm(ij, kstr, n)
-              sm(ij, kend+1, n) = sm(ij, kend, n)
-              s0(ij, kstr-1, n) = s0(ij, kstr, n)
-              s0(ij, kend+1, n) = s0(ij, kend, n)
-           end do
-        end if
+  do n = 1, ntdim
 
 ! ---- undershoot limiter (Method B) of Morales Maqueda and Holloway (2006)
-
+!!*POPTION PARALLEL
+!$omp parallel do private( &
+!$omp ij, ijlw, ijle, k, s0m, s1m, s0p, sxp, &
+!$omp alfq, alf1, alf1q, tmp &
+!$omp )
+     do k = kstr, kend
         do ij = ijtstr-nxdim-1, ijtend+nxdim+1
 
            ijlw = ij + lw * nint( amskt(ij+lw, k) )
            ijle = ij + le * nint( amskt(ij+le, k) )
-
 
            s0m  = s0(ij, k, n) &
              &  - min( s0(ijlw, k, n) / sm(ijlw, k, n), &
@@ -880,22 +950,36 @@ subroutine flxtrc( &
              &         s0(ijle, k, n) / sm(ijle, k, n)  ) &
              &  * sm(ij, k, n)
 
-
            s1m  = sq3 * s0m
            sx(ij, k, n) = min( s1m, max( - s1m, sx(ij, k, n) ) )
 
            s0p = s0m * s0m
            sxp = sqrt( max( s0p - sx(ij, k, n) * sx(ij, k, n) * ci3, &
              &              eps ) )
+          
+           if ( abs( sx(ij, k, n) ) < 1.5d0 * s0m ) then
+             
+              sxx(ij, k, n) = min( s0m + sxp, &
+                &                  max( abs( sx(ij, k, n) ) - s0m, &
+                &                       sxx(ij, k, n) ) ) 
 
-           d1=max( abs( sx(ij, k, n) ) - s0m, sxx(ij, k, n) ) 
-           d2=max( s0m - sxp, sxx(ij, k, n) ) 
-           ss=0.5D0 +dsign(0.5d0, abs( sx(ij, k, n) ) - 1.5d0 * s0m)
-           sxx(ij, k, n) = min( s0m + sxp, d1*(1.d0-ss) + d2*ss )
-           sxy(ij, k, n) = min( s0m, max( - s0m, sxy(IJ, K, N) ) )
-           sxz(ij, k, n) = min( s0m, max( - s0m, sxz(IJ, K, N) ) )
+           else
+                  
+              sxx(ij, k, n) = min( s0m + sxp, &
+                &                  max( s0m - sxp, sxx(ij, k, n) ) )
+             
+           end if
 
-!---- overshoot limiter (Method B) of Morales Maqueda and Holloway (2006)
+           sxy(ij, k, n) = min( s0m, max( - s0m, sxy(ij, k, n) ) )
+           sxz(ij, k, n) = min( s0m, max( - s0m, sxz(ij, k, n) ) )
+          
+        end do
+
+!    ---- overshoot limiter (Method B) of Morales Maqueda and Holloway (2006)
+        do ij = ijtstr-nxdim-1, ijtend+nxdim+1
+
+           ijlw = ij + lw * nint( amskt(ij+lw, k) )
+           ijle = ij + le * nint( amskt(ij+le, k) )
 
            s0m = - s0(ij, k, n) &
              &   + max( s0(ijlw, k, n) / sm(ijlw, k, n), &
@@ -909,420 +993,677 @@ subroutine flxtrc( &
            s0p = s0m * s0m
            sxp = sqrt( max( s0p - sx(ij, k, n) * sx(ij, k, n) * ci3, &
              &              eps ) )
+          
+           if ( abs( sx(ij, k, n) ) < 1.5d0 * s0m ) then
+             
+!             sxx(ij, k, n) = min( s0m + sxp, &
+!               &                  max( abs( sx(ij, k, n) ) - s0m, &
+!               &                       sxx(ij, k, n) ) )
+              sxx(ij, k, n) = min( s0m - abs( sx(ij, k, n) ), &
+                &                  max( - s0m - sxp,          &
+                &                       sxx(ij, k, n) ) )
 
-!               d1=max( abs( sx(ij, k, n) ) - s0m, sxx(ij, k, n) ) 
-!               d2=max( s0m - sxp, sxx(ij, k, n) )
-!               ss=0.5d0 +dsign(0.5d0, abs( sx(ij, k, n) ) - 1.5d0 * s0m)
-!               sxx(ij, k, n) = min( s0m + sxp, d1*(1.d0-ss) + d2*ss )
-               d1 = max( -s0m-sxp, sxx(ij, k, n) )
-!               d2 = max( -s0m-sxp, sxx(ij, k, n) )
-               ss=0.5d0 +dsign(0.5d0, abs( sx(ij, k, n) ) - 1.5d0 * s0m)
-               sxx(ij, k, n) = min( (s0m-abs(sx(ij, k, n)))*(1.d0-ss) &
-     &                                + (-s0m+sxp)*ss,                &
-     &                              d1 )
+           else
+                  
+!             sxx(ij, k, n) = min( s0m + sxp, &
+!               &                  max( s0m - sxp, sxx(ij, k, n) ) )
+              sxx(ij, k, n) = min( - s0m + sxp,       &
+                &                  max( - s0m - sxp,  &
+                &                        sxx(ij, k, n) ) )            
+           end if
 
-               sxy(ij, k, n) = min( s0m, max( - s0m, sxy(ij, k, n) ) )
-               sxz(ij, k, n) = min( s0m, max( - s0m, sxz(ij, k, n) ) )
+           sxy(ij, k, n) = min( s0m, max( - s0m, sxy(ij, k, n) ) )
+           sxz(ij, k, n) = min( s0m, max( - s0m, sxz(ij, k, n) ) )
           
         end do
 
-!---- calculating ALF and MASS between box (I-1,J,K) <---> (I,J,K)
+!---- bug fix 2
+!     call shift1( sx (:,:,n), nxdim, nydim, nzdim )
+!     call shift1( sxx(:,:,n), nxdim, nydim, nzdim )
+!     call shift1( sxy(:,:,n), nxdim, nydim, nzdim )
+!     call shift1( sxz(:,:,n), nxdim, nydim, nzdim )
 
+!    ---- calculating ALF and MASS between box (i-1,j,k) <---> (i,j,k)
         do ij = ijtstr-nxdim-1, ijtend+nxdim+1
-           ijlw  = ij + lw
 
-           l=ll(ij,k)
-           ss=dble(-2*l -1)
+           ijlw  = ij + lw
                
-           fm(ijlw) = ss*uv(ij, k) * ts
-           alf(ij)  = fm(ijlw) / sm(ij+l, k, n)              
-        end do
+           if ( uv(ij, k) .gt. 0.d0 ) then
+              fm(ijlw, k) = uv(ij, k) * ts 
+              alf(ij, k)  = fm(ijlw, k) / sm(ijlw, k, n)
+           else
+              fm(ijlw, k) = - uv(ij, k) * ts
+              alf(ij, k)  = fm(ijlw, k) / sm(ij  , k, n)
+           end if
 
+!    ---- calculating flux and moments between box (i-1,j,k) <---> (i,j,k)
 
-!---- calculating flux and moments between box (I-1,J,K) <---> (I,J,K)                  
-
-        do ij = ijtstr-nxdim-1, ijtend+nxdim+1
-           ijlw  = ij + lw
-
-           l=ll(ij,k)
-           ss=dble(-2*l -1)
-
-           alfq  = alf(ij) * alf(ij)
-           alf1  = 1.d0 - alf(ij)
+           alfq  = alf(ij, k) * alf(ij, k)
+           alf1  = 1.d0 - alf(ij, k)
            alf1q = alf1 * alf1
 
-           f0(ijlw) =                    &
-     &       alf(ij) * ( s0(ij+l, k, n)  &
-     &             +ss* alf1 * (         &
-     &                  sx(ij+l, k, n)   &                        
-     &       +ss* ( alf1 - alf(ij) ) * sxx(ij+l, k, n) ) )
+           if ( uv(ij, k) .gt. 0.d0 ) then
+!          ---- flux from (i-1) to (i),  when u > 0
 
+!             ---- moments be transported
+              f0(ijlw, k) = &
+                &      alf(ij, k) * ( s0(ijlw, k, n) &
+                &        + alf1 * ( &
+                &          sx(ijlw, k, n) &
+                &          + ( alf1 - alf(ij, k) ) * sxx(ijlw, k, n) ) )
 
-           fx(ijlw) =                &
-     &       alfq * (  sx(ij+l, k, n) &
-     &       +ss* 3.d0 * alf1 * sxx(ij+l, k, n) )
+              fx(ijlw, k) = &
+                &           alfq * ( sx(ijlw, k, n) &
+                &         + 3.d0 * alf1 * sxx(ijlw, k, n) ) 
 
-           fxx(ijlw) = alf(ij) * alfq * sxx(ij+l, k, n)
+              fxx(ijlw, k) = alf(ij, k) * alfq * sxx(ijlw, k, n)
 
-           fy(ijlw) = alf(ij)  * ( sy(ij+l, k, n) &
-     &               +ss* alf1 * sxy(ij+l, k, n) )
+              fy (ijlw, k) = alf(ij, k) * ( sy(ijlw, k, n) &
+                &                         + alf1 * sxy(ijlw, k, n) )
+              fz (ijlw, k) = alf(ij, k) * ( sz(ijlw, k, n) & 
+                &                         + alf1 * sxz(ijlw, k, n) )
 
-           fz(ijlw) = alf(ij) * ( sz(ij+l, k, n)  &
-     &              + ss* alf1 * sxz(ij+l, k, n) )
+              fxy(ijlw, k) = alfq       * sxy(ijlw, k, n)
+              fxz(ijlw, k) = alfq       * sxz(ijlw, k, n)
+              fyy(ijlw, k) = alf(ij, k) * syy(ijlw, k, n)
+              fzz(ijlw, k) = alf(ij, k) * szz(ijlw, k, n)
+              fyz(ijlw, k) = alf(ij, k) * syz(ijlw, k, n)
 
+              ftx2(ij, k, n) =-f0(ijlw, k) * tsiv * ry(ijlw)
+              ftx (ij, k, n) = ftx(ij, k, n) &
+                &            - f0(ijlw, k) * tsiv * ry(ijlw)
 
-           fxy(ijlw) = alfq    * sxy(ij+l, k, n)
-           fxz(ijlw) = alfq    * sxz(ij+l, k, n)
-           fyy(ijlw) = alf(ij) * syy(ij+l, k, n)
-           fzz(ijlw) = alf(ij) * szz(ij+l, k, n)
-           fyz(ijlw) = alf(ij) * syz(ij+l, k, n)
+           else
+!          ---- flux from (i) to (i-1),  when u < 0
+              f0 (ijlw, k) = &
+                &       alf(ij, k) * ( s0(ij, k, n) &
+                &         - alf1 * (  sx(ij, k, n) &
+                &           - ( alf1 - alf(ij, k) ) &
+                &           * sxx(ij, k, n) ) )
+              fx (ijlw, k) = alfq * ( &
+                &            sx(ij, k, n) - 3.d0 * alf1 * sxx(ij, k, n) )
+              fxx(ijlw, k) = alf(ij, k) * alfq * sxx(ij, k, n)
+                  
+              fy (ijlw, k) = alf(ij, k)  * ( sy(ij, k, n) &
+                &                          - alf1 * sxy(ij, k, n) )
+              fz (ijlw, k) = alf(ij, k)  * ( sz(ij, k, n) &
+                &                          - alf1 * sxz(ij, k, n) )
 
-           ftx2(ij, k, n) = - ss * f0(ijlw) * tsiv * ry(ijlw)          
-!           ftx (ij, k, n) = ftx(ij, k, n) + ftx2(ij, k, n) 
-           ftx (ij, k, n) = ftx(ij, k, n) - ss * f0(ijlw) * tsiv * ry(ijlw)          
+              fxy(ijlw, k) = alfq       * sxy(ij, k, n)
+              fxz(ijlw, k) = alfq       * sxz(ij, k, n)
+              fyy(ijlw, k) = alf(ij, k) * syy(ij, k, n)
+              fzz(ijlw, k) = alf(ij, k) * szz(ij, k, n)
+              fyz(ijlw, k) = alf(ij, k) * syz(ij, k, n)
+             
+              ftx2(ij, k, n) = f0(ijlw, k) * tsiv * ry(ijlw)
+              ftx (ij, k, n) = ftx(ij, k, n) &
+                &            + f0(ijlw, k) * tsiv * ry(ijlw)
+
+           end if
+          
         end do
 
-!---- calculating flux and moments between box (I-1,J,K) <---> (I,J,K)                  
-
+!    ---- calculating flux and moments between box (i-1,j,k) <---> (i,j,k)
         do ij = ijtstr-nxdim-1, ijtend+nxdim+1
 
            ijlw  = ij + lw
-           l=ll(ij,k)
-           ss=dble(-2*l -1)
 
-
-           alfq  = alf(ij) * alf(ij)
-           alf1  = 1.d0 - alf(ij)
+           alfq  = alf(ij, k) * alf(ij, k)
+           alf1  = 1.d0 - alf(ij, k)
            alf1q = alf1 * alf1
+           if ( uv(ij, k) .gt. 0.d0 ) then
+!          ---- flux from (i-1) to (i),  when u > 0
 
-           sm (ij+l, k, n) = sm(ij+l, k, n) - fm(ijlw)
-           s0 (ij+l, k, n) = s0(ij+l, k, n) - f0(ijlw)
+!             ---- moments remaining 
+              sm (ijlw, k, n) = sm(ijlw, k, n) - fm(ijlw, k)
+              s0 (ijlw, k, n) = s0(ijlw, k, n) - f0(ijlw, k)
 
-           sx (ij+l, k, n) =                 &
-     &         alf1q * ( sx(ij+l, k, n)      &
-     &               - ss* 3.d0 * alf(ij) * sxx(ij+l, k, n) )
+              sx (ijlw, k, n) = &
+                &     alf1q * ( sx(ijlw, k, n) &
+                &             - 3.d0 * alf(ij, k) * sxx(ijlw, k, n) )
+              sxx(ijlw, k, n) = alf1 * alf1q * sxx(ijlw, k, n)
 
-           sxx(ij+l, k, n) = alf1 * alf1q * sxx(ij+l, k, n)
-           sy (ij+l, k, n) = sy (ij+l, k, n) - fy(ijlw)
-           syy(ij+l, k, n) = syy(ij+l, k, n) - fyy(ijlw)
-           sz (ij+l, k, n) = sz (ij+l, k, n) - fz(ijlw)
-           szz(ij+l, k, n) = szz(ij+l, k, n) - fzz(ijlw)
-           sxy(ij+l, k, n) = alf1q * sxy(ij+l, k, n)
-           sxz(ij+l, k, n) = alf1q * sxz(ij+l, k, n)
-           syz(ij+l, k, n) = syz(ij+l, k, n) - fyz(ijlw)
+              sy (ijlw, k, n) = sy (ijlw, k, n) - fy (ijlw, k)
+              syy(ijlw, k, n) = syy(ijlw, k, n) - fyy(ijlw, k)
+
+              sz (ijlw, k, n) = sz (ijlw, k, n) - fz (ijlw, k)
+              szz(ijlw, k, n) = szz(ijlw, k, n) - fzz(ijlw, k)
+
+              sxy(ijlw, k, n) = alf1q * sxy(ijlw, k, n)
+              sxz(ijlw, k, n) = alf1q * sxz(ijlw, k, n)
+              syz(ijlw, k, n) = syz(ijlw, k, n) - fyz(ijlw, k)
+             
+           else
+!          ---- flux from (i) to (i-1),  when u < 0
+             
+              sm (ij, k, n) = sm(ij, k, n) - fm(ijlw, k)
+              s0 (ij, k, n) = s0(ij, k, n) - f0(ijlw, k)
+
+              sx (ij, k, n) = alf1q * ( &
+                &    sx(ij, k, n) + 3.d0 * alf(ij, k) * sxx(ij, k, n)  )
+              sxx(ij, k, n) = alf1 * alf1q * sxx(ij, k, n)
+
+              sy (ij, k, n) = sy (ij, k, n) - fy (ijlw, k)
+              syy(ij, k, n) = syy(ij, k, n) - fyy(ijlw, k)
+
+              sz (ij, k, n) = sz (ij, k, n) - fz (ijlw, k)
+              szz(ij, k, n) = szz(ij, k, n) - fzz(ijlw, k)
+
+              sxy(ij, k, n) = alf1q * sxy(ij, k, n)
+              sxz(ij, k, n) = alf1q * sxz(ij, k, n)
+              syz(ij, k, n) = syz(ij, k, n) - fyz(ijlw, k)
+             
+           end if
+          
         end do
 
-!---- put the temporary moments (fi) into appropriate neighboring boxes
+!    ---- put the temporary moments (fi) into appropriate neighboring boxes
         do ij = ijtstr-nxdim-1, ijtend+nxdim+1
-
            ijlw  = ij + lw
-           l=-(ll(ij,k)+1)
-
-           sm(ij+l, k, n) = sm(ij+l, k, n) + fm(ijlw)
-           alf(ij)     = fm(ijlw) / sm(ij+l, k, n)
-
+           if ( uv(ij, k) .gt. 0.d0 ) then
+              sm(ij  , k, n) = sm(ij, k, n) + fm(ijlw, k)
+              alf(ij, k)     = fm(ijlw, k) / sm(ij, k, n)
+           end if
         end do
-
         do ij = ijtstr-nxdim-1, ijtend+nxdim+1
-
            ijlw  = ij + lw
-           l=-(ll(ij,k)+1)
-           ss=dble(-2*ll(ij,k) -1)
-
-
-           alf1 = 1.d0 - alf(ij)
-
-           tmp = ss* alf(ij) * s0(ij+l, k, n) &
-     &         - ss* alf1 * f0(ijlw)
-
-           s0(ij+l, k, n) = s0(ij+l, k, n) + f0(ijlw)
-
-
-           sxx(ij+l, k, n) =                              &
-     &          alf(ij) * alf(ij) * fxx(ijlw)             &
-     &        + alf1 * alf1 * sxx(ij+l, k, n)             &
-     &        + 5.d0 * (  alf(ij) * alf1 * ss*(           &
-     &                   sx(ij+l, k, n)  - fx(ijlw)    )  &
-     &                  -ss* ( alf1 - alf(ij) ) * tmp  )
-
-
-           sx (ij+l, k, n) =                                &
-     &          alf(ij) * fx(ijlw) + alf1 * sx(ij+l, k, n)  &
-     &        + 3.d0 * tmp
-
-
-           sxy(ij+l, k, n) =         &
-     &          alf(ij) * fxy(ijlw)  &
-     &     + alf1 * sxy(ij+l, k, n)  &
-     &    + 3.d0 * ss* ( alf(ij) * sy(ij+l, k, n) - alf1 * fy(ijlw) )
-
-
-           sxz(ij+l, k, n) =         &
-     &        alf(ij)  * fxz(ijlw)   &
-     &      + alf1 * sxz(ij+l, k, n) &
-     &      + 3.d0 * ss* ( alf(ij) * sz(ij+l, k, n) - alf1 * fz(ijlw) )
-
-
-           sy (ij+l, k, n) = sy (ij+l, k, n) + fy(ijlw)
-           sz (ij+l, k, n) = sz (ij+l, k, n) + fz(ijlw)
-
-           syy(ij+l, k, n) = syy(ij+l, k, n) + fyy(ijlw)
-           szz(ij+l, k, n) = szz(ij+l, k, n) + fzz(ijlw)
-           syz(ij+l, k, n) = syz(ij+l, k, n) + fyz(ijlw)
+           if ( uv(ij, k) .le. 0.d0 ) then
+              sm(ijlw, k, n) = sm(ijlw, k, n) + fm(ijlw, k)
+              alf(ij, k)     = fm(ijlw, k) / sm(ijlw, k, n)
+           end if
         end do
-     end do ! n
-!---- y-direction
+
+!       ---- flux from (i-1) to (i),  when u > 0
+        do ij = ijtstr-nxdim-1, ijtend+nxdim+1
+           ijlw  = ij + lw
+           if ( uv(ij, k) .gt. 0.d0 ) then
+
+              alf1 = 1.d0 - alf(ij, k)
+
+              tmp = alf(ij, k) * s0(ij, k, n) &
+                & - alf1 * f0(ijlw, k)
+
+              s0(ij, k, n) = s0(ij, k, n) + f0(ijlw, k)
+              sxx(ij, k, n) = &
+                &    alf(ij, k)  * alf(ij, k) * fxx(ijlw, k) &
+                &  + alf1 * alf1 * sxx(ij, k, n) &
+                &  + 5.d0 * (  alf(ij, k) * alf1 * ( & 
+                &                sx(ij, k, n) - fx(ijlw, k) ) &
+                &            - ( alf1 - alf(ij, k) ) * tmp )
+              sx (ij, k, n) = &
+                &    alf(ij, k) * fx(ijlw, k) &
+                &  + alf1 * sx(ij, k, n) + 3.d0 * tmp 
+
+              sxy(ij, k, n) = &
+                &    alf(ij, k)  * fxy(ijlw, k) &
+                &  + alf1 * sxy(ij, k, n) &
+                &  + 3.d0 * ( alf(ij, k) * sy(ij, k, n) &
+                &           - alf1 * fy(ijlw, k) )
+              sxz(ij, k, n) = &
+                &    alf(ij, k)  * fxz(ijlw, k) &
+                &  + alf1 * sxz(ij, k, n) &
+                &  + 3.d0 * ( alf(ij, k) * sz(ij, k, n) &
+                &           - alf1 * fz(ijlw, k) )
+
+              sy (ij, k, n) = sy (ij, k, n) + fy (ijlw, k)
+              syy(ij, k, n) = syy(ij, k, n) + fyy(ijlw, k)
+
+              sz (ij, k, n) = sz (ij, k, n) + fz (ijlw, k)
+              szz(ij, k, n) = szz(ij, k, n) + fzz(ijlw, k)
+
+              syz(ij, k, n) = syz(ij, k, n) + fyz(ijlw, k)
+
+           end if
+        end do
+!       ---- flux from (i) to (i-1),  when u < 0
+        do ij = ijtstr-nxdim-1, ijtend+nxdim+1
+           ijlw  = ij + lw
+           if ( uv(ij, k) .le. 0.d0 ) then
+
+              alf1 = 1.d0 - alf(ij, k)
+
+              tmp = - alf(ij, k) * s0(ijlw, k, n) &
+                &   + alf1 * f0(ijlw, k)
+
+              s0(ijlw, k, n) = s0(ijlw, k, n) + f0(ijlw, k)
+              sxx(ijlw, k, n) = &
+                &      alf(ij, k) * alf(ij, k) * fxx(ijlw, k) &
+                &    + alf1 * alf1 * sxx(ijlw, k, n) &
+                &    + 5.d0 * (  alf(ij, k) * alf1 * ( - sx(ijlw, k, n) &
+                &                               + fx(ijlw, k)    ) &
+                &              + ( alf1 - alf(ij, k) ) * tmp  )
+              sx (ijlw, k, n) = &
+                &      alf(ij, k) * fx(ijlw, k) + alf1 * sx(ijlw, k, n) &
+                &    + 3.d0 * tmp
+
+              sxy(ijlw, k, n) = &
+                &      alf(ij, k) * fxy(ijlw, k) &
+                &    + alf1 * sxy(ijlw, k, n) &
+                &    + 3.d0 * ( alf1 * fy(ijlw, k) &
+                &             - alf(ij, k) * sy(ijlw, k, n) )
+              sxz(ijlw, k, n) = &
+                &      alf(ij, k) * fxz(ijlw, k) &
+                &    + alf1 * sxz(ijlw, k, n) &
+                &    + 3.d0 * ( alf1 * fz(ijlw, k) &
+                &             - alf(ij, k) * sz(ijlw, k, n) )
+
+              sy (ijlw, k, n) = sy (ijlw, k, n) + fy (ijlw, k)
+              sz (ijlw, k, n) = sz (ijlw, k, n) + fz (ijlw, k)
+
+              syy(ijlw, k, n) = syy(ijlw, k, n) + fyy(ijlw, k)
+              szz(ijlw, k, n) = szz(ijlw, k, n) + fzz(ijlw, k)
+              syz(ijlw, k, n) = syz(ijlw, k, n) + fyz(ijlw, k)
+
+           end if
+        end do
+        
+     end do
+!$omp end parallel do
+  end do
+
+! ---- Y-direction
+
+!$omp parallel do &
+!$omp private( ij, k, ijls, ijlsw )
+  do k = kstr, kend
      do ij = ijtstr-nxdim-1, ijtend+nxdim+1
 
         ijls  = ij + ls
         ijlsw = ij + lsw
+        uv(ij, k) = ( vy(ijls , k) * vlmx(ijls , k) &
+          &         + vy(ijlsw, k) * vlmx(ijlsw, k) ) &
+          &       * amskt(ij, k) * amskt(ijls, k) 
 
-        uv(ij, k) = ( vy(ijls , k) * vlmx(ijls, k)    &
-     &              + vy(ijlsw, k) * vlmx(ijlsw, k) ) &
-     &            * amskt(ij, k) * amskt(ijls, k) 
-
-        ll(ij,k)= - nint(0.5d0 +dsign(0.5d0, uv(ij,k))) 
      end do
+  end do
+!$omp end parallel do
 
-     do n = 1, ntdim
-!---- undershoot limiter (Method B) of Morales Maqueda and Holloway (2006)
+  do n = 1, ntdim
 
+!    ---- undershoot limiter (Method B) of Morales Maqueda and Holloway (2006)
+!!*POPTION PARALLEL
+!$omp parallel private( &
+!$omp ij, ijls, ijln, k, s0m, s1m, s0p, sxp, &
+!$omp alfq, alf1, alf1q, tmp &
+!$omp )
+!$omp do
+     do k = kstr, kend
         do ij = ijtstr-nxdim-1, ijtend+nxdim+1
 
            ijls  = ij + ls * nint( amskt(ij+ls, k) )
            ijln  = ij + ln * nint( amskt(ij+ln, k) )
                 
-           s0m = s0(ij, k, n)                            &
-     &         - min( s0(ijls, k, n) / sm(ijls, k, n),   &
-     &                s0(ij  , k, n) / sm(ij  , k, n),   &
-     &                s0(ijln, k, n) / sm(ijln, k, n)  ) &
-     &         * sm(ij, k, n)
+           s0m = s0(ij, k, n) &
+             & - min( s0(ijls, k, n) / sm(ijls, k, n), &
+             &        s0(ij  , k, n) / sm(ij  , k, n), &
+             &        s0(ijln, k, n) / sm(ijln, k, n)  ) &
+             & * sm(ij, k, n)
 
            s1m = sq3 * s0m
            sy(ij, k, n) = min( s1m, max( - s1m, sy(ij, k, n) ) )
 
            s0p = s0m * s0m
-           sxp = sqrt( max( s0p - sy(ij, k, n) * sy(ij, k, n) * ci3,  &
-     &                          eps ) )
-
-           d1=max( abs( sy(ij, k, n) ) - s0m, syy(ij, k, n) ) 
-           d2=max( s0m - sxp, syy(ij, k, n) )
-           ss=0.5d0 +dsign(0.5d0, abs( sy(ij, k, n) ) - 1.5d0 * s0m)
-           syy(ij, k, n) = min( s0m + sxp, d1*(1.d0-ss) + d2*ss )
-
-             
-           sxy(ij, k, n) = min( s0m, max( - s0m, sxy(ij, k, n) ) )
-           syz(ij, k, n) = min( s0m, max( - s0m, syz(ij, k, n) ) )
-
-!---- overshoot limiter (Method B) of Morales Maqueda and Holloway (2006)
-
-           s0m = - s0(ij, k, n)                             &
-     &           + max( s0(ijls, k, n) / sm(ijls, k, n),    &
-     &                  s0(ij  , k, n) / sm(ij  , k, n),    &
-     &                  s0(ijln, k, n) / sm(ijln, k, n)  )  &
-     &           * sm(ij, k, n)
-
-           s1m = sq3 * s0m
-           sy(ij, k, n) = min( s1m, max( - s1m, sy(ij, k, n) ) )
-
-           s0p = s0m * s0m
-           sxp = sqrt( max( s0p - sy(ij, k, n) * sy(ij, k, n) * ci3,  &
-     &                      eps ) )
+           sxp = sqrt( max( s0p - sy(ij, k, n) * sy(ij, k, n) * ci3, &
+             &              eps ) )
                
+           if ( abs( sy(ij, k, n) ) < 1.5d0 * s0m ) then
 
-!          d1=max( abs( sy(ij, k, n) ) - s0m, syy(ij, k, n) ) 
-!          d2=max( s0m - sxp, syy(ij, k, n) )
-!          ss=0.5d0 +dsign(0.5d0, abs( sy(ij, k, n) ) - 1.5d0 * s0m)
-!          syy(ij, k, n) = min( s0m + sxp, d1*(1.d0-ss) + d2*ss )
+              syy(ij, k, n) = min( s0m + sxp, &
+                &                  max( abs( sy(ij, k, n) ) - s0m, &
+                &                       syy(ij, k, n) ) )
 
-           d1 = max( -s0m-sxp, syy(ij, k, n) )
-!          d2 = max( -s0m-sxp, syy(ij, k, n) )
-           ss=0.5d0 +dsign(0.5d0, abs( sy(ij, k, n) ) - 1.5d0 * s0m)
-           syy(ij, k, n) = min( (s0m-abs(sy(ij, k, n)))*(1.d0-ss)    &
-     &                            + (-s0m+sxp)*ss,                   &
-     &                          d1 )
+           else
+                  
+              syy(ij, k, n) = min( s0m + sxp, &
+                &                  max( s0m - sxp, syy(ij, k, n) ) )
+
+           end if
              
            sxy(ij, k, n) = min( s0m, max( - s0m, sxy(ij, k, n) ) )
            syz(ij, k, n) = min( s0m, max( - s0m, syz(ij, k, n) ) )
 
         end do
-     end do ! n
-  end do ! k
-!$omp end parallel do
+
+!    ---- overshoot limiter (Method B) of Morales Maqueda and Holloway (2006)
+        do ij = ijtstr-nxdim-1, ijtend+nxdim+1
+
+           ijls  = ij + ls * nint( amskt(ij+ls, k) )
+           ijln  = ij + ln * nint( amskt(ij+ln, k) )
+
+           s0m = - s0(ij, k, n) &
+             &   + max( s0(ijls, k, n) / sm(ijls, k, n), &
+             &          s0(ij  , k, n) / sm(ij  , k, n), &
+             &          s0(ijln, k, n) / sm(ijln, k, n)  ) &
+             &   * sm(ij, k, n)
+
+           s1m = sq3 * s0m
+           sy(ij, k, n) = min( s1m, max( - s1m, sy(ij, k, n) ) )
+
+           s0p = s0m * s0m
+           sxp = sqrt( max( s0p - sy(ij, k, n) * sy(ij, k, n) * ci3, &
+             &              eps ) )
+               
+           if ( abs( sy(ij, k, n) ) < 1.5d0 * s0m ) then
+
+!             syy(ij, k, n) = min( s0m + sxp, &
+!               &                  max( abs( sy(ij, k, n) ) - s0m, &
+!               &                       syy(ij, k, n) ) )
+              syy(ij, k, n) = min( s0m - abs( sy(ij, k, n) ),  &
+                &                  max( - s0m - sxp,           &
+                &                       syy(ij, k, n) ) )
+
+           else
+                  
+!             syy(ij, k, n) = min( s0m + sxp, &
+!               &                  max( s0m - sxp, syy(ij, k, n) ) )
+              syy(ij, k, n) = min( - s0m + sxp,           &
+                &                  max( - s0m - sxp,      &
+                &                       syy(ij, k, n) ) )
+
+           end if
+             
+           sxy(ij, k, n) = min( s0m, max( - s0m, sxy(ij, k, n) ) )
+           syz(ij, k, n) = min( s0m, max( - s0m, syz(ij, k, n) ) )
+
+        end do
+     end do
+!$omp end do
+!$omp end parallel
 
 !---- bug fix 2
 #ifdef OPT_TRIPOLE
-     call shift1( sy, &
-       &           nxdim, nydim, nztdim, &
-       &           -1.d0,     0,      0 )
-     call shift1( syy, &
-       &           nxdim, nydim, nztdim, &
-       &            1.d0,     0,      0 )
-     call shift1( sxy, &
-       &           nxdim, nydim, nztdim, &
-       &           -1.d0,     0,      0 )
-     call shift1( syz, &
-       &           nxdim, nydim, nztdim, &
-       &           -1.d0,     0,      0 )
+     call shift1( sy(:,:,n), &
+       &           nxdim,  nydim,  nzdim, &
+       &           -1.d0,      0,      0 )
+     call shift1( syy(:,:,n), &
+       &           nxdim,  nydim,  nzdim, &
+       &            1.d0,      0,      0 )
+     call shift1( sxy(:,:,n), &
+       &           nxdim,  nydim,  nzdim, &
+       &           -1.d0,      0,      0 )
+     call shift1( syz(:,:,n), &
+       &           nxdim,  nydim,  nzdim, &
+       &           -1.d0,      0,      0 )
      call shift1( s0(:,:,n), &
        &           nxdim,  nydim,  nzdim, &
        &            1.d0,      0,      0 )
 #else
-     call shift1( sy , nxdim, nydim, nztdim )
-     call shift1( syy, nxdim, nydim, nztdim )
-     call shift1( sxy, nxdim, nydim, nztdim )
-     call shift1( syz, nxdim, nydim, nztdim )
+     call shift1( sy (:,:,n), nxdim, nydim, nzdim )
+     call shift1( syy(:,:,n), nxdim, nydim, nzdim )
+     call shift1( sxy(:,:,n), nxdim, nydim, nzdim )
+     call shift1( syz(:,:,n), nxdim, nydim, nzdim )
      call shift1( s0 (:,:,n), nxdim, nydim, nzdim )
 #endif
 
+!    ---- calculating ALF  and MASS between box (i,j-1,k) <---> (i,j,k)
 !!*POPTION PARALLEL
-!$omp parallel do &
-!$omp private( &
-!$omp ij, ijls, k, n, &
-!$omp alfq, alf1, alf1q, tmp, &
-!$omp fm, alf, f0, fx, fy, fz, &
-!$omp fxx, fyy, fzz, fxy,fxz, fyz &
+!$omp parallel private( &
+!$omp ij, ijls, ijln, k, s0m, s1m, s0p, sxp, &
+!$omp alfq, alf1, alf1q, tmp &
 !$omp )
-  do k = kstr, kend
-     do n=1, ntdim
-!---- calculating ALF  and MASS between box (I,J-1,K) <---> (I,J,K)
+!$omp do
+     do k = kstr, kend
         do ij = ijtstr-nxdim-1, ijtend+nxdim+1
-           ijls  = ij + ls
-           l=ll(ij,k) *(-ls)
-           ss=dble(-2*ll(ij,k) -1)
 
-           fm(ijls) = ss* uv(ij, k) * ts
-           alf(ij)  = fm(ijls) / sm(ij+l, k, n)
+           ijls  = ij + ls
+
+           if ( uv(ij, k) .gt. 0.d0 ) then
+              fm(ijls, k) = uv(ij, k) * ts
+              alf(ij, k)  = fm(ijls, k) / sm(ijls, k, n)
+           else
+              fm(ijls, k) = - uv(ij, k) * ts
+              alf(ij, k)  = fm(ijls, k) / sm(ij, k, n)
+           end if
+
         end do
 
-!---- calculating flux between box (I,J-1,K) <---> (I,J,K)
+!    ---- calculating flux between box (i,j-1,k) <---> (i,j,k)
         do ij = ijtstr-nxdim-1, ijtend+nxdim+1
-           ijls  = ij + ls
-           l=ll(ij,k) *(-ls)
-           ss=dble(-2*ll(ij,k) -1)
 
-           alfq  = alf(ij) * alf(ij)
-           alf1  = 1.d0 - alf(ij)
+           ijls  = ij + ls
+
+           alfq  = alf(ij, k) * alf(ij, k)
+           alf1  = 1.d0 - alf(ij, k)
            alf1q = alf1 * alf1
+           
+           if ( uv(ij, k) .gt. 0.d0 ) then
+!          ---- flux from (j-1) to (j),  when v > 0
 
+!             ---- moments be transported
+              f0(ijls, k) =  &
+                &   alf(ij, k) * ( s0(ijls, k, n) &
+                &       + alf1 * ( &
+                &          sy(ijls, k, n) &
+                &        + ( alf1 - alf(ij, k) ) * syy(ijls, k, n) ) )
 
-           f0(ijls) =                        &
-     &         alf(ij) * ( s0(ij+l, k, n)    &
-     &            + alf1 * ss* (             &
-     &               sy(ij+l, k, n)          &
-     &        + ss* ( alf1 - alf(ij) ) * syy(ij+l, k, n) ) )
+              fy(ijls, k) = &
+                &   alfq * ( sy(ijls, k, n) &
+                &          + 3.d0 * alf1 * syy(ijls, k, n) ) 
 
+              fyy(ijls, k) = alf(ij, k) * alfq * syy(ijls, k, n)
 
-           fy(ijls) =  alfq * (              &
-     &         sy(ij+l, k, n)   + ss* 3.d0 * alf1 * syy(ij+l, k, n) ) 
+              fx (ijls, k) = alf(ij, k) * ( sx(ijls, k, n) &
+                &                         + alf1 * sxy(ijls, k, n) )
+              fz (ijls, k) = alf(ij, k) * ( sz(ijls, k, n) &
+                &                         + alf1 * syz(ijls, k, n) )
 
-           fyy(ijls) = alf(ij) * alfq * syy(ij+l, k, n)
+              fxy(ijls, k) = alfq       * sxy(ijls, k, n)
+              fyz(ijls, k) = alfq       * syz(ijls, k, n)
+              fxx(ijls, k) = alf(ij, k) * sxx(ijls, k, n)
+              fzz(ijls, k) = alf(ij, k) * szz(ijls, k, n)
+              fxz(ijls, k) = alf(ij, k) * sxz(ijls, k, n)
+             
+              fty2(ij, k, n) =-f0(ijls, k) * tsiv * rx
+              fty (ij, k, n) = fty(ij, k, n) &
+                &            - f0(ijls, k) * tsiv * rx
 
-           fx(ijls) = alf(ij) * ( sx(ij+l, k, n)  &
-     &               + ss* alf1 * sxy(ij+l, k, n) )
+           else
+!          ---- flux from (j) to (j-1),  when v < 0
 
-           fz(ijls) = alf(ij) * ( sz(ij+l, k, n)  &
-     &             + ss * alf1 * syz(ij+l, k, n) )
+              f0 (ijls, k) = &
+                &    alf(ij, k) * ( s0(ij, k, n) &
+                &          - alf1 * (  sy(ij, k, n) &
+                &                    - ( alf1 - alf(ij, k) ) &
+                &                     * syy(ij, k, n) ) )
+              fy (ijls, k) = alfq * ( &
+                &    sy(ij, k, n) - 3.d0 * alf1 * syy(ij, k, n) )
+              fyy(ijls, k) = alf(ij, k) * alfq * syy(ij, k, n)
+                  
+              fx (ijls, k) = alf(ij, k) * ( sx(ij, k, n) &
+                &                         - alf1 * sxy(ij, k, n) )
+              fz (ijls, k) = alf(ij, k) * ( sz(ij, k, n) &
+                &                         - alf1 * syz(ij, k, n) )
 
+              fxy(ijls, k) = alfq       * sxy(ij, k, n)
+              fyz(ijls, k) = alfq       * syz(ij, k, n)
+              fxx(ijls, k) = alf(ij, k) * sxx(ij, k, n)
+              fzz(ijls, k) = alf(ij, k) * szz(ij, k, n)
+              fxz(ijls, k) = alf(ij, k) * sxz(ij, k, n)
+             
+              fty2(ij, k, n) = f0(ijls, k) * tsiv * rx
+              fty (ij, k, n) = fty(ij, k, n) &
+                &            + f0(ijls, k) * tsiv * rx
 
-           fxy(ijls) = alfq       * sxy(ij+l, k, n)
-           fyz(ijls) = alfq       * syz(ij+l, k, n)
-           fxx(ijls) = alf(ij)    * sxx(ij+l, k, n)
-           fzz(ijls) = alf(ij)    * szz(ij+l, k, n)
-           fxz(ijls) = alf(ij)    * sxz(ij+l, k, n)
-
-           fty2(ij, k, n) = - ss * f0(ijls) * tsiv * rx
-!           fty (ij, k, n) = fty(ij, k, n) + fty2(ij, k, n)
-           fty (ij, k, n) = fty(ij, k, n) - ss * f0(ijls) * tsiv * rx
+           end if
+          
         end do
 
-!---- calculating moments
+!    ---- calculating moments
         do ij = ijtstr-nxdim-1, ijtend+nxdim+1
 
            ijls  = ij + ls
-           l=ll(ij,k) *(-ls)
-           ss=dble(-2*ll(ij,k) -1)
 
-           alfq  = alf(ij) * alf(ij)
-           alf1  = 1.d0 - alf(ij)
-           alf1q = alf1 * alf1
+           if ( uv(ij, k) .le. 0.d0 ) then
+!          ---- flux from (j) to (j-1),  when v < 0
+              alfq  = alf(ij, k) * alf(ij, k)
+              alf1  = 1.d0 - alf(ij, k)
+              alf1q = alf1 * alf1
+             
+              sm (ij, k, n) = sm(ij, k, n) - fm(ijls, k)
+              s0 (ij, k, n) = s0(ij, k, n) - f0(ijls, k)
 
-           sm (ij+l, k, n) = sm(ij+l, k, n) - fm(ijls)
-           s0 (ij+l, k, n) = s0(ij+l, k, n) - f0(ijls)
+              sy (ij, k, n) = alf1q * ( &
+                &         sy(ij, k, n) &
+                &       + 3.d0 * alf(ij, k) * syy(ij, k, n)  )
+              syy(ij, k, n) = alf1 * alf1q * syy(ij, k, n)
 
-           sy (ij+l, k, n) = alf1q * ( &
-     &              sy(ij+l, k, n)     &
-     &             - ss* 3.d0 * alf(ij) * syy(ij+l, k, n) )
+              sx (ij, k, n) = sx (ij, k, n) - fx (ijls, k)
+              sxx(ij, k, n) = sxx(ij, k, n) - fxx(ijls, k)
 
-           syy(ij+l, k, n) = alf1 * alf1q * syy(ij+l, k, n)
-           sx (ij+l, k, n) = sx (ij+l, k, n) -  fx(ijls)
-           sxx(ij+l, k, n) = sxx(ij+l, k, n) - fxx(ijls)
-           sz (ij+l, k, n) = sz (ij+l, k, n) -  fz(ijls)
-           szz(ij+l, k, n) = szz(ij+l, k, n) - fzz(ijls)
-           sxy(ij+l, k, n) = alf1q * sxy(ij+l, k, n)
-           syz(ij+l, k, n) = alf1q * syz(ij+l, k, n)
-           sxz(ij+l, k, n) = sxz(ij+l, k, n) - fxz(ijls)
+              sz (ij, k, n) = sz (ij, k, n) - fz (ijls, k)
+              szz(ij, k, n) = szz(ij, k, n) - fzz(ijls, k)
 
+              sxy(ij, k, n) = alf1q * sxy(ij, k, n)
+              syz(ij, k, n) = alf1q * syz(ij, k, n)
+              sxz(ij, k, n) = sxz(ij, k, n) - fxz(ijls, k)
+             
+           end if
         end do
-
-!---- put the temporary moments (fi) into appropriate neighboring boxes
-
+        
         do ij = ijtstr-nxdim-1, ijtend+nxdim+1
 
            ijls  = ij + ls
-           l=(ll(ij,k)+1)* ls
-           ss=dble(-2*ll(ij,k) -1)
+           
+           if ( uv(ij, k) .gt. 0.d0 ) then
+!          ---- flux from (j-1) to (j),  when v > 0
 
-           sm(ij+l, k, n) = sm(ij+l, k, n) + fm(ijls)
-           alf(ij)     = fm(ijls) / sm(ij+l, k, n)
+              alfq  = alf(ij, k) * alf(ij, k)
+              alf1  = 1.d0 - alf(ij, k)
+              alf1q = alf1 * alf1
+
+!             ---- moments remaining 
+              sm (ijls, k, n) = sm(ijls, k, n) - fm(ijls, k)
+              s0 (ijls, k, n) = s0(ijls, k, n) - f0(ijls, k)
+
+              sy (ijls, k, n) = &
+                &     alf1q * ( sy(ijls, k, n) &
+                &             - 3.d0 * alf(ij, k) * syy(ijls, k, n) )
+              syy(ijls, k, n) = alf1 * alf1q * syy(ijls, k, n)
+
+              sx (ijls, k, n) = sx (ijls, k, n) - fx (ijls, k)
+              sxx(ijls, k, n) = sxx(ijls, k, n) - fxx(ijls, k)
+
+              sz (ijls, k, n) = sz (ijls, k, n) - fz (ijls, k)
+              szz(ijls, k, n) = szz(ijls, k, n) - fzz(ijls, k)
+
+              sxy(ijls, k, n) = alf1q * sxy(ijls, k, n)
+              syz(ijls, k, n) = alf1q * syz(ijls, k, n)
+              sxz(ijls, k, n) = sxz(ijls, k, n) - fxz(ijls, k)
+             
+           end if
+             
 
         end do
 
+!    ---- put the temporary moments (fi) into appropriate neighboring boxes
+        do ij = ijtstr-nxdim-1, ijtend+nxdim+1
+           ijls  = ij + ls
+           if ( uv(ij, k) .gt. 0.d0 ) then
+              sm(ij, k, n) = sm(ij, k, n) + fm(ijls, k)
+              alf(ij, k)   = fm(ijls, k) / sm(ij, k, n)
+           end if
+        end do
+        do ij = ijtstr-nxdim-1, ijtend+nxdim+1
+           ijls  = ij + ls
+           if ( uv(ij, k) .le. 0.d0 ) then
+              sm(ijls, k, n) = sm(ijls, k, n) + fm(ijls, k)
+              alf(ij, k)     = fm(ijls, k) / sm(ijls, k, n)
+           end if
+        end do
+
+!       ---- flux from (j-1) to (j),  when v > 0
         do ij = ijtstr-nxdim-1, ijtend+nxdim+1
 
            ijls  = ij + ls
-           l=(ll(ij,k)+1)* ls
-           ss=dble(-2*ll(ij,k) -1)
-           alf1 = 1.d0 - alf(ij)
 
-           tmp =   ss*alf(ij) * s0(ij+l, k, n)   - ss*alf1 * f0(ijls)
-           s0(ij+l, k, n) = s0(ij+l, k, n) + f0(ijls)
+           if ( uv(ij, k) .gt. 0.d0 ) then
 
-           syy(ij+l, k, n) =                 &
-     &        alf(ij) * alf(ij) * fyy(ijls)  &
-     &       + alf1 * alf1 * syy(ij+l, k, n) &
-     &     + 5.d0 * (  alf(ij) * alf1 * ss*( & 
-     &           sy(ij+l, k, n) - fy(ijls) ) &
-              - ss*( alf1 - alf(ij) ) * tmp )
+              alf1 = 1.d0 - alf(ij, k)
 
+              tmp = alf(ij, k) * s0(ij, k, n) - alf1 * f0(ijls, k)
 
-           sy (ij+l, k, n) = &
-     &      alf(ij) * fy(ijls) + alf1 * sy(ij+l, k, n) + 3.d0 * tmp
+              s0(ij, k, n) = s0(ij, k, n) + f0(ijls, k)
+              syy(ij, k, n) = &
+                &    alf(ij, k) * alf(ij, k) * fyy(ijls, k) &
+                &  + alf1 * alf1 * syy(ij, k, n) &
+                &  + 5.d0 * (  alf(ij, k) * alf1 * ( &
+                &                sy(ij, k, n) - fy(ijls, k) ) &
+                &            - ( alf1 - alf(ij, k) ) * tmp )
+              sy (ij, k, n) = &
+                &    alf(ij, k) * fy(ijls, k) &
+                &  + alf1 * sy(ij, k, n) + 3.d0 * tmp
 
-           sxy(ij+l, k, n) =                         &
-     &        alf(ij) * fxy(ijls)                    &
-     &      + alf1 * sxy(ij+l, k, n)                 &
-     &      + 3.d0 * ss* ( alf(ij) * sx(ij+l, k, n)  &
-     &                      - alf1 * fx(ijls) )
+              sxy(ij, k, n) = &
+                &    alf(ij, k) * fxy(ijls, k) &
+                &  + alf1 * sxy(ij, k, n) &
+                &  + 3.d0 * ( alf(ij, k) * sx(ij, k, n) &
+                &           - alf1 * fx(ijls, k) )
+              syz(ij, k, n) = &
+                &    alf(ij, k) * fyz(ijls, k) &
+                &  + alf1 * syz(ij, k, n) &
+                &  + 3.d0 * ( alf(ij, k) * sz(ij, k, n) &
+                &           - alf1 * fz(ijls, k) )
 
-           syz(ij+l, k, n) =                        &
-     &        alf(ij) * fyz(ijls)                   & 
-     &      + alf1 * syz(ij+l, k, n)                &
-     &      + 3.d0 * ss*( alf(ij) * sz(ij+l, k, n)  &
-     &                    - alf1 * fz(ijls) )
+              sx (ij, k, n) = sx (ij, k, n) + fx (ijls, k)
+              sxx(ij, k, n) = sxx(ij, k, n) + fxx(ijls, k)
 
-           sx (ij+l, k, n) = sx (ij+l, k, n) + fx(ijls)
-           sz (ij+l, k, n) = sz (ij+l, k, n) + fz(ijls)
-           sxx(ij+l, k, n) = sxx(ij+l, k, n) + fxx(ijls)
-           szz(ij+l, k, n) = szz(ij+l, k, n) + fzz(ijls)
-           sxz(ij+l, k, n) = sxz(ij+l, k, n) + fxz(ijls)
+              sz (ij, k, n) = sz (ij, k, n) + fz (ijls, k)
+              szz(ij, k, n) = szz(ij, k, n) + fzz(ijls, k)
+
+              sxz(ij, k, n) = sxz(ij, k, n) + fxz(ijls, k)
+           end if
         end do
-     end do ! n
-  end do ! k
-!$omp end parallel do
+!       ---- flux from (j) to (j-1),  when v < 0
+        do ij = ijtstr-nxdim-1, ijtend+nxdim+1
+
+           ijls  = ij + ls
+
+           if ( uv(ij, k) .le. 0.d0 ) then
+
+              alf1 = 1.d0 - alf(ij, k)
+
+              tmp = - alf(ij, k) * s0(ijls, k, n) &
+                &   + alf1 * f0(ijls, k)
+
+              s0(ijls, k, n) = s0(ijls, k, n) + f0(ijls, k)
+              syy(ijls, k, n) = &
+                &      alf(ij, k) * alf(ij, k) * fyy(ijls, k) &
+                &    + alf1 * alf1 * syy(ijls, k, n) &
+                &    + 5.d0 * (  alf(ij, k) * alf1 * ( &
+                &              - sy(ijls, k, n) + fy(ijls, k) ) &
+                &              + ( alf1 - alf(ij, k) ) * tmp  )
+              sy (ijls, k, n) = &
+                &      alf(ij, k) * fy(ijls, k) + alf1 * sy(ijls, k, n) &
+                &    + 3.d0 * tmp
+
+              sxy(ijls, k, n) = &
+                &      alf(ij, k) * fxy(ijls, k) &
+                &    + alf1 * sxy(ijls, k, n) &
+                &    + 3.d0 * ( alf1       * fx(ijls, k) &
+                &             - alf(ij, k) * sx(ijls, k, n) )
+              syz(ijls, k, n) = &
+                &      alf(ij, k) * fyz(ijls, k) &
+                &    + alf1 * syz(ijls, k, n) &
+                &    + 3.d0 * ( alf1       * fz(ijls, k) &
+                &             - alf(ij, k) * sz(ijls, k, n) )
+
+              sx (ijls, k, n) = sx (ijls, k, n) + fx (ijls, k)
+              sz (ijls, k, n) = sz (ijls, k, n) + fz (ijls, k)
+              sxx(ijls, k, n) = sxx(ijls, k, n) + fxx(ijls, k)
+              szz(ijls, k, n) = szz(ijls, k, n) + fzz(ijls, k)
+              sxz(ijls, k, n) = sxz(ijls, k, n) + fxz(ijls, k)
+
+           end if
+
+        end do
+     end do
+!$omp end do
+!$omp end parallel
+
+  end do
 
 #ifdef OPT_BBL
-!---- keeping BBL variables consistent at two levels
+! ---- keeping BBL variables consistent at two levels
   call stbbt2( s0 )
   call stbbt2( sm )
   call stbbt2( sx )
@@ -1336,301 +1677,398 @@ subroutine flxtrc( &
   call stbbt2( syz )
 #endif
 
-!---- Z-direction
+! ---- Z-direction
 
-!$omp parallel
-!$omp do
+!$omp parallel do
   do k = kstr, kend
      do ij = ijtstr, ijtend
 
+!        uv(ij, k) = - wzc(ij, k) * vlmz(ij)
         uv(ij, k) = - wzc(ij, k) * vlmz(ij) &
-     &       * amskt(ij, k) * amskt(ij, k-1)
+          &         * amskt(ij, k) * amskt(ij, k-1)
                
      end do
   end do
-!$omp end do
+!$omp end parallel do
 
 #ifdef OPT_BBL
+!$omp parallel do private(ij, k)
   do ij = ijtstr, ijtend
      k = nbot(ij)
      uv(ij, k) = - wzc(ij, k) * vlmz(ij) * amsktb(ij) &
           &      +  uv(ij, k) * (1.d0 - amsktb(ij))
   end do
+!$omp end parallel do
 #endif
 
+  do n = 1, ntdim
+
+!    ---- undershoot limiter (Method B) of Morales Maqueda and Holloway (2006)
+!!*POPTION PARALLEL
+!$omp parallel private( &
+!$omp ij, k, ku, kd, s0m, s1m, s0p, sxp, &
+!$omp alfq, alf1, alf1q, tmp &
+!$omp )
 !$omp do
-  do k = kstr, kend
-     do ij = ijtstr, ijtend
-          !if w>0 ll=-1, else l=0
-           ll(ij,k)= - nint(0.5d0 +dsign(0.5d0, uv(ij,k))) 
+     do k = kstr, kend
+
+        ku = max( k - 1, kstr )
+        kd = min( k + 1, kend )
+            
+        do ij = ijtstr, ijtend
+
+           s0m = s0(ij, k, n) &
+             & - min( s0(ij, ku, n) / sm(ij, ku, n), &
+             &        s0(ij, k , n) / sm(ij, k , n), &
+             &        s0(ij, kd, n) / sm(ij, kd, n)  ) & 
+             & * sm(ij, k, n)
+
+           s1m = sq3 * s0m
+           sz(ij, k, n) = min( s1m, max( - s1m, sz(ij, k, n) ) )
+           s0p = s0m * s0m
+           sxp = sqrt( max( s0p - sz(ij, k, n) * sz(ij, k, n) * ci3, &
+             &              eps ) )
+               
+           if ( abs( sz(ij, k, n) ) < 1.5d0 * s0m ) then
+
+              szz(ij, k, n) = min( s0m + sxp, &
+                &                  max( abs( sz(ij, k, n) ) - s0m, &
+                &                       szz(ij, k, n) ) )
+
+           else
+                  
+              szz(ij, k, n) = min( s0m + sxp, &
+                &                  max( s0m - sxp, szz(ij, k, n) ) )
+
+           end if
+             
+           sxz(ij, k, n) = min( s0m, max( - s0m, sxz(ij, k, n) ) )
+           syz(ij, k, n) = min( s0m, max( - s0m, syz(ij, k, n) ) )
+
+!    ---- overshoot limiter (Method B) of Morales Maqueda and Holloway (2006)
+           s0m = - s0(ij, k, n) &
+             &   + max( s0(ij, ku, n) / sm(ij, ku, n), &
+             &          s0(ij, k,  n) / sm(ij, k , n), &
+             &          s0(ij, kd, n) / sm(ij, kd, n)  ) &
+             &   * sm(ij, k, n)
+
+           s1m = sq3 * s0m
+           sz(ij, k, n) = min( s1m, max( - s1m, sz(ij, k, n) ) )
+           s0p = s0m * s0m
+           sxp = sqrt( max( s0p - sz(ij, k, n) * sz(ij, k, n) * ci3, &
+             &              eps ) )
+               
+           if ( abs( sz(ij, k, n) ) < 1.5d0 * s0m ) then
+
+!             szz(ij, k, n) = min( s0m + sxp, &
+!               &                  max( abs( sz(ij, k, n) ) - s0m, &
+!               &                       szz(ij, k, n) ) )
+              szz(ij, k, n) = min( s0m - abs( sz(ij, k, n) ),  &
+                &                  max( - s0m - sxp,           &
+                &                       szz(ij, k, n) ) )
+
+           else
+                  
+!             szz(ij, k, n) = min( s0m + sxp, &
+!               &                  max( s0m - sxp, szz(ij, k, n) ) )
+              szz(ij, k, n) = min( - s0m + sxp,          &
+     &                             max( - s0m - sxp,     &
+     &                                  szz(ij, k, n) ) )
+
+           end if
+             
+           sxz(ij, k, n) = min( s0m, max( - s0m, sxz(ij, k, n) ) )
+           syz(ij, k, n) = min( s0m, max( - s0m, syz(ij, k, n) ) )
+           
+        end do
      end do
-  end do
+!$omp end do
+
+!    ---- calculating ALF
+!$omp do
+     do k = kstr, kend
+
+        ku = k - 1
+
+        do ij = ijtstr, ijtend
+
+           if ( uv(ij, k) .gt. 0.d0 ) then
+              fm(ij, ku) = uv(ij, k) * ts
+              alf(ij, k) = fm(ij, ku) / sm(ij, ku, n)
+           else
+              fm(ij, ku) = - uv(ij, k) * ts
+              alf(ij, k) = fm(ij, ku) / sm(ij, k, n)
+           end if
+
+!    ---- calculating flux between box (i,j,k-1) <---> (i,j,k)
+
+           alfq  = alf(ij, k) * alf(ij, k)
+           alf1  = 1.d0 - alf(ij, k)
+           alf1q = alf1 * alf1
+
+!          ---- flux from (k-1) to (k),  when w > 0
+           if ( uv(ij, k) .gt. 0.d0 ) then
+
+!             ---- moments be transported
+              f0(ij, ku) = &
+                &   alf(ij, k) * ( s0(ij, ku, n) &
+                &         + alf1 * ( &
+                &              sz(ij, ku, n) &
+                &            + ( alf1 - alf(ij, k) ) &
+                &            * szz(ij, ku, n) ) )
+
+              fz(ij, ku) = &
+                &   alfq * ( sz(ij, ku, n) &
+                &          + 3.d0 * alf1 * szz(ij, ku, n) ) 
+
+              fzz(ij, ku) = alf(ij, k) * alfq * szz(ij, ku, n)
+
+              fx (ij, ku) = alf(ij, k) * ( sx(ij, ku, n) &
+                &                        + alf1 * sxz(ij, ku, n) )
+              fy (ij, ku) = alf(ij, k) * ( sy(ij, ku, n) &
+                &                        + alf1 * syz(ij, ku, n) )
+
+              fxz(ij, ku) = alfq       * sxz(ij, ku, n)
+              fyz(ij, ku) = alfq       * syz(ij, ku, n)
+              fxx(ij, ku) = alf(ij, k) * sxx(ij, ku, n)
+              fyy(ij, ku) = alf(ij, k) * syy(ij, ku, n)
+              fxy(ij, ku) = alf(ij, k) * sxy(ij, ku, n)
+                  
+              ftz2(ij, k, n) = f0(ij, ku) * tsiv / vlmz(ij)
+              ftz (ij, k, n) = ftz(ij, k, n) &
+                &            + f0(ij, ku) * tsiv / vlmz(ij)
+
+!          ---- flux from (k) to (k-1),  when w < 0
+           else
+              
+              f0 (ij, ku) = &
+                &    alf(ij, k) * ( s0(ij, k, n) &
+                &          - alf1 * (  sz(ij, k, n) &
+                &                     - ( alf1 - alf(ij, k) ) &
+                &                     * szz(ij, k, n) ) )
+              fz (ij, ku) = alfq * ( &
+                &    sz(ij, k, n) - 3.d0 * alf1 * szz(ij, k, n) )
+              fzz(ij, ku) = alf(ij, k) * alfq * szz(ij, k, n)
+                  
+              fx (ij, ku) = alf(ij, k)  * ( sx(ij, k, n) &
+                &                         - alf1 * sxz(ij, k, n) )
+              fy (ij, ku) = alf(ij, k)  * ( sy(ij, k, n) &
+                &                         - alf1 * syz(ij, k, n) )
+
+              fxz(ij, ku) = alfq       * sxz(ij, k, n)
+              fyz(ij, ku) = alfq       * syz(ij, k, n)
+              fxx(ij, ku) = alf(ij, k) * sxx(ij, k, n)
+              fyy(ij, ku) = alf(ij, k) * syy(ij, k, n)
+              fxy(ij, ku) = alf(ij, k) * sxy(ij, k, n)
+             
+              ftz2(ij, k, n) =-f0(ij, ku) * tsiv / vlmz(ij)
+              ftz (ij, k, n) = ftz(ij, k, n) &
+                &            - f0(ij, ku) * tsiv / vlmz(ij)
+
+           end if
+          
+        end do
+     end do
+!$omp end do
+
+!    ---- calculating flux between box (i,j,k-1) <---> (i,j,k)
+!$omp do
+     do k = kstr, kend
+
+        ku = k - 1
+
+        do ij = ijtstr, ijtend
+
+           alfq  = alf(ij, k) * alf(ij, k)
+           alf1  = 1.d0 - alf(ij, k)
+           alf1q = alf1 * alf1
+           if ( uv(ij, k) .gt. 0.d0 ) then
+!          ---- flux from (k-1) to (k),  when w > 0
+
+!             ---- moments remaining 
+              sm (ij, ku, n) = sm(ij, ku, n) - fm(ij, ku)
+              s0 (ij, ku, n) = s0(ij, ku, n) - f0(ij, ku)
+
+              sz (ij, ku, n) = &
+                &     alf1q * ( sz(ij, ku, n) &
+                &             - 3.d0 * alf(ij, k) * szz(ij, ku, n) )
+              szz(ij, ku, n) = alf1 * alf1q * szz(ij, ku, n)
+
+              sx (ij, ku, n) = sx (ij, ku, n) - fx (ij, ku)
+              sxx(ij, ku, n) = sxx(ij, ku, n) - fxx(ij, ku)
+
+              sy (ij, ku, n) = sy (ij, ku, n) - fy (ij, ku)
+              syy(ij, ku, n) = syy(ij, ku, n) - fyy(ij, ku)
+
+              sxz(ij, ku, n) = alf1q * sxz(ij, ku, n)
+              syz(ij, ku, n) = alf1q * syz(ij, ku, n)
+              sxy(ij, ku, n) = sxy(ij, ku, n) - fxy(ij, ku)
+             
+           else
+!          ---- flux from (k) to (k-1),  when w < 0
+             
+              sm (ij, k, n) = sm(ij, k, n) - fm(ij, ku)
+              s0 (ij, k, n) = s0(ij, k, n) - f0(ij, ku)
+
+              sz (ij, k, n) = alf1q * ( &
+                &     sz(ij, k, n) &
+                &   + 3.d0 * alf(ij, k) * szz(ij, k, n)  )
+              szz(ij, k, n) = alf1 * alf1q * szz(ij, k, n)
+
+              sx (ij, k, n) = sx (ij, k, n) - fx (ij, ku)
+              sxx(ij, k, n) = sxx(ij, k, n) - fxx(ij, ku)
+
+              sy (ij, k, n) = sy (ij, k, n) - fy (ij, ku)
+              syy(ij, k, n) = syy(ij, k, n) - fyy(ij, ku)
+
+              sxz(ij, k, n) = alf1q * sxz(ij, k, n)
+              syz(ij, k, n) = alf1q * syz(ij, k, n)
+              sxy(ij, k, n) = sxy(ij, k, n) - fxy(ij, ku)
+             
+           end if
+          
+        end do
+     end do
+!$omp end do
+
+!    ---- put the temporary moments (fi) into appropriate neighboring boxes
+!$omp do
+     do k = kstr, kend
+
+        ku = k - 1
+
+        do ij = ijtstr, ijtend
+
+           if ( uv(ij, k) .gt. 0.d0 ) then
+              sm(ij, k, n) = sm(ij, k, n) + fm(ij, ku)
+              alf(ij, k)   = fm(ij, ku) / sm(ij, k, n)
+           else
+              sm(ij, ku, n) = sm(ij, ku, n) + fm(ij, ku)
+              alf(ij, k)    = fm(ij, ku) / sm(ij, ku, n)
+           end if
+
+           alf1 = 1.d0 - alf(ij, k)
+           if ( uv(ij, k) .gt. 0.d0 ) then
+!          ---- flux from (k-1) to (k),  when w > 0
+
+              tmp = alf(ij, k) * s0(ij, k, n) - alf1 * f0(ij, ku)
+
+              s0(ij, k, n) = s0(ij, k, n) + f0(ij, ku)
+
+              szz(ij, k, n) = &
+                &    alf(ij, k) * alf(ij, k) * fzz(ij, ku) &
+                &  + alf1 * alf1 * szz(ij, k, n) &
+                &  + 5.d0 * (  alf(ij, k) * alf1 * ( &
+                &                sz(ij, k, n) - fz(ij, ku) ) &
+                &            - ( alf1 - alf(ij, k) ) * tmp )
+              sz (ij, k, n) = &
+                &    alf(ij, k) * fz(ij, ku) &
+                &  + alf1       * sz(ij, k, n) + 3.d0 * tmp
+
+              sxz(ij, k, n) = &
+                &    alf(ij, k) * fxz(ij, ku) &
+                &  + alf1       * sxz(ij, k, n) &
+                &  + 3.d0 * ( alf(ij, k) * sx(ij, k, n) &
+                &           - alf1 * fx(ij, ku) )
+              syz(ij, k, n) = &
+                &    alf(ij, k) * fyz(ij, ku) &
+                &  + alf1       * syz(ij, k, n) &
+                &  + 3.d0 * ( alf(ij, k) * sy(ij, k, n) &
+                &           - alf1 * fy(ij, ku) )
+
+              sx (ij, k, n) = sx (ij, k, n) + fx (ij, ku)
+              sxx(ij, k, n) = sxx(ij, k, n) + fxx(ij, ku)
+
+              sy (ij, k, n) = sy (ij, k, n) + fy (ij, ku)
+              syy(ij, k, n) = syy(ij, k, n) + fyy(ij, ku)
+
+              sxy(ij, k, n) = sxy(ij, k, n) + fxy(ij, ku)
+
+           else
+!          ---- flux from (k) to (k-1),  when w < 0
+
+              tmp = - alf(ij, k) * s0(ij, ku, n) + alf1 * f0(ij, ku)
+
+              s0(ij, ku, n) = s0(ij, ku, n) + f0(ij, ku)
+
+              szz(ij, ku, n) = &
+                &      alf(ij, k) * alf(ij, k) * fzz(ij, ku) &
+                &    + alf1 * alf1 * szz(ij, ku, n) &
+                &    + 5.d0 * (  alf(ij, k) * alf1 * ( - sz(ij, ku, n) &
+                &                                      + fz(ij, ku)    ) &
+                &              + ( alf1 - alf(ij, k) ) * tmp  )
+              sz (ij, ku, n) = &
+                &      alf(ij, k) * fz(ij, ku) + alf1 * sz(ij, ku, n) &
+                &    + 3.d0 * tmp
+
+              sxz(ij, ku, n) = &
+                &      alf(ij, k) * fxz(ij, ku) + alf1 * sxz(ij, ku, n) &
+                &    + 3.d0 * ( alf1       * fx(ij, ku) &
+                &             - alf(ij, k) * sx(ij, ku, n) )
+              syz(ij, ku, n) = &
+                &      alf(ij, k) * fyz(ij, ku) + alf1 * syz(ij, ku, n) &
+                &    + 3.d0 * ( alf1       * fy(ij, ku) &
+                &             - alf(ij, k) * sy(ij, ku, n) )
+
+              sx (ij, ku, n) = sx (ij, ku, n) + fx (ij, ku)
+              sy (ij, ku, n) = sy (ij, ku, n) + fy (ij, ku)
+              sxx(ij, ku, n) = sxx(ij, ku, n) + fxx(ij, ku)
+              syy(ij, ku, n) = syy(ij, ku, n) + fyy(ij, ku)
+              sxy(ij, ku, n) = sxy(ij, ku, n) + fxy(ij, ku)
+
+           end if
+
+        end do
+     end do
 !$omp end do
 !$omp end parallel
 
-  do n = 1, ntdim
-
-!!*POPTION PARALLEL
-!$omp parallel do &
-!$omp private( &
-!$omp ij1, ij2, ij, k, ku, kd, s0m, s1m, s0p, sxp, &
-!$omp alfq, alf1, alf1q, tmp, &
-!$omp zfm, zalf, zf0, zfx, zfy, zfz, &
-!$omp zfxx, zfyy, zfzz, zfxy,zfxz, zfyz &
-!$omp )
-     do ij1 = ijtstr, ijtend, iblock       !cashe blocking
-        ij2 =min(ij1 + iblock-1, ijtend) 
-!---- undershoot limiter (Method B) of Morales Maqueda and Holloway (2006)
-        do k = kstr, kend
-           ku = max( k - 1, kstr )
-           kd = min( k + 1, kend )
-            
-           do ij = ij1, ij2
-              s0m = s0(ij, k, n)                          &
-     &            - min( s0(ij, ku, n) / sm(ij, ku, n),   &
-     &                   s0(ij, k , n) / sm(ij, k , n),   &
-     &                   s0(ij, kd, n) / sm(ij, kd, n)  ) &
-     &            * sm(ij, k, n)
-
-              s1m = sq3 * s0m
-              sz(ij, k, n) = min( s1m, max( - s1m, sz(ij, k, n) ) )
-              s0p = s0m * s0m
-              sxp = sqrt( max( s0p - sz(ij, k, n) * sz(ij, k, n) * ci3,  &
-     &                         eps ) )
-
-
-              d1=max( abs( sz(ij, k, n) ) - s0m, szz(ij, k, n) )
-              d2=max( s0m - sxp, szz(ij, k, n) )
-              ss=0.5d0 +dsign(0.5d0, abs( sz(ij, k, n) ) - 1.5d0 * s0m)
-              szz(ij, k, n) = min( s0m + sxp, d1*(1.d0-ss) + d2*ss )
-
-             
-              sxz(ij, k, n) = min( s0m, max( - s0m, sxz(ij, k, n) ) )
-              syz(ij, k, n) = min( s0m, max( - s0m, syz(ij, k, n) ) )
-
-
-!---- overshoot limiter (Method B) of Morales Maqueda and Holloway (2006)
-
-              s0m = - s0(ij, k, n)                          &
-     &              + max( s0(ij, ku, n) / sm(ij, ku, n),   &
-     &                     s0(ij, k,  n) / sm(ij, k , n),   &
-     &                     s0(ij, kd, n) / sm(ij, kd, n)  ) &
-     &              * sm(ij, k, n)
-
-              s1m = sq3 * s0m
-              sz(ij, k, n) = min( s1m, max( - s1m, sz(ij, k, n) ) )
-              s0p = s0m * s0m
-              sxp = sqrt( max( s0p - sz(ij, k, n) * sz(ij, k, n) * ci3,  &
-     &                         eps ) )
-               
-
-!             d1=abs( sz(ij, k, n) ) - s0m
-!             d2=s0m - sxp
-!             ss=0.5d0 +dsign(0.5d0, abs( sz(ij, k, n) ) - 1.5d0 * s0m)
-!             szz(ij, k, n) = min( s0m + sxp, 
-!     &               max( d1*(1.d0-ss) + d2*ss,  szz(ij, k, n) ) )
-
-              d1 = max( -s0m-sxp, szz(ij, k, n) )
-!             d2 = max( -s0m-sxp, szz(ij, k, n) )
-              ss=0.5d0 +dsign(0.5d0, abs( sz(ij, k, n) ) - 1.5d0 * s0m)
-              szz(ij, k, n) = min( (s0m-abs(sz(ij, k, n)))*(1.d0-ss) &
-     &                               + (-s0m+sxp)*ss,  &
-     &                             d1 )
-
-              sxz(ij, k, n) = min( s0m, max( - s0m, sxz(ij, k, n) ) )
-              syz(ij, k, n) = min( s0m, max( - s0m, syz(ij, k, n) ) )
-           end do
-        end do
-
-!---- calculating ALF
-        do k = kstr, kend
-           ku = k - 1
-           do ij = ij1, ij2
-
-              l=ll(ij,k)
-              ss=dble(-2*l -1)
-
-              zfm(ij-ij1+1, ku) = ss*uv(ij, k) * ts
-              zalf(ij-ij1+1, k) = zfm(ij-ij1+1, ku) / sm(ij, k+l, n)
-           end do
-        end do
-
-!---- calculating flux between box (I,J,K-1) <---> (I,J,K)
-        do k = kstr, kend
-           ku = k - 1
-           do ij = ij1, ij2
-              alfq  = zalf(ij-ij1+1, k) * zalf(ij-ij1+1, k)
-              alf1  = 1.d0 - zalf(ij-ij1+1, k)
-              alf1q = alf1 * alf1
-
-              l=ll(ij,k)
-              ss=dble(-2*l -1)
-
-              zf0(ij-ij1+1, ku) =                           &
-     &          zalf(ij-ij1+1, k) * ( s0(ij, k+l, n)        &
-     &               + ss*alf1 * (                          &
-     &                     sz(ij, k+l, n)                   &
-     &                   + ss*( alf1 - zalf(ij-ij1+1, k) )  &
-     &                   * szz(ij, k+l, n) ) )
-
-              zfz(ij-ij1+1, ku) =                           &
-     &          alfq * ( sz(ij, k+l, n)                     &
-     &                 + ss*3.d0 * alf1 * szz(ij, k+l, n) ) 
-
-              zfzz(ij-ij1+1, ku) = zalf(ij-ij1+1, k)  &
-     &                     * alfq * szz(ij, k+l, n)
-
-              zfx(ij-ij1+1, ku) = zalf(ij-ij1+1, k)*( sx(ij, k+l, n)  &
-     &                              + ss*alf1 * sxz(ij, k+l, n) )
-
-              zfy(ij-ij1+1, ku) = zalf(ij-ij1+1, k)*( sy(ij, k+l, n) &
-     &                                + ss*alf1 * syz(ij, k+l, n) )
-
-
-              zfxz(ij-ij1+1, ku) = alfq            * sxz(ij, k+l, n)
-              zfyz(ij-ij1+1, ku) = alfq            * syz(ij, k+l, n)
-              zfxx(ij-ij1+1, ku) = zalf(ij-ij1+1, k)*sxx(ij, k+l, n)
-              zfyy(ij-ij1+1, ku) = zalf(ij-ij1+1, k)*syy(ij, k+l, n)
-              zfxy(ij-ij1+1, ku) = zalf(ij-ij1+1, k)*sxy(ij, k+l, n)
-                  
-              ftz2(ij, k, n) = ss * zf0(ij-ij1+1, ku) * tsiv / vlmz(ij)
-              ftz (ij, k, n) = ftz(ij, k, n) + &
-                   & ss * zf0(ij-ij1+1, ku) * tsiv / vlmz(ij)
-           end do
-        end do
-!---- calculating flux between box (i,j,k-1) <---> (i,j,k)
-        do k = kstr, kend
-           ku = k - 1
-           do ij = ij1, ij2
-              l=ll(ij,k)
-              ss=dble(-2*l -1)
-
-              alfq  = zalf(ij-ij1+1, k) * zalf(ij-ij1+1, k)
-              alf1  = 1.d0 - zalf(ij-ij1+1, k)
-              alf1q = alf1 * alf1
-
-              sm (ij, k+l, n) = sm(ij, k+l, n) - zfm(ij-ij1+1, ku)
-              s0 (ij, k+l, n) = s0(ij, k+l, n) - zf0(ij-ij1+1, ku)
-
-              sz (ij, k+l, n) =                                  &
-     &          alf1q * ( sz(ij, k+l, n)                         &
-     &         -ss* 3.d0 * zalf(ij-ij1+1, k) * szz(ij, k+l, n) )
-
-
-              szz(ij, k+l, n) = alf1 * alf1q * szz(ij, k+l, n)
-              sx (ij, k+l, n) = sx (ij, k+l, n) - zfx(ij-ij1+1, ku)
-              sxx(ij, k+l, n) = sxx(ij, k+l, n) - zfxx(ij-ij1+1, ku)
-              sy (ij, k+l, n) = sy (ij, k+l, n) - zfy(ij-ij1+1, ku)
-              syy(ij, k+l, n) = syy(ij, k+l, n) - zfyy(ij-ij1+1, ku)
-
-              sxz(ij, k+l, n) = alf1q * sxz(ij, k+l, n)
-              syz(ij, k+l, n) = alf1q * syz(ij, k+l, n)
-              sxy(ij, k+l, n) = sxy(ij, k+l, n) - zfxy(ij-ij1+1, ku)
-          
-           end do
-        end do
-
-!---- put the temporary moments (fi) into appropriate neighboring boxes
-        do k = kstr, kend
-           ku = k - 1
-           do ij = ij1, ij2
-              l=-(ll(ij,k)+1)
-              sm(ij, k+l, n) = sm(ij, k+l, n) + zfm(ij-ij1+1, ku)
-              zalf(ij-ij1+1, k)   = zfm(ij-ij1+1, ku) / sm(ij, k+l, n)
-           end do
-        end do
-
-        do k = kstr, kend
-           ku = k - 1
-           do ij = ij1, ij2
-              l=-(ll(ij,k)+1)
-              ss=dble(-2*ll(ij,k) -1)
-              alf1 = 1.d0 - zalf(ij-ij1+1, k)
-
-              tmp = ss* zalf(ij-ij1+1, k) * s0(ij, k+l, n)  &
-     &              -ss* alf1 * zf0(ij-ij1+1, ku)
-
-              s0(ij, k+l, n) = s0(ij, k+l, n) + zf0(ij-ij1+1, ku)
-
-              szz(ij, k+l, n) =                                           &
-     &          zalf(ij-ij1+1, k) * zalf(ij-ij1+1, k)*zfzz(ij-ij1+1, ku)  &
-     &             + alf1 * alf1 * szz(ij, k+l, n)                        &
-     &             + 5.d0 * (  zalf(ij-ij1+1, k)                          &
-     &             * alf1 * ss*(   sz(ij, k+l, n) - zfz(ij-ij1+1, ku) )   &
-     &                     -ss* ( alf1 - zalf(ij-ij1+1, k) ) * tmp )
-
-
-              sz (ij, k+l, n) =                            &
-     &              zalf(ij-ij1+1, k) * zfz(ij-ij1+1, ku)  &
-     &            + alf1 * sz(ij, k+l, n)                  &
-     &            + 3.d0 * tmp
-
-              sxz(ij, k+l, n) =                                     &
-     &              zalf(ij-ij1+1, k) * zfxz(ij-ij1+1, ku)          &
-     &            + alf1 * sxz(ij, k+l, n)                          &
-     &            + 3.d0 * ss*( zalf(ij-ij1+1, k) * sx(ij, k+l, n)  &
-     &                      - alf1 * zfx(ij-ij1+1, ku) )
-
-
-              syz(ij, k+l, n) =                                     &
-     &              zalf(ij-ij1+1, k) * zfyz(ij-ij1+1, ku)          &
-     &            + alf1 * syz(ij, k+l, n)                          &
-     &            + 3.d0 * ss*( zalf(ij-ij1+1, k) * sy(ij, k+l, n)  &
-     &                      - alf1 * zfy(ij-ij1+1, ku) )
-
-              sx (ij, k+l, n) = sx (ij, k+l, n) +  zfx(ij-ij1+1, ku)
-              sy (ij, k+l, n) = sy (ij, k+l, n) +  zfy(ij-ij1+1, ku)
-              sxx(ij, k+l, n) = sxx(ij, k+l, n) + zfxx(ij-ij1+1, ku)
-              syy(ij, k+l, n) = syy(ij, k+l, n) + zfyy(ij-ij1+1, ku)
-              sxy(ij, k+l, n) = sxy(ij, k+l, n) + zfxy(ij-ij1+1, ku)
-           end do
-        end do
-     end do !blocking
-!$omp end parallel do
   end do
 
-!----
+  do n = 1, ntdim
 !$omp parallel
 !$omp do
-  do k = kstr, kend
-  do n = 1, ntdim
-     do ij = ijtstr, ijtend
+     do k = kstr, kend
+        do ij = ijtstr, ijtend
 
-        adt(ij, k, n) = &
-             & ( ( (ftx(ij+le, k, n) - ftx(ij, k,   n)) * rx &
-             &   + (fty(ij+ln, k, n) - fty(ij, k,   n)) * ry(ij)) * &
-             &      rxt(ij) * ryt(ij) &
-             &    + ftz(ij,    k, n) - ftz(ij, k+1, n)) / dz(ij, k)
-        adt2(ij, k, n) = &
+! ---- tx
+!           tx(ij, k, n) = s0(ij, k, n) / sm(ij, k, n)
+
+           adt(ij, k, n) =                                       &
+     &         (  (  (ftx(ij+le, k, n) - ftx(ij, k, n)) * rx         &
+     &             + (fty(ij+ln, k, n) - fty(ij, k, n)) * ry(ij)) *  &
+     &            rxt(ij) * ryt(ij)                                  &
+     &          + ftz(ij, k, n) - ftz(ij, k+1, n)) / dz(ij, k)
+
+           adt2(ij, k, n) = &
              & ( ( (ftx2(ij+le, k, n) - ftx2(ij, k,   n)) * rx &
              &   + (fty2(ij+ln, k, n) - fty2(ij, k,   n)) * ry(ij)) * &
              &      rxt(ij) * ryt(ij) &
              &    + ftz2(ij,    k, n) - ftz2(ij, k+1, n)) / dz(ij, k)
-        adtd(ij, k, n) = &
+           adtd(ij, k, n) = &
              & ( ( (ftxd(ij+le, k, n) - ftxd(ij, k,   n)) * rx &
              &   + (ftyd(ij+ln, k, n) - ftyd(ij, k,   n)) * ry(ij)) * &
              &      rxt(ij) * ryt(ij) &
              &    + ftzd(ij,    k, n) - ftzd(ij, k+1, n)) / dz(ij, k)
-        adtah(ij, k, n) = &
+           adtah(ij, k, n) = &
              & ( ( (ftxah(ij+le, k, n) - ftxah(ij, k,   n)) * rx &
              &   + (ftyah(ij+ln, k, n) - ftyah(ij, k,   n)) * ry(ij)) * &
              &      rxt(ij) * ryt(ij) ) / dz(ij, k)
-        adtgm(ij, k, n) = &
+           adtgm(ij, k, n) = &
              & ( ( (ftxgm(ij+le, k, n) - ftxgm(ij, k,   n)) * rx &
              &   + (ftygm(ij+ln, k, n) - ftygm(ij, k,   n)) * ry(ij)) * &
              &      rxt(ij) * ryt(ij) &
              &    + ftzgm(ij,    k, n) - ftzgm(ij, k+1, n)) / dz(ij, k)
-        adtis(ij, k, n) = &
+           adtis(ij, k, n) = &
              & ( ( (ftxis(ij+le, k, n) - ftxis(ij, k,   n)) * rx &
              &   + (ftyis(ij+ln, k, n) - ftyis(ij, k,   n)) * ry(ij)) * &
              &      rxt(ij) * ryt(ij) &
              &    + ftzis(ij,    k, n) - ftzis(ij, k+1, n)) / dz(ij, k)
-
+        end do
      end do
-  end do
-  end do
 !$omp end do
 !$omp end parallel
+  end do
 
 #ifdef OPT_BBL
   do n = 1, ntdim
@@ -1677,7 +2115,7 @@ subroutine flxtrc( &
 
 #ifdef OPT_BBL
 !---- keeping BBL variables consistent at two levels
-  call stbbtr( s0 )
+!  call stbbtr( s0 )
   call stbbtr( sm )
   call stbbtr( sx )
   call stbbtr( sy )
@@ -1689,7 +2127,6 @@ subroutine flxtrc( &
   call stbbtr( sxz )
   call stbbtr( syz )
 #endif
-
 
 #ifdef OPT_TRIPOLE
   call shift1(    sx, &
@@ -1828,7 +2265,6 @@ subroutine flxtrc( &
        &            'tendency of salt by advection', 'psu/sec', &
        &            nx, ny, nz, nxyzdm, 'OCLVTT')
 
-
   return
 
 end subroutine flxtrc
@@ -1861,7 +2297,7 @@ subroutine dnsgrd( &
   real(8), save :: d0(nzdim), d1(nzdim), d2(nzdim), d3(nzdim), d4(nzdim)
   real(8), save :: d5(nzdim), d6(nzdim), d7(nzdim), d8(nzdim), d9(nzdim)
   real(8), save :: eps = 1.d-20
-  logical, save :: ofirst = .true.
+  logical, save :: ofirst = .true., ofirst2 = .true.
 
   real(8), save ::  cxpsy(nxydim), cypsx(nxydim) 
   real(8), save ::  czpsx(nxydim), czpsy(nxydim) 
@@ -1884,8 +2320,6 @@ subroutine dnsgrd( &
   real(8) :: rmavdx(nxydim), rmavdy(nxydim)
   real(8) ::   muzx(nxydim, nzdim),   muzy(nxydim, nzdim)
 
-  real(8), save :: r2taum
-
   real(8) ::  xpsiy(nxydim, nzdim),  ypsix(nxydim, nzdim)
   real(8) ::  zpsix(nxydim, nzdim),  zpsiy(nxydim, nzdim)
   real(8) ::     hz(nxydim)
@@ -1901,21 +2335,22 @@ subroutine dnsgrd( &
 
   real(8) ::   muzh,  in2dz, n2min, n2l, hmldt
   real(8) :: rsigdf, rsigbt,  dhmld, cpsi
-  real(8) ::     pi,  omega
+  real(8) ::     pi,  omega, cormin
 
   real(8), save :: slpmax = 1.d-2
-  real(8), save ::  cm = 8.0d0,  ce = 0.06d0
+  real(8), save ::  cm = 8.0d0,  ce = 0.06d0,  fminlt = 10.0d0
   real(8), save ::  lfmin = 1.0d5,  taumle = 10.0d0,  vscl = 50.0d0
   real(8), save ::  drsig = 0.1d0
-  integer, save ::  mz = nz,  mzmin = 1,  kref = 1
+  integer, save ::  mz = nz,  mzmin = 1
   integer, save ::  nfltdm = 0,  nfltps = 0,  nfltrm = 0
   logical, save ::  ofltdm = .false.,  ofltps = .false.
   logical, save ::  ofltrm = .false.,  ocoamp = .true.
+  logical, save ::  omlep  = .false.
 
   namelist /nmslpm/ slpmax
-  namelist /nmmlep/ cm, ce, mz, ofltdm, nfltdm, &
+  namelist /nmmlep/ cm, ce, fminlt, mz, ofltdm, nfltdm, &
     &               lfmin, taumle, vscl, ofltps, nfltps, mzmin, &
-    &               drsig, ocoamp, ofltrm, nfltrm, kref
+    &               drsig, ocoamp, ofltrm, nfltrm, omlep
 
   if (ofirst) then
      ofirst = .false.
@@ -1933,43 +2368,6 @@ subroutine dnsgrd( &
         &   c4(kstr), c5(kstr), c6(kstr), &
         &   d0(kstr), d1(kstr), d2(kstr), d3(kstr),  d4(kstr), &
         &   d5(kstr), d6(kstr), d7(kstr), d8(kstr),  d9(kstr))
-
-!    === Mixed layer eddy parameterization
-!        from Fox-Kemper and Ferrari(2008) ===
-!    *** Coarse-resolution modification is applied.
-!        The last row in CXPSY/CYPSX corresponds to ds,
-!        and is cancelled out by the row just before it. *** 
-     pi = atan( 1.d0 )*4.d0
-     omega = 2.d0 * pi / 86400.d0
-     r2taum = 1.0d0 / (8.64d4 * taumle)**2.0d0
-     kzmin = mzmin + kstr - 1
-
-     do ij = nxdim+2, nxydim
-        cxpsy(ij) = ce &
-          &       / sqrt( (0.5d0*(cor(ij+lsw)+cor(ij+lw)))**2.0d0 &
-          &               + r2taum )
-        cypsx(ij) = ce &
-          &       / sqrt( (0.5d0*(cor(ij+lsw)+cor(ij+ls)))**2.0d0 &
-          &               + r2taum )
-        czpsy(ij) = ce &
-          &       / sqrt( ( 0.25d0* &
-          &                 ( cor(ij    ) + cor(ij+lw ) &
-          &                 + cor(ij+ls ) + cor(ij+lsw)))**2.0d0 &
-          &               + r2taum )
-        czpsx(ij) = ce &
-          &       / sqrt( ( 0.25d0* &
-          &                 ( cor(ij    ) + cor(ij+lw ) &
-          &                 + cor(ij+ls ) + cor(ij+lsw)))**2.0d0 &
-          &               + r2taum )
-        if (ocoamp) then
-           cxpsy(ij) = cxpsy(ij) &
-          &          * dx * 0.5d0 * (hxt(ij) + hxt(ij+lw))
-           cypsx(ij) = cypsx(ij) &
-          &          * dym(ij+ls) * 0.5d0 * (hyt(ij) + hyt(ij+ls))        
-           czpsy(ij) = czpsy(ij) * dx * hxt(ij)
-           czpsx(ij) = czpsx(ij) * dy(ij) * hyt(ij)        
-        end if
-     end do
   end if
 
 !$omp parallel private(n, k, ij, &
@@ -1983,31 +2381,6 @@ subroutine dnsgrd( &
         dtfdz(ij, k, n) = 0.d0
      end do
   end do
-  end do
-
-!$omp do
-  do k = kstr, kend
-     do ij = 1, nxydim
-        tl = ty(ij, k, 1)
-        sl = ty(ij, k, 2)
-        p1 = c0(k) &
-          &  + (c1(k) + (c2(k) + c3(k) * tl) * tl) * tl &
-          &  + (c4(k) + c5(k) * tl + c6(k) * sl) * sl
-        p2 = d0(k) &
-          &  + (d1(k) + (d2(k) + (d3(k) + d4(k) * tl) * tl) * tl) * tl &
-          &  + (d5(k) + (d6(k) + d7(k) * tl * tl) * tl &
-          &           + (d8(k) + d9(k) * tl * tl) * sqrt(sl)) * sl
-        r(ij, k) = p1 / p2
-        p1 = c0(kstr) &
-          &  + (c1(kstr) + (c2(kstr) + c3(kstr) * tl) * tl) * tl &
-          &  + (c4(kstr) + c5(kstr) * tl + c6(kstr) * sl) * sl
-        p2 = d0(kstr) &
-          &  + (d1(kstr) + (d2(kstr) + &
-          &                (d3(kstr) + d4(kstr) * tl) * tl) * tl) * tl &
-          &  + (d5(kstr) + (d6(kstr) + d7(kstr) * tl * tl) * tl &
-          &         + (d8(kstr) + d9(kstr) * tl * tl) * sqrt(sl)) * sl
-        rsigth(ij, k) = p1 / p2
-     end do
   end do
 
 !$omp do
@@ -2086,6 +2459,212 @@ subroutine dnsgrd( &
      end do
   end do
 
+!$omp do
+  do k = kstr, kend
+     do ij = ijtstr, ijtend+nxdim
+        dzdx = dtdx(ij, k, 1) * 4.d0 &
+           &   / (  dtfdz(ij, k  , 1) + dtfdz(ij+lw, k ,  1) &
+           &      + dtfdz(ij, k+1, 1) + dtfdz(ij+lw, k+1, 1) - eps)
+        xdzdx(ij, k) = min(slpmax, max(-slpmax, dzdx))
+        dzdy = dtdy(ij, k, 1) * 4.d0 * dym(ij+ls) &
+           &   / (  (dtfdz(ij, k, 1) + dtfdz(ij, k+1, 1)) * dy(ij) &
+           &   + (dtfdz(ij+ls, k, 1) + dtfdz(ij+ls, k+1, 1)) * dy(ij+ls) &
+           &      - eps)
+        ydzdy(ij, k) = min(slpmax, max(-slpmax, dzdy))
+     end do
+  end do
+
+!$omp do
+  do k = kstr+1, kend
+     do ij = ijtstr, ijtend
+        dzdx = ((dtdx(ij, k-1, 1)+dtdx(ij+le, k-1, 1))*dz(ij, k-1) &
+           &  + (dtdx(ij, k  , 1)+dtdx(ij+le, k  , 1))*dz(ij, k)) * &
+           &   0.25d0 / dzm(ij, k) / (dtfdz(ij, k, 1) - eps)
+        zdzdx(ij, k) = min(slpmax, max(-slpmax, dzdx)) * &
+           &           amftz(ij, k)
+        dzdy = &
+           &   (  (dtdy(ij, k-1, 1)+dtdy(ij+ln, k-1, 1))*dz(ij, k-1) &
+           &    + (dtdy(ij, k  , 1)+dtdy(ij+ln, k  , 1))*dz(ij, k)) * &
+           &     0.25d0 / dzm(ij, k) / (dtfdz(ij, k, 1) - eps)
+        zdzdy(ij, k) = min(slpmax, max(-slpmax, dzdy)) * &
+           &           amftz(ij, k)
+     end do
+  end do
+
+!$omp do
+  do k = 1, nzdim
+  do n = 1, ntdim
+     do ij = 1, nxydim
+        dtdx(ij, k, n) = 0.d0
+        dtdy(ij, k, n) = 0.d0
+        dtfdz(ij, k, n) = 0.d0
+     end do
+  end do
+  end do
+
+!$omp do
+  do n = 1, ntdim
+     do k = kstr, kend
+        do ij = ijtstr, ijtend+nxdim
+           dtdx(ij, k, n) = (tx(ij, k, n) - tx(ij+lw, k, n)) * rx * &
+              &           2.d0 / (hxt(ij) + hxt(ij+lw)) * &
+              &           amskt(ij, k) * amskt(ij+lw, k) 
+           dtdy(ij, k, n) = (tx(ij, k, n) - tx(ij+ls, k, n)) * &
+              &           rym(ij+ls) * &
+              &           2.d0 / (hyt(ij) + hyt(ij+ls)) * &
+              &           amskt(ij, k) * amskt(ij+ls, k)
+        end do
+     end do
+  end do
+!$omp end do nowait
+
+!$omp do
+  do n = 1, ntdim
+     do k = kstr+1, kend
+        do ij = ijtstr-nxdim, ijtend+nxdim
+           dtfdz(ij, k, n) = (tx(ij, k-1, n) - tx(ij, k, n)) &
+              &              / dzm(ij, k) * amftz(ij, k)
+        end do
+     end do
+  end do
+
+!$omp do
+  do n = 1, ntdim
+     do k = kstr, kend
+        do ij = ijtstr, ijtend+nxdim
+           xdtdz(ij, k, n) = &
+              &   (  dtfdz(ij, k, n)   + dtfdz(ij+lw, k, n) &
+              &    + dtfdz(ij, k+1, n) + dtfdz(ij+lw, k+1, n)) *  0.25d0
+           ydtdz(ij, k, n) = &
+              &   (  (dtfdz(ij, k, n)    + dtfdz(ij, k+1, n)) * &
+              &      dy(ij) &
+              &    + (dtfdz(ij+ls, k, n) + dtfdz(ij+ls, k+1, n)) * &
+              &      dy(ij+ls)) * &
+              &   rym(ij+ls) * 0.25d0
+        end do
+     end do
+  end do
+!$omp end do nowait
+
+!$omp do
+  do n = 1, ntdim
+     do k = kstr+1, kend
+        do ij = ijtstr, ijtend
+           zdtdx(ij, k, n) = &
+              &   (  (dtdx(ij, k-1, n) + dtdx(ij+le, k-1, n)) * &
+              &      dz(ij, k-1) &
+              &    + (dtdx(ij, k, n) + dtdx(ij+le, k, n)) * &
+              &      dz(ij, k)) &
+              &   / dzm(ij, k) * 0.25d0 * amftz(ij, k)
+           zdtdy(ij, k, n) = &
+              &   (  (dtdy(ij, k-1, n) + dtdy(ij+ln, k-1, n)) * &
+              &      dz(ij, k-1) &
+              &    + (dtdy(ij, k, n) + dtdy(ij+ln, k, n)) * &
+              &      dz(ij, k)) &
+              &   / dzm(ij, k) * 0.25d0 * amftz(ij, k)
+        end do
+     end do
+  end do
+!$omp end parallel
+
+  xpsiy(:,:) = 0.d0
+  ypsix(:,:) = 0.d0
+  zpsix(:,:) = 0.d0
+  zpsiy(:,:) = 0.d0
+  if ( .not. omlep ) return
+
+  if (ofirst2) then
+     ofirst2 = .false.
+!    === Mixed layer eddy parameterization
+!        from Fox-Kemper and Ferrari(2008) ===
+!    *** Coarse-resolution modification is applied.
+!        The last row in CXPSY/CYPSX corresponds to ds,
+!        and is cancelled out by the row just before it. *** 
+     pi = atan( 1.d0 )*4.d0
+     omega = 2.d0 * pi / 86400.d0
+     cormin = 2.d0 * omega * sin( pi*abs(fminlt)/180.d0 )
+     kzmin = mzmin + kstr - 1
+
+     do ij = nxdim+2, nxydim
+        if (ocoamp) then
+           cxpsy(ij) = ce &
+             &       / sqrt( &
+             &         max( abs(0.5d0*(cor(ij+lsw) + cor(ij+lw))), &
+             &              cormin )**2.0d0 &
+             &         + 1.0d0 / (8.64d4 * taumle)**2.0d0 ) &
+             &       * dx * 0.5d0 * (hxt(ij) + hxt(ij+lw))
+           cypsx(ij) = ce &
+             &       / sqrt( &
+             &         max( abs(0.5d0*(cor(ij+lsw) + cor(ij+ls))), &
+             &              cormin )**2.0d0 &
+             &         + 1.0d0 / (8.64d4 * taumle)**2.0d0 ) &
+             &       * dym(ij+ls) * 0.5d0 * (hyt(ij) + hyt(ij+ls))        
+           czpsy(ij) = ce &
+             &       / sqrt( &
+             &         max( abs(0.25d0* &
+             &              ( cor(ij    ) + cor(ij+lw ) &
+             &              + cor(ij+ls ) + cor(ij+lsw))), cormin ) &
+             &                                              **2.0d0 &
+             &         + 1.0d0 / (8.64d4 * taumle)**2.0d0 ) &
+             &         * dx * hxt(ij)
+           czpsx(ij) = ce &
+             &       / sqrt( &
+             &         max( abs(0.25d0* &
+             &              ( cor(ij    ) + cor(ij+lw ) &
+             &              + cor(ij+ls ) + cor(ij+lsw))), cormin ) &
+             &                                              **2.0d0 &
+             &         + 1.0d0 / (8.64d4 * taumle)**2.0d0 ) &
+             &         * dy(ij) * hyt(ij)
+        else
+           cxpsy(ij) = ce &
+             &       / sqrt( &
+             &         max( abs(0.5d0*(cor(ij+lsw) + cor(ij+lw))), &
+             &              cormin )**2.0d0 )
+           cypsx(ij) = ce &
+             &       / sqrt( &
+             &         max( abs(0.5d0*(cor(ij+lsw) + cor(ij+ls))), &
+             &              cormin )**2.0d0 )
+           czpsy(ij) = ce &
+             &       / sqrt( &
+             &         max( abs(0.25d0* &
+             &              ( cor(ij    ) + cor(ij+lw ) &
+             &              + cor(ij+ls ) + cor(ij+lsw))), cormin ) &
+             &                                              **2.0d0 )
+           czpsx(ij) = ce &
+             &       / sqrt( &
+             &         max( abs(0.25d0* &
+             &              ( cor(ij    ) + cor(ij+lw ) &
+             &              + cor(ij+ls ) + cor(ij+lsw))), cormin ) &
+             &                                              **2.0d0 )
+        end if
+     end do
+  end if
+
+!$omp do
+  do k = kstr, kend
+     do ij = 1, nxydim
+        tl = ty(ij, k, 1)
+        sl = ty(ij, k, 2)
+        p1 = c0(k) &
+          &  + (c1(k) + (c2(k) + c3(k) * tl) * tl) * tl &
+          &  + (c4(k) + c5(k) * tl + c6(k) * sl) * sl
+        p2 = d0(k) &
+          &  + (d1(k) + (d2(k) + (d3(k) + d4(k) * tl) * tl) * tl) * tl &
+          &  + (d5(k) + (d6(k) + d7(k) * tl * tl) * tl &
+          &           + (d8(k) + d9(k) * tl * tl) * sqrt(sl)) * sl
+        r(ij, k) = p1 / p2
+        p1 = c0(kstr) &
+          &  + (c1(kstr) + (c2(kstr) + c3(kstr) * tl) * tl) * tl &
+          &  + (c4(kstr) + c5(kstr) * tl + c6(kstr) * sl) * sl
+        p2 = d0(kstr) &
+          &  + (d1(kstr) + (d2(kstr) + &
+          &                (d3(kstr) + d4(kstr) * tl) * tl) * tl) * tl &
+          &  + (d5(kstr) + (d6(kstr) + d7(kstr) * tl * tl) * tl &
+          &         + (d8(kstr) + d9(kstr) * tl * tl) * sqrt(sl)) * sl
+        rsigth(ij, k) = p1 / p2
+     end do
+  end do
+
 ! === Mixed layer eddy parameterization
 !     from Fox-Kemper and Ferrari(2008) ===
 
@@ -2161,23 +2740,13 @@ subroutine dnsgrd( &
 
 ! determine HMLD by sigma_theta
   do ij = 1, nxydim
-     rmavez(ij) = rsigth(ij, kstr) * 0.5d0 * dzsig(ij, kstr)
-  end do
-  do k = kstr+1, kref+kstr-1
-     do ij = 1, nxydim
-        rmavez(ij) = rmavez(ij) + 0.5d0 * &
-        &             ( rsigth(ij, k-1) * dzsig(ij, k-1) &
-        &             + rsigth(ij, k  ) * dzsig(ij, k  ) )
-     end do
-  end do
-
-  do ij = 1, nxydim
-     hmld(ij) = ztm(ij, kref+kstr-1)
-     zhmld(ij, kstr) = ztm(ij, kref+kstr-1)
-     kmld(ij) = kref+kstr-1
-     rsigbt = rsigth(ij, kref+kstr-1) + drsig
+     hmld(ij) = ztm(ij, kstr)
+     zhmld(ij, kstr) = ztm(ij, kstr)
+     kmld(ij) = kstr
+     rmavez(ij) = rsigth(ij, kstr) * ztm(ij, kstr)
+     rsigbt = rsigth(ij, kstr) + drsig
      rsigdf = 0.d0
-     do k = kstr+kref, min(nbot(ij), mz+kstr-1)
+     do k = kstr+1, min(nbot(ij), mz+kstr-1)
         if ( rsigth(ij, k) .ge. rsigbt ) then
            dhmld = dzmsig(ij, k) * (rsigbt - rsigth(ij, k-1)) &
              &   / (rsigth(ij, k) - rsigth(ij, k-1))
@@ -2208,12 +2777,9 @@ subroutine dnsgrd( &
 
   do ij = ijtstr-nxdim, ijtend+nxdim
      if (ocoamp) then
-        lf(ij) = max( &
-          &          nbv(ij) * hmld(ij) / &
-          &          sqrt((0.25d0*(cor(ij   )+cor(ij+lw ) &
-          &                       +cor(ij+ls)+cor(ij+lsw)))**2.0d0 &
-          &               + r2taum ), &
-          &          lfmin)
+        lf(ij) = max(4.0d0*nbv(ij)*hmld(ij)/ &
+          &          max( abs( cor(ij   ) + cor(ij+lw ) &
+          &                  + cor(ij+ls) + cor(ij+lsw) ), eps), lfmin)
      else
         lf(ij) = 1.0d0
      end if
@@ -2491,117 +3057,10 @@ subroutine dnsgrd( &
 !  call chekin(   muzx,   'MUZX', nx, ny, nz, nxyzdm, 'OCN')
 !  call chekin(   muzy,   'MUZY', nx, ny, nz, nxyzdm, 'OCN')
 
-!$omp do
-  do k = kstr, kend
-     do ij = ijtstr, ijtend+nxdim
-        dzdx = dtdx(ij, k, 1) * 4.d0 &
-           &   / (  dtfdz(ij, k  , 1) + dtfdz(ij+lw, k ,  1) &
-           &      + dtfdz(ij, k+1, 1) + dtfdz(ij+lw, k+1, 1) - eps)
-        xdzdx(ij, k) = min(slpmax, max(-slpmax, dzdx))
-        dzdy = dtdy(ij, k, 1) * 4.d0 * dym(ij+ls) &
-           &   / (  (dtfdz(ij, k, 1) + dtfdz(ij, k+1, 1)) * dy(ij) &
-           &   + (dtfdz(ij+ls, k, 1) + dtfdz(ij+ls, k+1, 1)) * dy(ij+ls) &
-           &      - eps)
-        ydzdy(ij, k) = min(slpmax, max(-slpmax, dzdy))
-     end do
-  end do
-
-!$omp do
-  do k = kstr+1, kend
-     do ij = ijtstr, ijtend
-        dzdx = ((dtdx(ij, k-1, 1)+dtdx(ij+le, k-1, 1))*dz(ij, k-1) &
-           &  + (dtdx(ij, k  , 1)+dtdx(ij+le, k  , 1))*dz(ij, k)) * &
-           &   0.25d0 / dzm(ij, k) / (dtfdz(ij, k, 1) - eps)
-        zdzdx(ij, k) = min(slpmax, max(-slpmax, dzdx)) * &
-           &           amftz(ij, k)
-        dzdy = &
-           &   (  (dtdy(ij, k-1, 1)+dtdy(ij+ln, k-1, 1))*dz(ij, k-1) &
-           &    + (dtdy(ij, k  , 1)+dtdy(ij+ln, k  , 1))*dz(ij, k)) * &
-           &     0.25d0 / dzm(ij, k) / (dtfdz(ij, k, 1) - eps)
-        zdzdy(ij, k) = min(slpmax, max(-slpmax, dzdy)) * &
-           &           amftz(ij, k)
-     end do
-  end do
-
-!$omp do
-  do k = 1, nzdim
-  do n = 1, ntdim
-     do ij = 1, nxydim
-        dtdx(ij, k, n) = 0.d0
-        dtdy(ij, k, n) = 0.d0
-        dtfdz(ij, k, n) = 0.d0
-     end do
-  end do
-  end do
-
-!$omp do
-  do n = 1, ntdim
-     do k = kstr, kend
-        do ij = ijtstr, ijtend+nxdim
-           dtdx(ij, k, n) = (tx(ij, k, n) - tx(ij+lw, k, n)) * rx * &
-              &           2.d0 / (hxt(ij) + hxt(ij+lw)) * &
-              &           amskt(ij, k) * amskt(ij+lw, k) 
-           dtdy(ij, k, n) = (tx(ij, k, n) - tx(ij+ls, k, n)) * &
-              &           rym(ij+ls) * &
-              &           2.d0 / (hyt(ij) + hyt(ij+ls)) * &
-              &           amskt(ij, k) * amskt(ij+ls, k)
-        end do
-     end do
-  end do
-!$omp end do nowait
-
-!$omp do
-  do n = 1, ntdim
-     do k = kstr+1, kend
-        do ij = ijtstr-nxdim, ijtend+nxdim
-           dtfdz(ij, k, n) = (tx(ij, k-1, n) - tx(ij, k, n)) &
-              &              / dzm(ij, k) * amftz(ij, k)
-        end do
-     end do
-  end do
-
-!$omp do
-  do n = 1, ntdim
-     do k = kstr, kend
-        do ij = ijtstr, ijtend+nxdim
-           xdtdz(ij, k, n) = &
-              &   (  dtfdz(ij, k, n)   + dtfdz(ij+lw, k, n) &
-              &    + dtfdz(ij, k+1, n) + dtfdz(ij+lw, k+1, n)) *  0.25d0
-           ydtdz(ij, k, n) = &
-              &   (  (dtfdz(ij, k, n)    + dtfdz(ij, k+1, n)) * &
-              &      dy(ij) &
-              &    + (dtfdz(ij+ls, k, n) + dtfdz(ij+ls, k+1, n)) * &
-              &      dy(ij+ls)) * &
-              &   rym(ij+ls) * 0.25d0
-        end do
-     end do
-  end do
-!$omp end do nowait
-
-!$omp do
-  do n = 1, ntdim
-     do k = kstr+1, kend
-        do ij = ijtstr, ijtend
-           zdtdx(ij, k, n) = &
-              &   (  (dtdx(ij, k-1, n) + dtdx(ij+le, k-1, n)) * &
-              &      dz(ij, k-1) &
-              &    + (dtdx(ij, k, n) + dtdx(ij+le, k, n)) * &
-              &      dz(ij, k)) &
-              &   / dzm(ij, k) * 0.25d0 * amftz(ij, k)
-           zdtdy(ij, k, n) = &
-              &   (  (dtdy(ij, k-1, n) + dtdy(ij+ln, k-1, n)) * &
-              &      dz(ij, k-1) &
-              &    + (dtdy(ij, k, n) + dtdy(ij+ln, k, n)) * &
-              &      dz(ij, k)) &
-              &   / dzm(ij, k) * 0.25d0 * amftz(ij, k)
-        end do
-     end do
-  end do
-!$omp end parallel
-
   return
 
 end subroutine dnsgrd
+
 #ifdef OPT_BBL
 ! *********************************************************************
 

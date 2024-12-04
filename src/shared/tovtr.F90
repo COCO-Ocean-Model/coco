@@ -12,9 +12,9 @@ module tovtr
 !     '01.09.17  H.Hasumi: GAMMA for BBL
 !     '01.12.07  H.Hasumi
 !     '02.05.29  H.Nakano: tracer dimension
+!     '02.09.30  H.Hasumi: for vector machines
 !     '07.04.23  H.Hasumi
 !     '07.05.01  H.Hasumi: McDougall et al. (2003) eq. of state
-!     '07.09.25  H.Hasumi: arguments of CHEKIN
 !     '08.06.11  H.Hasumi: initial/final processing
 !     '08.07.10  H.Hasumi: initial/final processing
 !     '09.02.23  Y.Komuro: add DDENST (only diagnosing R)
@@ -176,6 +176,7 @@ subroutine ovturn( &
   real(8) :: dptmsig(nxydim, nzdim), dptsig(nxydim, nzdim)
   real(8) ::  dzmsig(nxydim, nzdim),   delb(nxydim, nzdim)
   integer ::    lup(nxydim)
+  logical ::    lov(nxydim)
   real(8) ::     tu,     tl,     su,     sl,     tr,     sr
   real(8) ::     ru,     rl,     rr
   real(8) ::     p1,     p2
@@ -225,7 +226,6 @@ subroutine ovturn( &
      end do
   end do
       
-
 !$omp parallel do private(k, ij)
   do k = 1, nzdim
      do ij = 1, nxydim
@@ -308,12 +308,12 @@ subroutine ovturn( &
 !$omp end parallel do
   
 !$omp parallel do private(ij, k, tu, su, tl, sl, p1, p2, ru, rl)
-  do ij = ijtstr, ijtend
-     do k = kstr+1, nbot(ij)
-        tu = t(ij, k-1, 1)
-        su = t(ij, k-1, 2)
-        tl = t(ij, k, 1)
-        sl = t(ij, k, 2)
+  do k = kstr+1, kend
+     do ij = ijtstr, ijtend
+        tu = t(ij, k-1, 1) * amskt(ij, k-1)
+        su = t(ij, k-1, 2) * amskt(ij, k-1)
+        tl = t(ij, k, 1) * amskt(ij, k)
+        sl = t(ij, k, 2)* amskt(ij, k)
         p1 = c0(k) &
            & + (c1(k) + (c2(k) + c3(k) * tu) * tu) * tu &
            & + (c4(k) + c5(k) * tu + c6(k) * su) * su
@@ -321,7 +321,7 @@ subroutine ovturn( &
            & + (d1(k) + (d2(k) + (d3(k) + d4(k) * tu) * tu) * tu) * tu &
            & + (d5(k) + (d6(k) + d7(k) * tu * tu) * tu &
            &          + (d8(k) + d9(k) * tu * tu) * sqrt(su)) * su
-        ru = p1 / p2
+        ru = p1 / p2 * amskt(ij, k)
         p1 = c0(k) &
            & + (c1(k) + (c2(k) + c3(k) * tl) * tl) * tl &
            & + (c4(k) + c5(k) * tl + c6(k) * sl) * sl
@@ -329,24 +329,31 @@ subroutine ovturn( &
            & + (d1(k) + (d2(k) + (d3(k) + d4(k) * tl) * tl) * tl) * tl &
            & + (d5(k) + (d6(k) + d7(k) * tl * tl) * tl &
            &          + (d8(k) + d9(k) * tl * tl) * sqrt(sl)) * sl
-        rl = p1 / p2
+        rl = p1 / p2 * amskt(ij, k)
         if (ru > rl) then
-           w2 (ij) = 1.d0 / (zt(ij, k+1) - zt(ij, lup(ij)))
            conv(ij, k) = 1.d0
            cnvdep(ij)=depth(ij,k)
+           lov(ij) = .true.
            do n = 1, ntdim
               ttl(ij, n) = ttl(ij, n) &
-                 &       + t(ij, k, n) * dzsig(ij, k)
-              do kk = kstr, k
-                 if (kk >= lup(ij)) then
-                    t(ij, kk, n) = ttl(ij, n) * w2(ij)
-                 end if
-              end do
+                &        + t(ij, k, n) * dzsig(ij, k)
            end do
         else
-           do n = 1, ntdim  
+           lup(ij) = k
+           lov(ij) = .false.
+           do n = 1, ntdim
               ttl(ij, n) = t(ij, k, n) * dzsig(ij, k)
            end do
+        end if
+        w2 (ij) = 1.d0 / (zt(ij, k+1) - zt(ij, lup(ij)))
+     end do
+
+     do kk = kstr, k
+        do ij = ijtstr, ijtend
+           if ((kk .ge. lup(ij)) .and. lov(ij)) then
+              do n = 1, ntdim
+                 t(ij, kk, n) = ttl(ij, n) * w2(ij)
+              end do
            lup(ij) = k
          end if
      end do
@@ -460,6 +467,7 @@ subroutine ovturn( &
     &            'vertical salinity flux by convection', 'psu cm/s', &
     &            nx,     ny,     nz, nxyzdm, 'OCLVMT')
 
+
   return
 
 end subroutine ovturn
@@ -478,8 +486,8 @@ subroutine ddenst( &
 !$omp parallel do private(k, ij, tl, sl, p1, p2)
   do k = kstr, kend
      do ij = ijtstr, ijtend
-        tl = t(ij, k, 1)
-        sl = t(ij, k, 2)
+        tl = t(ij, k, 1) * amskt(ij, k)
+        sl = t(ij, k, 2) * amskt(ij, k)
         p1 = c0(k) &
            & + (c1(k) + (c2(k) + c3(k) * tl) * tl) * tl &
            & + (c4(k) + c5(k) * tl + c6(k) * sl) * sl

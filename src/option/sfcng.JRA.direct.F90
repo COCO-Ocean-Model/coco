@@ -250,14 +250,14 @@ subroutine sfcflx( &
   real(8) ::   grice(nxydim),  grsnw(nxydim),  gricr(nxydim)
   real(8) ::   grasn(nxydim),  grvmp(nxydim), grfrmp(nxydim)
   real(8) ::    grz0(nxydim, ntyz0)
-  real(8) ::  gfluxs(nxydim), tfluxs(nxydim), qfluxs(nxydim)
+  real(8) ::  gfluxs(nxydim), tfluxs(nxydim)=0.d0, qfluxs(nxydim)=0.d0
   real(8) ::  wfluxs(nxydim, 2)
-  real(8) ::  rflxlu(nxydim), sflxbl(nxydim)
+  real(8) ::  rflxlu(nxydim)=0.d0, sflxbl(nxydim)
   real(8) ::   dgfds(nxydim),  dtfdt(nxydim),  dtfds(nxydim)
   real(8) ::   dqfds(nxydim),   swdn(nxydim)
   real(8) ::      fm(nxydim)
 
-  real(8) ::    swup(nxydim)
+  real(8) ::    swup(nxydim)=0.d0
   real(8) ::   swdnw(nxydim, 0:nic),           swupw(nxydim, 0:nic)
   real(8) ::   lwdnw(nxydim, 0:nic),           lwupw(nxydim, 0:nic)
   real(8) ::  swdnwg(nxydim), swupwg(nxydim)
@@ -381,6 +381,9 @@ subroutine sfcflx( &
 !     swntwa(ij) = 0.0d0
      wsbg(ij) = 0.0d0
      albswg(ij) = 0.0d0
+     tauaox(ij) = 0.0d0
+     tauaoy(ij) = 0.0d0
+     wev(ij) = 0.0d0
   end do
   do l = 0, nic
      do ij = 1, nxydim
@@ -403,6 +406,7 @@ subroutine sfcflx( &
           &                    dz(ij, kstr) * amskt(ij, kstr)
      end do
   end do
+  roff(:)=0.d0
   call tmintp_direct(   u10,      1)
   call tmintp_direct(   v10,      2)
   call tmintp_direct(  tsfc,      3)
@@ -425,20 +429,19 @@ subroutine sfcflx( &
   dfdu(:) = 0.0d0
   dfbc(:) = 0.0d0
 
-!!!!!! kurogi 2009.11.27
 #ifdef OPT_TRIPOLE
-  call shift1( &
-    &            psfc, &
+  call shift2( &
+    &            psfc,   roff,         &
     &           nxdim,  nydim,      1, &
     &            1.d0,      0,      0 )
 #else
-  call shift1( &
-    &            psfc, &
+  call shift2( &
+    &            psfc,   roff,         &
     &           nxdim,  nydim,      1 )
 #endif
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-  do ij = ijstr, ijend
+  do ij = 1, nxydim
      tauaix(ij) = 0.0d0
      tauaiy(ij) = 0.0d0
      prec(ij) = pplr(ij) * factfw ! prec: downward is positive
@@ -569,6 +572,8 @@ subroutine sfcflx( &
            albswg(ij) = albswg(ij) + ralbsw(ij) * a(ij, l)
 !           ftatm(ij) = ftatm(ij) + qai(ij, l) * fm(ij)
 !           swntwa(ij) = swntwa(ij) + swdn(ij) * fm(ij)
+        end do
+        do ij = 1, nxydim
            latfx(ij, l) = qfluxs(ij) * esub
         end do
      else
@@ -585,10 +590,12 @@ subroutine sfcflx( &
            albsw(ij, l) = ralbsw(ij)
 !           ftatm(ij) = ftatm(ij) + gfluxs(ij) * facth * a(ij, 0)
 !           swntwa(ij) = swntwa(ij) + swdn(ij) * a(ij, 0)
+        end do
+        do ij = 1, nxydim
            latfx(ij, l) = qfluxs(ij) * el
         end do
      end if
-     do ij = ijstr, ijend
+     do ij = 1, nxydim
         swdnw(ij, l) = swnt(ij)
         swupw(ij, l) = swup(ij)
         lwdnw(ij, l) = dwlw(ij)
@@ -799,8 +806,8 @@ subroutine ocnslv_core ( &
   real(8) ::     ff, fi, dtx
   real(8) ::     emis
   real(8) ::     x, albx, albsw, icealb
-  real(8) ::     mpdalb, snwalb, smpalb, brialb
-  real(8) ::     fbarei, fmpnd, fsnow, fsnwmp
+  real(8) ::     mpdalb, snwalb, brialb
+  real(8) ::     fbarei, fmpnd, fsnow, fsnwmp, fsmpsn, fsmpsl
   real(8) ::     hsneff, grsref, hslash, slsalb
   real(8) ::     omega, sinij, cort
   integer ::    ij, l
@@ -922,32 +929,51 @@ subroutine ocnslv_core ( &
         fmpnd  = grfrmp(ij) * (1.0d0 - grsnr(ij))
         fsnwmp = grfrmp(ij) * grsnr(ij)
         fbarei = 1.0d0 - (fsnow + fmpnd + fsnwmp)  !! = (1-grfrmp) * (1-grsnr)
-        if (rp(ij) <= 0.15d0) then  !! all the MP water retained in snow
-           smpalb = snwalb
-        else
-           if (grsnr(ij) > 0.0d0) then
+        if (fsnwmp > 0.0d0) then
+           if (rp(ij) <= 0.15d0) then  !! all the MP water retained in snow
+              hsneff = hsnow(ij)
+              hslash = 0.0d0
+              fsmpsn = fsnwmp
+              fsmpsl = 0.0d0
+              slsalb = alcice
+            else
               hsneff = hsnow(ij) - hmp(ij) * rorros
-              grsref = max( 0.0d0, min( 1.0d0, &
-                &      ( hsneff / (tsdpt + hsneff) ) / grsnr(ij) ) )
-           else
-              grsref = 0.0d0
+              if ((hsnow(ij) > 0.0d0) .and. (hsneff > 0.0d0)) then
+                 hslash = hmp(ij) * rorros
+
+                 fsmpsn = fsnwmp
+                 fsmpsl = 0.0d0
+               else
+                 hsneff = 0.0d0
+                 hslash = hmp(ij) + rsrro * hsnow(ij)
+                 fsmpsn = 0.0d0
+                 fsmpsl = fsnwmp
+              end if
+              albx = fmpnd * min( max( &
+                &            (hslash - falmdp) / dalmdp, 0.0d0), 1.0d0)
+              slsalb = alcice * (1.0d0 - albx) + alcmpd * albx
            end if
-           hslash = hmp(ij) + rsrro * hsnow(ij)
-           albx = fmpnd * min( max( &
-           &            (hslash - falmdp) / dalmdp, 0.0d0), 1.0d0)
-           slsalb = alcice * (1.0d0 - albx) + alcmpd * albx
-           smpalb = grsref * snwalb + (1.0d0 - grsref) * slsalb
+        else
+           hsneff = hsnow(ij)
+           hslash = 0.0d0
+           fsmpsn = 0.0d0
+           fsmpsl = 0.0d0
+           slsalb = alcice
         end if
      else
         fsnow  = grsnr(ij)
         fmpnd  = min(grfrmp(ij), 1.0d0-grsnr(ij))
         fbarei = 1.0d0 - (fsnow + fmpnd)
         fsnwmp = 0.0d0
-        smpalb = 0.0d0
+        hsneff = hsnow(ij)
+        hslash = 0.0d0
+        fsmpsn = 0.0d0
+        fsmpsl = 0.0d0
+        slsalb = alcice
      end if
-     icealb = snwalb * fsnow  &
+     icealb = snwalb * (fsnow+fsmpsn)  &
        &    + mpdalb * fmpnd  &
-       &    + smpalb * fsnwmp &
+       &    + slsalb * fsmpsl &
        &    + brialb * fbarei
      albsw = (aswo2d(ij) * (1.0d0 - gricr(ij)) + icealb * gricr(ij)) &
        &     * fswalb

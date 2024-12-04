@@ -8,7 +8,7 @@ module ucloc
 !  HISTORY
 !     '97.03.18  H.Hasumi: From AGCM5.4 developed by A.Numaguti
 !     '07.04.23  H.Hasumi
-!     '12.12.07  H.Tatebe: for COCO5.0 in F90
+!     '12.06.15  H.Tatebe: for COCO5.0 in F90
 !
 ! ---------------------------------------------------------------------
 
@@ -16,24 +16,21 @@ module ucloc
   private
 
   integer(4),    parameter          ::  nclmax = 100
-  real(8),                    save  ::  cputim(nclmax), vputim(nclmax)
-  real(8),                    save  ::  cpuold(nclmax), vpuold(nclmax)
-  real(8),                    save  ::  cput,   vput        
+  real(8),                    save  ::  cputim(nclmax)=0.d0, wcltim(nclmax)=0.d0
+  real(8),                    save  ::  cpuold(nclmax), wclold(nclmax)
+  real(8),                    save  ::  cput, wclt
   integer(4),                 save  ::  ifpar,  jfpar
-  integer(4),                 save  ::  nclock
-  logical,                    save  ::  ofirst
+  integer(4),                 save  ::  nclock = 0
+  logical,                    save  ::  ofirst = .true.
   character(16),              save  ::  htitle(nclmax)
                               
 !---- used in yclock
-  real(8),                    save  ::  cput2,  vput2
-  real(8),                    save  ::  ticks,  tick0,  tusr0
-  real(4),                    save  ::  tarray(1:2)
+  real(8),                    save  ::  cput2,  cput0
+  real(8),                    save  ::  wclt2,  wclt0
+  integer(8),                 save  ::    crt,    cmx
 
   public  ::  clcout,  clcstr,  clcend  !  ued in icedcoco.F, aprdc.F, iprdc,F
   
-  data tick0, tusr0 / 0.d0, 0.d0 /
-  data nclock / 0 /
-  data ofirst / .true. /
   data htitle / nclmax*' ' /
 
 contains
@@ -41,48 +38,41 @@ contains
   subroutine clcout
     use ufile
     implicit none
-
     integer(4)  ::  ic
 
     call rewnml(ifpar, jfpar)
-
+    call yclock(cput, wclt)
+    
+    write(jfpar, '(17x,2a25)') 'CPU time (cpu_time)', 'real time (system_clock)'
     do ic = 1, nclock
        if ( htitle(ic) /= ' ' ) then
-          write(jfpar, '(1x,a16,2f15.6)') htitle(ic), cputim(ic), vputim(ic)
+          write(jfpar, '(1x,a16,2(f15.6,"s (",f5.2,"%)"))') htitle(ic), &
+               & cputim(ic), cputim(ic)/cput*100.d0, &
+               & wcltim(ic), wcltim(ic)/wclt*100.d0
        end if
     end do
-!51  format(' ', a16, 2f15.6)
     
-!    call yclock(cput, vput)
-    call xclock(cput, 5)
-    vput = 0.0d0
-    write(jfpar, '(1x,a16,2f15.6)') ' total time = ', cput, vput
+    write(jfpar, '(1x,a16,2(f15.6,"s",9x))') ' total time = ', cput, wclt
     
   end subroutine clcout
   
 ! **********************************************************************
 
   subroutine clcstr( httl )
-
     implicit none
-
     character(*),           intent(in)     ::  httl
-
     integer(4)  ::  ic
 
     if (ofirst) then
        ofirst = .false.
-!       call yclocl
-       call xclock(cput, 3)
+       call yclocl
     end if
 
-!    call yclock( cput, vput )
-    call xclock(cput, 5)
-    vput = 0.0d0
+    call yclock( cput, wclt )
     do ic = 1, nclock
        if ( htitle(ic) == httl ) then
           cpuold(ic) = cput
-          vpuold(ic) = vput
+          wclold(ic) = wclt
           return
        end if
     end do
@@ -90,7 +80,7 @@ contains
        nclock = nclock + 1
        htitle(nclock) = httl
        cpuold(nclock) = cput
-       vpuold(nclock) = vput
+       wclold(nclock) = wclt
     end if
     
   end subroutine clcstr
@@ -98,20 +88,15 @@ contains
 ! **********************************************************************
 
   subroutine clcend( httl )
-
     implicit none
-
     character(*),           intent(in)     ::  httl
-
     integer(4)  ::  ic
 
-!    call yclock( cput, vput )
-    call xclock(cput, 5)
-    vput = 0.0d0
+    call yclock( cput, wclt )
     do ic = 1, nclock
        if (htitle(ic) == httl) then
           cputim(ic) = cputim(ic) + cput - cpuold(ic)
-          vputim(ic) = vputim(ic) + vput - vpuold(ic)
+          wcltim(ic) = wcltim(ic) + wclt - wclold(ic)
           return
        end if
     end do
@@ -120,31 +105,31 @@ contains
 
 ! **********************************************************************
 
-  subroutine yclock( cput2, vput2 )
-
+  subroutine yclock( cput2, wclt2 )
     implicit none
+    real(8),                intent(inout)  ::  cput2,  wclt2
+    integer(8)                             ::    cnt
 
-    real(8),                intent(inout)  ::  cput2
-    real(8),                intent(in)     ::  vput2
-
-    real(4)                                ::  etime
-
-
-    call xclock(cput2, 5)
-!    call vclock(vput2, 5)
+    call cpu_time(cput2)
+    cput2 = cput2 - cput0
+    
+    call system_clock(cnt)
+    wclt2 = dble(cnt) / dble(crt) - wclt0
+    if (wclt2 < 0) then
+       wclt2 = wclt2 + dble(cmx) / dble(crt)
+    end if
 
   end subroutine yclock
 
 ! **********************************************************************
 
   subroutine yclocl
-
     implicit none
-
-    call xclock(cput2, 3)
-!    call vclock
-    vputim = 0.d0
-
+    integer(8)                             ::    cnt
+    call cpu_time(cput0)
+    call system_clock(cnt, crt, cmx)
+    wclt0 = dble(cnt) / dble(crt)
+    
   end subroutine yclocl
 
 end module ucloc

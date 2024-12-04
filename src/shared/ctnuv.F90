@@ -12,12 +12,13 @@ module ctnuv
 !     '08.06.11  H.Hasumi: initial/final processing
 !     '08.07.10  H.Hasumi: initial/final processing
 !     '09.01.15  T.Suzuki: bug fix vertical integration thanks to Hasumi
-!     '12.06.04  Y.Komuro: for COCO5.0
+!     '10.04.14  M.Kurogi: staggered time stepping
+!     '12.06.14  Y.Komuro: for COCO5.0
 !
 ! ---------------------------------------------------------------------
 
   use zocdim, only: &
-    &  nxdim, nxydim,  nzdim,  ntdim, &
+    &  nxdim,  nydim, nxydim,  nzdim,  ntdim, &
     &   kstr,   kend,     kz, &
     & ijvstr, ijvend, &
     &     le,     lw,     ln,     ls,    lne, &
@@ -33,6 +34,7 @@ module ctnuv
     &  amskv,   nbot
   use zocphy, only: &
     & gravit,   rhoo
+  use brstt
 
   implicit none
   private
@@ -71,9 +73,52 @@ subroutine tnduvd( &
   integer ::     ij,      k
   logical, save :: ofirst = .true.
 
-  if (oinit .or. ofinal) then
+! common /work/ px, pxm,  py, pym, uu, uv, vu, vv, &
+!   &              hvbot, dzsig
+! common /work2/ px, pxm,  py, pym
+
+  real(8), parameter :: cx1 = 23.d0/12.d0, cx2 = -16.d0/12.d0, &
+    &                   cx3 = 5.d0/12.d0
+  real(8), save ::    xx1(nxydim),    yy1(nxydim)
+  real(8), save ::    xx2(nxydim),    yy2(nxydim)
+  real(8), save ::    xx3(nxydim),    yy3(nxydim)
+  integer, save ::  ncall = 0
+  logical, save ::   oeof
+
+  if (oinit) then
+     do ij=1,nxydim
+        xx2(ij)=0.d0
+        xx3(ij)=0.d0
+        yy2(ij)=0.d0
+        yy3(ij)=0.d0
+     end do
+
+#ifdef OPT_TRIPOLE
+     call rstadd(xx2, oeof, nxdim, nydim, 1, 'XX2', 'SFC', &
+        &                                 -1.d0,  -1,  -1)
+     call rstadd(xx3, oeof, nxdim, nydim, 1, 'XX3', 'SFC', &
+        &                                 -1.d0,  -1,  -1)
+     call rstadd(yy2, oeof, nxdim, nydim, 1, 'YY2', 'SFC', &
+        &                                 -1.d0,  -1,  -1)
+     call rstadd(yy3, oeof, nxdim, nydim, 1, 'YY3', 'SFC', &
+        &                                 -1.d0,  -1,  -1)
+#else
+     call rstadd(xx2, oeof, nxdim, nydim, 1, 'XX2', 'SFC')
+     call rstadd(xx3, oeof, nxdim, nydim, 1, 'XX3', 'SFC')
+     call rstadd(yy2, oeof, nxdim, nydim, 1, 'YY2', 'SFC')
+     call rstadd(yy3, oeof, nxdim, nydim, 1, 'YY3', 'SFC')
+#endif
      return
   end if
+
+  if (ofinal) then
+     call finadd(xx2, nxdim, nydim, 1, 'XX2', 'SFC')
+     call finadd(xx3, nxdim, nydim, 1, 'XX3', 'SFC')
+     call finadd(yy2, nxdim, nydim, 1, 'YY2', 'SFC')
+     call finadd(yy3, nxdim, nydim, 1, 'YY3', 'SFC')
+     return
+  end if
+
 
   if (ofirst) then
      ofirst = .false.
@@ -83,8 +128,8 @@ subroutine tnduvd( &
   do ij = ijvstr, ijvend+nxdim
      hvbot(ij) = (  (hy(ij) + hy(ij+le)) * dy(ij) &
         &         + (hy(ij+ln) + hy(ij+lne)) * dy(ij+ln)) * &
-        &         rym(ij) * 0.25d0 &
-        &       + zbot
+        &        rym(ij) * 0.25d0 &
+        &      + zbot
   end do
   do k = kstr, kstr+kz-1
      do ij = ijvstr, ijvend+nxdim
@@ -102,7 +147,7 @@ subroutine tnduvd( &
         &          + (cor(ij) * vx(ij, kstr) + px(ij, kstr)) * &
         &            amskv(ij, kstr)
      xx (ij, kstr) = xx(ij, kstr) &
-        &          + px(ij, kstr) * amskv(ij, kstr)
+        &          + px(ij, kstr) * amskv(ij, kstr) 
      gxx(ij)       = xx(ij, kstr) * dzsig(ij, kstr) * &
         &            amskv(ij, kstr)
      pym(ij, kstr) = (  r(ij+lne, kstr) + r(ij+ln, kstr) &
@@ -180,71 +225,78 @@ subroutine tnduvd( &
   end do
 
 ! -----------------------------------------------------------
+  do ij=1,nxydim
+     xx1(ij)=0.d0
+     yy1(ij)=0.d0
+  end do
+
   do k = kstr, kstr+kz-1
      do ij = ijvstr, ijvend+nxdim
         uu(ij) = uadv(ij, k) * 0.5d0 * &
-           &     (  uy(ij, k) * hyu(ij) &
-           &      + uy(ij+lw, k) * hyu(ij+lw))
+           &    (  uy(ij, k) * hyu(ij) &
+           &     + uy(ij+lw, k) * hyu(ij+lw))
         vu(ij) = vadv(ij, k) * 0.5d0 * &
-           &     (  uy(ij, k) * hxu(ij) &
-           &      + uy(ij+ls, k) * hxu(ij+ls))
+           &    (  uy(ij, k) * hxu(ij) &
+           &     + uy(ij+ls, k) * hxu(ij+ls))
         uv(ij) = uadv(ij, k) * 0.5d0 * &
-           &     (  vy(ij, k) * hyu(ij) &
-           &      + vy(ij+lw, k) * hyu(ij+lw))
+           &    (  vy(ij, k) * hyu(ij) &
+           &     + vy(ij+lw, k) * hyu(ij+lw))
         vv(ij) = vadv(ij, k) * 0.5d0 * &
-           &     (  vy(ij, k) * hxu(ij) &
-           &      + vy(ij+ls, k) * hxu(ij+ls))
+           &    (  vy(ij, k) * hxu(ij) &
+           &     + vy(ij+ls, k) * hxu(ij+ls))
      end do
      do ij = ijvstr, ijvend
-        gxx(ij) = gxx(ij) &
+!x        gxx(ij) = gxx(ij)
+        xx1(ij) = xx1(ij) &
            &    - (  (uu(ij+le) - uu(ij)) * rx &
            &       + (vu(ij+ln) - vu(ij)) * rym(ij)) * &
            &      rxu(ij) * ryu(ij) * dzsig(ij,k)
-        gyy(ij) = gyy(ij) &
+!x        gyy(ij) = gyy(ij)
+        yy1(ij) = yy1(ij) &
            &    - (  (uv(ij+le) - uv(ij)) * rx &
            &       + (vv(ij+ln) - vv(ij)) * rym(ij)) * &
            &      rxu(ij) * ryu(ij) * dzsig(ij,k)
      end do
   end do
 ! -----------------------------------------------------------
-!  do ij = 1, nxydim
-!     uu(ij) = 0.d0
-!     uv(ij) = 0.d0
-!     vu(ij) = 0.d0
-!     vv(ij) = 0.d0
-!  end do
+!      do ij = 1, nxydim
+!         uu(ij) = 0.d0
+!         uv(ij) = 0.d0
+!         vu(ij) = 0.d0
+!         vv(ij) = 0.d0
+!      end do
 !
-!  do k = kstr, kstr+kz-1
-!     do ij = ijvstr, ijvend+nxdim
-!        uu(ij) = uu(ij) &
-!           &   + uadv(ij, k) * 0.5d0 * &
-!           &     (  uy(ij, k) * hyu(ij) &
-!           &      + uy(ij+lw, k) * hyu(ij+lw)) * ds(k)
-!        vu(ij) = vu(ij) &
-!           &   + vadv(ij, k) * 0.5d0 * &
-!           &     (  uy(ij, k) * hxu(ij) &
-!           &      + uy(ij+ls, k) * hxu(ij+ls)) * ds(k) &
-!        uv(ij) = uv(ij) &
-!           &   + uadv(ij, k) * 0.5d0 * &
-!           &     (  vy(ij, k) * hyu(ij) &
-!           &      + vy(ij+lw, k) * hyu(ij+lw)) * ds(k)
-!        vv(ij) = vv(ij) &
-!           &   + vadv(ij, k) * 0.5d0 * &
-!           &     (  vy(ij, k) * hxu(ij) &
-!           &      + vy(ij+ls, k) * hxu(ij+ls)) * ds(k)
-!     end do        
-!  end do
+!      do k = kstr, kstr+kz-1
+!         do ij = ijvstr, ijvend+nxdim
+!            uu(ij) = uu(ij) &
+!        &      + uadv(ij, k) * 0.5d0 * &
+!        &        (  uy(ij, k) * hyu(ij) &
+!        &         + uy(ij+lw, k) * hyu(ij+lw)) * ds(k)
+!            vu(ij) = vu(ij) &
+!        &      + vadv(ij, k) * 0.5d0 * &
+!        &        (  uy(ij, k) * hxu(ij) &
+!        &         + uy(ij+ls, k) * hxu(ij+ls)) * ds(k) &
+!            uv(ij) = uv(ij) &
+!        &      + uadv(ij, k) * 0.5d0 * &
+!        &        (  vy(ij, k) * hyu(ij) &
+!        &         + vy(ij+lw, k) * hyu(ij+lw)) * ds(k)
+!            vv(ij) = vv(ij) &
+!        &      + vadv(ij, k) * 0.5d0 * &
+!        &        (  vy(ij, k) * hxu(ij) &
+!        &         + vy(ij+ls, k) * hxu(ij+ls)) * ds(k)
+!         end do
+!      end do
 !
-!  do ij = ijvstr, ijvend
-!     gxx(ij) = gxx(ij) &
+!      do ij = ijvstr, ijvend
+!         gxx(ij) = gxx(ij) &
 !        &    - (  (uu(ij+le) - uu(ij)) * rx &
 !        &       + (vu(ij+ln) - vu(ij)) * rym(ij)) * &
 !        &      rxu(ij) * ryu(ij) * hvbot(ij)
-!     gyy(ij) = gyy(ij) &
+!         gyy(ij) = gyy(ij) &
 !        &    - (  (uv(ij+le) - uv(ij)) * rx &
 !        &       + (vv(ij+ln) - vv(ij)) * rym(ij)) * &
 !        &      rxu(ij) * ryu(ij) * hvbot(ij)
-!  enddo
+!      enddo
 ! ------------------------------------------------------------
   do ij = 1, nxydim
      uu(ij) = 0.d0
@@ -275,11 +327,13 @@ subroutine tnduvd( &
   end do
 
   do ij = ijvstr, ijvend
-     gxx(ij) = gxx(ij) &
+!x     gxx(ij) = gxx(ij)
+     xx1(ij) = xx1(ij) &
         &    - (  (uu(ij+le) - uu(ij)) * rx &
         &       + (vu(ij+ln) - vu(ij)) * rym(ij)) * &
         &      rxu(ij) * ryu(ij)
-     gyy(ij) = gyy(ij) &
+!x     gyy(ij) = gyy(ij)
+     yy1(ij) = yy1(ij) &
         &    - (  (uv(ij+le) - uv(ij)) * rx &
         &       + (vv(ij+ln) - vv(ij)) * rym(ij)) * &
         &      rxu(ij) * ryu(ij)
@@ -320,13 +374,56 @@ subroutine tnduvd( &
   end do
 
   do ij = ijvstr, ijvend
-     gxx(ij) = gxx(ij) + vv(ij) * hyxu(ij) - uv(ij) * hxyu(ij)
-     gyy(ij) = gyy(ij) + uu(ij) * hxyu(ij) - uv(ij) * hyxu(ij)
+!x     gxx(ij) = gxx(ij) + vv(ij) * hyxu(ij) - uv(ij) * hxyu(ij)
+!x     gyy(ij) = gyy(ij) + uu(ij) * hxyu(ij) - uv(ij) * hyxu(ij)
+     xx1(ij) = xx1(ij) + vv(ij) * hyxu(ij) - uv(ij) * hxyu(ij)
+     yy1(ij) = yy1(ij) + uu(ij) * hxyu(ij) - uv(ij) * hyxu(ij)
+     xx1(ij) = xx1(ij) * amskv(ij,kstr)
+     yy1(ij) = yy1(ij) * amskv(ij,kstr)
+  end do
+
+
+!cccccccc adams-bashforth scheme
+  ncall=ncall +1
+
+  if( (ncall .ge. 3) .or. (.not. oeof)) then
+     ncall=3
+     do ij = ijvstr, ijvend
+        gxx(ij) =  gxx(ij) &
+           &    +  cx1 *xx1(ij)  + cx2* xx2(ij) + cx3*xx3(ij) 
+
+        gyy(ij) =  gyy(ij) &
+           &    +  cx1 *yy1(ij)  + cx2* yy2(ij) + cx3*yy3(ij) 
+     end do
+  else
+     if(ncall .eq. 1) then ! forward
+        do ij = ijvstr, ijvend
+           gxx(ij) =  gxx(ij) + xx1(ij)
+           gyy(ij) =  gyy(ij) + yy1(ij)
+        end do
+     else if(ncall .eq. 2) then !2nd order ab       
+        do ij = ijvstr, ijvend
+           gxx(ij) =  gxx(ij) &
+              &    +  1.5d0 *xx1(ij)  -0.5d0* xx2(ij)
+
+           gyy(ij) =  gyy(ij) &
+              &    +  1.5d0 *yy1(ij)  -0.5d0* yy2(ij)
+        end do
+     end if
+  end if
+
+
+  do ij = ijvstr, ijvend
+     xx3(ij)=xx2(ij) !n-1 > n-2
+     yy3(ij)=yy2(ij)
+
+     xx2(ij)=xx1(ij) !n> n-1
+     yy2(ij)=yy1(ij)
   end do
 
   return
-
 end subroutine tnduvd
+
 #ifdef OPT_BBL
 ! *********************************************************************
 
@@ -335,16 +432,14 @@ subroutine tnduvb( &
   &     xx,     yy,     uy,     vy,     ty, &
   &     ux,     vx )
 
-  use xprst
-
-  implicit none
-
 ! --- information -----------------------------------------------------
 !
-!  Pressure gradient and Coriolis terms for the BBL momentum eqs. See
-! Nakano and Suginohara (2002, JPO).
+!  pressure gradient and coriolis terms for the bbl momentum eqs. see
+! nakano and suginohara (2002, jpo).
 !
 ! ---------------------------------------------------------------------
+
+  use xprst
 
   real(8), intent(inout) ::     gxx(nxydim)       ,    gyy(nxydim)
   real(8), intent(inout) ::      gx(nxydim, nzdim),     gy(nxydim, nzdim)
@@ -368,24 +463,64 @@ subroutine tnduvb( &
   integer ::      ij,      k,     kk
   integer ::    ijle,   ijln,   ijne
 
+  real(8), parameter :: cx1 = 23.d0/12.d0, cx2 = -16.d0/12.d0, &
+    &                   cx3 = 5.d0/12.d0
+  real(8), save ::    xx1(nxydim),    yy1(nxydim)
+  real(8), save ::    xx2(nxydim),    yy2(nxydim)
+  real(8), save ::    xx3(nxydim),    yy3(nxydim)
+  integer, save ::  ncall = 0
+  logical, save ::   oeof
+
 !===== Define statement function 
   real(8) ::    rbbl,     tb,     sb
   real(8) ::  c0, c1, c2, c3, c4, c5, c6
   real(8) ::  d0, d1, d2, d3, d4, d5, d6, d7, d8, d9
 
-  rbbl (tb, sb, c0, c1, c2, c3, c4, c5, c6, &
-     &  d0, d1, d2, d3, d4, d5, d6, d7, d8, d9) = &
-     &   (c0 + (c1 + (c2 + c3 * tb) * tb) * tb &
-     &       + (c4 + c5 * tb + c6 * sb) * sb) &
-     & / (d0 + (d1 + (d2 + (d3 + d4 * tb) * tb) * tb) * tb &
-     &       + (d5 + (d6 + d7 * tb * tb) * tb &
-     &             + (d8 + d9 * tb * tb) * sqrt(sb)) * sb) &
-     & - 1.d3
+  rbbl(tb, sb, c0, c1, c2, c3, c4, c5, c6, &
+     &     d0, d1, d2, d3, d4, d5, d6, d7, d8, d9) = &
+     &    (c0 + (c1 + (c2 + c3 * tb) * tb) * tb &
+     &        + (c4 + c5 * tb + c6 * sb) * sb) &
+     &  / (d0 + (d1 + (d2 + (d3 + d4 * tb) * tb) * tb) * tb &
+     &        + (d5 + (d6 + d7 * tb * tb) * tb &
+     &              + (d8 + d9 * tb * tb) * sqrt(sb)) * sb) &
+     &  - 1.d3
 !===== 
 
-  if (oinit .or. ofinal) then
+  if (oinit) then
+     do ij=1,nxydim
+        xx1(ij)=0.d0
+        xx2(ij)=0.d0
+        xx3(ij)=0.d0
+        yy1(ij)=0.d0
+        yy2(ij)=0.d0
+        yy3(ij)=0.d0
+     end do
+#ifdef OPT_TRIPOLE
+     call rstadd(xx2, oeof, nxdim, nydim, 1, 'XX2', 'SFC', &
+        &                                 -1.d0,  -1,  -1)
+     call rstadd(xx3, oeof, nxdim, nydim, 1, 'XX3', 'SFC', &
+        &                                 -1.d0,  -1,  -1)
+     call rstadd(yy2, oeof, nxdim, nydim, 1, 'YY2', 'SFC', &
+        &                                 -1.d0,  -1,  -1)
+     call rstadd(yy3, oeof, nxdim, nydim, 1, 'YY3', 'SFC', &
+        &                                 -1.d0,  -1,  -1)
+#else
+     call rstadd(xx2, oeof, nxdim, nydim, 1, 'XX2', 'SFC')
+     call rstadd(xx3, oeof, nxdim, nydim, 1, 'XX3', 'SFC')
+     call rstadd(yy2, oeof, nxdim, nydim, 1, 'YY2', 'SFC')
+     call rstadd(yy3, oeof, nxdim, nydim, 1, 'YY3', 'SFC')
+#endif
      return
   end if
+
+  if (ofinal) then
+     call finadd(xx2, nxdim, nydim, 1, 'XX2', 'SFC')
+     call finadd(xx3, nxdim, nydim, 1, 'XX3', 'SFC')
+     call finadd(yy2, nxdim, nydim, 1, 'YY2', 'SFC')
+     call finadd(yy3, nxdim, nydim, 1, 'YY3', 'SFC')
+     return
+  end if
+
 
   if (ofirst) then
      ofirst = .false.
@@ -464,7 +599,7 @@ subroutine tnduvb( &
         &        d0b(ij), d1b(ij), d2b(ij), d3b(ij), d4b(ij), &
         &        d5b(ij), d6b(ij), d7b(ij), d8b(ij), d9b(ij))
      pe = pe + rtmp * dz0(kend) * 0.5d0
-
+     
      tl = ty(ijln, k, 1)
      sl = ty(ijln, k, 2)
      rtmp = rbbl(tl, sl, &
@@ -491,7 +626,7 @@ subroutine tnduvb( &
         &        d0b(ij), d1b(ij), d2b(ij), d3b(ij), d4b(ij), &
         &        d5b(ij), d6b(ij), d7b(ij), d8b(ij), d9b(ij))
      pn = pn + rtmp * dz0(kend) * 0.5d0
-
+     
      tl = ty(ijne, k, 1)
      sl = ty(ijne, k, 2)
      rtmp = rbbl(tl, sl, &
@@ -556,14 +691,54 @@ subroutine tnduvb( &
   end do
 
   do ij = ijvstr, ijvend
-     gxx(ij) = gxx(ij) &
-        &    + (  vy(ij, kend) * vy(ij, kend) * hyxu(ij) &
-        &       - uy(ij, kend) * vy(ij, kend) * hxyu(ij)) * &
-        &      dzv(ij, kend) * amskvb(ij)
-     gyy(ij) = gyy(ij) &
-        &    + (  uy(ij, kend) * uy(ij, kend) * hxyu(ij) &
-        &       - uy(ij, kend) * vy(ij, kend) * hyxu(ij)) * &
-        &      dzv(ij, kend) * amskvb(ij)
+!x     gxx(ij) = gxx(ij) +
+     xx1(ij) = &
+        &    (  vy(ij, kend) * vy(ij, kend) * hyxu(ij) &
+        &     - uy(ij, kend) * vy(ij, kend) * hxyu(ij)) * &
+        &    dzv(ij, kend) * amskvb(ij)
+!x     gyy(ij) = gyy(ij) +
+     yy1(ij) = &
+        &    (  uy(ij, kend) * uy(ij, kend) * hxyu(ij) &
+        &     - uy(ij, kend) * vy(ij, kend) * hyxu(ij)) * &
+        &    dzv(ij, kend) * amskvb(ij)
+  end do
+
+!cccccccc adams-bashforth scheme
+  ncall=ncall +1
+
+  if( (ncall .ge. 3) .or. (.not. oeof)) then
+     ncall=3
+     do ij = ijvstr, ijvend
+        gxx(ij) =  gxx(ij) &
+           &    +  cx1 *xx1(ij)  + cx2* xx2(ij) + cx3*xx3(ij) 
+
+        gyy(ij) =  gyy(ij) &
+           &    +  cx1 *yy1(ij)  + cx2* yy2(ij) + cx3*yy3(ij) 
+     end do
+  else
+     if(ncall .eq. 1) then ! forward
+        do ij = ijvstr, ijvend
+           gxx(ij) =  gxx(ij) + xx1(ij)
+           gyy(ij) =  gyy(ij) + yy1(ij)
+        end do
+     else if(ncall .eq. 2) then !2nd order ab       
+        do ij = ijvstr, ijvend
+           gxx(ij) =  gxx(ij) &
+              &    +  1.5d0 *xx1(ij)  -0.5d0* xx2(ij)
+
+           gyy(ij) =  gyy(ij) &
+              &    +  1.5d0 *yy1(ij)  -0.5d0* yy2(ij)
+        end do
+     end if
+  end if
+
+
+  do ij = ijvstr, ijvend
+     xx3(ij)=xx2(ij) !n-1 > n-2
+     yy3(ij)=yy2(ij)
+
+     xx2(ij)=xx1(ij) !n> n-1
+     yy2(ij)=yy1(ij)
   end do
 
   return
@@ -589,6 +764,6 @@ end subroutine tnduvb
 !  return
 !
 !end function rbbl
-#endif 
+#endif
 
 end module ctnuv

@@ -1,17 +1,11 @@
-#FC	= ifort
 FC	= mpiifort
+FFLAGS  = -fp-model precise -mcmodel=large -shared-intel -convert big_endian -fpe0 -traceback
 
-# standard options for ICE @ JAMSTEC/YES
-FFLAGS	= -u -w -xAVX -fpe0 -convert big_endian -lmpi
-ifeq "$(OMP)" ".omp"    
-FFLAGS += -qopenmp
-endif
+# debug options
+#FFLAGS  = -check all -init=arrays,snan,minus_huge -fp-model precise -mcmodel=large -shared-intel -convert big_endian -fpe0 -traceback
 
-# debug options for Altix @ JAMSTEC/YES
-#FFLAGS	= -check -u -w -traceback -g -fpe0 -O2 -fltconsistency -mtune=itanium2-p9000 -convert big_endian -lmpi
-#FFLAGS  = -check -u -w -traceback -g -O0 -fpe0 -fltconsistency -convert big_endian -lmpi
 
-FOPTION = $(FFLAGS) -Vaxlib -I$(OGCMDIR)/src/include -I$(OGCMDIR)/src/module -I$(OGCMDIR)/src/touza -I$(OGCMDIR)/src/build $(OPTBDY) $(OPTSRST) $(OPTBBL) $(OPTTRIPOLE) $(OPTIO) $(OPTEXMASK) $(OPTTOUZA)
+FOPTION = $(FFLAGS) -I$(OGCMDIR)/src/include -I$(OGCMDIR)/src/module -I$(OGCMDIR)/src/touza -I$(OGCMDIR)/src/build $(OPTBDY) $(OPTSRST) $(OPTBBL) $(OPTTRIPOLE) $(OPTIO) $(OPTEXMASK) $(OPTTOUZA)
 
 AR	= ar r
 RANLIB	= ranlib

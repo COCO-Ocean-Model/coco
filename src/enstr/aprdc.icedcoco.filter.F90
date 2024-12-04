@@ -2,6 +2,7 @@ module aprdc
 
 ! --- information -----------------------------------------------------
 !
+!     '02.10.10  H.Hasumi: from MIROC3.1-OMIP
 !     '07.04.23  H.Hasumi
 !     '08.06.11  H.Hasumi: initial/final processing
 !     '08.07.10  H.Hasumi: initial/final processing
@@ -10,7 +11,7 @@ module aprdc
 !     '10.04.14  M.Kurogi: staggered time stepping
 !     '10.04.14  M.Kurogi: (COCO4.4 tripolar code by Dr. Suzuki)
 !     '12.09.04  Y.Komuro: (change surface water flux by T. Suzuki)
-!     '13.01.08  T.Suzuki: for COCO5.0 in F90
+!     '12.10.23  T.Suzuki: for COCO5.0 in F90
 !
 ! ---------------------------------------------------------------------
 
@@ -29,6 +30,10 @@ module aprdc
   real(8)        ::   fune(nxyzdm),  fvne(nxyzdm)
   real(8)        ::   fuse(nxyzdm),  fvse(nxyzdm)
 
+  real(8), save  :: ubtav2(nxydim), vbtav2(nxydim),    hav(nxydim)
+  real(8)        ::   fact
+  integer        ::     nb
+
   public  ::  predco
 
 contains
@@ -37,12 +42,13 @@ contains
     &        hx,   ubtx,   vbtx,      w,      r,                      &
     &        ux,     vx,     tx,                                      &
     &       amv,    ahv,                                              &
-    &      taux,   tauy,     ft,   ptop,                              & 
+    &      taux,   tauy,   ptop,                                      & 
+    &        ft,  swabs,     fs,   ssfc,                              &
 #ifdef OPT_BODY
     &        tq,                                                      &
 #endif
     &        uy,     vy,     ty,                                      &
-    &        hy,   ubty,   vbty,                                      &
+    &        hy,   ubty,   vbty,     ax,                              &
     &        gx,     gy,     xx,     yy,                              &
     &       gxx,    gyy,                                              &
     &      uadv,   vadv,   wadv)
@@ -68,8 +74,8 @@ contains
     use bstbc
     use brstt
     use bchmk
-    use bshft
     use qckot
+    use bshft
 
     implicit none
 
@@ -81,7 +87,9 @@ contains
     real(8),    intent(inout)  ::    amv(nxyzdm),    ahv(nxyzdm)
     real(8),    intent(in)     ::   taux(nxydim),   tauy(nxydim)
     real(8),    intent(in)     ::   ptop(nxydim)
-    real(8),    intent(in)     ::     ft(nxydim, ntdim)
+    real(8),    intent(inout)  ::     ft(nxydim, ntdim)
+    real(8),    intent(in)     ::  swabs(nxydim),     fs(nxydim)
+    real(8),    intent(in)     ::   ssfc(nxydim)
 #ifdef OPT_BODY
     real(8),    intent(in)     ::     tq(nxyzdm, ntdim)
 #endif
@@ -89,6 +97,7 @@ contains
     real(8),    intent(inout)  ::     ty(nxyzdm, ntdim)
     real(8),    intent(inout)  ::     hy(nxydim) 
     real(8),    intent(inout)  ::   ubty(nxydim),   vbty(nxydim) 
+    real(8),    intent(in)     ::     ax(nxydim, 0:nic)
     real(8),    intent(inout)  ::     gx(nxyzdm),     gy(nxyzdm)
     real(8),    intent(inout)  ::     xx(nxyzdm),     yy(nxyzdm)
     real(8),    intent(inout)  ::    gxx(nxydim),    gyy(nxydim)
@@ -117,12 +126,11 @@ contains
     end if
     end if
 
-   if (ofinal) then
-      call finadd(h1, nxdim, nydim, 1, 'H1', 'SFC')
-   end if
+    if (ofinal) then
+       call finadd(h1, nxdim, nydim, 1, 'H1', 'SFC')
+    end if
 
 ! *** vertical diffusivity and viscosity ***
-    
     call clcstr('COEFF')
     call vdiff (   amv,    ahv,                                       &
     &                uy,     vy,      r,   taux,   tauy,              &
@@ -237,17 +245,27 @@ contains
           call shift2(   gxx,    gyy,                                 &
     &                  nxdim,  nydim,      1,                         &
     &                  -1.D0,     -1,     -1 )
+          call shift1(ft(1,2),                                        &
+    &                   nxdim,  nydim,      1,                        &
+    &                    1.d0,      0,      0 )
 #else
           call shift2(                                                &
     &                  gxx,    gyy,                                   &
     &                nxdim,  nydim,      1)
+          call shift1(ft(1,2),                                        &
+    &                   nxdim,  nydim,      1)
 #endif
-          call btavst( ubtav,  vbtav )
-          do itsplt = 1, ntss
+          nb = ntss * 2
+          ubtav (:) = 0.d0
+          vbtav (:) = 0.d0
+          ubtav2(:) = 0.d0
+          vbtav2(:) = 0.d0
+          hav   (:) = hx(:) / dble(nb+1)
+          do itsplt = 1, nb
 
-             htmp (1:nxydim) = hx  (1:nxydim)
-             ubtmp(1:nxydim) = ubtx(1:nxydim)
-             vbtmp(1:nxydim) = vbtx(1:nxydim)
+             htmp (:) = hx  (:)
+             ubtmp(:) = ubtx(:)
+             vbtmp(:) = vbtx(:)
 
              call shalow(                                             &
     &                    htmp,  ubtmp,  vbtmp,                        &
@@ -265,9 +283,11 @@ contains
     &                     htmp,  ubtmp,  vbtmp,                       &
     &                    nxdim,  nydim,      1)
 #endif
-             call btavad(                                             &
-    &                   ubtav,  vbtav,                                &
-    &                   ubtmp,  vbtmp)
+             fact = 2.d0 * dble(nb-itsplt+1) / dble(nb * (nb+1))
+             ubtav (:) = ubtav (:) + ubtmp(:) * fact
+             vbtav (:) = vbtav (:) + vbtmp(:) * fact
+             ubtav2(:) = ubtav2(:) + ubtmp(:) / dble(nb)
+             vbtav2(:) = vbtav2(:) + vbtmp(:) / dble(nb)
              call shalow(                                             &
     &                      hx,   ubtx,   vbtx,                        &
     &                    htmp,  ubtmp,  vbtmp,                        &
@@ -284,30 +304,33 @@ contains
     &                       hx,   ubtx,   vbtx,                       &
     &                    nxdim,  nydim,      1)
 #endif
-
-        if (itsplt .eq. ntss/2) then
-            do ij = 1, nxydim
-               h1(ij) = hx(ij)
-            end do
-         end if
-
+             hav(:) = hav(:) + hx(:) / dble(nb+1)
          end do
 #ifdef OPT_TRIPOLE
           call shift2( ubtav,  vbtav,                                 &
+    &                  nxdim,  nydim,      1,                         &
+    &                  -1.d0,     -1,     -1 )
+          call shift2(ubtav2, vbtav2,                                 &
     &                  nxdim,  nydim,      1,                         &
     &                  -1.d0,     -1,     -1 )
 #else
           call shift2(                                                &
     &                 ubtav,  vbtav,                                  &
     &                 nxdim,  nydim,      1)
+          call shift2(                                                &
+    &                ubtav2, vbtav2,                                  &
+    &                 nxdim,  nydim,      1)
 #endif
        end if
 
-       do ij = 1, nxydim
-          hxb(ij) = hx(ij)
-       end do
+       hx  (:) = hav   (:)
+       hxb (:) = hx    (:)
+       ubtx(:) = ubtav2(:)
+       vbtx(:) = vbtav2(:)
 
+       h1  (:) = 0.5d0 * (hz(:) + hx(:))
     end if
+
     call clcend('BRTRO')
 
 ! *** velocity for tracer advection ***
@@ -363,7 +386,8 @@ contains
        call slvtrc(                                                   &
     &                   tx,     hx,                                   &
     &                  tmp,     xx,                                   &
-    &                   ft,     hz )
+    &                   ft,  swabs,     fs,     hz,   ssfc,           &
+    &                   ax)
        call shdiff(     tx,     hx)
        call ovturn(      r,     tx,     hx)
     else
@@ -403,7 +427,8 @@ contains
           call slvtrc(                                                &
     &                   tx,     hx,                                   &
     &                  tmp,     xx,                                   &
-    &                   ft,     hz)
+    &                   ft,  swabs,     fs,     hz,   ssfc,           &
+    &                   ax)
 #ifdef OPT_TRIPOLE
           call shift1(    tx,                                         &
     &                  nxdim,   nydim, nztdim,                        &
@@ -420,9 +445,9 @@ contains
     &                nxdim,  nydim,      1)
 #endif
           call shdiff(   tx,     hx)
-!          call clcstr('TUNDIF')
-!          call tundif(   tx,     hx)
-!          call clcend('TUNDIF')
+          call clcstr('TUNDIF')
+          call tundif(   tx,     hx)
+          call clcend('TUNDIF')
           call ovturn(    r,     tx,     hx)
 #ifdef OPT_BBL
           call stbbtr(   tx   )
@@ -541,15 +566,16 @@ contains
 #endif
     call clcend('VDIAG')
 
-    if ( (.not. oinit) .and. (.not. ofinal)) then
-       call chekin(  ubtav,  'UBTAV',                                 &
-            &      'ocean zonal transport', 'cm^2/s', &    
-            &           nx,     ny,      1, nxydim, 'OCSFCV')
-       call chekin(  vbtav,  'VBTAV',                                 &
-            & 'ocean meridional transport', 'cm^2/s', &    
-            &           nx,     ny,      1, nxydim, 'OCSFCV')
-    end if
+      if ( (.not. oinit) .and. (.not. ofinal)) then
+         call chekin(  ubtav,  'UBTAV',                                 &
+              &      'ocean zonal transport', 'cm^2/s', &    
+              &           nx,     ny,      1, nxydim, 'OCSFCV')
+         call chekin(  vbtav,  'VBTAV',                                 &
+              & 'ocean meridional transport', 'cm^2/s', &    
+              &           nx,     ny,      1, nxydim, 'OCSFCV')
+      end if
 
   end subroutine predco
 
 end module aprdc
+

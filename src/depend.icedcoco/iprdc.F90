@@ -12,6 +12,7 @@ module iprdc
 !     '09.05.25  Y.Komuro: CMIP5 output code included
 !     '09.09.04  Y.Komuro: extra output code (FEX/FEY)
 !     '09.09.26  Y.Komuro: bug fix
+!     '10.04.14  M.Kurogi: staggered time stepping
 !     '10.04.14  M.Kurogi: (COCO4.4 tripolar code by Dr. Suzuki)
 !     '12.07.30  Y.Komuro: for COCO5.0
 !     '13.02.12  Y.Komuro: remove non-parallel code 
@@ -115,6 +116,7 @@ subroutine predci( &
   use qckot
   use ufile
   use bshft
+  use zocite
 
   real(8), intent(inout) ::     ax(nxydim, 0:nic)
   real(8), intent(inout) ::    hix(nxydim, 0:nic)
@@ -125,7 +127,7 @@ subroutine predci( &
   
   real(8), intent(out)   ::     ft(nxydim, ntdim),     fs(nxydim)
   real(8), intent(out)   ::   taux(nxydim),   tauy(nxydim)
-  real(8), intent(out)   ::   ptop(nxydim)
+  real(8), intent(inout) ::   ptop(nxydim)
 
   real(8), intent(in)    ::     ay(nxydim, 0:nic)
   real(8), intent(in)    ::    hiy(nxydim, 0:nic)
@@ -190,7 +192,6 @@ subroutine predci( &
   real(8), save :: improf(nxydim, 0:nic)
   real(8), save ::    fdd(nxydim),    fdb(nxydim)
   real(8), save :: sitfrc(nxydim), siuabs(nxydim)
-
   logical, save ::  oeof
 
 !! for check
@@ -198,6 +199,12 @@ subroutine predci( &
 
   integer ::     ij,      k,      l
   integer ::  ifpar,  jfpar,  istat
+
+  real(8), save :: si = 5.0d0
+  real(8), save ::  p0 = 2.0d5,  cp = 2.0d1
+  real(8) ::   mice(nxydim),   aice(nxydim)
+  namelist /nmislt/ si
+  namelist /nmpice/ p0, cp
 
   call clcstr('ICE')
 
@@ -215,6 +222,14 @@ subroutine predci( &
      read (ifpar, nmmpnd, iostat=istat)
      call cstnml(jfpar, 'predci', 'nmmpnd', istat)
      write(jfpar, nmmpnd)
+     call rewnml(ifpar, jfpar)
+     read (ifpar, nmislt, iostat=istat)
+     call cstnml(jfpar, 'predci', 'nmislt', istat)
+     write(jfpar, nmislt)
+     call rewnml(ifpar, jfpar)
+     read (ifpar, nmpice, iostat=istat)
+     call cstnml(jfpar, 'predci', 'nmpice', istat)
+     write(jfpar, nmpice)
 
      do l = 0, nic
         do ij = 1, nxydim
@@ -224,6 +239,8 @@ subroutine predci( &
            frmpx(ij, l) = 0.0d0
            dsdx(ij, l) = 0.0d0   !! assume no dust
            dsbx(ij, l) = 0.0d0   !! assume no dust
+
+           eix(ij, l) = ei(tix(ij, l), si) * hix(ij, l) !used in shift3 (oinit=.true.)
         end do
      end do
 #ifdef OPT_TRIPOLE
@@ -267,6 +284,19 @@ subroutine predci( &
        &         improf, &
        &             ax,    hix,    hsx)
      if (oeof) then
+        mice(:)=0.d0
+        do l = 1, nic
+           do ij = 1, nxydim
+              mice(ij) = mice(ij) + ax(ij, l) * hix(ij, l)
+           end do
+        end do
+        do ij = 1, nxydim
+           aice (ij) = 1.d0 - ax(ij, 0)
+           pice(ij) = p0 * mice(ij) * exp(- cp * (1.d0 - aice(ij)))
+        end do
+        ! 2024.06.20 m_kurogi
+        ! when oinit=.true., pice is evaluated as above.
+        ! pridge below return without calculating pice when oinit=.true.
         do l = 0, nic
            do ij = 1, nxydim
               az  (ij, l) =  ax  (ij, l)
@@ -357,13 +387,35 @@ subroutine predci( &
         hiz (ij, l) = 0.d0
         hsz (ij, l) = 0.d0
         improf(ij, l) = 0.0d0
-     end do
+      end do
   end do
   do l = 1, 2
      do ij = 1, nxydim
         ft(ij, l) = 0.d0
      end do
   end do
+
+  call clcstr('ICEDYN')
+  call pmomnt( &
+    &            uix,    vix, &
+    &           taux,   tauy, &
+    &             ax,     ay,     az, &
+    &            hix,    hiy,    hiz, &
+    &            hsx,    hsy,    hsz, &
+    &            uiy,    viy,   pice, &
+    &             ux,     vx,     hy,   ptop, &
+    &         tauaix, tauaiy, tauaox, tauaoy )
+#ifdef OPT_TRIPOLE
+  call shift2( &
+    &           taux,    tauy, &
+    &          nxdim,   nydim,     1, &
+    &          -1.d0,      -1,    -1 )
+#else
+  call shift2( &
+    &           taux,   tauy, &
+    &          nxdim,  nydim,      1 )
+#endif
+  call clcend('ICEDYN')
 
   call ipsage( &
     &            asx, &
@@ -511,39 +563,20 @@ subroutine predci( &
     &          nxdim,  nydim,  nic+1)
 #endif
 
-  call clcstr('ICEDYN')
-  call pmomnt( &
-    &            uix,    vix, &
-    &           taux,   tauy, &
-    &             ax,     ay,     az, &
-    &            hix,    hiy,    hiz, &
-    &            hsx,    hsy,    hsz, &
-    &            uiy,    viy,   pice, &
-    &             ux,     vx,     hy,   ptop, &
-    &         tauaix, tauaiy, tauaox, tauaoy )
-#ifdef OPT_TRIPOLE
-  call shift2( &
-    &           taux,    tauy, &
-    &          nxdim,   nydim,     1, &
-    &          -1.d0,      -1,    -1 )
-#else
-  call shift2( &
-    &           taux,   tauy, &
-    &          nxdim,  nydim,      1 )
-#endif
-  call clcend('ICEDYN')
 
   if (myrank .ge. ijnode) then
      return
   end if
 
-  do l = 1, nic
-     do ij = 1, nxydim
-        ptop(ij) = ptop(ij) &
-          &      + gravit * ay(ij, l) * &
-          &        (rhoi * hiy(ij, l) + rhos * hsy(ij, l))
+  if (.not. oinit ) then
+     do l = 1, nic
+        do ij = 1, nxydim
+           ptop(ij) = ptop(ij) &
+                &      + gravit * ay(ij, l) * &
+                &        (rhoi * hiy(ij, l) + rhos * hsy(ij, l))
+        end do
      end do
-  end do
+  end if
 
   call clcend('ICE')
 

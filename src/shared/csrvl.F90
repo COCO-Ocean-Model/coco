@@ -8,6 +8,7 @@ module csrvl
 !     '99.08.13  H.Hasumi: from CCSR2-MASK
 !     '01.01.30  H.Hasumi: for partial step bottom topography
 !     '07.04.23  H.Hasumi
+!     '07.11.28  Y.Komuro: give different MZ for each hemisphere
 !     '08.06.11  H.Hasumi: initial/final processing
 !     '08.07.10  H.Hasumi: initial/final processing
 !     '12.08.02  Y.Komuro: for COCO5.0
@@ -41,7 +42,7 @@ subroutine srcvel( &
   &                    gx,     gy,     xx,     yy, &
   &                    ux,     vx)
   use ufile
-      
+
   real(8), intent(out) ::     gx(nxydim, nzdim),     gy(nxydim, nzdim)
   real(8), intent(out) ::     xx(nxydim, nzdim),     yy(nxydim, nzdim)
   real(8), intent(in)  ::     ux(nxydim, nzdim),     vx(nxydim, nzdim)
@@ -63,6 +64,7 @@ subroutine srcvel( &
   if (ofirst) then
      ofirst = .false.
      call rewnml(ifpar, jfpar)
+     write(jfpar, *) '*** svlset  ***'
      read (ifpar, nmbtmf, iostat=istat)
      call cstnml(jfpar, 'srcvel', 'nmbtmf', istat)
      write(jfpar, nmbtmf)
@@ -123,10 +125,10 @@ subroutine srcvlb( &
   logical, save :: ofirst = .true.
 
   real(8), save :: btmfrc = 0.0d0,  rayfrc = 1.0d0
-  integer, save :: mz = nz
+  integer, save :: mzn = nz, mzs = nz
 
   namelist /nmbtmf/ btmfrc
-  namelist /nmbbrf/ rayfrc, mz
+  namelist /nmbbrf/ rayfrc, mzn, mzs
 
   if (oinit .or. ofinal) then
      return
@@ -135,6 +137,7 @@ subroutine srcvlb( &
   if (ofirst) then
      ofirst = .false.
      call rewnml(ifpar, jfpar)
+     write(jfpar, *) '*** svbset  ***'
      read (ifpar, nmbtmf, iostat=istat)
      call cstnml(jfpar, 'srcvlb', 'nmbtmf', istat)
      write(jfpar, nmbtmf)
@@ -144,7 +147,8 @@ subroutine srcvlb( &
      write(jfpar, nmbbrf)
 
      do ij = 1, nxydim
-        if (nbotv(ij) .le. mz+kstr-1) then
+        if (((cor(ij).ge.0.0d0).and.(nbotv(ij).le.mzn+kstr-1)) .or. &
+          & ((cor(ij).lt.0.0d0).and.(nbotv(ij).le.mzs+kstr-1))) then
            rfrc(ij) = rayfrc * abs(cor(ij))
         else
            rfrc(ij) = 0.d0

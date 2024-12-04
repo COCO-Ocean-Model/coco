@@ -32,11 +32,17 @@ module dvdif
     &   kstr,   kend,     kz,     nz, &
     &  ijstr,  ijend, &
     &     le,     lw,     ln,     ls,    lne,    lsw, &
-    &  oinit, ofinal
-  use zocgrd,  only: &
+    &  oinit, ofinal, &
+#ifndef OPT_IO_COCOMPI
+    &    nxg,    nyg, nxgdim, nygdim,  igstr,  jgstr, &
+#endif
+    &     nx,     ny
+  use zocfil, only: &
+    &    ncf
+  use zocgrd, only: &
     &     dz,    dzm,     ds,    dsm,     dt, &
     &   zbot,    cor,   itst, ieuler
-  use zocmsk,  only: &
+  use zocmsk, only: &
 #ifdef OPT_BBL
     & amsktb, amskvb, nbotv, &
 #endif
@@ -47,6 +53,7 @@ module dvdif
 
   implicit none
   private
+#include "mpif.h"
 
   public :: vdiff, puttao
 #ifdef OPT_BBL
@@ -62,10 +69,17 @@ subroutine vdiff( &
   &                   uy,     vy,      r,   taux,   tauy, &
   &                   ty,     hy )
 
-  use brstt
   use xprst
+  use brstt
   use ufile
+  use qckot
   use bshft
+#ifdef OPT_IO_COCOMPI
+  use mpiio
+#else
+  use bgs2d
+  use zocnod,  only :  iroot,  myrank
+#endif
 
   real(8), intent(out) ::     amv(nxydim, nzdim),    ahv(nxydim, nzdim)
   real(8), intent(in)  ::      uy(nxydim, nzdim),     vy(nxydim, nzdim)
@@ -77,7 +91,7 @@ subroutine vdiff( &
   real(8), save ::     tke(nxydim, nzdim)
   real(8), save ::  ahvbak(nxydim, nzdim)
   real(8), save ::  ahv03d(nxydim, nzdim)
-  real(8), save ::  alplat(nxydim)
+  real(8), save ::  alplat(nxydim),  c0lat(nxydim)
 
   real(8) ::    drdz(nxydim, nzdim),  duvdz(nxydim, nzdim)
   real(8) ::   dzsig(nxydim, nzdim), rzmsig(nxydim, nzdim)
@@ -113,29 +127,69 @@ subroutine vdiff( &
   real(8) ::  avrtx,  avrty
   real(8) ::     fc
   integer ::     ij,      k,   iitr
+  integer ::      i,      j 
   integer ::     kt
   integer ::  ifpar,  jfpar,  istat
 
   real(8), save ::  amv0(nz) = 0.d0,  ahv0(nz) = 0.d0
-  real(8), save ::  rahv(nz) = 1.d0
-  real(8), save ::  sm0 = 0.39d0,  c0 = 0.06d0,  pr0 = 0.8d0,  sg = 1.95d0
+  real(8), save ::  rahv(nz) = 0.d0
+  real(8), save ::  sm0 = 0.39d0,  c0 = 0.06d0,  c0eq = -999.0D0
+  real(8), save ::  pr0 = 0.8d0,  sg = 1.95d0
   real(8), save ::  eps = 1.0d-5,  z0 = 1.0d2,  alph = 3.0d0,  cftke = 1.0d2
   real(8), save ::  alphc = -999.0d0,  beta = 0.0d0,  betac = -999.0d0
-  real(8), save ::  pr1 = 7.0d0,  prmax = 20.0d0
+  real(8), save ::  pr1 = 0.5d0,  prmax = 20.0d0
   real(8), save ::  ahvb = 0.1d0,  amvmax = 1000.0d0,  aflt = 1.0d0
   real(8), save ::  alsc = 999.0d0,  ritc = 1.0d0
   real(8), save ::  latal = 30.0d0,  lateq = 5.0d0,  al = 1.0d0,  aleq =0.1d0
+  real(8), save ::  latc0 = 15.0D0,  latceq = 5.0D0
   integer, save ::  mz = nz,  nitr = 1
-  logical, save ::  oallat = .false.
+  logical, save ::  oallat = .false.,  oc0lat = .false.
   logical, save ::  oswnoi = .false.
+
+  logical, save ::  ovdfao = .false.
+  real(8), save ::  ahv0ao(nz) = 0.d0
+  integer, save ::  mzao = 0
+  real(8)       ::  corao
+  
+  real(8), save ::  tedn2d(nxydim)
+  real(8), save ::  tedf2d(nxydim)
+  real(8), save ::  tedn3d(nxydim, nzdim) = 0.d0
+  real(8), save ::  tedf3d(nxydim, nzdim) = 0.d0
+  real(8), save ::  cgamma = 0.2d0,  ahvemx = 1000.0d0,  epst = 1.d-20
+  real(8), save ::    zeta = 500.d0 ! [m]
+  logical, save ::  ofvcnt = .false., ofvpn = .false. ! vert. prof of far-field mixing
+  ! ofvcnt = .true. : vertically constant
+  ! ofvcnt = .false, ofvpn = .false. : prop. to N^2
+  ! ofvcnt = .false, ofvpn = .true. : prop. to N
+  real(8), save ::   rzeta ! [1/cm]
+  integer, save ::  iamn = 0, iamf = 0
+  character(len = ncf) ::  cftedn = 'not-specified'
+  character(len = ncf) ::  cftedf = 'not-specified'
+  character(len = 16)  ::  chead(1:64)
+#ifdef OPT_IO_COCOMPI
+  integer :: mpi_fh
+  integer :: icread
+  integer (kind = mpi_offset_kind) :: disp
+#else
+  integer :: nfted
+  real(8), allocatable :: buf2(:, :),  g2d(:, :)
+#endif
+  real(8), save ::  depth0(nxydim, nzdim)
+  real(8)       ::  dzmsig(nxydim, nzdim)
+  real(8)       ::    gint(nxydim)
+  real(8)       ::  ahvted(nxydim, nzdim),  tedr(nxydim, nzdim)
+  real(8)       ::     dep ! [cm]
 
   namelist /nmvisv/ amv0
   namelist /nmdifv/ ahv0
   namelist /nmdfre/ rahv
   namelist /nmdvnk/ eps, z0, alph, alphc, beta, betac, &
     &               cftke, mz, nitr, pr0, pr1, prmax, &
-    &               sm0, c0, sg, ahvb, amvmax, aflt, &
-    &               alsc, ritc, oallat, al, aleq, latal, lateq, oswnoi
+    &               sm0, c0, c0eq, sg, ahvb, amvmax, aflt, &
+    &               alsc, ritc, oallat, al, aleq, latal, lateq, &
+    &               oc0lat, latc0, latceq, oswnoi
+  namelist /nmdifvao/ ovdfao, ahv0ao, mzao
+  namelist /nmdved/ iamn, iamf, cftedn, cftedf, cgamma, ahvemx, epst, zeta, ofvcnt, ofvpn
 
   if (oinit) then
      do k = 1, nzdim
@@ -175,6 +229,14 @@ subroutine vdiff( &
      read (ifpar, nmdfre, iostat=istat)
      call cstnml(jfpar, 'vdiff', 'nmdfre', istat)
      write(jfpar, nmdfre)
+     call rewnml(ifpar, jfpar)
+     read (ifpar, nmdifvao, iostat=istat)
+     call cstnml(jfpar, 'vdiff', 'nmdifvao', istat)
+     write(jfpar, nmdifvao)
+     call rewnml(ifpar, jfpar)
+     read (ifpar, nmdved, iostat=istat)
+     call cstnml(jfpar, 'vdiff', 'nmdved', istat)
+     write(jfpar, nmdved)
 
      if (alphc < 0.0d0) then
         alphc = alph
@@ -231,6 +293,13 @@ subroutine vdiff( &
         nlatn = +latal
         do ij = ijstr-nxdim-1, ijend+nxdim+1
            cort = (cor(ij)+cor(ij+lw)+cor(ij+lsw)+cor(ij+ls)) * 0.25d0
+           if ( cort/(2.d0*omega) .gt.  1.d0 ) then
+              cort =   2.d0 * omega
+           end if
+           if ( cort/(2.d0*omega) .lt. -1.d0 ) then
+              cort = - 2.d0 * omega
+           end if
+
            lat = asin( cort/2.d0/omega ) * 180.d0 / pi
            if ( (lat >= nlatn) .or. (lat <= slats) ) then
               alplat(ij) = al
@@ -251,6 +320,158 @@ subroutine vdiff( &
            alplat(ij) = al  !! dummy
         enddo
      endif
+
+!    ---- increasing TKE dissipation coefficient around EQ.
+     if (oc0lat) then
+        write(jfpar, *) &
+          &  '   : C0 around the equator is enhanced'
+        slatn = -latceq
+        slats = -latc0
+        nlats = +latceq
+        nlatn = +latc0
+        do ij = ijstr, ijend
+           cort = (cor(ij)+cor(ij+lw)+cor(ij+lsw)+cor(ij+ls)) * 0.25d0
+           if ( cort/(2.d0*omega) .gt.  1.d0 ) then
+              cort =   2.d0 * omega
+           end if
+           if ( cort/(2.d0*omega) .lt. -1.d0 ) then
+              cort = - 2.d0 * omega
+           end if
+           lat = asin( cort/2.0/omega ) * 180.d0 / pi
+           if ( lat.ge.nlatn .or. lat.le.slats ) then
+              c0lat(ij)  = c0
+           elseif ( lat.ge.slats .and. lat.lt.slatn ) then
+              c0lat(ij) = (c0*(slatn-lat) &
+                &       + c0eq*(lat-slats))/(slatn-slats)
+           elseif ( lat.gt.nlats .and. lat.le.nlatn ) then
+              c0lat(ij) = (c0*(lat-nlats) &
+                &       + c0eq*(nlatn-lat))/(nlatn-nlats)
+           else
+              c0lat(ij) = c0eq
+           endif
+        enddo
+     else
+        do ij = ijstr, ijend
+           c0lat(ij) = c0
+        enddo
+     endif
+
+!----- reducing background vert. diffusivity in Arctic Ocean
+     if ( ovdfao ) then
+        corao = 2.D0 * omega * sin( pi * 65.D0 / 180.D0 )
+        do k = kstr, kstr+mzao-1
+           do ij = ijstr-nxdim-1, ijend
+              cort = (  cor(ij)     + cor(ij+lw) &
+                   &  + cor(ij+lsw) + cor(ij+ls) ) * 0.25d0
+              if ( cort > corao ) then
+                 ahv03d(ij,k) = ahv0ao(k-kstr+1)
+              end if
+           end do
+        end do
+     end if
+
+!---- applying turbulent energy dissipation rate
+     do ij = 1, nxydim
+        tedn2d(ij) = 0.d0
+        tedf2d(ij) = 0.d0
+     end do
+     if ( iamn == 0 ) then
+        write(jfpar, *) ' Turbulent energy dissipation rate (near-field) is not used.'
+     else
+!---- reading file of near-field tidal energy dissipation rate
+#ifdef OPT_IO_COCOMPI
+        call mpi_filopn(mpi_fh, cftedn, 'READ')
+        disp=0
+        call mpi_read_chead(chead, mpi_fh, disp, icread)
+        call mpi_read_2d(tedn2d, mpi_fh  , disp)
+        call mpi_filcls(mpi_fh)
+#else
+        allocate ( buf2(1:nxg,1:nyg) )
+        allocate ( g2d(1:nxgdim,1:nygdim) )
+        if ( myrank == iroot ) then
+           call filopn( nfted, cftedn, 'READ' )
+           rewind( nfted )
+           read( nfted ) chead
+           read( nfted ) buf2
+           call filcls( nfted )
+           do j = 1, nyg
+              do i = 1, nxg
+                 g2d(igstr+i-1, jgstr+j-1) = buf2(i, j)
+              end do
+           end do
+        end if
+        call scatter_2d( tedn2d, g2d )
+        deallocate( buf2, g2d )
+#endif
+#ifdef OPT_TRIPOLE
+        call shift1(tedn2d,                                      &
+    &                nxdim,  nydim,      1,                      &
+    &                 1.d0,      0,      0 )
+#else
+        call shift1(tedn2d,                                      &
+    &                nxdim,  nydim,      1)
+#endif
+        rzeta = 1.d0 / zeta * 1.d-2
+        do ij = 1, nxydim
+           depth0(ij, kstr) = 0.d0
+        end do
+        do k = kstr+1, kend+1
+           do ij = 1, nxydim
+              depth0(ij, k) = depth0(ij, k-1) + dz(ij, k-1)
+           end do
+        end do
+     end if
+     if ( iamf == 0 ) then
+        write(jfpar, *) ' Turbulent energy dissipation rate (far-field) is not used.'
+        do ij = 1, nxydim
+           tedf2d(ij) = 0.d0
+        end do
+     else
+!---- reading file of far-field tidal energy dissipation rate
+#ifdef OPT_IO_COCOMPI
+        call mpi_filopn(mpi_fh, cftedf, 'READ')
+        disp=0
+        call mpi_read_chead(chead, mpi_fh, disp, icread)
+        call mpi_read_2d(tedf2d, mpi_fh  , disp)
+        call mpi_filcls(mpi_fh)
+#else
+        allocate ( buf2(1:nxg,1:nyg) )
+        allocate ( g2d(1:nxgdim,1:nygdim) )
+        if ( myrank == iroot ) then
+           call filopn( nfted, cftedf, 'READ' )
+           rewind( nfted )
+           read( nfted ) chead
+           read( nfted ) buf2
+           call filcls( nfted )
+           do j = 1, nyg
+              do i = 1, nxg
+                 g2d(igstr+i-1, jgstr+j-1) = buf2(i, j)
+              end do
+           end do
+        end if
+        call scatter_2d( tedf2d, g2d )
+        deallocate( buf2, g2d )
+#endif
+        if (ofvcnt) then
+           write(jfpar, *) 'Vertically constant for far-field mixing'
+        else
+           if (ofvpn) then
+              write(jfpar, *) 'Dissipation rate is prop. to N for far-field mixing'
+           else
+              write(jfpar, *) 'Dissipation rate is prop. to N^2 for far-field mixing'
+           end if
+        end if
+#ifdef OPT_TRIPOLE
+        call shift1(tedf2d,                                      &
+    &                nxdim,  nydim,      1,                      &
+    &                 1.d0,      0,      0 )
+#else
+        call shift1(tedf2d,                                      &
+    &                nxdim,  nydim,      1)
+#endif
+     end if
+!---
+
   end if
 
 ! -- second step of Euler-Backward sheme --
@@ -276,12 +497,14 @@ subroutine vdiff( &
      do ij = 1, nxydim
         dzsig (ij, k) = (hy(ij) + zbot) * ds(k)
         rzmsig(ij, k) = 1.d0 / (hy(ij) + zbot) / dsm(k)
+        dzmsig(ij, k) = (hy(ij) + zbot) * dsm(k)
      end do
   end do
   do k = kstr+kz, kend
      do ij = 1, nxydim
         dzsig (ij, k) = dz(ij, k)
         rzmsig(ij, k) = 1.d0 / dzm(ij, k)
+        dzmsig(ij, k) = dzm(ij, k)
      end do
   end do
   do k = kstr+1, kend
@@ -290,7 +513,7 @@ subroutine vdiff( &
      end do
   end do
 
-  do k = kstr+1, kstr+mz-1
+  do k = kstr+1, kend
      do ij = ijstr-nxdim-1, ijend+nxdim+1
         tl = ty(ij, k, 1)
         sl = ty(ij, k, 2)
@@ -367,8 +590,10 @@ subroutine vdiff( &
   if (ofirst .and. oeof) then
      do k = kstr+1, kstr+mz-1
         do ij = ijstr-nxdim-1, ijend+nxdim+1
+!          ---- using definition of Kondoh et. (1978) for Pr first guess,
+!               since the method of Noh et al. (2005) requires TKE. ---
            pr(ij, k) =  min ( prmax, &
-             &                pr0 + pr1 * drdz(ij, k) &
+             &                pr0 + 7.d0 * drdz(ij, k) &
              &                    / max( duvdz(ij, k), eps ) )
            fkls = ckarm * (depth(ij, k) + z0)
            tls(ij, k) = fkls / (1.d0 + fkls / dml(ij))
@@ -392,9 +617,12 @@ subroutine vdiff( &
            tls(ij, k) = fkls / (1.d0 + fkls / dml(ij))
            rit(ij, k) = drdz(ij, k) * tls(ij, k) * tls(ij, k) &
              &        / tke(ij,k) * 0.5d0
+!          ---- Prantle number by definition of Noh et al. (2005, GRL)
            pr(ij, k) =  min ( prmax, &
-             &                pr0 + pr1 * drdz(ij, k) &
-             &                      / max( duvdz(ij, k), eps ) )
+             &                pr0 * sqrt( 1.d0 + pr1 * rit(ij, k) )  )
+!           pr(ij, k) =  min ( prmax, &
+!             &                pr0 + pr1 * drdz(ij, k) &
+!             &                      / max( duvdz(ij, k), eps ) )
         enddo
      enddo
      do k = kstr+1, kstr+mz-1
@@ -414,7 +642,7 @@ subroutine vdiff( &
 !           cdmp(ij, k) = ( 4.d0 * c0 * tke(ij, k) / tls(ij, k) / ri &
 !             &           ) * amftz(ij, k)
            cdmp(ij, k) = &
-             &         ( c0 * sqrt( 1.0d0 + alphc * ri ) &
+             &         ( c0lat(ij) * sqrt( 1.0d0 + alphc * ri ) &
              &              * 2.0d0 * q / tls(ij, k) &
              &         ) * amftz(ij, k)
            c(ij, k)    = &
@@ -456,7 +684,7 @@ subroutine vdiff( &
         end do
      end do
      do ij = ijstr-nxdim-1, ijend+nxdim+1
-        if ( oswnoi ) then
+        if (oswnoi) then
            avrtx = (  tauaox(ij)    + tauaox(ij+lw) &
                 &   + tauaox(ij+ls) + tauaox(ij+lsw)) * 0.25d0
            avrty = (  tauaoy(ij)    + tauaoy(ij+lw) &
@@ -470,7 +698,6 @@ subroutine vdiff( &
         fez(ij, kstr+1) = ((avrtx * avrtx + avrty * avrty) &
           &               / rhoo / rhoo) ** 0.75d0 * cftke
      end do
-
      do k = kstr+2, kstr+mz-1
         do ij = ijstr-nxdim-1, ijend+nxdim+1
            diffz(ij, k) = (amv(ij, k-1) + amv(ij, k)) * &
@@ -579,7 +806,121 @@ subroutine vdiff( &
     &          nxdim,  nydim,  nzdim, &
     &           1.d0,      0,      0 )
 #endif
-   
+
+!!--- sea-surface elevation is not considered
+!!---   for vertical structure function of energy dissipation rate
+!  if ( iamn /= 0 .or. iamf /= 0 ) then
+!     dzmsig = dzm
+!     depth = depth0
+!  end if
+!!---
+  
+!--- tidal turbulent energy dissipation rate
+! near-field
+  if ( iamn /= 0 ) then
+     do ij = ijstr, ijend
+        gint(ij) = 0.d0
+     end do
+     do k = kstr+1, kend
+        do ij = 1, nxydim
+           dep = depth(ij, nbot(ij) + 1) ! depth of bottom
+           gint(ij) = gint(ij) + &
+                & dzmsig(ij, k) * exp((depth(ij, k) - dep) * rzeta) * amftz(ij, k)
+        end do
+     end do
+     where(gint /= 0.d0) gint = 1.d0 / gint
+     do k = kstr+1, kend
+        do ij = 1, nxydim
+           dep = depth(ij, nbot(ij) + 1) ! depth of bottom
+           tedn3d(ij, k) = gint(ij) * tedn2d(ij) * exp((depth(ij, k) - dep) * rzeta) * amftz(ij, k)
+        end do
+     end do
+  end if
+! far-field
+  if ( iamf /= 0 ) then
+     do ij = ijstr, ijend
+        gint(ij) = 0.d0
+     end do
+     if (ofvcnt) then
+        do k = kstr+1, kend
+           do ij = 1, nxydim
+              gint(ij) = gint(ij) + &
+                   & dzmsig(ij, k) * amftz(ij, k)
+           end do
+        end do
+        do ij = ijstr, ijend
+           if (gint(ij) /= 0.d0) then
+              gint(ij) = 1.d0 / gint(ij)
+           end if
+        end do
+        do k = kstr+1, kend
+           do ij = 1, nxydim
+              tedf3d(ij, k) = gint(ij) * tedf2d(ij) * amftz(ij, k)
+           end do
+        end do
+     else
+        if (ofvpn) then ! prop to N
+           do k = kstr+1, kend
+              do ij = 1, nxydim
+                 gint(ij) = gint(ij) + &
+                      & dzmsig(ij, k) * sqrt(abs(drdz(ij, k))) * amftz(ij, k)
+              end do
+           end do
+           do ij = ijstr, ijend
+              if (gint(ij) /= 0.d0) then
+                 gint(ij) = 1.d0 / gint(ij)
+              end if
+           end do
+           do k = kstr+1, kend
+              do ij = 1, nxydim
+                 tedf3d(ij, k) = gint(ij) * tedf2d(ij) * sqrt(abs(drdz(ij, k))) * amftz(ij, k)
+              end do
+           end do
+        else ! prop to N2
+           do k = kstr+1, kend
+              do ij = 1, nxydim
+                 gint(ij) = gint(ij) + &
+                      & dzmsig(ij, k) * drdz(ij, k) * amftz(ij, k)
+              end do
+           end do
+           do ij = ijstr, ijend
+              if (gint(ij) /= 0.d0) then
+                 gint(ij) = 1.d0 / gint(ij)
+              end if
+           end do
+           do k = kstr+1, kend
+              do ij = 1, nxydim
+                 tedf3d(ij, k) = gint(ij) * tedf2d(ij) * drdz(ij, k) * amftz(ij, k)
+              end do
+           end do
+        end if
+     end if
+  end if
+
+  do k = kstr+1, kend
+     do ij = ijstr, ijend
+        ahvted(ij, k) = cgamma * (tedn3d(ij, k) + tedf3d(ij, k)) &
+             &              / max(drdz(ij, k), epst) * amftz(ij, k)
+        ahvted(ij, k) = min(ahvemx, ahvted(ij, k))
+        ahv(ij, k) = max(ahv(ij, k), ahvted(ij, k))
+        tedr(ij, k) = ahv(ij, k) * drdz(ij, k) / cgamma &
+             &                  * amftz(ij, k)
+     end do
+  end do
+
+  call chekin(ahvted, 'AHVTED', &
+       &          'ahv by ted', 'cm^2/s', &
+       &          nx,       ny,       nz,     nxyzdm, 'OCLVMT')
+  call chekin(  tedr,   'TEDR', &
+       &         'realized energy dissipation rate', 'cm^2/s^3', &
+       &          nx,       ny,       nz,     nxyzdm, 'OCLVMT')
+  call chekin(tedn3d,   'TEDN', &
+       &              'near-field tidal energy dissipation rate', 'cm^2/s^3', &
+       &          nx,       ny,       nz,     nxyzdm, 'OCLVMT')
+  call chekin(tedf3d,   'TEDF', &
+       &               'far-field tidal energy dissipation rate', 'cm^2/s^3', &
+       &          nx,       ny,       nz,     nxyzdm, 'OCLVMT')
+  
   return
 end subroutine vdiff
 ! =====================================================================
@@ -625,7 +966,7 @@ end subroutine puttao
 
 subroutine vdiffb( &
   &                   amv,    ahv )
-  
+
 ! --- information -----------------------------------------------------
 !
 !  Vertical viscosity and diffusion coefficients for the bottom

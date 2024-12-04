@@ -4,16 +4,16 @@ include $(OGCMDIR)/src/Sysdep.$(SYSTEM)
 DIRETC = ../etc
 
 SRCS_SHARED = \
-	atmct$(TSTAG).F90 \
+	atmct.F90 \
 	bchmk.F90 \
 	bgs2d.F90 \
 	bgs3d$(MPI).F90 \
 	brdge$(MPI).F90 \
 	bshfi.F90 \
 	bshft.F90 \
-	cadvc$(TSTAG).F90 \
+	cadvc.F90 \
 	csrvl.F90 \
-	ctnuv$(TSTAG).F90 \
+	ctnuv.F90 \
 	cvisc.F90 \
 	cvlrd.F90 \
 	dvdif.F90 \
@@ -30,14 +30,14 @@ SRCS_SHARED = \
 	tflxt.F90 \
 	tovtr.F90 \
 	ucaln.F90 \
-	ucloc.$(SYSTEM).F90 \
+	ucloc.F90 \
 	ufile.F90 \
 	utrdg.F90 \
 	xprst.F90
 
 SRCS_coco = \
 	aocea.F90 \
-	aprdc$(TSTAG).F90 \
+	aprdc.F90 \
 	bfrch.F90 \
 	binst.F90 \
 	brstt.F90 \
@@ -48,7 +48,7 @@ SRCS_coco = \
 
 SRCS_icedcoco = \
 	aocea.F90 \
-	aprdc$(TSTAG).F90 \
+	aprdc.F90 \
 	bfrch.F90 \
 	bgsid$(MPI).F90 \
 	binst.F90 \
@@ -59,7 +59,7 @@ SRCS_icedcoco = \
 	ifwtr.F90 \
 	ipadv.F90 \
 	ipmmt.F90 \
-	iprdc$(TSTAG).F90 \
+	iprdc.F90 \
 	iprdg.F90 \
 	ipthm.F90 \
 	iptmp.F90 \
@@ -86,6 +86,8 @@ lib: $(shell cat OBJLIST)
 	$(AR) $(LIBOGCM) $(shell cat OBJLIST)
 	$(RANLIB) $(LIBOGCM)
 
+%.o : %.mod
+
 .PHONY: FORCE
 OBJLIST: FORCE
 	-@$(RM) *.F90
@@ -94,7 +96,7 @@ OBJLIST: FORCE
 	@sh $(DIRETC)/fetch.sh ../enstr $(SRCS_ENSTR)
 	@sh $(DIRETC)/fetch.sh ../option $(SRCS_OPTION)
 	@python3 $(DIRETC)/print_uniq_objs.py $(SRCS) > OBJLIST
-	@python2 $(DIRETC)/fort_depend.py -w -o $(DEPENDENCY) \
+	@python3 $(DIRETC)/fort_depend.py -w -o $(DEPENDENCY) \
 		-f `cat OBJLIST | $(DIRETC)/srclist.sh` > /dev/null
 
 clean:

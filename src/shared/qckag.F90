@@ -10,7 +10,7 @@ module qckag
 ! ---------------------------------------------------------------------
 
   use zocdim, only: &
-    &     nx,     ny, nxydim,  nzdim,  ntdim,   kstr,    nic
+    &     nx,     ny, nxydim,  nzdim,  ntdim,   kstr,    nic, oinit, ofinal
   use zocmsk, only: &
     &  amskt,  amskv
 
@@ -114,6 +114,8 @@ subroutine cofpfw( &
   real(8) ::   soff(nxydim)
   real(8) ::     ax(nxydim, 0:nic)
   integer ::     ij
+  
+  if (oinit .or. ofinal) return
   
   do ij = 1, nxydim
 !    fluxes are positive when entering the ocean (i.e., downward)
