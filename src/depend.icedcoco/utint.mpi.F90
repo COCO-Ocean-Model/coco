@@ -193,6 +193,7 @@ contains
        cdate = chead(50)
        read(cdate, '(i6.6,5i2.2)') (idate2(i, iitem), i = 1, 6)
        iydiff = idate2(1, iitem) - idate1(1, iitem)
+       call css2yh( idates, time1(iitem))
        idatet(1)   = idates(1) + iydiff
        idatet(2:6) = idate2(2:6, iitem)
        call cyh2ss(  time2(iitem),  idatet )
@@ -459,6 +460,7 @@ contains
        cdate = chead(50)
        read(cdate, '(i6.6,5i2.2)') (idate2(i, iitem), i = 1, 6)
        iydiff = idate2(1, iitem) - idate1(1, iitem)
+       call css2yh( idates, time1(iitem))
        idatet(1)   = idates(1) + iydiff
        idatet(2:6) = idate2(2:6, iitem)
        call cyh2ss(  time2(iitem),  idatet  )
@@ -575,5 +577,3 @@ contains
 #endif
 
 end module utint
-
-
