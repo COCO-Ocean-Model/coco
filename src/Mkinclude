@@ -1,7 +1,11 @@
 OGCMDIR	= /home/G10206/komuro/coco_latest
 RM	= rm -f
 
-SYSTEM	= ifort
+#SYSTEM	= ifort
+SYSTEM	= nvhpc
+
+ BUILD = O0
+#BUILD = O3
 
 #MODEL = coco
 MODEL = icedcoco

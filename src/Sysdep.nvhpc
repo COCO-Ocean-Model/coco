@@ -1,0 +1,42 @@
+ FC = mpif90
+
+ifeq ($(BUILD), O3)
+
+# opt
+#FFLAGS += -fast -O3 -Minfo=all -Mlre=noassoc -Mnopre -byteswapio -mcmodel=medium -DOPT_PARALLEL
+ FFLAGS += -O3 -m64 -Minfo=all -Mautoinline -Minline -Mpreprocess -Mnovect -Mmovnt -Mflushz -Mcache_align -mcmodel=medium
+
+else ifeq ($(BUILD), O0)
+
+# noopt
+#FFLAGS += -O0 -m64 -Minfo=all -Mnolre       -Mnopre -Mpreprocess                                         -mcmodel=medium
+ FFLAGS += -O0 -m64 -Minfo=all -Mnolre       -Mnopre -Mpreprocess -Mnofma                                 -mcmodel=medium
+
+else
+
+# noopt
+#FFLAGS += -O0 -m64 -Minfo=all -Mnolre       -Mnopre -Mpreprocess                                         -mcmodel=medium
+ FFLAGS += -O0 -m64 -Minfo=all -Mnolre       -Mnopre -Mpreprocess -Mnofma                                 -mcmodel=medium
+
+endif
+
+ifeq "$(OMP)" ".omp"    
+FFLAGS += -mp
+endif
+
+# debug
+#FFLAGS +=                   -g
+#FFLAGS +=                   -Mchkstk
+ 
+ FOPTION = $(FFLAGS)                                  -I$(OGCMDIR)/src/module -I$(OGCMDIR)/src/touza -I$(OGCMDIR)/src/build $(OPTBDY) $(OPTSRST) $(OPTBBL) $(OPTTRIPOLE) $(OPTIO) $(OPTEXMASK) $(OPTTOUZA)
+
+AR	= ar r
+RANLIB	= ranlib
+#RANLIB	= touch
+
+.SUFFIXES: .F90
+ 
+.F.o:
+	$(FC) $(FOPTION) -c $<
+.F90.o:
+	$(FC) $(FOPTION) -c $<
