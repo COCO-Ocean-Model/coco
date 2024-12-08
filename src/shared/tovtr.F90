@@ -354,8 +354,8 @@ subroutine ovturn( &
               do n = 1, ntdim
                  t(ij, kk, n) = ttl(ij, n) * w2(ij)
               end do
-           lup(ij) = k
-         end if
+           end if
+        end do
      end do
   end do
 !$omp end parallel do
