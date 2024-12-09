@@ -33,6 +33,7 @@ module fshlw
   data accb, acc / -1.d0, 1.d0 /
 
   logical,     save  ::  ofirst
+  logical,     save  ::  lnovis = .false.
   character(len=16)  ::  chead(1:64)
   data ofirst / .true. /
 
@@ -86,13 +87,11 @@ contains
 
     real(8),     save  ::  amh
     integer(4)         ::  iam,    nfamh
-    logical,     save  ::  lnovis
     character(len=ncf) ::  cfamh
     namelist /nmvish/  amh
     namelist /nmcvis/  iam, cfamh
     namelist /nmnovis/ lnovis
     data amh, iam, cfamh / 0.d0, 0, 'not-specified' /
-    data lnovis / .false. /
 
 #ifdef OPT_IO_COCOMPI
     integer :: mpi_fh
@@ -372,7 +371,8 @@ contains
     &         - tss * fw(ij) * amskt(ij, kstr)
     end do
 !$omp end parallel do
- 
+
+    if (.not. lnovis) then
 !$omp parallel do &
 !$omp private( ij, ijls, ijlw, ijln, ijle, ijnw, ijse, ijsw )
     do ij = ijstr-nxdim-1, ijend+nxdim+1
@@ -441,6 +441,7 @@ contains
     &                      (hxu(ij) + hxu(ijls)) * 0.25d0
     end do
 !$omp end parallel do
+    end if ! lnovis
  
 !$omp parallel do private( ij )
     do ij = ijstr-nxdim-1, ijend
