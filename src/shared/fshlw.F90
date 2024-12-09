@@ -86,7 +86,7 @@ contains
 
     real(8),     save  ::  amh
     integer(4)         ::  iam,    nfamh
-    logical            ::  lnovis
+    logical,     save  ::  lnovis
     character(len=ncf) ::  cfamh
     namelist /nmvish/  amh
     namelist /nmcvis/  iam, cfamh
