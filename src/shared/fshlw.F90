@@ -672,6 +672,7 @@ contains
     use zocgrd,  only :  glont,   glatt
     use zocnod,  only :  iroot,  myrank
     use ufile
+    use ucaln
     
     IMPLICIT NONE
 #include "mpif.h"
