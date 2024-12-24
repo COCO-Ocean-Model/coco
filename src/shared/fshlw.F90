@@ -669,7 +669,9 @@ contains
   SUBROUTINE TIDE(TIDEP)
 
     use zocdim
+#ifdef OPT_EXMASK
     use zocgrd,  only :  glont,   glatt
+#endif
     use zocnod,  only :  iroot,  myrank
     use ufile
     use ucaln
@@ -686,7 +688,10 @@ contains
       parameter(rearth = 6.371D8)
 
       REAL*8   TIDEP(NXYDIM)
-
+#ifndef OPT_EXMASK
+      REAL*8   GLONT(NXYDIM),  GLATT(NXYDIM) ! dummy
+#endif
+      
       INTEGER  IFPAR,  JFPAR
       INTEGER      I,     IJ
       REAL*8    ANGM,   ANGS
