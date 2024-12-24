@@ -86,16 +86,17 @@ contains
     real(8),     save  ::     rz(nxydim,nzdim),    rzm(nxydim,nzdim)
     integer(4)         ::     ij,      k,   i,      j
     integer(4)         ::   ijln,   ijls,   ijle,   ijlw
-    integer(4)         ::   ijnw,   ijse,   ijsw
+    integer(4)         ::   ijnw,   ijse,   ijsw,   ijne
     integer(4)         ::  ifpar,  jfpar,  istat
 
     real(8),     save  ::  amh
     real(8),     save  ::  amhmod(nxydim)
     integer(4)         ::  iam,    nfamh
     character(len=ncf) ::  cfamh
+    logical,     save  ::  opslvis
     namelist /nmvish/ amh
-    namelist /nmcvis/ iam, cfamh
-    data amh, iam, cfamh / 0.d0, -1, 'not-specified' /
+    namelist /nmcvis/ iam, cfamh, opslvis
+    data amh, iam, cfamh, opslvis / 0.d0, -1, 'not-specified', .false. /
 
 #ifdef OPT_IO_COCOMPI
     integer :: mpi_fh
@@ -105,6 +106,12 @@ contains
     real(8), allocatable :: buf2(:, :),  g2d(:, :)
 #endif
 
+    real(8)            ::    sxxe(nxydim),        sxxw(nxydim)
+    real(8)            ::    sxyn(nxydim),        sxys(nxydim)
+    real(8)            ::    syxe(nxydim),        syxw(nxydim)
+    real(8)            ::    syyn(nxydim),        syys(nxydim)
+    real(8)            ::   smx2d(nxydim),       smy2d(nxydim)
+    real(8)            ::      wt
 
     if ( oinit .or. ofinal ) then
        return
@@ -233,122 +240,276 @@ contains
        end do
     end do
 
-    do k = kstr, kend
-       do ij = ijstr, ijend+nxdim+1
-          ijls = ij + ls
-          ijlw = ij + lw
-          ijln = ij + ln
-          ijle = ij + le
-          ijnw = ij + lnw
-          ijse = ij + lse
-          ijsw = ij + lsw
-          sxx(ij) = (ux(ij, k) - ux(ijlw, k)) * amhmod(ij) *          &
-    &               rx / (hxu(ij) + hxu(ijlw)) * 2.d0                 &
-    &             + (vx(ij, k) + vx(ijlw, k)) * amhmod(ij) *          &
-    &               (hxyu(ij) + hxyu(ijlw)) * 0.25d0                  &
-    &             - (  vx(ijln, k) + vx(ijnw, k)                      &
-    &                - vx(ijls, k) - vx(ijsw, k)) * amhmod(ij)        &
-    &               / (hyu(ij) + hyu(ijlw)) / (dy(ij) + dy(ijln))     &
-    &             - (ux(ij, k) + ux(ijlw, k)) * amhmod(ij) *          &
-    &               (hyxu(ij) + hyxu(ijlw)) * 0.25d0                  
-          sxy(ij) = (ux(ij, k) - ux(ijls, k)) * amhmod(ij) *          &
-    &               ry(ij) / (hyu(ij) + hyu(ijls)) * 2.d0             &
-    &             - (ux(ij, k) + ux(ijls, k)) * amhmod(ij) *          &
-    &               (hxyu(ij) + hxyu(ijls)) * 0.25d0                  &
-    &             + (  vx(ijle, k) + vx(ijse, k)                      &
-    &                - vx(ijlw, k) - vx(ijsw, k)) * amhmod(ij)        &
-    &               / (hxu(ij) + hxu(ijls)) * rx * 0.5d0              &
-    &             - (vx(ij, k) + vx(ijls, k)) * amhmod(ij) *          &
-    &               (hyxu(ij) + hyxu(ijls)) * 0.25d0                  
-          syy(ij) = (vx(ij, k) - vx(ijls, k)) * amhmod(ij) *          &
-    &               ry(ij) / (hyu(ij) + hyu(ijls)) * 2.d0             &
-    &             + (ux(ij, k) + ux(ijls, k)) * amhmod(ij) *          &
-    &               (hyxu(ij) + hyxu(ijls)) * 0.25d0                  &
-    &             - (  ux(ijle, k) + ux(ijse, k)                      &
-    &                - ux(ijlw, k) - ux(ijsw, k)) * amhmod(ij)        &
-    &               / (hxu(ij) + hxu(ijls)) * rx * 0.5d0              &
-    &             - (vx(ij, k) + vx(ijls, k)) * amhmod(ij) *          &
-    &               (hxyu(ij) + hxyu(ijls)) * 0.25d0                  
-          syx(ij) = (vx(ij, k) - vx(ijlw, k)) * amhmod(ij) *          &
-    &               rx / (hxu(ij) + hxu(ijlw)) * 2.d0                 &
-    &             - (vx(ij, k) + vx(ijlw, k)) * amhmod(ij) *          &
-    &               (hyxu(ij) + hyxu(ijlw)) * 0.25d0                  &
-    &             + (  ux(ijln, k) + ux(ijnw, k)                      &
-    &                - ux(ijls, k) - ux(ijsw, k)) * amhmod(ij)        &
-    &               / (hyu(ij) + hyu(ijlw)) / (dy(ij) + dy(ijln))     &
-    &             - (ux(ij, k) + ux(ijlw, k)) * amhmod(ij) *          &
-    &               (hxyu(ij) + hxyu(ijlw)) * 0.25d0                  
-          szx(ij) = - ux(ij, k) *                                     &
-    &                 (  (amv(ij, k) + amv(ij, k+1)) * 0.5d0 / rea    &
-    &                  + (amv(ij, k) - amv(ij, k+1)) * rz(ij, k))
-          szy(ij) = - vx(ij, k) *                                     &
-    &                 (  (amv(ij, k) + amv(ij, k+1)) * 0.5d0 / rea    &
-    &                  + (amv(ij, k) - amv(ij, k+1)) * rz(ij, k))
+    if (opslvis) then ! partial step lateral viscosity
+       do k = kstr, kend
+          do ij = ijvstr, ijvend
+             ijls = ij + ls
+             ijlw = ij + lw
+             ijln = ij + ln
+             ijle = ij + le
+             ijnw = ij + lnw
+             ijse = ij + lse
+             ijsw = ij + lsw
+             ijne = ij + lne
+
+             if (k .ge. kstr+kz) then
+                if (dzv(ij, k) .ge. dzv(ijlw, k)) then
+                   wt = dzv(ijlw, k) / dzv(ij, k)
+                else
+                   wt = 2.d0 - dzv(ij, k) / dzv(ijlw, k)
+                end if
+             else
+                wt = 1.d0
+             end if
+             sxxw(ij) = (ux(ij, k) - ux(ijlw, k) * wt) * amhmod(ij) *       &
+                  &                 rx / (hxu(ij) + hxu(ijlw)) * 2.d0                  &
+                  &              + (vx(ij, k) + vx(ijlw, k) * wt) * amhmod(ij) *       &
+                  &              (hxyu(ij) + hxyu(ijlw)) * 0.25d0
+
+             if (k .ge. kstr+kz) then
+                if (dzv(ijle, k) .ge. dzv(ij, k)) then
+                   wt = 2.d0 - dzv(ij, k) / dzv(ijle, k)
+                else
+                   wt = dzv(ijle, k) / dzv(ij, k)
+                endif
+             else
+                wt = 1.d0
+             end if
+             sxxe(ij) = (ux(ijle, k) * wt - ux(ij, k)) * amhmod(ij) *       &
+                  &                    rx / (hxu(ijle) + hxu(ij)) * 2.d0               &
+                  &                 + (vx(ijle, k) * wt + vx(ij, k)) * amhmod(ij) *    &
+                  &                 (hxyu(ijle) + hxyu(ij)) * 0.25d0
+
+             if (k .ge. kstr+kz) then
+                if (dzv(ij, k) .ge. dzv(ijls, k)) then
+                   wt = dzv(ijls, k) / dzv(ij, k)
+                else
+                   wt = 2.d0 - dzv(ij, k) / dzv(ijls, k)
+                endif
+             else
+                wt = 1.d0
+             end if
+             sxys(ij) = (ux(ij, k) - ux(ijls, k) * wt) * amhmod(ij) *       &
+                  &                   ry(ij) / (hyu(ij) + hyu(ijls)) * 2.d0            &
+                  &                 - (vx(ij, k) + vx(ijls, k) * wt) * amhmod(ij) *    &
+                  &                 (hyxu(ij) + hyxu(ijls)) * 0.25d0
+
+             if (k .ge. kstr+kz) then
+                if (dzv(ijln, k) .ge. dzv(ij, k)) then
+                   wt = 2.d0 - dzv(ij, k) / dzv(ijln, k)
+                else
+                   wt = dzv(ijln, k) / dzv(ij, k)
+                endif
+             else
+                wt = 1.d0
+             end if
+             sxyn(ij) = (ux(ijln, k) * wt - ux(ij, k)) * amhmod(ij) *       &
+                  &                    ry(ijln) / (hyu(ijln) + hyu(ij)) * 2.d0         &
+                  &                 - (vx(ijln, k) * wt + vx(ij, k)) * amhmod(ij) *    &
+                  &                 (hyxu(ijln) + hyxu(ij)) * 0.25d0
+
+             if (k .ge. kstr+kz) then
+                if (dzv(ij, k) .ge. dzv(ijls, k)) then
+                   wt = dzv(ijls, k) / dzv(ij, k)
+                else
+                   wt = 2.d0 - dzv(ij, k) / dzv(ijls, k)
+                endif
+             else
+                wt = 1.d0
+             end if
+             syys(ij) = (vx(ij, k) - vx(ijls, k) * wt) * amhmod(ij) *       &
+                  &                    ry(ij) / (hyu(ij) + hyu(ijls)) * 2.d0           &
+                  &                 + (ux(ij, k) + ux(ijls, k) * wt) * amhmod(ij) *    &
+                  &                 (hyxu(ij) + hyxu(ijls)) * 0.25d0
+
+             if (k .ge. kstr+kz) then
+                if (dzv(ijln, k) .ge. dzv(ij, k)) then
+                   wt = 2.d0 - dzv(ij, k) / dzv(ijln, k)
+                else
+                   wt = dzv(ijln, k) / dzv(ij, k)
+                endif
+             else
+                wt = 1.d0
+             end if
+             syyn(ij) = (vx(ijln, k) * wt - vx(ij, k)) * amhmod(ij) *       &
+                  &                    ry(ijln) / (hyu(ijln) + hyu(ij)) * 2.d0         &
+                  &                 + (ux(ijln, k) * wt + ux(ij, k)) * amhmod(ij) *    &
+                  &                 (hyxu(ijln) + hyxu(ij)) * 0.25d0
+
+             if (k .ge. kstr+kz) then
+                if (dzv(ij, k) .ge. dzv(ijlw, k)) then
+                   wt = dzv(ijlw, k) / dzv(ij, k)
+                else
+                   wt = 2.d0 - dzv(ij, k) / dzv(ijlw, k)
+                endif
+             else
+                wt = 1.d0
+             end if
+             syxw(ij) = (vx(ij, k) - vx(ijlw, k) * wt) * amhmod(ij) *       &
+                  &                 rx / (hxu(ij) + hxu(ijlw)) * 2.d0                  &
+                  &              - (ux(ij, k) + ux(ijlw, k) * wt) * amhmod(ij) *       &
+                  &              (hxyu(ij) + hxyu(ijlw)) * 0.25d0
+
+             if (k .ge. kstr+kz) then
+                if (dzv(ijle, k) .ge. dzv(ij, k)) then
+                   wt = 2.d0 - dzv(ij, k) / dzv(ijle, k)
+                else
+                   wt = dzv(ijle, k) / dzv(ij, k)
+                endif
+             else
+                wt = 1.d0
+             end if
+             syxe(ij) = (vx(ijle, k) * wt - vx(ij, k)) * amhmod(ij) *       &
+                  &                 rx / (hxu(ijle) + hxu(ij)) * 2.d0                  &
+                  &              - (ux(ijle, k) * wt + ux(ij, k)) * amhmod(ij) *       &
+                  &              (hxyu(ijle) + hxyu(ij)) * 0.25d0
+
+             smx2d(ij) = - ux(ij, k) *                                      &
+                  &              (  (amv(ij, k) + amv(ij, k+1)) * 0.5d0 / rea          &
+                  &               + (amv(ij, k) - amv(ij, k+1)) * rz(ij, k)) / rea
+             smy2d(ij) = - vx(ij, k) *                                      &
+                  &              (  (amv(ij, k) + amv(ij, k+1)) * 0.5d0 / rea          &
+                  &               + (amv(ij, k) - amv(ij, k+1)) * rz(ij, k)) / rea
+
+             gx(ij, k) = (  gx(ij, k)                                       &
+                  &          + (  (  (hyu(ij+le) + hyu(ij)) * sxxe(ij)                 &
+                  &                - (hyu(ij) + hyu(ij+lw)) * sxxw(ij)) * rx           &
+                  &             + (  (hxu(ij+ln) + hxu(ij)) * sxyn(ij)                 &
+                  &                - (hxu(ij) + hxu(ij+ls)) * sxys(ij)) * rym(ij)      &
+                  &               ) * rxu(ij) * ryu(ij) * 0.5d0                        &
+                  &                + hxyu(ij) * 0.5d0 * (syxe(ij) + syxw(ij))          &
+                  &                - hyxu(ij) * 0.5d0 * (syyn(ij) + syys(ij))          &
+                  &               + smx2d(ij)) * amskv(ij, k)
+             gy(ij, k) = (  gy(ij, k)                                       &
+                  &          + (  (  (hyu(ij+le) + hyu(ij)) * syxe(ij)                 &
+                  &                - (hyu(ij) + hyu(ij+lw)) * syxw(ij)) * rx           &
+                  &             + (  (hxu(ij+ln) + hxu(ij)) * syyn(ij)                 &
+                  &                - (hxu(ij) + hxu(ij+ls)) * syys(ij)) * rym(ij)      &
+                  &               ) * rxu(ij) * ryu(ij) * 0.5d0                        &
+                  &                + hyxu(ij) * 0.5d0 * (sxyn(ij) + sxys(ij))          &
+                  &                - hxyu(ij) * 0.5d0 * (sxxe(ij) + sxxw(ij))          &
+                  &               + smy2d(ij)) * amskv(ij, k)
+
+          end do
+       end do
+    else ! previous version
+       do k = kstr, kend
+          do ij = ijstr, ijend+nxdim+1
+             ijls = ij + ls
+             ijlw = ij + lw
+             ijln = ij + ln
+             ijle = ij + le
+             ijnw = ij + lnw
+             ijse = ij + lse
+             ijsw = ij + lsw
+             sxx(ij) = (ux(ij, k) - ux(ijlw, k)) * amhmod(ij) *          &
+                  &               rx / (hxu(ij) + hxu(ijlw)) * 2.d0                 &
+                  &             + (vx(ij, k) + vx(ijlw, k)) * amhmod(ij) *          &
+                  &               (hxyu(ij) + hxyu(ijlw)) * 0.25d0                  &
+                  &             - (  vx(ijln, k) + vx(ijnw, k)                      &
+                  &                - vx(ijls, k) - vx(ijsw, k)) * amhmod(ij)        &
+                  &               / (hyu(ij) + hyu(ijlw)) / (dy(ij) + dy(ijln))     &
+                  &             - (ux(ij, k) + ux(ijlw, k)) * amhmod(ij) *          &
+                  &               (hyxu(ij) + hyxu(ijlw)) * 0.25d0                  
+             sxy(ij) = (ux(ij, k) - ux(ijls, k)) * amhmod(ij) *          &
+                  &               ry(ij) / (hyu(ij) + hyu(ijls)) * 2.d0             &
+                  &             - (ux(ij, k) + ux(ijls, k)) * amhmod(ij) *          &
+                  &               (hxyu(ij) + hxyu(ijls)) * 0.25d0                  &
+                  &             + (  vx(ijle, k) + vx(ijse, k)                      &
+                  &                - vx(ijlw, k) - vx(ijsw, k)) * amhmod(ij)        &
+                  &               / (hxu(ij) + hxu(ijls)) * rx * 0.5d0              &
+                  &             - (vx(ij, k) + vx(ijls, k)) * amhmod(ij) *          &
+                  &               (hyxu(ij) + hyxu(ijls)) * 0.25d0                  
+             syy(ij) = (vx(ij, k) - vx(ijls, k)) * amhmod(ij) *          &
+                  &               ry(ij) / (hyu(ij) + hyu(ijls)) * 2.d0             &
+                  &             + (ux(ij, k) + ux(ijls, k)) * amhmod(ij) *          &
+                  &               (hyxu(ij) + hyxu(ijls)) * 0.25d0                  &
+                  &             - (  ux(ijle, k) + ux(ijse, k)                      &
+                  &                - ux(ijlw, k) - ux(ijsw, k)) * amhmod(ij)        &
+                  &               / (hxu(ij) + hxu(ijls)) * rx * 0.5d0              &
+                  &             - (vx(ij, k) + vx(ijls, k)) * amhmod(ij) *          &
+                  &               (hxyu(ij) + hxyu(ijls)) * 0.25d0                  
+             syx(ij) = (vx(ij, k) - vx(ijlw, k)) * amhmod(ij) *          &
+                  &               rx / (hxu(ij) + hxu(ijlw)) * 2.d0                 &
+                  &             - (vx(ij, k) + vx(ijlw, k)) * amhmod(ij) *          &
+                  &               (hyxu(ij) + hyxu(ijlw)) * 0.25d0                  &
+                  &             + (  ux(ijln, k) + ux(ijnw, k)                      &
+                  &                - ux(ijls, k) - ux(ijsw, k)) * amhmod(ij)        &
+                  &               / (hyu(ij) + hyu(ijlw)) / (dy(ij) + dy(ijln))     &
+                  &             - (ux(ij, k) + ux(ijlw, k)) * amhmod(ij) *          &
+                  &               (hxyu(ij) + hxyu(ijlw)) * 0.25d0                  
+             szx(ij) = - ux(ij, k) *                                     &
+                  &                 (  (amv(ij, k) + amv(ij, k+1)) * 0.5d0 / rea    &
+                  &                  + (amv(ij, k) - amv(ij, k+1)) * rz(ij, k))
+             szy(ij) = - vx(ij, k) *                                     &
+                  &                 (  (amv(ij, k) + amv(ij, k+1)) * 0.5d0 / rea    &
+                  &                  + (amv(ij, k) - amv(ij, k+1)) * rz(ij, k))
+          end do
+
+          do ij = ijvstr, ijvend+1
+             ijlw = ij + lw
+             fux(ij, k) = sxx(ij) * (hyu(ij) + hyu(ijlw)) *              &
+                  &                            (hyu(ij) + hyu(ijlw)) * 0.25d0 *     &
+                  &                  amfvx(ij, k)
+             fvx(ij, k) = syx(ij) * (hyu(ij) + hyu(ijlw)) *              &
+                  &                            (hyu(ij) + hyu(ijlw)) * 0.25d0 *     &
+                  &                   amfvx(ij, k)
+          end do
+
+          do ij = ijvstr, ijvend+nxdim
+             ijls = ij + ls
+             fuy(ij, k) = sxy(ij) * (hxu(ij) + hxu(ijls)) *              &
+                  &                            (hxu(ij) + hxu(ijls)) * 0.25d0 *     &
+                  &                  amfvy(ij, k)
+             fvy(ij, k) = syy(ij) * (hxu(ij) + hxu(ijls)) *              &
+                  &                            (hxu(ij) + hxu(ijls)) * 0.25d0 *     &
+                  &                  amfvy(ij, k)
+          end do
+
+          do ij = ijvstr, ijvend
+             smx(ij, k) = szx(ij) / rea
+             smy(ij, k) = szy(ij) / rea
+          end do
+
        end do
 
-       do ij = ijvstr, ijvend+1
-          ijlw = ij + lw
-          fux(ij, k) = sxx(ij) * (hyu(ij) + hyu(ijlw)) *              &
-    &                            (hyu(ij) + hyu(ijlw)) * 0.25d0 *     &
-    &                  amfvx(ij, k)
-          fvx(ij, k) = syx(ij) * (hyu(ij) + hyu(ijlw)) *              &
-    &                            (hyu(ij) + hyu(ijlw)) * 0.25d0 *     &
-    &                   amfvx(ij, k)
+       do k = kstr, kstr+kz-1
+          do ij = ijvstr, ijvend
+             gx(ij, k) = (  gx(ij, k)                                    &
+                  &                + (  (fux(ij+le, k) - fux(ij, k)) *              &
+                  &                      rx * ryu(ij)                               & 
+                  &                   + (fuy(ij+ln, k) - fuy(ij, k)) *              &
+                  &                      rym(ij) * rxu(ij)) * rxu(ij) * ryu(ij)     &
+                  &                + smx(ij, k) ) * amskv(ij, k)
+             gy(ij, k) = (  gy(ij, k)                                    &
+                  &                + (  (fvx(ij+le, k) - fvx(ij, k)) *              &
+                  &                      rx * ryu(ij)                               &
+                  &                   + (fvy(ij+ln, k) - fvy(ij, k)) *              & 
+                  &                      rym(ij) * rxu(ij)) * rxu(ij) * ryu(ij)     &
+                  &                + smy(ij, k) ) * amskv(ij, k)
+          end do
        end do
 
-       do ij = ijvstr, ijvend+nxdim
-          ijls = ij + ls
-          fuy(ij, k) = sxy(ij) * (hxu(ij) + hxu(ijls)) *              &
-    &                            (hxu(ij) + hxu(ijls)) * 0.25d0 *     &
-    &                  amfvy(ij, k)
-          fvy(ij, k) = syy(ij) * (hxu(ij) + hxu(ijls)) *              &
-    &                            (hxu(ij) + hxu(ijls)) * 0.25d0 *     &
-    &                  amfvy(ij, k)
+       do k = kstr+kz, kend
+          do ij = ijvstr, ijvend
+             gx(ij, k) = (  gx(ij, k)                                   &
+                  &                + (  (fux(ij+le, k) - fux(ij, k)) *             &
+                  &                      rx * ryu(ij)                              &
+                  &                   + (fuy(ij+ln, k) - fuy(ij, k)) *             &
+                  &                      rym(ij) * rxu(ij)                         &
+                  &                   ) * rxu(ij) * ryu(ij) * rz(ij, k)            &
+                  &                + smx(ij, k) ) * amskv(ij, k)
+             gy(ij, k) = (  gy(ij, k)                                   &
+                  &                + (  (fvx(ij+le, k) - fvx(ij, k)) *             &
+                  &                     rx * ryu(ij)                               &
+                  &                   + (fvy(ij+ln, k) - fvy(ij, k)) *             & 
+                  &                     rym(ij) * rxu(ij)                          &
+                  &                   ) * rxu(ij) * ryu(ij) * rz(ij, k)            &
+                  &                + smy(ij, k) ) * amskv(ij, k)
+          end do
        end do
-
-       do ij = ijvstr, ijvend
-          smx(ij, k) = szx(ij) / rea
-          smy(ij, k) = szy(ij) / rea
-       end do
-
-    end do
-
-    do k = kstr, kstr+kz-1
-       do ij = ijvstr, ijvend
-          gx(ij, k) = (  gx(ij, k)                                    &
-    &                + (  (fux(ij+le, k) - fux(ij, k)) *              &
-    &                      rx * ryu(ij)                               & 
-    &                   + (fuy(ij+ln, k) - fuy(ij, k)) *              &
-    &                      rym(ij) * rxu(ij)) * rxu(ij) * ryu(ij)     &
-    &                + smx(ij, k) ) * amskv(ij, k)
-          gy(ij, k) = (  gy(ij, k)                                    &
-    &                + (  (fvx(ij+le, k) - fvx(ij, k)) *              &
-    &                      rx * ryu(ij)                               &
-    &                   + (fvy(ij+ln, k) - fvy(ij, k)) *              & 
-    &                      rym(ij) * rxu(ij)) * rxu(ij) * ryu(ij)     &
-    &                + smy(ij, k) ) * amskv(ij, k)
-       end do
-    end do
-      
-    do k = kstr+kz, kend
-       do ij = ijvstr, ijvend
-          gx(ij, k) = (  gx(ij, k)                                   &
-    &                + (  (fux(ij+le, k) - fux(ij, k)) *             &
-    &                      rx * ryu(ij)                              &
-    &                   + (fuy(ij+ln, k) - fuy(ij, k)) *             &
-    &                      rym(ij) * rxu(ij)                         &
-    &                   ) * rxu(ij) * ryu(ij) * rz(ij, k)            &
-    &                + smx(ij, k) ) * amskv(ij, k)
-          gy(ij, k) = (  gy(ij, k)                                   &
-    &                + (  (fvx(ij+le, k) - fvx(ij, k)) *             &
-    &                     rx * ryu(ij)                               &
-    &                   + (fvy(ij+ln, k) - fvy(ij, k)) *             & 
-    &                     rym(ij) * rxu(ij)                          &
-    &                   ) * rxu(ij) * ryu(ij) * rz(ij, k)            &
-    &                + smy(ij, k) ) * amskv(ij, k)
-       end do
-    end do
-
+    end if
+ 
     do k = kstr, kend
        do ij = ijvstr, ijvend
           xx(ij, k) = gx(ij, k)
