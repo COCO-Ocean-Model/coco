@@ -93,10 +93,11 @@ contains
     real(8),     save  ::  amhmod(nxydim)
     integer(4)         ::  iam,    nfamh
     character(len=ncf) ::  cfamh
-    logical,     save  ::  opslvis
     namelist /nmvish/ amh
-    namelist /nmcvis/ iam, cfamh, opslvis
-    data amh, iam, cfamh, opslvis / 0.d0, -1, 'not-specified', .false. /
+    namelist /nmcvis/ iam, cfamh
+    data amh, iam, cfamh / 0.d0, -1, 'not-specified'/
+    logical,     save  ::  opslvis = .false.
+    namelist /nmpslv/ opslvis
 
 #ifdef OPT_IO_COCOMPI
     integer :: mpi_fh
@@ -128,6 +129,10 @@ contains
        read( ifpar, nmcvis, iostat = istat )
        call cstnml( jfpar, 'vscvel', 'nmcvis', istat )
        write( jfpar, nmcvis )
+       call rewnml( ifpar, jfpar )
+       read( ifpar, nmpslv, iostat = istat )
+       call cstnml( jfpar, 'vscvel', 'nmpslv', istat )
+       write( jfpar, nmpslv )
 
        if ( iam < 0 ) then
 !---- spatially constant
