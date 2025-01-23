@@ -6,10 +6,8 @@ RM	= rm -f
  SYSTEM	= nvhpc
 #SYSTEM = gfortran
 
-#NODES = 8x4
-#NODES = 1x1
- NODES = 2x1
-#NODES = 8x8
+ BUILD = O0
+#BUILD = O3
 
 #MODEL = coco
 MODEL = icedcoco

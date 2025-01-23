@@ -20,7 +20,7 @@ endif
 
 
 clean:
-	$(RM) *~ *.o *.mod *.trace core ../lib/* *.lst
+	$(RM) *~ *.o *.mod *.trace core ../lib/*
 	$(MAKE) -C module $@
 	$(MAKE) -C touza $@
 	$(MAKE) -C build $@

@@ -18,7 +18,7 @@ module tovtr
 !     '08.06.11  H.Hasumi: initial/final processing
 !     '08.07.10  H.Hasumi: initial/final processing
 !     '09.02.23  Y.Komuro: add DDENST (only diagnosing R)
-!     '12.06.14  Y.Komuro: for COCO5.0
+!     '12.08.02  Y.Komuro: for COCO5.0
 !
 ! ---------------------------------------------------------------------
 
@@ -105,8 +105,8 @@ subroutine ovtset( &
 !$omp parallel do private(k, ij, tl, sl, p1, p2)
   do k = kstr, kend
      do ij = ijtstr, ijtend
-        tl = t(ij, k, 1)
-        sl = t(ij, k, 2)
+        tl = t(ij, k, 1) * amskt(ij, k)
+        sl = t(ij, k, 2) * amskt(ij, k)
         p1 = c0(k) &
            & + (c1(k) + (c2(k) + c3(k) * tl) * tl) * tl &
            & + (c4(k) + c5(k) * tl + c6(k) * sl) * sl
