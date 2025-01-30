@@ -742,9 +742,6 @@ body forcing を行なう場合は、「4. 境界条件ファイルについて�
 ジに用意されたシステム依存部分記述ファイルでは、並列化・非並列化を問わず
 要素並列化された実行形式を作る。
 
-パスの設定は、OGCMDIR という変数にソースを展開したディレクトリを指定する
-ことで行なう。
-
 コンパイルオプションの指定は Sysdep.??? をしかるべく書き換えることで行な
 う。ranlib コマンドが必要な場合には
 
@@ -857,10 +854,11 @@ bstbc.$(MODEL) cadvc ctnuv dvlva
 
 % make
 
-を実行することにより、$(OGCMDIR)/lib にプログラムライブラリが、
-$(OGCMDIR)/bin に実行形式が作成される。ライブラリ、実行形式の名前は 
-Mkinclude の LIBOGCM, TARGET という変数でそれぞれ指定される。デフォルト
-の実行形式名は、海洋単独モデルが coco, 海氷－海洋モデルが icedcoco である。
+を実行することにより、ソースを展開したディレクトリのlib以下にプログラ
+ムライブラリが、bin以下に実行形式が作成される。ライブラリ、実行形式の
+名前は Mkinclude の LIBOGCM, TARGET という変数でそれぞれ指定される。デ
+フォルトの実行形式名は、海洋単独モデルが coco, 海氷－海洋モデルが
+icedcoco である。
 
 なお、ディレクトリ src/ には depend.coco/ depend.icedcoco/ enstr/
 module/ option/ shared/ build/ というサブディレクトリが存在し、それぞれ
@@ -2910,8 +2908,8 @@ aocea.F90 および aprdc.F90 におけるそれらの変数の通信部分を�
 ● コンパイルがエラーで中断した後、再び make を行なってもコンパイルされ
 ない
 
-$OGCMDIR/src に作られているであろう OPTION-LIST ENSTR-LIST というファイ
-ルおよびオブジェクトファイル(*.o)を消去してみる。
+src 以下に作られているであろう OPTION-LIST ENSTR-LIST というファイルお
+よびオブジェクトファイル(*.o)を消去してみる。
 
 ● OVTURN で division by zero が起こる
 
