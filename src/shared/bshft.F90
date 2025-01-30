@@ -515,11 +515,10 @@ contains
           end do
        end do
     end if
+    
     nbfdim = kdim * ny * icomm
-    call shiftx(                                                      &
-    &            rvbfx1, rvbfx2,                                      &
-    &            sdbfx1, sdbfx2,                                      &
-    &            nbfdim )
+    call shifts(nbfdim, nbfdim, rvbfx1, rvbfx2, sdbfx1, sdbfx2, idown, iup)
+    
     if (idown /= mpi_proc_null) then
        do k = 1, kdim
           do j = 1, ny
@@ -557,11 +556,10 @@ contains
           end do
        end do
     end if
+    
     nbfdim = kdim * nxdim * jcomm
-    call shifty(                                                      &
-    &            rvbfy1, rvbfy2,                                      &
-    &            sdbfy1, sdbfy2,                                      &
-    &            nbfdim  )
+    call shifts(nbfdim, nbfdim, rvbfy1, rvbfy2, sdbfy1, sdbfy2, jdown, jup)
+    
     if (jdown /= mpi_proc_null) then
        do k = 1, kdim
           do j = 1, jcomm
@@ -603,12 +601,11 @@ contains
              end do
           end do
        end if
+       
        nbfdim = kdim * nxdim * jcomm
        nbfdm0 = kdim * nxdim * (jcomm+1)
-       call shiftnv(                                                  &
-    &            rvbfn1, rvbfn2,                                      &
-    &            sdbfn1, sdbfn2,                                      &
-    &            nbfdim, nbfdm0  )
+       call shifts(nbfdim, nbfdm0, rvbfn1, rvbfn2, sdbfn1, sdbfn2, jupe, jupw)
+       
        if (jupe /= mpi_proc_null) then
           do k = 1, kdim
              do j = 1, jcomm
@@ -650,11 +647,10 @@ contains
              end do
           end do
        end if
+       
        nbfdim = kdim * nxdim * jcomm
-       call shiftyn(                                                  &
-    &            rvbfy1, rvbfy2,                                      &
-    &            sdbfy1, sdbfy2,                                      &
-    &            nbfdim  )
+       call shifts(nbfdim, nbfdim, rvbfy1, rvbfy2, sdbfy1, sdbfy2, jupe, jupw)
+       
        if (jupe /= mpi_proc_null) then
           do k = 1, kdim
              do j = 1, jcomm
@@ -695,11 +691,10 @@ contains
              end do
           end do
        end if
+       
        nbfdim = kdim * (jcomm+1) * icomm
-       call shiftx(                                                   &
-    &            rvbfx1n, rvbfx2n,                                    &
-    &            sdbfx1n, sdbfx2n,                                    &
-    &            nbfdim  )
+       call shifts(nbfdim, nbfdim, rvbfx1n, rvbfx2n, sdbfx1n, sdbfx2n, idown, iup)
+       
        if (idown /= mpi_proc_null) then
           do k = 1, kdim
              do j = 1, jcomm+1
@@ -723,6 +718,29 @@ contains
 #endif
 
   end subroutine instant_shift
+  
+  subroutine shifts(nbfdim, nbfdim0, rbf1, rbf2, sbf1, sbf2, n_down, n_up)
+    implicit none
+#include "mpif.h"
+    real(8),      intent(inout) ::  rbf1(:,:,:)
+    real(8),      intent(inout) ::  rbf2(:,:,:)
+    real(8),      intent(in)    ::  sbf1(:,:,:)
+    real(8),      intent(in)    ::  sbf2(:,:,:)
+    integer(4),   intent(in)    ::  nbfdim, nbfdim0, n_down, n_up
+!---- internal work
+    integer(4)  ::  is1, is2, ir1, ir2
+    integer(4)  ::  istmpi(mpi_status_size)
+
+    call mpi_isend(sbf1, nbfdim0, mpi_real8, n_down, 1, mpi_comm_world, is1, ierr)
+    call mpi_isend(sbf2, nbfdim,  mpi_real8,   n_up, 2, mpi_comm_world, is2, ierr) 
+    call mpi_irecv(rbf2, nbfdim0, mpi_real8,   n_up, 1, mpi_comm_world, ir1, ierr)
+    call mpi_irecv(rbf1, nbfdim,  mpi_real8, n_down, 2, mpi_comm_world, ir2, ierr)
+
+    call mpi_wait( is1, istmpi, ierr )
+    call mpi_wait( is2, istmpi, ierr )
+    call mpi_wait( ir1, istmpi, ierr )
+    call mpi_wait( ir2, istmpi, ierr )
+  end subroutine shifts
 
 
 #ifdef OPT_TRIPOLE
@@ -858,97 +876,7 @@ contains
   end subroutine shifty
 
 #ifdef OPT_TRIPOLE
-
-  subroutine shiftyn(                                                 &
-    &            rvbfy1l, rvbfy2l,                                    &
-    &            sdbfy1l, sdbfy2l,                                    &
-    &            nbfdim )
-
-    implicit none
-
-#include "mpif.h"
-
-    real(8),      intent(inout) ::  rvbfy1l(:,:,:)
-    real(8),      intent(inout) ::  rvbfy2l(:,:,:)
-    real(8),      intent(in)    ::  sdbfy1l(:,:,:)
-    real(8),      intent(in)    ::  sdbfy2l(:,:,:)
-    integer(4),   intent(inout) ::  nbfdim
-
-!---- internal work
-    integer(4)  ::  isrqy1, isrqy2
-    integer(4)  ::  irrqy1, irrqy2
-    integer(4)  ::  istmpi(mpi_status_size)
-
-    call mpi_isend(                                                   &
-    &             sdbfy1l, nbfdim, mpi_real8,                         &
-    &                jupe,       3, mpi_comm_ogcm,                   &
-    &               isrqy1,   ierr)
-    call mpi_isend(                                                   &
-    &              sdbfy2l, nbfdim, mpi_real8,                        &
-    &                 jupw,      4, mpi_comm_ogcm,                   &
-    &               isrqy2,   ierr) 
-    call mpi_irecv(                                                   &
-    &              rvbfy2l, nbfdim, mpi_real8,                        &
-    &                 jupw,      3, mpi_comm_ogcm,                   &
-    &               irrqy1,   ierr)
-    call mpi_irecv(                                                   &
-    &              rvbfy1l, nbfdim, mpi_real8,                        &
-    &                 jupe,      4, mpi_comm_ogcm,                   &
-    &               irrqy2,   ierr)
-
-    call mpi_wait( isrqy1, istmpi, ierr )
-    call mpi_wait( isrqy2, istmpi, ierr )
-    call mpi_wait( irrqy1, istmpi, ierr )
-    call mpi_wait( irrqy2, istmpi, ierr )
-
-  end subroutine shiftyn
-
-  subroutine shiftnv(                                                 &
-    &            rvbfn1l, rvbfn2l,                                    &
-    &            sdbfn1l, sdbfn2l,                                    &
-    &             nbfdim, nbfdm0   )
-
-    implicit none
-
-#include "mpif.h"
-
-    real(8),      intent(inout) ::  rvbfn1l(:,:,:)
-    real(8),      intent(inout) ::  rvbfn2l(:,:,:)
-    real(8),      intent(in)    ::  sdbfn1l(:,:,:)
-    real(8),      intent(in)    ::  sdbfn2l(:,:,:)
-    integer(4),   intent(inout) ::  nbfdim,   nbfdm0
-
-!---- internal work
-    integer(4)  ::  isrqy1, isrqy2
-    integer(4)  ::  irrqy1, irrqy2
-    integer(4)  ::  istmpi(mpi_status_size)
-
-    call mpi_isend(                                                   &
-    &              sdbfn1l, nbfdm0, mpi_real8,                        &
-    &                jupe,       3, mpi_comm_ogcm,                   &
-    &               isrqy1,   ierr)
-    call mpi_isend(                                                   &
-    &              sdbfn2l, nbfdim, mpi_real8,                        &
-    &                 jupw,      4, mpi_comm_ogcm,                   &
-    &               isrqy2,   ierr) 
-    call mpi_irecv(                                                   &
-    &              rvbfn2l, nbfdm0, mpi_real8,                        &
-    &                 jupw,      3, mpi_comm_ogcm,                   &
-    &               irrqy1,   ierr)
-    call mpi_irecv(                                                   &
-    &              rvbfn1l, nbfdim, mpi_real8,                        &
-    &                 jupe,      4, mpi_comm_ogcm,                   &
-    &               irrqy2,   ierr)
-
-    call mpi_wait( isrqy1, istmpi, ierr )
-    call mpi_wait( isrqy2, istmpi, ierr )
-    call mpi_wait( irrqy1, istmpi, ierr )
-    call mpi_wait( irrqy2, istmpi, ierr )
-
-  end subroutine shiftnv
-
 ! *********************************************************************
-
   subroutine shiftfy(                                                 &
     &            rvbffy,                                              &
     &            sdbffy,                                              &
