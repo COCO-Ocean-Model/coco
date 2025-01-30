@@ -117,9 +117,11 @@ contains
     
     if (.not. pack_mode) return
     nelems = icomm * ny * koffset(num_packed + 1)
-    call shiftx                         &
-     &   ( west_recv, east_recv,        &
-     &     west_send, east_send, nelems )
+    call shifts                         &
+     &   (    nelems,    nelems,        &
+     &     west_recv, east_recv,        &
+     &     west_send, east_send,        &
+               idown,       iup  )
 
     do k = 1, koffset(num_packed + 1)
        do j = 1, jcomm
@@ -134,9 +136,11 @@ contains
     end do
 
     nelems = nxdim * jcomm * koffset(num_packed + 1)
-    call shifty                          &
-         &   ( south_recv, north_recv,   &
-         &     south_send, north_send, nelems)
+    call shifts                          &
+         &   (     nelems,     nelems,   &
+         &     south_recv, north_recv,   &
+         &     south_send, north_send,   &
+         &          jdown,        jup  )
 
 #ifdef OPT_TRIPOLE
     if (is_tri_edge) then
@@ -256,8 +260,10 @@ contains
           end do
 
           nelems = icomm * (jcomm + 1) * kpacked
-          call shiftx( tri_west_recv, tri_east_recv, &
-               &       tri_west_send, tri_east_send, nelems )
+          call shifts(        nelems,        nelems, &
+               &       tri_west_recv, tri_east_recv, &
+               &       tri_west_send, tri_east_send, &
+               &               idown,           iup  )
 
           do k = 1, kpacked
              do j = 1, jcomm + 1
@@ -417,6 +423,12 @@ contains
        call shift_pack(q1, kdim, fact, ioff, joff)
        call shift_pack(q2, kdim, fact, ioff, joff)
     else
+       !call shift_pack_begin
+       !call shift_pack(q1, kdim, fact, ioff, joff)
+       !call shift_pack(q2, kdim, fact, ioff, joff)
+       !call shift_pack_end
+       !call shift_unpack(q1, 1)
+       !call shift_unpack(q2, 2)
        
        qb(:,:,     1:kdim  ) = q1(:,:,1:kdim)
        qb(:,:,kdim+1:2*kdim) = q2(:,:,1:kdim)
@@ -455,6 +467,14 @@ contains
        call shift_pack(q2, kdim, fact, ioff, joff)
        call shift_pack(q3, kdim, fact, ioff, joff)
     else
+       !call shift_pack_begin
+       !call shift_pack(q1, kdim, fact, ioff, joff)
+       !call shift_pack(q2, kdim, fact, ioff, joff)
+       !call shift_pack(q3, kdim, fact, ioff, joff)
+       !call shift_pack_end
+       !call shift_unpack(q1, 1)
+       !call shift_unpack(q2, 2)
+       !call shift_unpack(q3, 3)
        
        qb(:,:,       1:kdim  ) = q1(:,:,1:kdim)
        qb(:,:,  kdim+1:2*kdim) = q2(:,:,1:kdim)
@@ -781,101 +801,7 @@ contains
 
   return
   end subroutine shiftf1
-#endif
 
-! *********************************************************************
-
-  subroutine shiftx(                                                  &
-    &            rvbfx1l, rvbfx2l,                                    &
-    &            sdbfx1l, sdbfx2l,                                    &
-    &            nbfdim  )
-
-    implicit none
-
-#include "mpif.h"
-
-    real(8),      intent(inout) ::  rvbfx1l(:,:,:)
-    real(8),      intent(inout) ::  rvbfx2l(:,:,:)
-    real(8),      intent(in)    ::  sdbfx1l(:,:,:)
-    real(8),      intent(in)    ::  sdbfx2l(:,:,:)
-    integer(4),   intent(inout) ::  nbfdim
-
-!---- internal work
-    integer(4)  ::  isrqx1, isrqx2
-    integer(4)  ::  irrqx1, irrqx2
-    integer(4)  ::  istmpi(mpi_status_size)
-
-    call mpi_isend(                                                  &
-    &              sdbfx1l, nbfdim, mpi_real8,                       &
-    &                idown,      1, mpi_comm_ogcm,                  &
-    &               isrqx1,   ierr)
-    call mpi_isend(                                                  &
-    &              sdbfx2l, nbfdim, mpi_real8,                       &
-    &                  iup,      2, mpi_comm_ogcm,                  &
-    &               isrqx2,   ierr) 
-    call mpi_irecv(                                                  &
-    &              rvbfx2l, nbfdim, mpi_real8,                       &
-    &                  iup,      1, mpi_comm_ogcm,                  &
-    &               irrqx1,   ierr)
-    call mpi_irecv(                                                  &
-    &              rvbfx1l, nbfdim, mpi_real8,                       &
-    &                idown,      2, mpi_comm_ogcm,                  &
-    &               irrqx2,   ierr)
-
-    call mpi_wait( isrqx1, istmpi, ierr )
-    call mpi_wait( isrqx2, istmpi, ierr )
-    call mpi_wait( irrqx1, istmpi, ierr )
-    call mpi_wait( irrqx2, istmpi, ierr )
-
-  end subroutine shiftx
-
-! *********************************************************************
-
-  subroutine shifty(                                                  &
-    &            rvbfy1l, rvbfy2l,                                    &
-    &            sdbfy1l, sdbfy2l,                                    &
-    &            nbfdim )
-
-    implicit none
-
-#include "mpif.h"
-
-    real(8),      intent(inout) ::  rvbfy1l(:,:,:)
-    real(8),      intent(inout) ::  rvbfy2l(:,:,:)
-    real(8),      intent(in)    ::  sdbfy1l(:,:,:)
-    real(8),      intent(in)    ::  sdbfy2l(:,:,:)
-    integer(4),   intent(inout) ::  nbfdim
-
-!---- internal work
-    integer(4)  ::  isrqy1, isrqy2
-    integer(4)  ::  irrqy1, irrqy2
-    integer(4)  ::  istmpi(mpi_status_size)
-
-    call mpi_isend(                                                   &
-    &              sdbfy1l, nbfdim, mpi_real8,                        &
-    &                jdown,      3, mpi_comm_ogcm,                   &
-    &               isrqy1,   ierr)
-    call mpi_isend(                                                   &
-    &              sdbfy2l, nbfdim, mpi_real8,                        &
-    &                  jup,      4, mpi_comm_ogcm,                   &
-    &               isrqy2,   ierr)
-    call mpi_irecv(                                                   &
-    &              rvbfy2l, nbfdim, mpi_real8,                        &
-    &                  jup,      3, mpi_comm_ogcm,                   &
-    &               irrqy1,   ierr)
-    call mpi_irecv(                                                   &
-    &              rvbfy1l, nbfdim, mpi_real8,                        &
-    &                jdown,      4, mpi_comm_ogcm,                   &
-    &               irrqy2,   ierr)
-
-    call mpi_wait( isrqy1, istmpi, ierr )
-    call mpi_wait( isrqy2, istmpi, ierr )
-    call mpi_wait( irrqy1, istmpi, ierr )
-    call mpi_wait( irrqy2, istmpi, ierr )
-
-  end subroutine shifty
-
-#ifdef OPT_TRIPOLE
 ! *********************************************************************
   subroutine shiftfy(                                                 &
     &            rvbffy,                                              &
