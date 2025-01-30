@@ -1,4 +1,5 @@
 include Mkinclude
+export OGCMDIR := $(shell dirname $(CURDIR))
 include Sysdep.$(SYSTEM)
 MAIN    = $(MODEL).o
 

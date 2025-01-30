@@ -1,4 +1,3 @@
-OGCMDIR	= /home/G10206/komuro/coco_latest
 RM	= rm -f
 
 #SYSTEM	= ifort
