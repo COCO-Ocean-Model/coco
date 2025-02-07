@@ -132,6 +132,7 @@ subroutine pmomnt( &
      call rstadd(sgmyy, oeof, nxdim, nydim, 1, 'SGMYY', 'SFC')
      call rstadd(sgmxy, oeof, nxdim, nydim, 1, 'SGMXY', 'SFC')
 #endif
+!$acc enter data copyin(sgmxx, sgmyy, sgmxy)
      return
   end if
 
@@ -174,6 +175,8 @@ subroutine pmomnt( &
           &            dy(ij)*dy(ij)*hyt(ij)*hyt(ij)) * &
           &        amskt(ij, kstr)
      end do
+!$acc enter data copyin(elst)
+!$acc enter data create(zeta,eta,emz,epz,exx,eyy,exy,avrmsx,avra,accelu,accelv,ctau,ecof,aice,mice, tauiox,tauioy,hh,mice)     
   end if
       
   if (its .eq. 2) then
@@ -183,6 +186,7 @@ subroutine pmomnt( &
   endif
   rdts = dble(nnsplt) / ts
 
+!$acc kernels default(present)
   do ij = 1, nxydim
      zeta  (ij) = 0.d0
      eta   (ij) = 0.d0
@@ -209,11 +213,15 @@ subroutine pmomnt( &
 !       &        + ay(ij) * (rhoi * hiy(ij) + rhos * hsy(ij)) / rhoo
      hh    (ij) = 0.d0
   end do
+!$acc end kernels
+
+!$acc kernels default(present)
   do k = 1, nic
      do ij = 1, nxydim
         mice(ij) = mice(ij) + ax(ij, k) * hix(ij, k)
      end do
   end do
+!$acc end kernels
 
 !  do ij = 1, nxydim
 !     uix(ij) = uiy(ij)
@@ -236,6 +244,7 @@ subroutine pmomnt( &
   if (ofirst) then
      ofirst = .false.
      if (oeof) then
+        !$acc kernels default(present)
         do ij = 1, nxydim
            sgmxx(ij) = 2.d0 * eta(ij) * exx(ij) &
              &       - emz(ij) * (exx(ij) + eyy(ij)) &
@@ -245,9 +254,11 @@ subroutine pmomnt( &
              &       - 0.5d0 * pice(ij)
            sgmxy(ij) = 2.d0 * eta(ij) * exy(ij)
         end do
+        !$acc end kernels
      end if
   end if
 
+!$acc kernels default(present)
   do ij = ijvstr, ijvend
      avrmsx(ij) = (  mice(ij) + mice(ij+le) &
        &           + mice(ij+ln) + mice(ij+lne)) * 0.25d0 * rhoi * &
@@ -267,10 +278,12 @@ subroutine pmomnt( &
        &              - hh(ij+le) - hh(ij)) * gravit &
        &          ) * amskv(ij, kstr)
   end do
+!$acc end kernels
 
 !  do isplit = 1, nsplit
   do isplit = 1, nnsplt
 
+     !$acc kernels default(present)
      do ij = ijtstr, ijtend
         if (aice(ij) .eq. 0.d0) then
            sgmxx(ij) = 0.d0
@@ -294,7 +307,7 @@ subroutine pmomnt( &
              &       / (2.d0 * eta(ij) * rdts + ecof(ij))
         end if
      end do
-
+     !$acc end kernels
 #ifdef OPT_TRIPOLE
      call shift3( sgmxx,  sgmyy,  sgmxy, &
        &          nxdim,  nydim,      1, &
@@ -305,6 +318,7 @@ subroutine pmomnt( &
        &          nxdim,  nydim,      1)
 #endif
 
+     !$acc kernels default(present)
      do ij = ijvstr, ijvend
         if (avrmsx(ij) .eq. 0.d0) then
            uix(ij) = 0.d0
@@ -365,7 +379,8 @@ subroutine pmomnt( &
            vix(ij) = (alph * delt - beta * gamm) * raabb
         end if
      end do
-
+     !$acc end kernels
+     
 #ifdef OPT_TRIPOLE
      call shift2(   uix,    vix, &
        &          nxdim,  nydim,      1, &
@@ -375,7 +390,7 @@ subroutine pmomnt( &
        &            uix,    vix, &
        &          nxdim,  nydim,      1)
 #endif
-
+     
      call strain( &
        &            exx,    eyy,    exy, &
        &            uix,    vix)
@@ -390,6 +405,7 @@ subroutine pmomnt( &
      end if
   end do
 
+  !$acc kernels default(present)
   do ij = ijvstr, ijvend
      tauiox(ij) =     ctau(ij) * &
        &           (  (uix(ij) &
@@ -413,6 +429,7 @@ subroutine pmomnt( &
        &            amskv(ij, kstr)
 
   end do
+  !$acc end kernels
 
   call puttao( &
     &            tauaox, tauaoy, &
@@ -451,6 +468,7 @@ subroutine strain( &
 
   integer ::     ij,   ijlw,   ijls,  ijlsw
 
+!$acc kernels default(present)
   do ij = ijtstr, ijtend+nxdim+1
      ijlw = ij + lw
      ijls = ij + ls
@@ -472,7 +490,7 @@ subroutine strain( &
        &     - (ui(ij) + ui(ijls) + ui(ijlw) + ui(ijlsw)) * &
        &       hxyt(ij) * 0.125d0
   end do
-
+!$acc end kernels
   return
 end subroutine strain
 
@@ -514,8 +532,10 @@ subroutine rheolo( &
      c2 = 4.d0 / ecc / ecc
      c3 = 2.d0 * (1.d0 - 1.d0 / ecc / ecc)
      c4 = 1.d0 / ecc / ecc
+     !$acc enter data create(delta)
   end if
 
+!$acc kernels default(present)
   do ij = ijtstr, ijtend+nxdim+1
      del = sqrt(  c1 * (exx(ij) * exx(ij) + eyy(ij) * eyy(ij)) &
        &        + c2 * exy(ij) * exy(ij) &
@@ -526,7 +546,8 @@ subroutine rheolo( &
      emz (ij) = eta(ij) - zeta(ij)
      epz (ij) = eta(ij) + zeta(ij)
   end do
-
+!$acc end kernels
+  
   return
 end subroutine rheolo
 
@@ -574,8 +595,10 @@ subroutine rheolo_pice( &
      c2 = 4.d0 / ecc / ecc
      c3 = 2.d0 * (1.d0 - 1.d0 / ecc / ecc)
      c4 = 1.d0 / ecc / ecc
+     !$acc enter data create(delta)
   end if
 
+!$acc kernels default(present)
   do ij = ijtstr, ijtend+nxdim+1
      pice(ij) = p0 * mice(ij) * exp(- cp * (1.d0 - aice(ij)))
      del = sqrt(  c1 * (exx(ij) * exx(ij) + eyy(ij) * eyy(ij)) &
@@ -587,6 +610,7 @@ subroutine rheolo_pice( &
      emz (ij) = eta(ij) - zeta(ij)
      epz (ij) = eta(ij) + zeta(ij)
   end do
+!$acc end kernels
 
   return
 end subroutine rheolo_pice
