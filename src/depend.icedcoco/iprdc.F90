@@ -334,8 +334,45 @@ subroutine predci( &
              dsdy(ij, l) = dsdx(ij, l)
              dsby(ij, l) = dsbx(ij, l)
           end do
-       end do         
+       end do
      end if
+     !$acc update device(asx, frlvx, vmpx, frmpx, dsdx, dsbx)
+     !$acc update device(asy, frlvy, vmpy, frmpy, dsdy, dsby)
+
+    
+     !$acc enter data copyin(alssif, alssio, rmpcmn, rmpcmx, albmpd, almpdp)
+     
+
+     !$acc enter data create(    wao)
+     !$acc enter data create(    wio,    was)
+     !$acc enter data create(    wil)
+     !$acc enter data create(   subi)
+     !$acc enter data create(   evap)
+     !$acc enter data create( wiadjs, weadjs)
+     !$acc enter data create(     az,    hiz)
+     !$acc enter data create(    hsz,    tiz)
+     !$acc enter data copyin(   pice)
+     !$acc enter data create(  frmpz)
+
+     !$acc enter data copyin(    eix)
+     !$acc enter data create(    eiz)
+
+     !$acc enter data create(    fix,    fiy)
+     !$acc enter data create(    fsx,    fsy)
+     !$acc enter data create(    fex,    fey)
+     !$acc enter data create(  ftitd)
+     !$acc enter data create( igrfra, igrcon, igrsni)
+     !$acc enter data create( igrsfl, inrlat)
+     !$acc enter data create( imrsno, imrsmi)
+     !$acc enter data create( imrisf, imribs)
+     !$acc enter data create( inrsbi, inrsbs)
+     !$acc enter data create( imraji, imrajs)
+     !$acc enter data create( impinc, impfrz)
+     !$acc enter data create( improf)
+     !$acc enter data create(    fdd,    fdb)
+     !$acc enter data create( sitfrc, siuabs)     
+     
+     ipthm_gpu=.true.
   end if
       
   if (ofinal) then
@@ -353,7 +390,8 @@ subroutine predci( &
         call finadd(dsbx, nxdim, nydim, nic+1, 'DSB' , 'ICE')
      end if
   end if
-
+  
+  !$acc kernels default(present)
   do ij = 1, nxydim
      evap(ij) = wev(ij)
      fs  (ij) = 0.d0
@@ -394,7 +432,8 @@ subroutine predci( &
         ft(ij, l) = 0.d0
      end do
   end do
-
+  !$acc end kernels  
+  
   call clcstr('ICEDYN')
   call pmomnt( &
     &            uix,    vix, &
@@ -405,6 +444,7 @@ subroutine predci( &
     &            uiy,    viy,   pice, &
     &             ux,     vx,     hy,   ptop, &
     &         tauaix, tauaiy, tauaox, tauaoy )
+
 #ifdef OPT_TRIPOLE
   call shift2( &
     &           taux,    tauy, &
@@ -415,18 +455,17 @@ subroutine predci( &
     &           taux,   tauy, &
     &          nxdim,  nydim,      1 )
 #endif
+
   call clcend('ICEDYN')
 
   call ipsage( &
     &            asx, &
     &            hsx,    tsi,    snow,   dsdx,   dsbx)
-
   call icetmp( &
     &            eix, &
     &            tix, &
     &            qao,    qai,    qio,    qii, &
     &             ax,    hix )
-
   call fiheat( &
     &             ft, &
     &            wao,    wio,    was,    wil, &
@@ -439,11 +478,9 @@ subroutine predci( &
     &         inrsbi, inrsbs, imraji, imrajs, &
     &           subi, wiadjs, weadjs, &
     &            wev,    wsb,   soff )
-
   call cofpfw( &
     &           prec,   snow,   roff,   soff,   evap, &
     &             ax)
-
   call ptherm( &
     &             ax,    hix,    hsx,    eix,    tix, &
     &            asx,  frlvx,   vmpx,  frmpx,   dsdx,   dsbx, &
@@ -531,6 +568,7 @@ subroutine predci( &
     &          frlvx,   vmpx,  frmpx, &
     &         improf, &
     &             ax,    hix,    hsx)
+
 #ifdef OPT_TRIPOLE
   call shift3( &
     &             ax,    hix,    hsx, &
@@ -561,14 +599,14 @@ subroutine predci( &
   call shift2( &
     &           dsdx,   dsbx, &
     &          nxdim,  nydim,  nic+1)
-#endif
-
+#endif  
 
   if (myrank .ge. ijnode) then
      return
   end if
 
   if (.not. oinit ) then
+     !$acc kernels default(present)
      do l = 1, nic
         do ij = 1, nxydim
            ptop(ij) = ptop(ij) &
@@ -576,10 +614,9 @@ subroutine predci( &
                 &        (rhoi * hiy(ij, l) + rhos * hsy(ij, l))
         end do
      end do
+     !$acc end kernels
   end if
-
   call clcend('ICE')
-
   if (oinit .or. ofinal) then
      return
   end if
@@ -675,6 +712,7 @@ subroutine predci( &
     &             nx,     ny,    nic, nxyidm, 'OCICEY')
 
 ! output section for CMIP6 
+  !$acc kernels default(present)
   do ij = 1, nxydim
      if (ax(ij, 0) .lt. 1.0d0) then
         sitfrc(ij) = 1.0d0 * amskt(ij, kstr)
@@ -684,7 +722,8 @@ subroutine predci( &
      siuabs(ij) = sqrt(uix(ij)*uix(ij) + vix(ij)*vix(ij)) &
        &        * amskv(ij, kstr)
   end do
-
+  !$acc end kernels
+  
 ! ITFRAC: Fraction of time steps with sea ice (i.e., =1 if AI>0)
   call chekin( sitfrc, 'ITFRAC', &
     &          'fraction of time steps with sea ice', 'ND', &
@@ -693,7 +732,7 @@ subroutine predci( &
   call chekin( siuabs, 'UIABS', &
     &          'sea-ice speed', 'cm/s', &
     &              nx,     ny,      1, nxydim, 'OCSFCV')
-
+  
 !!     for check: not necessary for CMIP5 output
 !  do ij = 1, nxydim
 !     igrtot(ij) = igrfra(ij)+igrcon(ij)+igrsni(ij)
@@ -737,7 +776,6 @@ subroutine predci( &
   call chekin(    fdb,  'FDB', &
     &          'BC flux into ocn., upward positive', 'g/cm^2/s', &
     &              nx,     ny,      1, nxydim, 'OCSFCT')
-
   return
 
 end subroutine predci
