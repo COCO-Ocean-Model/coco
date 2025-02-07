@@ -110,8 +110,22 @@ subroutine padvct( &
      call cstnml(jfpar, 'padvct', 'nmislt', istat)
      write(jfpar, nmislt)
      tmi = dtds * si
+
+     !$acc enter data create(     fax,    fay)
+     !$acc enter data create(    fasx,   fasy)
+     !$acc enter data create(    fflx,   ffly)
+     !$acc enter data create(    fvmx,   fvmy)
+     !$acc enter data create(    ffmx,   ffmy)
+     !$acc enter data create(    fddx,   fddy)
+     !$acc enter data create(    fdbx,   fdby)
+     !$acc enter data create(   axhix,  axhsx)
+     !$acc enter data create(   axeix)
+     !$acc enter data create(   axasx,  axvmp)
+     !$acc enter data create(   axflv,  axfmp)
+     !$acc enter data create(   axdsd,  axdsb)
   end if
 
+  !$acc kernels default(present)
   do k = 0, nic
      do ij = 1, nxydim
         az (ij, k) = ax (ij, k)
@@ -154,9 +168,10 @@ subroutine padvct( &
         fdby(ij, k) = 0.d0
      end do
   end do
+  !$acc end kernels
 
+  !$acc kernels default(present)
   do k = 1, nic
-
      do ij = ijtstr, ijtend+1
         ijlw = ij + lw
         u  = (  uiy(ijlw  ) * hyu(ijlw  ) &
@@ -232,7 +247,6 @@ subroutine padvct( &
           &          + vm * axdsb(ij, k)) * &
           &         amskt(ij, kstr) * amskt(ijls, kstr)
      end do
-
      do ij = ijtstr, ijtend
         ijle = ij + le
         ijln = ij + ln
@@ -277,9 +291,10 @@ subroutine padvct( &
           &              + (fdby(ijln, k) - fdby(ij, k)) * ry(ij)) * &
           &            rxt(ij) * ryt(ij) * amskt(ij, kstr)
      end do
-   
   end do
-
+  !$acc end kernels
+  
+  !$acc kernels default(present)
   do k = 1, nic
      do ij = ijtstr, ijtend
         if (ax(ij, k) .gt. 0.d0) then
@@ -307,16 +322,21 @@ subroutine padvct( &
         end if
      end do
   end do
-
+  !$acc end kernels
+  
 ! ax(ij, 0) can be negative
+
+  !$acc kernels default(present)
   do ij = ijtstr, ijtend
      ax(ij, 0) = 1.d0
   end do
+
   do k = 1, nic
      do ij = ijtstr, ijtend
         ax(ij, 0) = ax(ij, 0) - ax(ij, k)
      end do
   end do
+  !$acc end kernels
 
 !  call rewnml(ifpar, jfpar)
 !  do k = 1, nic
