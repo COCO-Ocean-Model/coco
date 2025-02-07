@@ -207,6 +207,8 @@ contains
             end if
             call scatter_2d( sdmp2d, g2d )
 #endif
+            !$acc enter data create(sdmp2d, garea)
+            !$acc update device(sdmp2d)
 #ifdef OPT_TRIPOLE
             call shift1(sdmp2d, &
               &          nxdim,  nydim,      1, &
@@ -217,13 +219,15 @@ contains
               &          nxdim,  nydim,      1)
 #endif
          end if
-
+         !$acc kernels default(present)
          do ij = 1, nxydim
             garea(ij) = 0.0d0
          end do
+         !$acc end kernels
          if (osrnml) then
             write(jfpar, *) &
          &  '*** Normalization of SSS-restoring flux is applied. ***'
+            !$acc kernels default(present)
             do j=jstr, jend
                do i=istr, iend
                   ij = nxdim*(j-1) + i
@@ -231,13 +235,18 @@ contains
                     &         * amskt(ij, kstr)
                end do
             end do
-         endif         
+            !$acc end kernels
+         endif
        end if
 
+       !$acc data create(swcnv1, gamma)
+       !$acc update device(gamma)       
+       !$acc enter data create(rgamma, swconv)
+       
+       !$acc kernels default(present)
        do k = kstr, kend
           rgamma(k) = 1.d0 / gamma(k-kstr+1)
        end do
-  
        depth = 0.d0
        radup = 1.d0
        do k = kstr, kend
@@ -253,7 +262,7 @@ contains
              swconv(ij, k) = 0.d0
           end do
        end do
-       
+
        do ij = ijtstr, ijtend
           tswcnv = 0.d0
           do k = kstr, nbot(ij)-1
@@ -264,10 +273,13 @@ contains
              swconv(ij, nbot(ij)) = 1.d0 - tswcnv
           end if
        end do
-       
+       !$acc end kernels
+       !$acc end data
+
        call putswc( swconv(1, kstr) )
        call copswc( swconv(1, kstr) )
-       
+
+       !$acc kernels default(present)
        do ij = 1, nxydim
           swconv(ij, kstr) = 0.d0
        end do
@@ -277,7 +289,7 @@ contains
              swconv(ij, k) = swconv(ij, k) / rhoo / cpo
           end do
        end do
-
+       !$acc end kernels
 !----- for tunnel diffusion
        call ttsset
 
@@ -318,6 +330,7 @@ contains
              
           end if
           call scatter_2d( gthm, g2d )
+          !$acc enter data copyin(gthm)
 #endif
        end if
 !----
@@ -384,9 +397,10 @@ contains
     integer(4)                ::     ij,    k,     n,      i,     j
     
     if ( oinit .or. ofinal ) then
+       !$acc enter data create(aa,ab,ac, dh,hzbot,hxbot)
        return
     end if
-
+    !$acc kernels default(present)
     do ij = ijtstr, ijtend
        hxbot(ij) = hx(ij) + zbot
     end do
@@ -443,9 +457,11 @@ contains
     &                    - fs(ij)                                     &
     &                     /dz(ij, kstr) * amskt(ij, kstr) 
     end do
+    !$acc end kernels
 
     call thomas( adt, ac, aa, ab )
 
+    !$acc kernels default(present)
     do n = 1, ntdim
        do k = kstr, kend
           do ij = ijtstr, ijtend
@@ -472,6 +488,7 @@ contains
           end do
        end do
     end do
+    !$acc end kernels
 
 !     '12.01.30: removed 
 !      DO IJ = IJTSTR, IJTEND
@@ -541,6 +558,7 @@ contains
     call cofpsf( &
       &             tx,     ft,     fs,  swabs)
 
+    !$acc kernels default(present)
     do ij = ijtstr, ijtend
        tx(ij, kstr, 1) = tx(ij, kstr, 1)                              &
     &                  + ts * ft(ij, 1) / hxbot(ij) / ds(kstr) 
@@ -560,29 +578,35 @@ contains
     &                  + ts * swconv(ij, k) * swabs(ij) / dz(ij, k)
        end do
     end do
+    !$acc end kernels
 
 !    do ij = ijtstr, ijtend
 !       tx(ij, kstr, 2) = tx(ij, kstr, 2)                             &
 !    &                  - ts * fs(ij) / hxbot(ij) / ds(kstr)
 !    end do
 
+    !$acc kernels default(present)
     do n = 3, ntdim
        do ij = ijtstr, ijtend
           tx(ij, kstr, n) = tx(ij, kstr, n)                          &
     &                     + ts * ft(ij, n) / hxbot(ij) / ds(kstr)
        end do
     end do
+    !$acc end kernels
 
 #ifdef OPT_SRST
+    !$acc kernels default(present)
     do ij = 1, nxydim
        fsrst(ij) = 0.0d0
     end do
+    !$acc end kernels
 
     if (osrstr) then
 !       call tmintp(ssfc, 10)
        vwteqt = 0.0d0
        vareat = 0.0d0
        if (osrsti) then
+          !$acc kernels default(present)
           do ij = ijtstr, ijtend
              dsss = (ssfc(ij) - tx(ij, kstr, 2)) * amskt(ij, kstr)
              fsrst(ij) = sdmp2d(ij) &
@@ -590,7 +614,9 @@ contains
              vwteqt = vwteqt + fsrst(ij) * garea(ij)
              vareat = vareat + garea(ij)
           end do
+          !$acc end kernels
        else
+          !$acc kernels default(present)
           do ij = ijtstr, ijtend
              if (ax(ij, 0) .eq. 1.d0) then
                 dsss = (ssfc(ij) - tx(ij, kstr, 2)) * amskt(ij, kstr)
@@ -600,27 +626,38 @@ contains
                 vareat = vareat + garea(ij)
              end if
           end do
+          !$acc end kernels
        end if
 
        if (osrnml) then
           fsnml = 0.0d0
           tarea = 0.0d0
+          !$acc kernels default(present)
           do i = 1, inodes*jnodes
              vwteqg(i) = 0.0d0
              vareag(i) = 0.0d0
           end do
-
+          !$acc end kernels
+          
+          !$acc host_data use_device(vwteqg)
           call mpi_gather( &
             &    vwteqt, 1, mpi_real8, vwteqg(1), 1, mpi_real8, &
             &    iroot, mpi_comm_ogcm, ierr)
+          !$acc end host_data
+          
+          !$acc host_data use_device(vareag)
           call mpi_gather( &
             &    vareat, 1, mpi_real8, vareag(1), 1, mpi_real8, &
             &    iroot, mpi_comm_ogcm, ierr)
+          !$acc end host_data
+          
           if (myrank .eq. iroot) then
+             !$acc kernels default(present)
              do i = 1, inodes*jnodes
                 fsnml = fsnml + vwteqg(i)
                 tarea = tarea + vareag(i)
              end do
+             !$acc end kernels
           end if
           call mpi_bcast( &
             &    fsnml, 1, mpi_real8, &
@@ -630,18 +667,23 @@ contains
             &    iroot, mpi_comm_ogcm, ierr)
           fsnml = fsnml / tarea
           if (osrsti) then
+             !$acc kernels default(present)
              do ij = ijtstr, ijtend
                 fsrst(ij) = ( fsrst(ij) - fsnml ) * amskt(ij, kstr)
              end do
+             !$acc end kernels
           else
+             !$acc kernels default(present)
              do ij = ijtstr, ijtend
                 if (ax(ij, 0) .eq. 1.d0) then
                    fsrst(ij) = ( fsrst(ij) - fsnml ) * amskt(ij, kstr)
                 end if
              end do
+             !$acc end kernels
           end if
        end if
 
+       !$acc kernels default(present)
        do ij = ijtstr, ijtend
           tx(ij, kstr, 2) = tx(ij, kstr, 2) + ts * fsrst(ij)
        end do
@@ -649,6 +691,7 @@ contains
        do ij = ijtstr, ijtend
           fsrst(ij) = fsrst(ij) * hxbot(ij) * ds(kstr)
        end do
+       !$acc end kernels
 
        call cofpsr( &
          &           fsrst)
@@ -660,11 +703,13 @@ contains
 #endif
 
     if (ogthm) then
+       !$acc kernels default(present)
        do ij = ijtstr, ijtend
           k = nbot(ij)
           tx(ij, k, 1) = tx(ij, k, 1) &
                & + ts * gthm(ij) / dz(ij, k) / rhoo / cpo
        end do
+       !$acc end kernels
     end if
 
 !---- mixing salinity in sigma-layers to avoid extremely low SSS
@@ -693,7 +738,15 @@ contains
     integer(4)                ::   kmix(nxydim)
     integer(4)                ::     ij,    k
 
+    logical,   save   ::  ofirst = .true.
+
+    if ( ofirst ) then
+       !$acc enter data create(smean, ssum, kmix)
+       ofirst = .false.
+    end if
+    
     depth = dz0(kstr)
+    !$acc kernels default(present)
     do ij = 1, nxydim
        ssum(ij) = tx(ij, kstr) * dz0(kstr)
        smean(ij) = tx(ij, kstr)
@@ -719,7 +772,7 @@ contains
           end if
        end do
     end do
-   
+    !$acc end kernels
   end subroutine tmixss
 
 ! --- information -----------------------------------------------------
