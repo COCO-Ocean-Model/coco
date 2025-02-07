@@ -71,8 +71,10 @@ subroutine fiheat( &
      read (ifpar, nmbtab, iostat=istat)
      call cstnml(jfpar, 'fiheat', 'nmbtab', istat)
      write(jfpar, nmbtab)
+     !$acc enter data create(wfrz, wib, wilm)
   end if
-
+  
+  !$acc kernels default(present)
   do ij = ijtstr, ijtend
      tdev    = t(ij, kstr, 1) - dtds * t(ij, kstr, 2)
      wfrz(ij) = - rhoo * cpo * tdev * &
@@ -81,7 +83,8 @@ subroutine fiheat( &
      wao(ij) = a(ij, 0) * wfrz(ij) &
        &     + qao(ij) - swcnv1(ij) * swabs(ij)
   end do
-
+  !$acc end kernels
+  !$acc kernels default(present)
   do ij = ijtstr, ijtend
      if ((a(ij, 0) .lt. 1.d0) .and. (wao(ij) .lt. 0.d0)) then
         wib(ij) = fbtab * wao(ij) / (1.d0 - a(ij, 0))
@@ -92,7 +95,8 @@ subroutine fiheat( &
         wilm(ij) = 0.d0
      end if
   end do
-
+  !$acc end kernels
+  !$acc kernels default(present)
   do k = 1, nic
      do ij = ijtstr, ijtend
         was(ij, k) = qai(ij, k) - qii(ij, k)
@@ -101,7 +105,7 @@ subroutine fiheat( &
         wil(ij, k) = a(ij, k) * wilm(ij)
      end do
   end do
-
+  !$acc end kernels
   return
 
 end subroutine fiheat
@@ -113,11 +117,17 @@ subroutine putswc( &
 
   real(8), intent(in) :: swconv(nxydim)
   integer :: ij
-
+  logical, save :: ofirst = .true.
+  if (ofirst) then
+     ofirst = .false.
+     !$acc enter data create(swcnv1)
+  end if
+  
+  !$acc kernels default(present)
   do ij = 1, nxydim
      swcnv1(ij) = swconv(ij)
   end do
-
+  !$acc end kernels
   return
 end subroutine putswc
 
