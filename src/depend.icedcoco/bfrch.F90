@@ -24,6 +24,7 @@ contains
 
  integer ::    ij,    ijk,      n
 
+ !$acc kernels default(present)
  do ijk = 1, nxyzdm
     ua(ijk) = ub(ijk)
     va(ijk) = vb(ijk)
@@ -38,6 +39,7 @@ contains
     ubta(ij) = ubtb(ij)
     vbta(ij) = vbtb(ij)
  end do
+ !$acc end kernels
  return
  end subroutine forsto
 
@@ -62,6 +64,7 @@ contains
  real(8) ::      sh,    ubt,    vbt
  integer ::    ij,    ijk,      n
 
+ !$acc kernels default(present)
  do  ijk = 1, nxyzdm
     u       = ub(ijk)
     v       = vb(ijk)
@@ -88,7 +91,8 @@ contains
     ubta(ij) = ubt
     vbta(ij) = vbt
  end do
-
+ !$acc end kernels
+ 
  return
  end subroutine excngo
 
@@ -109,6 +113,7 @@ contains
 
  integer     ij,      k
 
+ !$acc kernels default(present)
  do ij = 1, nxydim
     uia(ij) = uib(ij)
     via(ij) = vib(ij)
@@ -122,6 +127,7 @@ contains
        tia(ij, k) = tib(ij, k)
     end do
  end do
+ !$acc end kernels
 
  return
  end subroutine forsti
@@ -144,6 +150,7 @@ contains
  integer ::    ij,      k
  real(8) ::       a,     hi,     ui,     vi,     ti,     hs
 
+ !$acc kernels default(present)
  do ij = 1, nxydim
     ui      = uib(ij)
     vi      = vib(ij)
@@ -168,7 +175,8 @@ contains
        tia(ij, k) = ti
     end do
  end do
-
+ !$acc end kernels
+ 
  return
  end subroutine excngi
 
@@ -190,6 +198,7 @@ contains
 
  integer ::     ij,      k
 
+ !$acc kernels default(present)
  do k = 0, nic
     do ij = 1, nxydim
        asa(ij, k) = asb(ij, k)
@@ -200,7 +209,8 @@ contains
        dsba(ij, k) = dsbb(ij, k)
     end do
  end do
-
+ !$acc end kernels
+ 
  return
  end subroutine forsta
 
@@ -223,6 +233,7 @@ contains
  integer ::    ij,      k
  real*8 ::     as,   frlv,    vmp,   frmp,    dsd,    dsb
 
+ !$acc kernels default(present)
  do k = 0, nic
     do ij = 1, nxydim
        as         = asb(ij, k)
@@ -245,7 +256,8 @@ contains
        dsba(ij, k) = dsb
     end do
  end do
-
+ !$acc end kernels
+ 
  return
  end subroutine excnga
 
