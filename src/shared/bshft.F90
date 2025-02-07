@@ -88,7 +88,9 @@ module bshft
   integer(4)     ::   nbfdim, nbfdm0,   istv
   integer(4)     :: ifpar, jfpar
 
-  public  ::  shift1,  shift2,  shift3, shift_pack_begin, shift_pack_end, shift_unpack
+  logical, save :: shift_gpu=.true.,shift_rdgeo=.false.
+
+  public  ::  shift1,  shift2,  shift3, shift_pack_begin, shift_pack_end, shift_unpack, shift_gpu, shift_rdgeo
 #ifdef OPT_TRIPOLE
   public  ::  shiftf1
 #endif
@@ -388,6 +390,10 @@ contains
     real(8)                                  ::  fact
     integer(4)                               ::  ioff,  joff
 
+    if (oinit) shift_gpu=.false.
+    if (shift_rdgeo) then
+       shift_gpu=.false.
+    end if
     
     if (pack_mode) then
        call shift_pack(q1, kdim, fact, ioff, joff)
@@ -400,8 +406,8 @@ contains
     &               idim,   jdim,   kdim,                             &
     &               fact,   ioff,   joff )
 #endif
-
     end if
+    shift_gpu=.true.
   end subroutine shift1
 
   subroutine shift2(                                                  &
@@ -419,6 +425,11 @@ contains
     real(8)                                  ::  fact
     integer(4)                               ::  ioff,  joff
 
+    if (oinit) shift_gpu=.false.
+    if (shift_rdgeo) then
+       shift_gpu=.false.
+    end if
+    
     if (pack_mode) then
        call shift_pack(q1, kdim, fact, ioff, joff)
        call shift_pack(q2, kdim, fact, ioff, joff)
@@ -429,10 +440,12 @@ contains
        !call shift_pack_end
        !call shift_unpack(q1, 1)
        !call shift_unpack(q2, 2)
-       
+
+       !$acc data create(qb) if(shift_gpu)
+       !$acc kernels default(present) if(shift_gpu)
        qb(:,:,     1:kdim  ) = q1(:,:,1:kdim)
        qb(:,:,kdim+1:2*kdim) = q2(:,:,1:kdim)
-       
+       !$acc end kernels
        call instant_shift(                                            &
     &                 qb,                                             &
 #ifndef OPT_TRIPOLE
@@ -441,9 +454,13 @@ contains
     &               idim,   jdim, 2*kdim,                             &
     &               fact,   ioff,   joff )
 #endif
+       !$acc kernels default(present) if(shift_gpu)
        q1(:,:,1:kdim)=qb(:,:,     1:kdim  )
        q2(:,:,1:kdim)=qb(:,:,kdim+1:2*kdim)
+       !$acc end kernels
+       !$acc end data
     end if
+    shift_gpu=.true.
   end subroutine shift2
 
   subroutine shift3(                      &
@@ -462,6 +479,11 @@ contains
     real(8)                                  ::  fact
     integer(4)                               ::  ioff,  joff
 
+    if (oinit) shift_gpu=.false.
+    if (shift_rdgeo) then
+       shift_gpu=.false.
+    end if
+    
     if (pack_mode) then
        call shift_pack(q1, kdim, fact, ioff, joff)
        call shift_pack(q2, kdim, fact, ioff, joff)
@@ -475,11 +497,13 @@ contains
        !call shift_unpack(q1, 1)
        !call shift_unpack(q2, 2)
        !call shift_unpack(q3, 3)
-       
+
+       !$acc data create(qb) if(shift_gpu)
+       !$acc kernels default(present) if(shift_gpu)
        qb(:,:,       1:kdim  ) = q1(:,:,1:kdim)
        qb(:,:,  kdim+1:2*kdim) = q2(:,:,1:kdim)
        qb(:,:,2*kdim+1:3*kdim) = q3(:,:,1:kdim)
-       
+       !$acc end kernels
        call instant_shift(                                            &
     &                 qb,                                             &
 #ifndef OPT_TRIPOLE
@@ -488,15 +512,18 @@ contains
     &               idim,   jdim,   3*kdim,                           &
     &               fact,   ioff,   joff )
 #endif
+       !$acc kernels default(present) if(shift_gpu)
        q1(:,:,1:kdim)=qb(:,:,       1:kdim  )
        q2(:,:,1:kdim)=qb(:,:,  kdim+1:2*kdim)
        q3(:,:,1:kdim)=qb(:,:,2*kdim+1:3*kdim)
+       !$acc end kernels
+       !$acc end data
     end if
+    shift_gpu=.true.
   end subroutine shift3
 
 
 !========================================================================================
-    
   subroutine instant_shift(                                           &
     &                 q1,                                             &
 #ifndef OPT_TRIPOLE    
@@ -517,7 +544,12 @@ contains
     integer(4),               intent(in)     ::  ioff,  joff
 #endif
 
+    !$acc data create(sdbfx1,sdbfx2,rvbfx1,rvbfx2, sdbfy1,sdbfy2,rvbfy1,rvbfy2) if(shift_gpu)
+#ifdef OPT_TRIPOLE
+    !$acc data create(sdbfn1,sdbfn2,rvbfn1,rvbfn2, sdbfx1n,sdbfx2n,rvbfx1n,rvbfx2n) if(shift_gpu)
+#endif
     if (idown /= mpi_proc_null) then
+       !$acc kernels default(present) if(shift_gpu)
        do k = 1, kdim
           do j = 1, ny
              do i = 1, icomm
@@ -525,8 +557,10 @@ contains
              end do
           end do
        end do
+       !$acc end kernels
     end if
     if (iup /= mpi_proc_null) then
+       !$acc kernels default(present) if(shift_gpu)
        do k = 1, kdim
           do j = 1, ny
              do i = 1, icomm
@@ -534,12 +568,14 @@ contains
              end do
           end do
        end do
+       !$acc end kernels
     end if
     
     nbfdim = kdim * ny * icomm
     call shifts(nbfdim, nbfdim, rvbfx1, rvbfx2, sdbfx1, sdbfx2, idown, iup)
     
     if (idown /= mpi_proc_null) then
+       !$acc kernels default(present) if(shift_gpu)
        do k = 1, kdim
           do j = 1, ny
              do i = 1, icomm
@@ -547,8 +583,10 @@ contains
              end do
           end do
        end do
+       !$acc end kernels
     end if
     if (iup /= mpi_proc_null) then
+       !$acc kernels default(present) if(shift_gpu)
        do k = 1, kdim
           do j = 1, ny
              do i = 1, icomm
@@ -556,9 +594,11 @@ contains
              end do
           end do
        end do
+       !$acc end kernels
     end if
 
     if (jdown /= mpi_proc_null) then
+       !$acc kernels default(present) if(shift_gpu)
        do k = 1, kdim
           do j = 1, jcomm
              do i = 1, nxdim
@@ -566,8 +606,10 @@ contains
              end do
           end do
        end do
+       !$acc end kernels
     end if
     if (jup /= mpi_proc_null) then
+       !$acc kernels default(present) if(shift_gpu)
        do k = 1, kdim
           do j = 1, jcomm
              do i = 1, nxdim
@@ -575,12 +617,14 @@ contains
              end do
           end do
        end do
+       !$acc end kernels
     end if
     
     nbfdim = kdim * nxdim * jcomm
     call shifts(nbfdim, nbfdim, rvbfy1, rvbfy2, sdbfy1, sdbfy2, jdown, jup)
     
     if (jdown /= mpi_proc_null) then
+       !$acc kernels default(present) if(shift_gpu)
        do k = 1, kdim
           do j = 1, jcomm
              do i = 1, nxdim
@@ -588,8 +632,10 @@ contains
              end do
           end do
        end do
+       !$acc end kernels
     end if
     if (jup /= mpi_proc_null) then
+       !$acc kernels default(present) if(shift_gpu)
        do k = 1, kdim
           do j = 1, jcomm
              do i = 1, nxdim
@@ -597,6 +643,7 @@ contains
              end do
           end do
        end do
+       !$acc end kernels
     end if
     
 #ifdef OPT_TRIPOLE
@@ -604,6 +651,7 @@ contains
     if ( joff == -1 ) then
 
        if (jupe /= mpi_proc_null) then
+          !$acc kernels default(present) if(shift_gpu)
           do k = 1, kdim
              do j = 0, jcomm
                 do i = 1+iabs(ioff), nxdim-iabs(ioff)
@@ -611,8 +659,10 @@ contains
                 end do
              end do
           end do
+          !$acc end kernels
        end if
        if (jupw /= mpi_proc_null) then
+          !$acc kernels default(present) if(shift_gpu)
           do k = 1, kdim
              do j = 1, jcomm
                 do i = 1+iabs(ioff), nxdim-iabs(ioff)
@@ -620,6 +670,7 @@ contains
                 end do
              end do
           end do
+          !$acc end kernels
        end if
        
        nbfdim = kdim * nxdim * jcomm
@@ -627,6 +678,7 @@ contains
        call shifts(nbfdim, nbfdm0, rvbfn1, rvbfn2, sdbfn1, sdbfn2, jupe, jupw)
        
        if (jupe /= mpi_proc_null) then
+          !$acc kernels default(present) if(shift_gpu)
           do k = 1, kdim
              do j = 1, jcomm
                 do i = 1, nxdim
@@ -634,11 +686,13 @@ contains
                 end do
              end do
           end do
+          !$acc end kernels
        end if
 
        istv = 1
        if( inodes == 1) istv = nxdim/2 + 1
        if (jupw /= mpi_proc_null) then
+          !$acc kernels default(present) if(shift_gpu)
           do k = 1, kdim
              do j = 0, jcomm
                 do i = istv, nxdim
@@ -646,10 +700,12 @@ contains
                 end do
              end do
           end do
+          !$acc end kernels
        end if
 !-----------
     else
        if (jupe /= mpi_proc_null) then
+          !$acc kernels default(present) if(shift_gpu)
           do k = 1, kdim
              do j = 1, jcomm
                 do i = 1+iabs(ioff), nxdim-iabs(ioff)
@@ -657,8 +713,10 @@ contains
                 end do
              end do
           end do
+          !$acc end kernels
        end if
        if (jupw /= mpi_proc_null) then
+          !$acc kernels default(present) if(shift_gpu)
           do k = 1, kdim
              do j = 1, jcomm
                 do i = 1+iabs(ioff), nxdim-iabs(ioff)
@@ -666,12 +724,14 @@ contains
                 end do
              end do
           end do
+          !$acc end kernels
        end if
        
        nbfdim = kdim * nxdim * jcomm
        call shifts(nbfdim, nbfdim, rvbfy1, rvbfy2, sdbfy1, sdbfy2, jupe, jupw)
        
        if (jupe /= mpi_proc_null) then
+          !$acc kernels default(present) if(shift_gpu)
           do k = 1, kdim
              do j = 1, jcomm
                 do i = 1, nxdim
@@ -679,8 +739,10 @@ contains
                 end do
              end do
           end do
+          !$acc end kernels
        end if
        if (jupw /= mpi_proc_null) then
+          !$acc kernels default(present) if(shift_gpu)
           do k = 1, kdim
              do j = 1, jcomm
                 do i = 1, nxdim
@@ -688,12 +750,14 @@ contains
                 end do
              end do
           end do
+          !$acc end kernels
        end if
     end if
 
     if ( ioff /= 0 .and. jrank == jnodes-1 ) then
 
        if (idown /= mpi_proc_null) then
+          !$acc kernels default(present) if(shift_gpu)
           do k = 1, kdim
              do j = 1, jcomm+1
                 do i = 1, icomm
@@ -701,8 +765,10 @@ contains
                 end do
              end do
           end do
+          !$acc end kernels
        end if
        if (iup /= mpi_proc_null) then
+          !$acc kernels default(present) if(shift_gpu)
           do k = 1, kdim
              do j = 1, jcomm+1
                 do i = 1, icomm
@@ -710,12 +776,14 @@ contains
                 end do
              end do
           end do
+          !$acc end kernels
        end if
        
        nbfdim = kdim * (jcomm+1) * icomm
        call shifts(nbfdim, nbfdim, rvbfx1n, rvbfx2n, sdbfx1n, sdbfx2n, idown, iup)
        
        if (idown /= mpi_proc_null) then
+          !$acc kernels default(present) if(shift_gpu)
           do k = 1, kdim
              do j = 1, jcomm+1
                 do i = 1, icomm
@@ -723,8 +791,10 @@ contains
                 end do
              end do
           end do
+          !$acc end kernels
        end if
        if (iup /= mpi_proc_null) then
+          !$acc kernels default(present) if(shift_gpu)
           do k = 1, kdim
              do j = 1, jcomm+1
                 do i = 1, icomm
@@ -732,11 +802,12 @@ contains
                 end do
              end do
           end do
+          !$acc end kernels
        end if
     end if
-
 #endif
-
+    !$acc end data
+    !$acc end data
   end subroutine instant_shift
   
   subroutine shifts(nbfdim, nbfdim0, rbf1, rbf2, sbf1, sbf2, n_down, n_up)
@@ -751,11 +822,22 @@ contains
     integer(4)  ::  is1, is2, ir1, ir2
     integer(4)  ::  istmpi(mpi_status_size)
 
+    !$acc host_data use_device(sbf1) if(shift_gpu)
     call mpi_isend(sbf1, nbfdim0, mpi_real8, n_down, 1, mpi_comm_world, is1, ierr)
+    !$acc end host_data
+    
+    !$acc host_data use_device(sbf2) if(shift_gpu)
     call mpi_isend(sbf2, nbfdim,  mpi_real8,   n_up, 2, mpi_comm_world, is2, ierr) 
+    !$acc end host_data
+    
+    !$acc host_data use_device(rbf2) if(shift_gpu)
     call mpi_irecv(rbf2, nbfdim0, mpi_real8,   n_up, 1, mpi_comm_world, ir1, ierr)
+    !$acc end host_data
+    
+    !$acc host_data use_device(rbf1) if(shift_gpu)
     call mpi_irecv(rbf1, nbfdim,  mpi_real8, n_down, 2, mpi_comm_world, ir2, ierr)
-
+    !$acc end host_data
+    
     call mpi_wait( is1, istmpi, ierr )
     call mpi_wait( is2, istmpi, ierr )
     call mpi_wait( ir1, istmpi, ierr )

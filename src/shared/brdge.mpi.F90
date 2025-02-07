@@ -73,7 +73,8 @@ contains
 
   call mpi_filopn(mpi_fh, cfmask, 'READ')
 
-
+  shift_rdgeo=.true.
+  
   amskt = 0.d0
   amftx = 0.d0
   amfty = 0.d0
@@ -363,7 +364,6 @@ contains
 !         enddo
 !      enddo
   endif
-
   call shift1(                                                                 &
    &             amftx,                                                        &
    &             nxdim,  nydim,  nzdim,                                        &
@@ -558,6 +558,15 @@ contains
      rsm(k) = 1.d0 / dsm(k)
   end do
 
+
+!$acc enter data copyin(amskt, amftx, amfty, amftz,  amskv,  amfvx,  amfvy,  amfvz,  amskb,  nbot)
+!$acc enter data copyin(dy, dym, dz, dzm, dzv, dz0, ds, dsm, hic, cor, dept, rdepv)
+!$acc enter data copyin(hxt, hxu, hyt, hyu, hxyt, hxyu, hyxt, hyxu)
+!$acc enter data copyin(ry, rym, rxt, rxu, ryt, ryu, rs, rsm)
+#ifdef OPT_EXMASK
+!$acc enter data copyin(glont, glatt, rangt)
+#endif
+  shift_rdgeo=.false.
   return
   end subroutine rdgeo
 end module brdge
