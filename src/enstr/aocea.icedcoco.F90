@@ -76,6 +76,7 @@ subroutine ocstup ( &
   integer ::     ij,      l
   integer ::  ifpar,  jfpar
 
+  !$acc enter data create(uadv, vadv, wadv, gxx, gyy)
   call rewnml(ifpar, jfpar)
   write(jfpar, *) '*** ocstup ***'
 
@@ -117,13 +118,13 @@ subroutine ocstup ( &
        &               hb,   ubtb,   vbtb, &
        &                w,    amv,    ahv )
   end if
-
+  !$acc kernels default(present)
   do ij = 1, nxydim
      gxx(ij) = 0.d0
      gyy(ij) = 0.d0
      ptop(ij) = 0.d0
   end do
-
+  !$acc end kernels
   return
 end subroutine ocstup
 
@@ -183,7 +184,7 @@ subroutine ocean ( &
   real(8), save ::     qao(nxydim)
   real(8), save ::     qai(nxydim, nic),    qio(nxydim, nic)
   real(8), save ::     qii(nxydim, nic)
-  real(8), save ::     wev(nxydim)=0.d0,    wsb(nxydim, nic)
+  real(8), save ::     wev(nxydim),    wsb(nxydim, nic)
   real(8), save ::    prec(nxydim),   snow(nxydim)
   real(8), save ::    roff(nxydim),   soff(nxydim)
   real(8), save ::  tauaix(nxydim), tauaiy(nxydim)
@@ -210,6 +211,36 @@ subroutine ocean ( &
   integer ::     ij,      l
 
   if (oinit) then
+     !$acc enter data create(      gx,     gy )
+     !$acc enter data create(      xx,     yy )
+     !$acc enter data create(     qao )
+     !$acc enter data create(     qai,    qio )
+     !$acc enter data create(     qii )
+     !$acc enter data create(     wev,    wsb )
+     !$acc enter data create(    prec,   snow )
+     !$acc enter data create(    roff,   soff )
+     !$acc enter data create(  tauaix, tauaiy )
+     !$acc enter data create(  tauaox, tauaoy )
+
+     !$acc enter data create(    asa,    asb )
+     !$acc enter data create(  frlva,  frlvb )
+     !$acc enter data create(   vmpa,   vmpb )
+     !$acc enter data create(  frmpa,  frmpb )
+     !$acc enter data create(   dsda,   dsdb )
+     !$acc enter data create(   dsba,   dsbb )
+     !$acc enter data create(   dfdu,   dfbc )
+#ifdef OPT_BODY
+     !$acc enter data create(      tq )
+#endif
+     !$acc enter data create(    ssfc )
+     !$acc enter data create(     aig,    hig,    hsg )
+     !$acc enter data create(     asg,  frlvg,   vmpg )
+     !$acc enter data create(   frmpg,   dsdg,   dsbg )
+
+     !$acc kernels default(present)
+     wev(:)=0.d0
+     !$acc end kernels
+     
      call predci ( &
        &               ab,    hib,    uib,    vib,    tib,    hsb, &
        &              asb,  frlvb,   vmpb,  frmpb,   dsdb,   dsbb, &
@@ -536,13 +567,13 @@ subroutine ocean ( &
        &              ha,   ubta,   vbta, &
        &              ub,     vb,     tb, &
        &              hb,   ubtb,   vbtb )
-
   end if
 
   call cofptu( &
     &               taux,   tauy)
 
 ! *** Output to file ***
+  !$acc kernels default(present)
   do ij = 1, nxydim
      aig(ij) = 0.0d0
      hig(ij) = 0.0d0
@@ -554,7 +585,8 @@ subroutine ocean ( &
      dsdg(ij) = 0.0d0
      dsbg(ij) = 0.0d0
   end do
-
+  !$acc end kernels
+  
   if ( itst == 3 ) then
      call putsig( &
           &          ta )
@@ -615,6 +647,7 @@ subroutine ocean ( &
      call chekin(  dsba, 'DSBC', &
           & 'concentration of dust, bc', 'g/cm^2', &
           &          nx,     ny,    nic, nxyidm, 'OCICET')
+     !$acc kernels default(present)
      do l = 1, nic
         do ij = 1, nxydim
            aig(ij) = aig(ij) + aa(ij, l)
@@ -628,6 +661,7 @@ subroutine ocean ( &
            dsbg(ij) = dsbg(ij) + aa(ij, l) * dsba(ij, l)
         end do
      end do
+     !$acc end kernels
   else
      call putsig( &
           &          tb )
@@ -687,6 +721,7 @@ subroutine ocean ( &
      call chekin(  dsbb, 'DSBC', &
           & 'concentration of dust, bc', 'g/cm^2', &
           &          nx,     ny,    nic, nxyidm, 'OCICET')
+     !$acc kernels default(present)
      do l = 1, nic
         do ij = 1, nxydim
            aig(ij) = aig(ij) + ab(ij, l)
@@ -700,13 +735,16 @@ subroutine ocean ( &
            dsbg(ij) = dsbg(ij) + ab(ij, l) * dsbb(ij, l)
         end do
      end do
+     !$acc end kernels
   end if
+  !$acc kernels default(present)
   do ij = 1, nxydim
      if (aig(ij) > 0.0d0) then
         frlvg(ij) = frlvg(ij) / aig(ij)
         frmpg(ij) = frmpg(ij) / aig(ij)
      end if
   end do
+  !$acc end kernels
   call chekin(     w,    'W', &
        &               'ocean vertical velocity', 'cm/s', &
        &          nx,     ny,     nz, nxyzdm, 'OCLVMT')
@@ -864,6 +902,7 @@ subroutine nmlper( &
 !        write(jfpar, *) tarea
         rtardt = 1.0d0 / tarea
      endif
+     !$acc enter data copyin(garea, fwnmd, vwteqg)
   end if
 
   if (.not.onmper) then
@@ -872,6 +911,7 @@ subroutine nmlper( &
 
   vwteqt = 0.0d0
   fwnml = 0.0d0
+  !$acc kernels default(present)
   do i = 1, inodes*jnodes
      vwteqg(i) = 0.0d0
   end do
@@ -882,14 +922,22 @@ subroutine nmlper( &
      end do
      vwteqt = vwteqt + vwtreq * garea(ij)
   end do
+  !$acc end kernels
+
 !  write(jfpar, *) vwteqt
+
+  !$acc host_data use_device(vwteqg)
   call mpi_gather( &
     &  vwteqt, 1, mpi_real8, vwteqg(1), 1, mpi_real8, &
     &  iroot, mpi_comm_ogcm, ierr)
+  !$acc end host_data
+  
   if (myrank == iroot) then
+     !$acc kernels default(present)
      do i = 1, inodes*jnodes
         fwnml = fwnml + vwteqg(i)
      end do
+     !$acc end kernels
   end if
   call mpi_bcast( &
     &  fwnml, 1, mpi_real8, &
@@ -900,11 +948,13 @@ subroutine nmlper( &
 !  write(jfpar, *) fwnml
   fwnml = fwnml * rtardt
 
+  !$acc kernels default(present)
   do ij = ijtstr, ijtend
      prec(ij) = prec(ij) - min(fwnml, 0.0d0) * amskt(ij, kstr)
      wev(ij) = wev(ij) + max(fwnml, 0.0d0) * amskt(ij, kstr)
      fwnmd(ij) = fwnml
   end do
+  !$acc end kernels
 
   call cofpnw( &
     &           fwnmd )
