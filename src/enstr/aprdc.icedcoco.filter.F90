@@ -16,7 +16,6 @@ module aprdc
 ! ---------------------------------------------------------------------
 
   use zocdim,  only  :   nxyzdm,   nxydim,   ntdim
-
   implicit none
   private
 
@@ -112,21 +111,37 @@ contains
 
     if (       ( myrank >= ijnode )                                   &
     &    .and. (.not. oinit) .and. (.not. ofinal)) return
-      if(oinit) then
+
+    if(oinit) then
+    !$acc enter data create(   tmp)
+    !$acc enter data create(    hz)
+    !$acc enter data create(  htmp,  ubtmp,  vbtmp)
+    !$acc enter data create( ubtav,  vbtav)
+    !$acc enter data create(   fux,   fvx)
+    !$acc enter data create(   fuy,   fvy)
+    !$acc enter data create(  fune,  fvne)
+    !$acc enter data create(  fuse,  fvse)
+    !$acc enter data create( ubtav2, vbtav2,    hav)
+    !$acc enter data create( hxb, h1)
+       
 #ifdef OPT_TRIPOLE
     call rstadd(h1, oeof, nxdim, nydim, 1, 'H1', 'SFC',     &
     &                                        1.d0,  0,  0 )
 #else
     call rstadd(h1, oeof, nxdim, nydim, 1, 'H1', 'SFC')
 #endif
+    !$acc update device(h1)
     if(oeof) then
+      !$acc kernels default(present)
       do ij = 1, nxydim
          h1(ij) = hx(ij)
       end do
-    end if
+      !$acc end kernels
+    end if  
     end if
 
     if (ofinal) then
+       !$acc updete self(h1)
        call finadd(h1, nxdim, nydim, 1, 'H1', 'SFC')
     end if
 
@@ -138,6 +153,7 @@ contains
 #ifdef OPT_BBL
     call vdiffb(   amv,    ahv  )
 #endif
+
 #ifdef OPT_TRIPOLE
     call shift1(    amv,                                              &
     &             nxdim,  nydim,  nzdim,                              &
@@ -152,7 +168,6 @@ contains
     call clcend('COEFF')
 
 ! *** baroclinic flow ***
-
     call clcstr('BRCLI')
 #ifdef OPT_BBL
     call rmmskv
@@ -215,7 +230,6 @@ contains
     call stbbuv(       ux,     vx  )
 #endif
     call clcend('BRCLI')
-
 ! *** barotropic flow and surface elevation ***
     call clcstr('BRTRO')
     if (oinit .or. ofinal) then
@@ -223,6 +237,7 @@ contains
     &                ubtx,   vbtx) 
     else
        if (ieuler == 2) then
+          !$acc kernels default(present)
           do ij = 1, nxydim
              hz   (ij) = hx   (ij)
              htmp (ij) = hx   (ij)
@@ -235,12 +250,17 @@ contains
              ubty (ij) = ubtmp(ij)
              vbty (ij) = vbtmp(ij)
           end do
+          !$acc end kernels
        else
+          !$acc kernels default(present)
           do ij = 1, nxydim
              hz(ij) = hx(ij)
           end do
+          !$acc end kernels
+
           call modgxy(  gxx,    gyy,                                  &
     &                  ubtx,   vbtx  )
+
 #ifdef OPT_TRIPOLE
           call shift2(   gxx,    gyy,                                 &
     &                  nxdim,  nydim,      1,                         &
@@ -255,22 +275,27 @@ contains
           call shift1(ft(1,2),                                        &
     &                   nxdim,  nydim,      1)
 #endif
+          
           nb = ntss * 2
+          !$acc kernels default(present)
           ubtav (:) = 0.d0
           vbtav (:) = 0.d0
           ubtav2(:) = 0.d0
           vbtav2(:) = 0.d0
           hav   (:) = hx(:) / dble(nb+1)
+          !$acc end kernels
+          
           do itsplt = 1, nb
-
+             !$acc kernels default(present)
              htmp (:) = hx  (:)
              ubtmp(:) = ubtx(:)
              vbtmp(:) = vbtx(:)
-
+             !$acc end kernels
              call shalow(                                             &
     &                    htmp,  ubtmp,  vbtmp,                        &
     &                      hx,   ubtx,   vbtx,                        &
     &                     gxx,    gyy,   ptop,  ft(1,2))
+
 #ifdef OPT_TRIPOLE
              call shift2( ubtmp,  vbtmp,                              &
     &                     nxdim,  nydim,      1,                      &
@@ -283,15 +308,19 @@ contains
     &                     htmp,  ubtmp,  vbtmp,                       &
     &                    nxdim,  nydim,      1)
 #endif
+             
              fact = 2.d0 * dble(nb-itsplt+1) / dble(nb * (nb+1))
+             !$acc kernels default(present)
              ubtav (:) = ubtav (:) + ubtmp(:) * fact
              vbtav (:) = vbtav (:) + vbtmp(:) * fact
              ubtav2(:) = ubtav2(:) + ubtmp(:) / dble(nb)
              vbtav2(:) = vbtav2(:) + vbtmp(:) / dble(nb)
+             !$acc end kernels
              call shalow(                                             &
     &                      hx,   ubtx,   vbtx,                        &
     &                    htmp,  ubtmp,  vbtmp,                        &
     &                     gxx,    gyy,   ptop,  ft(1,2))
+
 #ifdef OPT_TRIPOLE
              call shift2(  ubtx,   vbtx,                              &
     &                     nxdim,  nydim,      1,                      &
@@ -304,8 +333,11 @@ contains
     &                       hx,   ubtx,   vbtx,                       &
     &                    nxdim,  nydim,      1)
 #endif
+             !$acc kernels default(present)
              hav(:) = hav(:) + hx(:) / dble(nb+1)
+             !$acc end kernels
          end do
+
 #ifdef OPT_TRIPOLE
           call shift2( ubtav,  vbtav,                                 &
     &                  nxdim,  nydim,      1,                         &
@@ -322,17 +354,15 @@ contains
     &                 nxdim,  nydim,      1)
 #endif
        end if
-
+       !$acc kernels default(present)
        hx  (:) = hav   (:)
        hxb (:) = hx    (:)
        ubtx(:) = ubtav2(:)
        vbtx(:) = vbtav2(:)
-
        h1  (:) = 0.5d0 * (hz(:) + hx(:))
+       !$acc end kernels
     end if
-
     call clcend('BRTRO')
-
 ! *** velocity for tracer advection ***
 
     call clcstr('TDIAG')
@@ -344,6 +374,7 @@ contains
     &                 UADV,   VADV,                                   &
     &                 UBTAV,  VBTAV,     UX,     VX)
 !                     UBTAV,  VBTAV,     UY,     VY)
+
 #ifdef OPT_TRIPOLE
     if (.not.(oinit .or. ofinal)) then
        call shift2(   uadv,    vadv,                                  &
@@ -355,6 +386,7 @@ contains
     &                uadv,   vadv,                                    &
     &               nxdim,  nydim,  nzdim)
 #endif
+    
 #ifdef OPT_BBL
     call rmmskt
     call admktb
@@ -364,9 +396,7 @@ contains
     &                 uadv,   vadv,                                   &
     &                   hx,     hz)
     call clcend('TDIAG')
-
 ! *** tracer ***
-
     call clcstr('TRACE')
     if (oinit .or. ofinal) then
        call flxtrc(                                                   &
@@ -392,6 +422,7 @@ contains
        call ovturn(      r,     tx,     hx)
     else
        if (ieuler == 2) then
+          !$acc kernels default(present)
           do n = 1, ntdim
              do ijk = 1, nxyzdm
                 gx(ijk)    = tx(ijk, n)
@@ -399,6 +430,7 @@ contains
                 ty(ijk, n) = gx(ijk)
              end do
           end do
+          !$acc end kernels
        else
           call flxtrc(                                                &
     &                   tmp,     xx,                                  &
@@ -418,17 +450,20 @@ contains
           call stbbgt(  tmp,     xx)
 #endif
 #ifdef OPT_BODY
+          !$acc kernels default(present)
           do n = 1, ntdim
              do ijk = 1, nxyzdm
                 tmp(ijk, n) = tmp(ijk, n) + tq(ijk, n)
              end do
           end do
+          !$acc end kernels
 #endif
           call slvtrc(                                                &
     &                   tx,     hx,                                   &
     &                  tmp,     xx,                                   &
     &                   ft,  swabs,     fs,     hz,   ssfc,           &
     &                   ax)
+
 #ifdef OPT_TRIPOLE
           call shift1(    tx,                                         &
     &                  nxdim,   nydim, nztdim,                        &
@@ -452,6 +487,7 @@ contains
 #ifdef OPT_BBL
           call stbbtr(   tx   )
 #endif
+
 #ifdef OPT_TRIPOLE
           call shift1(   r,                                           &
     &                nxdim,   nydim,  nzdim,                          &
@@ -473,24 +509,27 @@ contains
     &                    hx,                                          &
     &                 nxdim,  nydim,      1)
 #endif
+
           call stbctr(    tx,      r)
        end if
     end if
     call clcend('TRACE')
-    
 ! *** velocity for momentum advection ***
 
     call clcstr('VDIAG')
     if (.not. (oinit .or. ofinal)) then
+       !$acc kernels default(present)
        do ijk = 1, nxyzdm
           uadv(ijk) = ux(ijk)
           vadv(ijk) = vx(ijk)
        end do
+       !$acc end kernels
     end if
     call veltad(                                                      &
     &               ux,     vx,                                       &
     &             ubtav, vbtav,   uadv,   vadv)
 !    &             ubtx,   vbtx,   uadv,   vadv)
+
 #ifdef OPT_TRIPOLE
     call shift2(    ux,     vx,                                       &
     &            nxdim,  nydim,  nzdim,                               &
@@ -500,6 +539,7 @@ contains
     &               ux,     vx,                                       &
     &            nxdim,  nydim,  nzdim)
 #endif
+
 #ifdef OPT_BBL
     call rmmskt
     call admktb
@@ -509,17 +549,19 @@ contains
     &             ux,     vx,                                         &
     &            hxb,     hz)
 !    &             hx,     hz)
+
 #ifdef OPT_BBL
     call admskv
 #endif
     call velvad(                                                      &
     &             uadv,   vadv,   wadv,                               &
-    &               ux,     vx,      w) 
+    &               ux,     vx,      w ) 
 #ifdef OPT_BBL
     call velvab( &
     &             wadv,                                               &
     &                w) 
     call stbbvt(    ux,     vx    )
+
 #ifdef OPT_TRIPOLE
     call shift2(    ux,     vx,                                       &
     &            nxdim,  nydim,  nzdim,                               &
@@ -532,6 +574,7 @@ contains
     call rmmskv
     call admkv1
 #endif
+
 #ifdef OPT_TRIPOLE
     call shift2(                                                      &
     &             uadv,   vadv,                                       &
@@ -574,7 +617,6 @@ contains
               & 'ocean meridional transport', 'cm^2/s', &    
               &           nx,     ny,      1, nxydim, 'OCSFCV')
       end if
-
   end subroutine predco
 
 end module aprdc
