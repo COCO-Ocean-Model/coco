@@ -83,8 +83,10 @@ subroutine fwater( &
      rri = rhoo / rhoi
      rrs = rhoo / rhos
      tmi = dtds * si
+     !$acc enter data create(az, hiz, hsz, eiz)
   end if
 
+  !$acc kernels default(present)
   do k = 0, nic
      do ij = 1, nxydim
         az (ij, k) = ax(ij, k)
@@ -93,8 +95,10 @@ subroutine fwater( &
         eiz(ij, k) = eix(ij, k)
      end do
   end do
+  !$acc end kernels
 
   do k = 1, nic
+     !$acc kernels default(present)
      do ij = ijtstr, ijtend
         if (az(ij, k) .gt. 0.d0) then
            if (hsz(ij, k) .gt. 0.d0) then
@@ -166,13 +170,15 @@ subroutine fwater( &
                 &        / rri / ts
         end if
      end do
+     !$acc end kernels
   end do
 
+  !$acc kernels default(present)
   do ij = ijtstr, ijtend
 !         prec(ij) = prec(ij) - snow(ij)
      snow(ij) = snow(ij) + soff(ij)
   end do
-
+  !$acc end kernels
   return
 
 end subroutine fwater
