@@ -99,8 +99,16 @@ subroutine ictrns( &
      tmi = dtds * si
      rri = rhoo / rhoi
      rrs = rhoo / rhos
-  end if
-
+     
+     !$acc enter data create(  axhix,  axhsx)
+     !$acc enter data create(  axeix)
+     !$acc enter data create(  axasx,  axvmp)
+     !$acc enter data create(  axflv,  axfmp)
+     !$acc enter data create(  axdsd,  axdsb)
+     !$acc enter data create(     ci)
+  end if  
+  
+  !$acc kernels default(present)
   do ij = ijtstr, ijtend
      axhix(ij, 0) = ax(ij, 0) * hix(ij, 0)
      axhsx(ij, 0) = ax(ij, 0) * hsx(ij, 0)
@@ -111,7 +119,7 @@ subroutine ictrns( &
      axdsd(ij, 0) = ax(ij, 0) * dsdx(ij, 0)
      axdsb(ij, 0) = ax(ij, 0) * dsbx(ij, 0)
   end do
-
+  
   do k = 1, nic-1
      do ij = ijtstr, ijtend
         if (hix(ij, k) .ge. hic(k+1)) then
@@ -208,6 +216,7 @@ subroutine ictrns( &
         end if
      end do
   end do
+  
   do ij = ijtstr, ijtend
      if (hix(ij, 1) .lt. hic(1)) then
 !     if (      (ax(ij, 1) .gt. 0.d0) &
@@ -281,11 +290,12 @@ subroutine ictrns( &
      imrajs(ij) = imrajs(ij) &
        &        + axhsx(ij, 0) / rrs / ts * amskt(ij, kstr)
   end do
-
+  
 !  entry ic0set( &
 !    &               ax,    hix,    hsx)
 
 ! *** initialize the category 0 ***
+
   do ij = ijtstr, ijtend
      ax(ij, 0) = 1.d0
      hix(ij, 0) = 0.d0
@@ -298,6 +308,7 @@ subroutine ictrns( &
      dsdx(ij, 0) = 0.d0
      dsbx(ij, 0) = 0.d0
   end do
+  
   do k = 1, nic
      do ij = ijtstr, ijtend
         ax(ij, 0) = ax(ij, 0) - ax(ij, k)
@@ -309,7 +320,7 @@ subroutine ictrns( &
   do ij = ijtstr, ijtend
      ax(ij, 0) = max(0.d0, ax(ij ,0))
   end do
-
+  !$acc end kernels
   return
 
 end subroutine ictrns
@@ -336,13 +347,18 @@ subroutine icadjs( &
   integer ::     ij,      k
 
   if (oinit .or. ofinal) then
+     !$acc enter data create(  axhix,  axhsx)
+     !$acc enter data create(  axeix)
+     !$acc enter data create(  axvmp)
+     !$acc enter data create(  axdsd,  axdsb)
+     !$acc enter data create(     ci)
      return
   end if
 
   if (amax .ge. 1.d0) then
      return
   end if
-
+  !$acc kernels default(present)
   do k = 1, mic
      do ij = ijtstr, ijtend
         axhix(ij, k) = ax(ij, k) * hix(ij, k)
@@ -383,7 +399,7 @@ subroutine icadjs( &
         ax(ij, 0) = ax(ij, 0) - ax(ij, k)
      end do
   end do
-
+  !$acc end kernels
   return
 
 end subroutine icadjs
@@ -425,11 +441,20 @@ subroutine ichflt( &
   integer ::     ij,      k
 
   if (oinit .or. ofinal) then
+     !$acc enter data create(  axhix,  axhsx)
+     !$acc enter data create(  axeix)
+     !$acc enter data create(  axasx,  axvmp)
+     !$acc enter data create(  axflv,  axfmp)
+     !$acc enter data create(  axdsd,  axdsb)
+     !$acc enter data create(     ci)
+     !$acc enter data create( daxhix)
+     !$acc enter data create( rdaxhi)
      return
   end if
 
   if (.not.ohiflt) return
-
+  
+  !$acc kernels default(present)
   do k = 1, nic
      do ij = ijtstr, ijtend
         axhix(ij, k) = ax(ij, k) * hix(ij, k)
@@ -541,6 +566,7 @@ subroutine ichflt( &
   do ij = ijtstr, ijtend
      rdaxhi(ij) = rdaxhi(ij) - daxhix(ij)
   end do
+  !$acc end kernels
 
   call chekin( rdaxhi, 'HLMAHI', &
     &           '', '', &
