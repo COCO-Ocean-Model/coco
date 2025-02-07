@@ -138,6 +138,7 @@ contains
 !       call print_stats(ub, chead(3), 'V')
        call print_stats(ub, chead(3))
     end if
+    !$acc update device(ub)
     
     call mpi_read_chead(chead, mpi_fh_r, disp, icread)
     vb=0.d0
@@ -146,21 +147,23 @@ contains
 !       call print_stats(vb, chead(3), 'V')
        call print_stats(vb, chead(3))
     end if
-
+    !$acc update device(vb)
+    
     call mpi_read_chead(chead, mpi_fh_r, disp, icread)
     tb(:,:,:,1)=0.d0
     if(icread == 1024) call mpi_read_3d(tb, mpi_fh_r,disp)
     if (loglev > 0) then
        call print_stats(tb(:,:,:,1), chead(3))
     end if
-
+    
     call mpi_read_chead(chead, mpi_fh_r, disp, icread)
     tb(:,:,:,2)=0.d0
     if(icread == 1024) call mpi_read_3d(tb(1,1,1,2), mpi_fh_r,disp)
     if (loglev > 0) then
        call print_stats(tb(:,:,:,2), chead(3))
     end if
-
+    !$acc update device(tb)
+    !$acc kernels default(present)
     do k=1,nzdim
     do j=1,nydim
     do i=1,nxdim
@@ -168,111 +171,131 @@ contains
     end do
     end do
     end do
-
+    !$acc end kernels
+    
     call mpi_read_chead(chead, mpi_fh_r, disp, icread)
     hb=0.d0
     if(icread == 1024) call mpi_read_2d(hb, mpi_fh_r,disp)
     if (loglev > 0) then
        call print_stats(hb, chead(3))
     end if
-
+    !$acc update device(hb)
+    
     call mpi_read_chead(chead, mpi_fh_r, disp, icread)
     ubtb=0.d0
     if(icread == 1024) call mpi_read_2d(ubtb, mpi_fh_r,disp)
-
+    !$acc update device(ubtb)
+    
     call mpi_read_chead(chead, mpi_fh_r, disp, icread)
     vbtb=0.d0
     if(icread == 1024) call mpi_read_2d(vbtb, mpi_fh_r,disp)
-
+    !$acc update device(vbtb)
+    
     call mpi_read_chead(chead, mpi_fh_r, disp, icread)
     w=0.d0
     if(icread == 1024) call mpi_read_3d(w, mpi_fh_r,disp)
-
+    !$acc update device(w)
+    
     call mpi_read_chead(chead, mpi_fh_r, disp, icread)
     ab=0.d0
     if(icread == 1024) call mpi_read_id(ab, mpi_fh_r,disp)
-
+    !$acc update device(ab)
+    
     call mpi_read_chead(chead, mpi_fh_r, disp, icread)
     hib=0.d0
     do k = 1, nic
        hib(:,:,k) = hic(k)
     end do
     if(icread == 1024) call mpi_read_id(hib, mpi_fh_r,disp)
-
+    !$acc update device(hib)
+    
     call mpi_read_chead(chead, mpi_fh_r, disp, icread)
     uib=0.d0
     if(icread == 1024) call mpi_read_2d(uib, mpi_fh_r,disp)
-
+    !$acc update device(uib)
+    
     call mpi_read_chead(chead, mpi_fh_r, disp, icread)
     vib=0.d0
     if(icread == 1024) call mpi_read_2d(vib, mpi_fh_r,disp)
-
+    !$acc update device(vib)
+    
     call mpi_read_chead(chead, mpi_fh_r, disp, icread)
     tib=-0.1d0
     if(icread == 1024) call mpi_read_id(tib, mpi_fh_r,disp)
-
+    !$acc update device(tib)
+    
     call mpi_read_chead(chead, mpi_fh_r, disp, icread)
     hsb=0.d0
     if(icread == 1024) call mpi_read_id(hsb, mpi_fh_r,disp)
-
+    !$acc update device(hsb)
+    
     call mpi_read_chead(chead, mpi_fh_r, disp, icread)
     ft(:,:,1)=0.d0
     if(icread == 1024) call mpi_read_2d(ft, mpi_fh_r,disp)
-
+    !$acc update device(ft)
+    
     call mpi_read_chead(chead, mpi_fh_r, disp, icread)
     swabs=0.d0
     if(icread == 1024) call mpi_read_2d(swabs, mpi_fh_r,disp)
-
+    !$acc update device(swabs)
+    
     call mpi_read_chead(chead, mpi_fh_r, disp, icread)
     ft(:,:,2)=0.d0
     if(icread == 1024) call mpi_read_2d(ft(1,1,2), mpi_fh_r,disp)
-
+    !$acc update device(ft)
+    
     call mpi_read_chead(chead, mpi_fh_r, disp, icread)
     fs=0.d0
     if(icread == 1024) call mpi_read_2d(fs, mpi_fh_r,disp)
-
+    !$acc update device(fs)
+    
     call mpi_read_chead(chead, mpi_fh_r, disp, icread)
     taux=0.d0
     if(icread == 1024) call mpi_read_2d(taux, mpi_fh_r,disp)
-
+    !$acc update device(taux)
+    
     call mpi_read_chead(chead, mpi_fh_r, disp, icread)
     tauy=0.d0
     if(icread == 1024) call mpi_read_2d(tauy, mpi_fh_r,disp)
-
+    !$acc update device(tauy)
+    
     call mpi_read_chead(chead, mpi_fh_r, disp, icread)
     amv=0.d0
     if(icread == 1024) call mpi_read_3d(amv, mpi_fh_r,disp)
-
+    !$acc update device(amv)
+    
     call mpi_read_chead(chead, mpi_fh_r, disp, icread)
     ahv=0.d0
     if(icread == 1024) call mpi_read_3d(ahv, mpi_fh_r,disp)
-
+    !$acc update device(ahv)
+    
     call mpi_read_chead(chead, mpi_fh_r, disp, icread)
     ptop=0.d0
     if(icread == 1024) call mpi_read_2d(ptop, mpi_fh_r,disp)
-
+    !$acc update device(ptop)
+    
     call mpi_read_chead(chead, mpi_fh_r, disp, icread)
     tsi=dtds*si
     if(icread == 1024) call mpi_read_id(tsi, mpi_fh_r,disp)
-
+    !$acc update device(tsi)
 
     do l = 3, ntdim
        call mpi_read_chead(chead, mpi_fh_r, disp, icread)
        tb(:,:,:,l)=0.d0
        if(icread == 1024) call mpi_read_3d(tb(1,1,1,l), mpi_fh_r,disp)
     end do
-
+    !$acc update device(tb)
     do l = 3, ntdim
        call mpi_read_chead(chead, mpi_fh_r, disp, icread)
        ft(:,:,l)=0.d0
        if(icread == 1024) call mpi_read_2d(ft(1,1,l), mpi_fh_r,disp)
     end do
-
+    !$acc update device(ft)
 
 #ifdef OPT_TRIPOLE
     call shift2(    ub,      vb,                                      &
     &             nxdim,   nydim,  nzdim,                             &
-    &             -1.d0,      -1,     -1 ) 
+    &             -1.d0,      -1,     -1 )
     call shift1(   tb,                                                &
     &             nxdim,   nydim, nztdim,                             &
     &              1.d0,       0,      0)
@@ -318,7 +341,7 @@ contains
     call shift2( swabs,     fs,          nxdim,  nydim,      1 )
     call shift3(  taux,   tauy,   ptop,  nxdim,  nydim,      1 )
 #endif
-
+    !$acc kernels default(present)
     ab(1:nxdim,1:nydim,0) = 1.d0
     do k = 1, nic
        do j = 1, nydim
@@ -335,7 +358,8 @@ contains
           ab(i, j, 0) = max(0.d0, ab(i, j ,0))
        end do
     end do
-
+    !$acc end kernels
+    
     if ( myrank == iroot ) then
        cdate = chead(50)
        read(cdate, '(i6.6,5i2.2)') idate
@@ -414,9 +438,11 @@ contains
           call mpi_read_id(additm, mpi_fh_r,disp)
 
 #ifdef OPT_TRIPOLE
+          shift_gpu=.false.
           call shift1(additm, nxdim, nydim, nic+1,                    &
     &                          fact,  ioff,  joff  )
 #else
+          shift_gpu=.false.
           call shift1(additm, nxdim, nydim, nic+1)
 #endif
        end if
@@ -429,9 +455,11 @@ contains
        if(.not. oeof) then
           call mpi_read_2d(additm, mpi_fh_r,disp)
 #ifdef OPT_TRIPOLE
+          shift_gpu=.false.
           call shift1(additm, nxdim, nydim,     1,                    &
     &                          fact,  ioff,  joff)
 #else
+          shift_gpu=.false.
           call shift1(additm, nxdim, nydim, 1)
 #endif
        end if
@@ -561,7 +589,8 @@ contains
     call date_and_time(hdate, htime, hzone, ivalues)
     write(chead(60), '(i4.4,2i2.2,1x,3i2.2,1x)') ivalues(1:3), ivalues(5:7)
     chead(62) = chead(60)
-
+    !$acc update self(ub, vb, tb, hb,ubtb, vbtb, w, ab, hib, uib, vib, tib, hsb, ft, swabs, fs)
+    !$acc update self(taux, tauy, amv, ahv, ptop, tsi)
     call edhead('UO', 'ocean zonal velocity', 'cm/s', 'OCLVTV')
     call mpi_write_header(chead, mpi_fh_w, dispw)
     call mpi_write_3d(ub, mpi_fh_w,dispw)    
@@ -698,7 +727,8 @@ contains
     integer(4),   intent(in)     ::   ixdim,  jydim,  kzdim
     real(8),      intent(inout)  ::  additm(ixdim, jydim, kzdim)
     character(*), intent(in)     ::  ccitem,   clas
-
+    
+    !$acc update self(additm)
     chead(3) = ccitem
     write(chead(14), '(16x)')
     write(chead(15), '(16x)')
