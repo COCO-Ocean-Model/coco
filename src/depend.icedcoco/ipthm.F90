@@ -116,9 +116,10 @@ module ipthm
   namelist /nmislt/      si
   namelist /nmamin/    amin,   amax,    mic
 
+  logical, save :: ipthm_gpu=.false.
   private
 
-  public :: ptherm, ipsage, idfrmp
+  public :: ptherm, ipsage, idfrmp, ipthm_gpu
 
 contains
 
@@ -270,8 +271,18 @@ subroutine ptherm( &
      do k = 1, nic+1
         hic0(k) = hic(k)
      end do
+     !$acc enter data copyin(hic0)
+     
+     !$acc enter data copyin(alssif,alssio,rmpcmn,rmpcmx,albmpd,almpdp)
+     
+     !$acc enter data create(az,axhix,axhsx,axhsxn,axeix,axeixn,axvmp,axflv,axfmp,axdsd,axdsb)
+     !$acc enter data create(wai,wi,ws,wen,wsn,rmpcc, dvmp,dfcb,dsdrhs,dsbrhs)
+     !$acc enter data create(hiz,vmpz,aflrm, aflrmc,fdtn,fdtcn,hicn,g0,g1,hil,hir)
+     !$acc enter data create(da,dahi,dahs,daei,daas,davm,dafl,dafm,dadd,dadb)
+     !$acc enter data create(laxhix,laxhsx,laxeix,daxhit,daxhib,laxasx,laxvmp,laxflv,laxfmp,laxdsd,laxdsb)
   end if
-
+  
+  !$acc kernels default(present)
   do ij = 1, nxydim
      igrfra(ij) = 0.0d0
      igrcon(ij) = 0.0d0
@@ -317,17 +328,21 @@ subroutine ptherm( &
   do ij = 1, nxydim
      rmpcc(ij) = rmpcmn(impnd)
   end do
-
+  !$acc end kernels
+  
   do k = 1, nic
+     !$acc kernels default(present)
      do ij = 1, nxydim
         rmpcc(ij) = rmpcc(ij) + &
           &         (rmpcmx(impnd) - rmpcmn(impnd)) * ax(ij, k)
 !        impth2(ij) = impth2(ij) - ax(ij, k) * vmpx(ij, k)
      end do
+     !$acc end kernels
   end do
 
 ! *** snowfall ***
   do k = 1, nic
+     !$acc kernels default(present)
      do ij = ijtstr, ijtend
         if (ax(ij, k) .gt. 0.d0) then
            hsx(ij, k) = axhsx(ij, k) / ax(ij, k) &
@@ -357,9 +372,11 @@ subroutine ptherm( &
            dsbrhs(ij, k) = min(dsbx(ij, k) / hsx(ij, k), drsmax)
         end if
      end do
+     !$acc end kernels
   end do
 
 ! *** catching rainfall ***
+  !$acc kernels default(present)
   do k=1, nic
      do ij = ijtstr, ijtend
         impinc(ij, k) = impinc(ij, k) + &
@@ -373,9 +390,11 @@ subroutine ptherm( &
      fdd(ij) = fdd(ij) - ax(ij, 0) * dfdu(ij)
      fdb(ij) = fdb(ij) - ax(ij, 0) * dfbc(ij)
   end do
-
+  !$acc end kernels
+  
 ! *** snow melting ***
   do k = 1, nic
+     !$acc kernels default(present)
      do ij = ijtstr, ijtend
         wres = axhsx(ij, k) * rsfus / ts + was(ij, k)
         if (ax(ij, k) .gt. 0.d0) then
@@ -400,9 +419,11 @@ subroutine ptherm( &
         impinc(ij, k) = impinc(ij, k) - rmpcc(ij) * rhos * &
           &          min((axhsxn(ij, k) - axhsx(ij, k)), 0.0d0)
      end do
+     !$acc end kernels
   end do
 
 ! *** ice top melting ***
+  !$acc kernels default(present)
   do k = 1, nic
      do ij = ijtstr, ijtend
         wres = rhoi * axeix(ij, k) / ts + wai(ij, k)
@@ -424,8 +445,10 @@ subroutine ptherm( &
           &          - min((rmpcc(ij) * rhoi * daxhit(ij, k)), 0.0d0)
      end do
   end do
-
+  !$acc end kernels
+  
 ! *** new ice formation on open water ***
+  !$acc kernels default(present)
   do ij = ijtstr, ijtend
      axeixn(ij, 0) = wao(ij) * ts / rhoi * amskt(ij, kstr)
      axhsxn(ij, 0) = 0.d0
@@ -442,10 +465,13 @@ subroutine ptherm( &
         hix(ij, 0) = 0.d0
      end if
   end do
-
+  !$acc end kernels
+  
 ! *** basal and lateral ice formation/melting processes are divided
 ! *** in order to apply linear-remapping method
 ! *** basal ice formation/melting
+
+  !$acc kernels default(present)
   do k = 1, nic
      do ij = ijtstr, ijtend
         daxhib(ij, k) = axeixn(ij, k)
@@ -454,6 +480,7 @@ subroutine ptherm( &
           &           * amskt(ij, kstr)
      end do
   end do
+  
   do k = 1, nic
      do ij = ijtstr, ijtend
         if (axeixn(ij, k) .le. 0.d0 .or. ax(ij, k) .le. 0.d0) then
@@ -484,8 +511,10 @@ subroutine ptherm( &
         end if
      end do
   end do
-
+  !$acc end kernels
+  
   do k = 1, nic
+     !$acc kernels default(present)
      do ij = ijtstr, ijtend
         if (az(ij, k) .gt. 0.0d0) then
            imrisf(ij) = imrisf(ij) - rhoi * daxhit(ij, k)
@@ -497,10 +526,13 @@ subroutine ptherm( &
              &          rhos * (ax(ij, k) * hsx(ij, k) - axhsxn(ij, k))
         end if
      end do
+     !$acc end kernels
   end do
 
+  
 ! *** snow-ice formation ***
   do k = 1, nic
+     !$acc kernels default(present)
      do ij = ijtstr, ijtend
         hsxo = hsx(ij, k)
         hsx(ij, k) = min(hsx(ij, k), rorirs * hix(ij, k))
@@ -516,9 +548,12 @@ subroutine ptherm( &
            tix(ij, k) = tmi
         end if
      end do
+     !$acc end kernels
   end do
 
 ! *** melt pond freezing ***
+
+  !$acc kernels default(present)
   do k = 1, nic
      do ij = ijstr, ijend
         if (ax(ij, k) .gt. 0.0d0) then
@@ -533,9 +568,12 @@ subroutine ptherm( &
          end if
      end do
   end do
-
+  !$acc end kernels
+  
 ! *** negative freeboard consideration (virtual) ***
 ! Runoff here does not change frmpx, following the CICE implementation.
+
+  !$acc kernels default(present)
   do k = 1, nic
      do ij = ijtstr, ijtend
         if (frmpx(ij, k) > 0.0d0) then
@@ -550,9 +588,11 @@ subroutine ptherm( &
         end if
      end do
   end do
-
+  !$acc end kernels
+  
 ! *** permiability ***
   if (impnd == 2) then  !! Hunke MP param.
+     !$acc kernels default(present)
      do k = 1, nic
         do ij = ijstr, ijend
            if (frmpx(ij, k) > 0.0d0) then
@@ -576,10 +616,12 @@ subroutine ptherm( &
            end if
         end do
      end do
+     !$acc end kernels
   end if
 
 ! *** update fraction of meltpond ***
   if (impnd == 2) then  !! Hunke MP param.
+     !$acc kernels default(present)
      do k = 1, nic
         do ij = ijstr, ijend
            if (ax(ij, k) > 0.0d0) then
@@ -633,10 +675,13 @@ subroutine ptherm( &
            end if
         end do
      end do
+     !$acc end kernels
   end if
 
 ! ****** linear remapping of Lipscomb(2001)
 ! *** setting flags
+
+  !$acc kernels default(present)
   do ij = ijtstr, ijtend
      aflrmc(ij) = amskt(ij, kstr)
      aflrm(ij, 0) = 1.0d0
@@ -650,8 +695,11 @@ subroutine ptherm( &
         end if
      end do
   end do
-
+  !$acc end kernels
+  
 ! *** growth rate of each categories and category boundaries
+
+  !$acc kernels default(present)
   do ij = ijtstr, ijtend
      fdtn(ij, 0) = hix(ij, 0)
   end do
@@ -687,7 +735,8 @@ subroutine ptherm( &
         endif
      end do
   end do
-
+  !$acc end kernels
+  
 !  call chekin(  fdtn,  'FDTN', &
 !    &             nx,      ny,    nic, nxyidm, 'ICE')
 !  call chekin( fdtcn, 'FDTCN', &
@@ -698,16 +747,20 @@ subroutine ptherm( &
 !    &             nx,      ny,    nic, nxyidm, 'ICE')
 
 ! *** temporally shift category boundaries
+
+  !$acc kernels default(present)
   do k = 1, nic
      do ij = ijtstr, ijtend
         hicn(ij, k) = hic(k) + fdtcn(ij,k)
      end do
   end do
+  !$acc end kernels
 
 ! *** validation check: will not execute remapping when...
 ! ***  - hicn(ij,k) does not lie between hix(ij,k-1) and hix(ij,k)
 ! ***  - hicn(ij,k) does not lie between hic0(k-1) and hic0(k+1)
   do k = 1, nic
+     !$acc kernels default(present)
      do ij = ijtstr, ijtend
         hicn(ij, k) = hic(k) + fdtcn(ij,k)
         if ( (aflrm(ij, k-1) .eq. 1.0d0) .and. &
@@ -723,18 +776,23 @@ subroutine ptherm( &
            aflrmc(ij) = 0.0d0
         endif
      end do
+     !$acc end kernels
   end do
 
+  !$acc kernels default(present)
   do k = 0, nic
      do ij = ijtstr, ijtend
         aflrm(ij, k) = aflrm(ij, k) * aflrmc(ij)
      end do
   end do
-
+  !$acc end kernels
+  
 !  call chekin(   hicn,  'HICN', &
 !    &              nx,      ny,    nic, nxyidm, 'ICE')
 
 ! *** determine linear distribution function within each category
+
+  !$acc kernels default(present)
   do k = 1, nic-1
      do ij = ijtstr, ijtend
         hil(ij, k) = max( hicn(ij, k), &
@@ -753,6 +811,7 @@ subroutine ptherm( &
           &         * aflrm(ij, k)
      end do
   end do
+
   do ij = ijtstr, ijtend
      hil(ij, nic) = hicn(ij, nic)
      hir(ij, nic) = 3.0d0*hix(ij, nic) - 2.0d0*hicn(ij, nic)
@@ -769,7 +828,8 @@ subroutine ptherm( &
        &           * ( 2.0d0 / 3.0d0 - etanrr) &
        &           * aflrm(ij, nic)
   end do
-
+  !$acc end kernels
+  
 !  call chekin(    hil,  'HIL', &
 !    &              nx,     ny,    nic, nxyidm, 'ICE')
 !  call chekin(    hir,  'HIR', &
@@ -782,6 +842,8 @@ subroutine ptherm( &
 ! *** compute transfer fluxes
 ! *** area and volume fluxes are calculated from the linear distribution
 ! *** snow and enthalpy fluxes are propotional to the volume flux
+
+  !$acc kernels default(present)
   do k = 1, nic
      do ij = ijtstr, ijtend
         laxhix(ij, k) = ax(ij, k) * hix(ij, k)
@@ -841,8 +903,10 @@ subroutine ptherm( &
         dafm(ij, 1) = dafm(ij, 1) - fafm
      end if
   end do
-
+  !$acc end kernels
+  
   do k = 2, nic
+     !$acc kernels default(present)
      do ij = ijtstr, ijtend
         if ( ( hicn(ij, k) .ge. hic(k) ) .and. &
           &  ( aflrm(ij, k-1) .eq. 1.0d0 ) ) then
@@ -974,6 +1038,7 @@ subroutine ptherm( &
            dadb(ij, k) = dadb(ij, k) - fadb
         end if
      end do
+     !$acc end kernels
   end do
 
 !  call chekin(     da,   'DA', &
@@ -986,6 +1051,8 @@ subroutine ptherm( &
 !    &              nx,     ny,    nic, nxyidm, 'ICE')
 
 ! *** update prediction variables.
+
+  !$acc kernels default(present)
   do k = 1, nic
      do ij = ijtstr, ijtend
         ax(ij, k) = ax(ij, k) + da(ij, k) * amskt(ij, kstr)
@@ -1053,7 +1120,8 @@ subroutine ptherm( &
         frmpx(ij, k) = max(0.0d0, min(1.0d0, frmpx(ij, k)))
      end do
   end do
-
+  !$acc end kernels
+  
 ! *** check if variables are in valid range
 !  do k = 1, nic
 !     do ij = ijtstr, ijtend
@@ -1100,6 +1168,8 @@ subroutine ptherm( &
 ! ****** end of linear remapping of Lipscomb(2001)
 
 ! *** lateral ice formation/melting
+
+  !$acc kernels default(present)
   do k = 1, nic
      do ij = ijtstr, ijtend
         laxhix(ij, k) = ax(ij, k) * hix(ij, k)
@@ -1133,7 +1203,10 @@ subroutine ptherm( &
         end if
      end do
   end do
+  !$acc end kernels
+  
   do k = 1, nic
+     !$acc kernels default(present)
      do ij = ijtstr, ijtend
         if (laxeix(ij, k) .le. 0.d0) then
            ax(ij, k) = 0.d0
@@ -1171,9 +1244,12 @@ subroutine ptherm( &
         imrsmi(ij) = imrsmi(ij) - rhos * &
           &          ( ax(ij, k)*hsx(ij, k) - laxhsx(ij, k) )
      end do
+     !$acc end kernels
   end do
 
 ! *** heat and freshwater budget ***
+
+  !$acc kernels default(present)
   do ij = 1, nxydim
      ftitd(ij) = 0.d0
   end do
@@ -1184,7 +1260,10 @@ subroutine ptherm( &
      wen(ij) = (ax(ij, 0) * eix(ij, 0) - axeixn(ij, 0)) / rri / ts
      fs(ij) = 0.d0
   end do
+  !$acc end kernels
+  
   do k = 1, nic
+     !$acc kernels default(present)
      do ij = ijtstr, ijtend
         wi(ij) = wi(ij) &
           &    + (ax(ij, k) * hix(ij, k) - axhix(ij, k)) &
@@ -1208,7 +1287,10 @@ subroutine ptherm( &
           &     + (ax(ij, k) * dsbx(ij, k) - axdsb(ij, k)) &
           &       / ts
      end do
+     !$acc end kernels
   end do
+  
+  !$acc kernels default(present)
   do ij = ijtstr, ijtend
      ft(ij, 2) = (  evap(ij) - prec(ij) - roff(ij) &
        &          + ws(ij) + wi(ij) + wiadjs(ij)) * amskt(ij, kstr)
@@ -1225,8 +1307,11 @@ subroutine ptherm( &
      fdd(ij) = fdd(ij) * amskt(ij, kstr)
      fdb(ij) = fdb(ij) * amskt(ij, kstr)
   end do
-
+  !$acc end kernels
+  
 ! *** merging newly formed ice into the category 1 ***
+
+  !$acc kernels default(present)
   do ij = ijtstr, ijtend
      axhix(ij, 1) = ax(ij, 1) * hix(ij, 1) &
        &          + ax(ij, 0) * hix(ij, 0)
@@ -1286,8 +1371,11 @@ subroutine ptherm( &
 !       asx does not change
      end if
   end do
-
+  !$acc end kernels
+  
 ! for cmip5 output: unit conversion
+
+  !$acc kernels default(present)
   do ij = ijtstr, ijtend
      igrfra(ij) = igrfra(ij) / ts
      igrcon(ij) = igrcon(ij) / ts
@@ -1299,13 +1387,15 @@ subroutine ptherm( &
      imrisf(ij) = imrisf(ij) / ts
      imribs(ij) = imribs(ij) / ts
   end do
-
+  !$acc end kernels
+  
 !  do k = 1, nic
 !     do ij = 1, nxydim
 !        impth2(ij) = impth2(ij) + ax(ij, k) * vmpx(ij, k)
 !     end do
 !  end do
 
+  !$acc kernels default(present)
   do k = 1, nic
      do ij = ijtstr, ijtend
         impinc(ij, k) = impinc(ij, k) / ts
@@ -1313,7 +1403,8 @@ subroutine ptherm( &
         improf(ij, k) = improf(ij, k) / ts
      end do
   end do
-
+  !$acc end kernels
+  
   call cofpwi( &
     &               ws,     wi)
 
@@ -1328,8 +1419,7 @@ subroutine ptherm( &
 !           write(0,*) '##ipthm; frmpx##', myrank, ij, k, frmpx(ij, k)
 !        end if
 !     end do
-!  end do
-
+!  end do  
   return
 end subroutine ptherm
 
@@ -1392,8 +1482,11 @@ subroutine ipsage( &
      abblc = abbcvs*wgtvs + abbcni*wgtni + abbcir*wgtir
      wabdst = abdst / (abdst + abblc)                  
      wabblc = abblc / (abdst + abblc) 
+     !$acc enter data copyin(ildir)
+     !$acc enter data create(rafr3,dscppm,dsmppm,dscb,dstm)
   end if
 
+  !$acc kernels default(present)
   do k = 1, nic
      do ij = ijstr, ijend
         dscb(ij, k) = wabdst*dsdx(ij, k) + wabblc*dsbx(ij, k)
@@ -1408,7 +1501,9 @@ subroutine ipsage( &
         end if
      end do
   end do
+  !$acc end kernels
 
+  !$acc kernels default(present)
   do k = 1, nic
      do ij = ijstr, ijend
 !           Yang et al. (1997) snow aging
@@ -1438,7 +1533,8 @@ subroutine ipsage( &
         end if
      end do
   end do
-
+  !$acc end kernels
+  
   call chekin( rafr3(1,1), 'RAFR3', &
    &          'r3 in Yang parameterization', '', &
    &              nx,     ny,    nic, nxydim * nic, 'OCICET')
@@ -1506,25 +1602,32 @@ subroutine idfrmp( &
      else
         csfrc = 0.0d0
      end if
+     
+     !$acc enter data create(axvmp) if(ipthm_gpu)
   end if
-
+  
   if (impnd == 0) then
+     !$acc kernels default(present) if(ipthm_gpu)
      do k = 1, nic
         do ij = ijstr, ijend
            frmpx(ij, k) = 0.0d0
            vmpx(ij, k) = 0.0d0
         end do
      end do
+     !$acc end kernels
      return
   end if
-
+  
+  !$acc kernels default(present) if(ipthm_gpu)
   do k = 1, nic
      do ij = 1, nxydim
         axvmp(ij, k) = ax(ij, k) * vmpx(ij, k)
      end do
   end do
-
+  !$acc end kernels
+  
   if (impnd == 1) then  !! Holland MP param.
+     !$acc kernels default(present) if(ipthm_gpu)
      do k = 1, nic
         do ij = ijstr, ijend
            oromp = .false.
@@ -1550,7 +1653,9 @@ subroutine idfrmp( &
            end if
         end do
      end do
+     !$acc end kernels
   else if (impnd == 2) then   !! Hunke MP param.
+     !$acc kernels default(present) if(ipthm_gpu)
      do k = 1, nic
         do ij = ijstr, ijend
            oromp = .false.
@@ -1563,9 +1668,12 @@ subroutine idfrmp( &
            end if
         end do
      end do
+     !$acc end kernels
   end if
 
 ! Applying a limiter to vmpx/frmpx
+
+  !$acc kernels default(present) if(ipthm_gpu)
   do k = 1, nic
      do ij = ijstr, ijend
         if ((frmpx(ij, k) < frmpmn).or.(vmpx(ij, k) < vmpmin)) then
@@ -1574,11 +1682,13 @@ subroutine idfrmp( &
         end if
      end do
   end do
-
+  !$acc end kernels
+  
   if (oinit) then
      return
   end if
   
+  !$acc kernels default(present) if(ipthm_gpu)
   do k = 1, nic
      do ij = 1, nxydim
         improf(ij, k) = improf(ij, k) - &
@@ -1586,7 +1696,8 @@ subroutine idfrmp( &
           &           / ts * amskt(ij, kstr)
      end do
   end do
-
+  !$acc end kernels
+  
   return
 end subroutine idfrmp
 
