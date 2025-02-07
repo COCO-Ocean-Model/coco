@@ -165,6 +165,28 @@ subroutine pridge( &
 
      pifct = 0.5d0 * rhoi / rhoo * gravit * (rhoo - rhoi) * floss
 
+     !$acc enter data create(   axhix,  axhsx)
+     !$acc enter data create(   axeix)
+     !$acc enter data create(   axasx,  axvmp)
+     !$acc enter data create(   axflv,  axfmp)
+     !$acc enter data create(   axdsd,  axdsb)
+     !$acc enter data create(     axa)
+     !$acc enter data create(    divv,  edis )
+     !$acc enter data create(      wa,     wn)
+     !$acc enter data create(      ww)
+     !$acc enter data create(       g)
+     !$acc enter data create(       y)
+     !$acc enter data create(      da)
+     !$acc enter data create(    dahi,   dahs)
+     !$acc enter data create(    daei)
+     !$acc enter data create(    daas,   davm)
+     !$acc enter data create(    dafl,   dafm)
+     !$acc enter data create(    dadd,   dadb)
+     !$acc enter data create(  hrdgef)
+     !$acc enter data create(rmpcmn, rmpcmx, albmpd, almpdp)     
+     !$acc enter data create(gam)
+     
+     !$acc kernels default(present)
      do l = 1, nic
         do k = 1, nic
            do ij = 1, nxydim
@@ -172,8 +194,10 @@ subroutine pridge( &
            end do
         end do
      end do
+     !$acc end kernels
   end if
-
+  
+  !$acc kernels default(present)
   do k = 0, nic
      do ij = 1, nxydim
         axhix(ij, k) = ax(ij, k) * hix(ij, k)
@@ -309,6 +333,7 @@ subroutine pridge( &
         da(ij, k) = edis(ij) * (wn(ij, k) - wa(ij, k))
      end do
   end do
+
   do l = 1, nic
      do ij = ijtstr, ijtend
         dahi(ij, l) = - hix(ij, l) * wa(ij, l) * edis(ij)
@@ -322,6 +347,7 @@ subroutine pridge( &
         dadb(ij, l) = - dsbx(ij, l) * wa(ij, l) * edis(ij)
         pice(ij) = pice(ij) &
           &      - hix(ij, l) * hix(ij, l) * wa(ij, l) * pifct
+
         do k = 1, l
            hrmax = 2.d0 * sqrt(hrdgef(ij) * hix(ij, k))
            hrmin = 2.d0 * hix(ij, k)
@@ -635,7 +661,7 @@ subroutine pridge( &
 !        end if        
      end do
   end do
-
+  !$acc end kernels
   return
 
 end subroutine pridge
