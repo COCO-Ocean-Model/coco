@@ -69,7 +69,8 @@ subroutine srcvel( &
      call cstnml(jfpar, 'srcvel', 'nmbtmf', istat)
      write(jfpar, nmbtmf)
   end if
-
+  
+  !$acc kernels default(present)
   do k = 1, nzdim
      do ij = 1, nxydim
         gx(ij, k) = 0.d0
@@ -89,7 +90,7 @@ subroutine srcvel( &
         yy(ij, k) = gy(ij, k)
      end do
   end do
-
+  !$acc end kernels
   return
 
 end subroutine srcvel
