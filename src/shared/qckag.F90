@@ -26,7 +26,7 @@ module qckag
   real(8), save ::  ofsocn(nxydim) = 0.0d0
   real(8), save ::  oftaux(nxydim) = 0.0d0, oftauy(nxydim) = 0.0d0
   real(8), save ::  swcnv1(nxydim) = 0.0d0, oswabs(nxydim) = 0.0d0
-
+  logical, save ::  of_acc_enter_data=.true.
   private
 
   public :: chksfx, cofpfw, cofpwi, cofpnw, cofpsr, cofpsf, &
@@ -34,6 +34,16 @@ module qckag
 
 contains
 
+subroutine acc_enter_data
+  implicit none
+  if(.not. of_acc_enter_data) return  
+  of_acc_enter_data=.false.
+  !$acc enter data create(ofprec, ofsnow, ofevap, ofroff)
+  !$acc enter data create(ofsoff, ofwiws, ofwnml, ofsrst, sst)
+  !$acc enter data create(oftocn, ofwocn, ofsocn)
+  !$acc enter data create(oftaux, oftauy, swcnv1, oswabs)
+end subroutine acc_enter_data
+    
 subroutine chksfx
   use zocphy, only:    cpo,  rhoo
   use qckot
@@ -41,7 +51,8 @@ subroutine chksfx
   real(8) :: ofithm(nxydim), ofhfds(nxydim)
   real(8) :: ofvsfc(nxydim), ofsfdi(nxydim)
   integer ::     ij
-  
+
+  call acc_enter_data  
   do ij = 1, nxydim
 !    OFITHM: calculated by residual, not from OFWIWS,
 !            because ice-related FW is also added in ICTRNS
@@ -116,7 +127,8 @@ subroutine cofpfw( &
   integer ::     ij
   
   if (oinit .or. ofinal) return
-  
+  call acc_enter_data 
+  !$acc kernels default(present)
   do ij = 1, nxydim
 !    fluxes are positive when entering the ocean (i.e., downward)
 !    SNOW = SNOW_original + SOFF_original
@@ -136,6 +148,7 @@ subroutine cofpfw( &
      ofevap(ij) = ofevap(ij) - min(ofwnml(ij), 0.0d0) &
        &        * amskt(ij, kstr)
   end do
+  !$acc end kernels
 
   return
 end subroutine cofpfw
@@ -146,11 +159,14 @@ subroutine cofpwi( &
   real(8) ::     wi(nxydim),     ws(nxydim)
   integer ::     ij
 
+  call acc_enter_data 
+  !$acc kernels default(present)
   do ij = 1, nxydim
 !    fluxes are positive when entering the ocean (i.e., downward)
      ofwiws(ij) = - (wi(ij) + ws(ij)) * amskt(ij, kstr)
   end do
-
+  !$acc end kernels
+  
   return
 end subroutine cofpwi
 ! ======================================================================
@@ -160,11 +176,14 @@ subroutine cofpnw( &
   real(8) ::  fwnmd(nxydim)
   integer ::     ij
 
+  call acc_enter_data
+  !$acc kernels default(present)
   do ij = 1, nxydim
 !    fluxes are positive when entering the ocean (i.e., downward)
      ofwnml(ij) = - fwnmd(ij) * amskt(ij, kstr)
   end do
-
+  !$acc end kernels
+  
   return
 end subroutine cofpnw
 ! ======================================================================
@@ -174,11 +193,13 @@ subroutine cofpsr( &
   real(8) ::  fsrst(nxydim)
   integer ::     ij
 
+  call acc_enter_data
+  !$acc kernels default(present)
   do ij = 1, nxydim
 !    fluxes are positive when entering the ocean (i.e., downward)
      ofsrst(ij) = fsrst(ij) * amskt(ij, kstr)
   end do
-
+  !$acc end kernels
   return
 end subroutine cofpsr
 ! ======================================================================
@@ -191,6 +212,8 @@ subroutine cofpsf( &
   real(8) ::  swabs(nxydim)
   integer ::     ij
 
+  call acc_enter_data
+  !$acc kernels default(present)
   do ij = 1, nxydim
      sst(ij) = tx(ij, kstr, 1) * amskt(ij, kstr)
 !    FT(IJ, 1): positive downward
@@ -203,7 +226,7 @@ subroutine cofpsf( &
      ofsocn(ij) = -fs(ij) * amskt(ij, kstr)
      oswabs(ij) = swabs(ij) * amskt(ij, kstr)
   end do
-
+  !$acc end kernels
   return
 end subroutine cofpsf
 ! ======================================================================
@@ -212,7 +235,8 @@ subroutine cofptu( &
 
   real(8) ::   taux(nxydim),   tauy(nxydim)
   integer ::     ij
-   
+
+  call acc_enter_data
   do ij = 1, nxydim
 !    fluxes are positive when entering the ocean (i.e., downward)
      oftaux(ij) = taux(ij) * amskv(ij, kstr)
@@ -228,10 +252,12 @@ subroutine copswc( &
   real(8) :: swconv(nxydim)
   integer ::     ij
 
+  call acc_enter_data
+  !$acc kernels default(present)
   do ij = 1, nxydim
      swcnv1(ij) = swconv(ij)
   end do
-
+  !$acc end kernels
   return
 end subroutine copswc
   
