@@ -361,21 +361,37 @@ subroutine sfcflx( &
      read (ifpar, nmtrdb, iostat=istat)
      call cstnml(jfpar, 'sfcflx', 'nmtrdb', istat)
      write(jfpar, nmtrdb)
-
+     
+     !$acc enter data create(tsfc, psfc)
+     !$acc enter data create(u10,v10,qsfc,pplr,sflx,swnt,dwlw)
      tmi = dtds * si         
      dirdsn = dfice / dfsnow
+     !$acc kernels default(present)
      do ij = 1, nxydim
         tsfc(ij) = 300.0d0
         psfc(ij) = 1.0d5
      end do
+     !$acc end kernels
+     
      if ( trdbcp ) then ! set conversion factor
         factfw = -1.0d0 * factw ! upward positive [m/s] --> downward positive [cm/s]
      else
         factfw = factmv * factw ! downward positive [kg/m^2/s] --> downward positive [cm/s]
      end if
      ofirst = .false.
+
+     !$acc enter data create(wsbg,albswg,tisi,usfc,vsfc)
+     !$acc enter data create(fm,grts,grtb,grice,grsnw,gricr,grasn,grvmp,grfrmp)
+     !$acc enter data create(gfluxs,dgfds)
+     !$acc enter data copyin(tfluxs,qfluxs,taux,tauy)
+     !$acc enter data create(dtfdt,dtfds,dqfds,dufdu,dqfdq)
+     !$acc enter data create(wfluxs,sflxbl,swdn,ralbsw,albsw)
+     !$acc enter data copyin(rflxlu,swup)
+     !$acc enter data create(swdnw, swupw, lwdnw, lwupw, senfx, latfx)
+     !$acc enter data create(swdnwg,swupwg,lwdnwg,lwupwg,senfxg,latfxg,swnetg,lwnetg)
   end if
 
+  !$acc kernels default(present)
   do ij = 1, nxydim
 !     ftatm(ij) = 0.0d0
 !     swntwa(ij) = 0.0d0
@@ -393,7 +409,8 @@ subroutine sfcflx( &
         tisi(ij, l) = 0.0d0
      end do
   end do
-
+  !$acc end kernels
+  
   call clcstr('TMINTP')
   
   do l = 3, ntdim
@@ -401,11 +418,16 @@ subroutine sfcflx( &
      nn = n + 1
      call tmintp(  tsfc,      n)
      call tmintp(  qsfc,     nn)
+     !$acc update device(tsfc,qsfc)
+     
+     !$acc kernels default(present)
      do ij = ijstr, ijend
         ft(ij, l) = qsfc(ij) * (tsfc(ij) - t(ij, kstr, l)) * &
           &                    dz(ij, kstr) * amskt(ij, kstr)
      end do
+     !$acc end kernels
   end do
+
   roff(:)=0.d0
   call tmintp_direct(   u10,      1)
   call tmintp_direct(   v10,      2)
@@ -417,17 +439,20 @@ subroutine sfcflx( &
   call tmintp_direct(  dwlw,      8)
   call tmintp_direct(  psfc,      9)
   call tmintp_direct(  roff,     10)
-
+  !$acc update device(u10,v10,tsfc,qsfc,pplr,sflx,swnt,dwlw,psfc,roff)
+  
   ssfc(:)=0.D0
 #ifdef OPT_SRST
   call tmintp(  ssfc,     11)
-#endif
-
+  !$acc update device(ssfc)
+#endif  
   call clcend('TMINTP')
   
 !! 2021.05.31: Now dfdu and dfbc are dummy fluxes in OGCM.
+  !$acc kernels default(present)
   dfdu(:) = 0.0d0
   dfbc(:) = 0.0d0
+  !$acc end kernels
 
 #ifdef OPT_TRIPOLE
   call shift2( &
@@ -439,8 +464,9 @@ subroutine sfcflx( &
     &            psfc,   roff,         &
     &           nxdim,  nydim,      1 )
 #endif
+  
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
+  !$acc kernels default(present)
   do ij = 1, nxydim
      tauaix(ij) = 0.0d0
      tauaiy(ij) = 0.0d0
@@ -450,12 +476,11 @@ subroutine sfcflx( &
 !     roff(ij) = 0.0d0
      roff(ij) = roff(ij) * factfw ! roff: downward is positive
   end do
-
+  
   do ij = 1, nxydim
      usfc(ij) = cos( rangt(ij) ) * u10(ij) - sin( rangt(ij) ) * v10(ij)
      vsfc(ij) = sin( rangt(ij) ) * u10(ij) + cos( rangt(ij) ) * v10(ij)
   end do
-
   do ij = ijstr, ijend
      uo = 0.01d0 * 0.25d0 &
           & * ( u(ij,    kstr) + u(ij+lw,  kstr) &
@@ -466,14 +491,17 @@ subroutine sfcflx( &
      usfc(ij) = usfc(ij) - uo * a(ij, 0) * alpha
      vsfc(ij) = vsfc(ij) - vo * a(ij, 0) * alpha
   end do
-
+  !$acc end kernels
+    
   esub = el + emelt
   do l = 0, nic
+     !$acc kernels default(present)
      do ij = 1, nxydim
         fm(ij) = a(ij, l)
      end do
-
+     !$acc end kernels
      if (l > 0) then
+        !$acc kernels default(present)
         do ij = ijstr, ijend
            grts (ij) = tsi(ij, l) + kelvin
            grtb (ij) = ti(ij, l) + kelvin
@@ -484,7 +512,9 @@ subroutine sfcflx( &
            grvmp(ij) = vmp(ij, l) * 1.0d-2
            grfrmp(ij) = frmp(ij, l)
         end do
+        !$acc end kernels
      else
+        !$acc kernels default(present)
         do ij = ijstr, ijend
            grts (ij) = t(ij, kstr, 1) + kelvin
            grtb (ij) = t(ij, kstr, 1) + kelvin
@@ -495,6 +525,7 @@ subroutine sfcflx( &
            grvmp(ij) = 0.0d0
            grfrmp(ij) = 0.0d0
         end do
+        !$acc end kernels
      end if
 
      call ocnbcs_core( &
@@ -511,11 +542,12 @@ subroutine sfcflx( &
 !        chv(ij, l) = dtfds(ij)
 !        cev(ij, l) = dqfdq(ij)
 !     end do
-
      if (l > 0) then
+        !$acc kernels default(present)
         do ij = ijstr, ijend
            grice(ij) = hi(ij, l) * 1.0d-2
         end do
+        !$acc end kernels
      end if
      call ocnslv_core( &
        &                 grts, gfluxs, tfluxs, qfluxs, &
@@ -539,9 +571,10 @@ subroutine sfcflx( &
      call shift3( &
        &            taux,   tauy,    fm, &
        &           nxdim,  nydim,     1 )
-#endif
-
-     if (l > 0) then
+#endif     
+     
+  if (l > 0) then
+        !$acc kernels default(present)
         do ij = ijstr, ijend
            tauaix(ij) = tauaix(ij) &
              &        + ( taux(ij) + taux(ij+le) &
@@ -576,7 +609,9 @@ subroutine sfcflx( &
         do ij = 1, nxydim
            latfx(ij, l) = qfluxs(ij) * esub
         end do
+        !$acc end kernels
      else
+        !$acc kernels default(present)
         do ij = ijstr, ijend
            tauaox(ij) = (  taux(ij) + taux(ij+le) &
              &           + taux(ij+ln) + taux(ij+lne)) * &
@@ -594,7 +629,9 @@ subroutine sfcflx( &
         do ij = 1, nxydim
            latfx(ij, l) = qfluxs(ij) * el
         end do
+        !$acc end kernels
      end if
+     !$acc kernels default(present)
      do ij = 1, nxydim
         swdnw(ij, l) = swnt(ij)
         swupw(ij, l) = swup(ij)
@@ -602,8 +639,10 @@ subroutine sfcflx( &
         lwupw(ij, l) = rflxlu(ij)
         senfx(ij, l) = tfluxs(ij)
      end do
+     !$acc end kernels
   end do
 
+  !$acc kernels default(present)
   do ij = 1, nxydim
      if( a(ij,0) /= 1.d0 ) then
         tauaix(ij) = tauaix(ij) / (1.0d0 - a(ij, 0) )
@@ -611,7 +650,9 @@ subroutine sfcflx( &
         albswg(ij) = albswg(ij) / (1.0d0 - a(ij, 0) )
      endif
   enddo
+  !$acc end kernels
 
+  !$acc kernels default(present)
   swdnwg(:) = 0.d0
   swupwg(:) = 0.d0
   lwdnwg(:) = 0.d0
@@ -628,7 +669,8 @@ subroutine sfcflx( &
   end do
   swnetg(:) = swupwg(:) - swdnwg(:)
   lwnetg(:) = lwupwg(:) - lwdnwg(:)
-
+  !$acc end kernels
+  
   call chekin( swdnwg, 'SWDNWG', &
     &      'downward shortwave (ocn/ice top)', &
     &              'erg/cm^2/s', &
@@ -746,13 +788,13 @@ subroutine sfcflx( &
     &            'temperature at ice-snow interface', 'degC', &
     &            nx,     ny,    nic, nxyidm, 'OCICET')
 
+  !$acc kernels default(present)
   do ij = 1, nxydim
 !     ptop(ij) = 0.d0
      ptop(ij) = psfc(ij) * factm
   end do
-
+  !$acc end kernels
   call clcend('SFCFLX')
-  
   return
 end subroutine sfcflx
 
@@ -881,8 +923,11 @@ subroutine ocnslv_core ( &
            aswo2d(ij) = albswo
         end do
      end if
+     !$acc enter data copyin(aswo2d,alcsnw)
+     !$acc enter data create(grsnr,hsnow,hmp,rp)
   endif
 
+  !$acc kernels default(present)
   do ij = ijstr, ijend
      if (oasfrc) then
         grsnr(ij) = grsnw(ij) / (tsdpt + grsnw(ij))
@@ -910,9 +955,11 @@ subroutine ocnslv_core ( &
         rp(ij) = 0.0d0
      end if
   end do
-
+  !$acc end kernels
+  
   esub = el + emelt
   brialb = alcice
+  !$acc kernels default(present)
   do ij = ijstr, ijend
      emis = emislo * (1.0d0 - gricr(ij)) + emisli * gricr(ij)
      albx = fusemp * min( max( &
@@ -1019,6 +1066,7 @@ subroutine ocnslv_core ( &
      sflxbl( ij )   = fi * sflxbi
 
   end do
+  !$acc end kernels
 
   return
 end subroutine ocnslv_core
@@ -1055,8 +1103,10 @@ subroutine ocnbcs_core ( &
      call rewnml(ifpar, jfpar)
      write (jfpar, *) ' @@@ OCNBCS: OCEAN SURFACE BC 98/07/29'
      ofirst = .false.
+     !$acc enter data create(grsnrf)
   endif
 
+  !$acc kernels default(present)
   do ij = ijstr, ijend
      if (grsnw(ij) .gt. 0.0d0) then
          grsnrf(ij) = 1.d0
@@ -1078,7 +1128,7 @@ subroutine ocnbcs_core ( &
         dgfds (ij) = dfocn
      endif
   end do
-
+  !$acc end kernels
   return
 end subroutine ocnbcs_core
 
@@ -1137,6 +1187,7 @@ subroutine sfcflx_core ( &
   endif
 
   rho = 1.22d0
+  !$acc kernels default(present)
   do ij = ijstr, ijend
 !     rho = gdps(ij) / (rair + (rvap - rair) * gdqa(ij)) / gdta(ij)
      exi = (gdps(ij) / (gdps(ij) - rho * grav * za))**akappa
@@ -1161,7 +1212,7 @@ subroutine sfcflx_core ( &
      taux(ij) = dufdu(ij) * usfc(ij)
      tauy(ij) = dufdu(ij) * vsfc(ij)
   end do
-
+  !$acc end kernels
   return
 end subroutine sfcflx_core
 
@@ -1211,6 +1262,9 @@ subroutine blkcof_core ( &
   endif
 
   rho = 1.22d0
+  ! For nvhpc 24.7 (ES), error occurs due to the absence of exi in device memory (compiler bug ?).
+  !$acc data create(exi)
+  !$acc kernels default(present)
   do ij = ijstr, ijend
 !     rho = gdps(ij) / (rair + (rvap - rair) * gdqa(ij)) / gdta(ij)
 !     rho = gdps(ij) / ( rair * gdta(ij) &
@@ -1331,7 +1385,8 @@ subroutine blkcof_core ( &
      chv( ij ) = chv( ij ) * min( max( uabs, usminh ), usmaxh )
      cev( ij ) = cev( ij ) * min( max( uabs, usmine ), usmaxe )
   end do
-
+  !$acc end kernels
+  !$acc end data
   return
 end subroutine blkcof_core
 
@@ -1363,7 +1418,12 @@ subroutine bdyflx( &
   
   real(8), save        ::    tbdy(nxydim, nzdim, ntdim) = 0.d0
   real(8), save        ::    tdmb(nxydim, nzdim, ntdim) = 0.d0
-
+  logical, save ::  ofirst = .true.
+  if (ofirst) then
+     ofirst = .false.
+     !$acc enter data create(tbdy,tdmp)
+  end if
+  
 !  do l = 1, ntdim
   do l = 1, 2
      n = l
@@ -1379,7 +1439,9 @@ subroutine bdyflx( &
        &            tdmb(1, 1, l), &
        &               n )
   end do
-
+  !$acc update device(tbdy,tdmp)
+  
+  !$acc kernels default(present)
 !  do l = 1, ntdim
   do l = 1, 2
      do k = kstr, kend
@@ -1390,7 +1452,8 @@ subroutine bdyflx( &
         end do
      end do
   end do
-
+  !$acc end kernels
+  
   return
 end subroutine bdyflx
 #endif
