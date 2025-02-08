@@ -771,6 +771,7 @@ contains
        
        if (oadd(item)) then
           if (iflout(item) == 1) then
+             !$acc update self(ditem)
              if ((nvcord(item) > 0) &
                 & .and.(nhcord(item) > 0)) then   !! sigma output
                 sdim = nsig(nvcord(item))
