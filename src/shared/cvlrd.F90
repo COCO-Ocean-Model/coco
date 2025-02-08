@@ -88,8 +88,9 @@ contains
        cf1 = aimp   / acc
        cf2 = 1.0d+0 / acc
 
+    !$acc enter data create(aa,ac, abr,abi, adr,adi, tdiffz, hvbot)  
     end if
-
+    !$acc kernels default(present)
     do k = 1, nzdim
        do ij = 1, nxydim
           aa    (ij, k) = 0.d0
@@ -143,16 +144,18 @@ contains
           adi(ij, k) = gy(ij, k)
        end do
     end do
-    
+    !$acc end kernels
+
     call thmasc( adr, adi, aa, abr, abi, ac )
 
+    !$acc kernels default(present)
     do k = kstr, kend
        do ij = ijvstr, ijvend
           ux(ij, k) = (  ux(ij, k) + ts * cf2 * adr(ij, k)) * amskv(ij, k)
           vx(ij, k) = (  vx(ij, k) + ts * cf2 * adi(ij, k)) * amskv(ij, k)
        end do
     end do
-
+    !$acc end kernels
   end subroutine velrds
 
 end module cvlrd
