@@ -113,10 +113,21 @@ contains
       call rstadd(yy2, oeof, nxdim, nydim, nzdim, 'YY2', 'OCN')
       call rstadd(yy3, oeof, nxdim, nydim, nzdim, 'YY3', 'OCN')
 #endif
+      !$acc enter data copyin(xx1,xx2,xx3,yy1,yy2,yy3)
+      !$acc enter data create(     cxn,    cxs)
+      !$acc enter data create(     cye,    cyw)
+      !$acc enter data create(     cne,    cse)
+      !$acc enter data create(     fuz,    fvz)
+      !$acc enter data create(    fuzu,   fvzu)
+      !$acc enter data create(    fuzd,   fvzd)
+      !$acc enter data create(      rz,    rzm) 
+      !$acc enter data create(     div)
+      !$acc enter data create(   hvbot, hvbotx)   
          return
       end if
 
       if (ofinal) then
+         !$acc update self(xx2,xx3,yy2,yy3)
          call finadd(xx2, nxdim, nydim, nzdim, 'XX2', 'OCN')
          call finadd(xx3, nxdim, nydim, nzdim, 'XX3', 'OCN')
          call finadd(yy2, nxdim, nydim, nzdim, 'YY2', 'OCN')
@@ -130,6 +141,7 @@ contains
 #ifdef OPT_BBL
     call rmmskv
 #endif
+    !$acc kernels default(present)
     do k = 1, nzdim
        do ij = 1, nxydim
           cxn(ij, k) = 0.d0
@@ -160,12 +172,13 @@ contains
     &                (3.d0 - amskv(ij, k) - amskv(ij+lsw, k))
        enddo
     enddo
-
+    !$acc end kernels
 !#ifdef OPT_BBL
 !         call admkv1
 !#endif
     end if
 
+    !$acc kernels default(present)
     do k = 1, nzdim
        do ij = 1, nxydim
           fux (ij, k) = 0.d0
@@ -184,7 +197,9 @@ contains
           fvzd(ij, k) = 0.d0
        enddo
     enddo
-
+    !$acc end kernels
+    
+      !$acc kernels default(present)
       do ij = ijvstr, ijvend
          hvbot(ij) = (  (hy(ij)    + hy(ij+le) ) * dy(ij) &
      &                + (hy(ij+ln) + hy(ij+lne)) * dy(ij+ln)) * &
@@ -225,7 +240,9 @@ contains
      &                     - vadv(ij, k) * dx * hxt(ij))
          end do
       end do
+      !$acc end kernels
 
+      !$acc kernels default(present)
       do k = kstr+1, kstr+kz-1
          do ij = ijvstr, ijvend
             fvz(ij, k) = wadv(ij, k, 1)
@@ -247,6 +264,9 @@ contains
      &                  + wadv(ij+lnw, k+1, 5) 
          end do 
       end do
+      !$acc end kernels
+      
+      !$acc kernels default(present)
       do ij = ijvstr, ijvend
          fvz(ij, kstr+kz) = wadv(ij, kstr+kz, 1) * hvbot(ij)
          fvzd(ij, kstr) = wadv(ij+ln , kstr+1, 6) &
@@ -266,7 +286,9 @@ contains
      &                          + wadv(ij+lw , kstr+kz, 4) &
      &                          + wadv(ij+lnw, kstr+kz, 5)) * hvbot(ij)
       end do
-
+      !$acc end kernels
+      
+      !$acc kernels default(present)
       do k = kstr, kstr+kz-1
          do ij = ijvstr, ijvend
             div(ij, k) = (  (  (fvx(ij+le, k) - fvx(ij, k)) * rx &
@@ -280,7 +302,9 @@ contains
      &                   amskv(ij, k)
          end do
       end do
-
+      !$acc end kernels
+ 
+    !$acc kernels default(present)
     do ij = ijvstr, ijvend
         fuzd(ij, kstr) = - 0.5d0 *             &
     &   (  wadv(ij+ln , kstr+1, 6) *           &
@@ -318,7 +342,9 @@ contains
     &    + wadv(ij+lnw, kstr+1, 5) *           &
     &      (vy(ij+lnw, kstr+1) + vy(ij, kstr)))
     enddo 
+    !$acc end kernels
 
+    !$acc kernels default(present)
     do k = kstr+1, kend
        do ij = ijvstr, ijvend
            fuz(ij, k) = &
@@ -367,6 +393,7 @@ contains
     &       + wadv(ij+lnw, k+1, 5) * (vy(ij+lnw, k+1) + vy(ij, k)))
        enddo
     enddo
+    !$acc end kernels
 #ifdef OPT_BBL
     do ij = ijvstr, ijvend
        fuzd(ij,kend-1) = 0.d0
@@ -393,6 +420,7 @@ contains
     enddo
 #endif
 
+    !$acc kernels default(present)
     do k = kstr, kend
        do  ij = ijvstr, ijvend+nxdim
            fuy(ij, k) = &
@@ -448,7 +476,9 @@ contains
     &                    (vy(ij+lw, k) + vy(ij+ls, k)) * 0.5d0
        enddo
     enddo
+    !$acc end kernels
 
+    !$acc kernels default(present)
     do k = kstr, kstr+kz-2
        do ij = ijvstr, ijvend
 !            gx(ij, k) = (  gx(ij, k)                                   &
@@ -481,8 +511,10 @@ contains
     &                  amskv(ij, k)
        enddo
     enddo
-
+    !$acc end kernels
+    
     k = kstr+kz-1
+    !$acc kernels default(present)
     do ij = ijvstr, ijvend
 !           gx(ij, k) = (  gx(ij, k)                                   &
             xx1(ij, k) = ( &
@@ -517,7 +549,9 @@ contains
     &                  - uy(ij, k) * vy(ij, k) * hyxu(ij)) *          &
     &                 amskv(ij, k)
     enddo
+    !$acc end kernels
 
+    !$acc kernels default(present)
     do k = kstr+kz, kend
        do ij = ijvstr, ijvend
 !            gx(ij, k) = (  gx(ij, k)                                &
@@ -552,11 +586,13 @@ contains
     &                  amskv(ij, k)
        enddo
     enddo
-
+    !$acc end kernels
+    
 ! ---- Adams-Bashforth scheme
       ncall=ncall +1
       if( (ncall .ge. 3) .or. (.not. oeof)) then
         ncall=3
+        !$acc kernels default(present)
         do k = kstr, kend
         do ij = ijvstr, ijvend
             gx(ij, k) =  gx(ij, k) &
@@ -566,15 +602,19 @@ contains
      & +  c1 *yy1(ij, k)  + c2* yy2(ij, k) + c3*yy3(ij, k) 
         end do
         end do
+        !$acc end kernels
       else 
          if(ncall .eq. 1) then ! forward
+            !$acc kernels default(present)
             do k = kstr, kend
             do ij = ijvstr, ijvend
             gx(ij, k) =  gx(ij, k)  +  xx1(ij, k)
             gy(ij, k) =  gy(ij, k)  +  yy1(ij, k)
             end do
             end do
+            !$acc end kernels
          else if(ncall .eq. 2) then !2nd order ab
+            !$acc kernels default(present)
             do k = kstr, kend
             do ij = ijvstr, ijvend
                gx(ij, k) =  gx(ij, k) & 
@@ -584,10 +624,11 @@ contains
      &       +  1.5d0 *yy1(ij, k)  - 0.5d0* yy2(ij, k)
             end do
             end do
+            !$acc end kernels
          end if
       end if
 
-
+      !$acc kernels default(present)
       do k = kstr, kend
       do ij = ijvstr, ijvend
           xx3(ij, k)=xx2(ij, k) !n-1 > n-2
@@ -597,7 +638,7 @@ contains
           yy2(ij, k)=yy1(ij, k)
       end do
       end do
-
+      !$acc end kernels
       return
 
    end subroutine advvel
