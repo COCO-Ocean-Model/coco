@@ -93,7 +93,7 @@ subroutine ovtset( &
      & d0(kstr), d1(kstr), d2(kstr), d3(kstr),  d4(kstr), &
      & d5(kstr), d6(kstr), d7(kstr), d8(kstr),  d9(kstr) )
   write(jfpar, *) '*** the equation of state determined ***'
-
+  
   do k = 1, nzdim
      do ij = 1, nxydim
         r(ij, k) = 0.d0
@@ -143,7 +143,10 @@ subroutine ovtset( &
         depth(ij, k) = depth(ij, k-1) + dz(ij, k)
      end do
   end do
-
+  !$acc enter data copyin(c0,c1,c2,c3,c4,c5,c6)
+  !$acc enter data copyin(d0,d1,d2,d3,d4,d5,d6,d7,d8,d9)
+  !$acc enter data copyin(r,depth)
+  !$acc enter data copyin(gamma,ftzov)
   return
 
 end subroutine ovtset
@@ -179,9 +182,12 @@ subroutine ovturn( &
 ! common /work/ ttl, w2, conv, dzsig, lup, lov
 
   if (oinit .or. ofinal) then
+     !$acc enter data create(zt, conv, cnvdep, dzsig, ttl, w2, n2, mld)
+     !$acc enter data create(dptmsig, dptsig, dzmsig, delb, lup,lov, to)
      return
   end if
 
+  !$acc kernels default(present)
   do k = 1, nzdim
      do ij = 1, nxydim
         dptmsig(ij, k) = 0.d0
@@ -202,7 +208,9 @@ subroutine ovturn( &
         dptsig(ij, k) = dptsig(ij, k-1) + (h(ij) + zbot) * ds(k)
      end do
   end do
+  !$acc end kernels
   k = kstr+kz
+  !$acc kernels default(present)
   do ij = 1, nxydim
      dzmsig(ij, k) = (h(ij) + zbot) * 0.5d0 * ds(k-1) &
        &           + 0.5d0 * dz(ij, k)
@@ -216,7 +224,8 @@ subroutine ovturn( &
         dptsig(ij, k) = dptsig(ij, k-1) + dz(ij, k)
      end do
   end do
-      
+  !$acc end kernels
+  !$acc kernels default(present)
   do k = 1, nzdim
      do ij = 1, nxydim
         conv(ij, k) = 0.d0
@@ -242,6 +251,7 @@ subroutine ovturn( &
         dzsig(ij, k) = dz(ij, k) * gamma(k-kstr+1)
      end do
   end do
+  !$acc end kernels
 #ifdef OPT_BBL
   do ij = ijtstr, ijtend
      k = nbot(ij)
@@ -249,7 +259,7 @@ subroutine ovturn( &
         &         + dzsig(ij, k) * (1.d0 - amsktb(ij))
   end do
 #endif
-
+  !$acc kernels default(present)
   do ij = 1, nxydim
      zt(ij, kstr) = 0.d0
   end do
@@ -273,7 +283,8 @@ subroutine ovturn( &
         end do
      end do
   end do
-
+  !$acc end kernels
+  !$acc kernels default(present)
   do k = kstr+1, kend
      do ij = ijtstr, ijtend
         tu = t(ij, k-1, 1) * amskt(ij, k-1)
@@ -332,9 +343,10 @@ subroutine ovturn( &
         end do
      end do
   end do
-
+  !$acc end kernels  
 ! do k = kstr, kend
   k = kstr
+  !$acc kernels default(present)
   do ij = ijtstr, ijtend
      tl = t(ij, k, 1) * amskt(ij, k)
      sl = t(ij, k, 2) * amskt(ij, k)
@@ -347,8 +359,10 @@ subroutine ovturn( &
      &           + (d8s + d9s * tl * tl) * sqrt(sl)) * sl
      r(ij, k) = p1 / p2 - 1.d3
   enddo
+  !$acc end kernels  
 ! enddo
 
+  !$acc kernels default(present)
   do k = kstr+1, kend
      do ij = ijtstr, ijtend
         tl = t(ij, k, 1) * amskt(ij, k)
@@ -403,6 +417,7 @@ subroutine ovturn( &
         mld(ij) = dptsig(ij, nbot(ij))
      end if
   end do
+  !$acc end kernels
 
   call chekin(    n2,     'N2', &
     &            'square of buoyancy frequency', '1/s^2', &
@@ -439,6 +454,7 @@ subroutine ddenst( &
   real(8) ::     tl,     sl
   real(8) ::     p1,     p2
 
+  !$acc kernels default(present)
   do k = kstr, kend
      do ij = ijtstr, ijtend
         tl = t(ij, k, 1) * amskt(ij, k)
@@ -453,7 +469,7 @@ subroutine ddenst( &
         r(ij, k) = p1 / p2 - 1.d3
      end do
   end do
-
+  !$acc end kernels
   return
 
 end subroutine ddenst
