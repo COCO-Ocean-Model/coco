@@ -573,7 +573,7 @@ subroutine sfcflx( &
        &           nxdim,  nydim,     1 )
 #endif     
      
-  if (l > 0) then
+     if (l > 0) then
         !$acc kernels default(present)
         do ij = ijstr, ijend
            tauaix(ij) = tauaix(ij) &
