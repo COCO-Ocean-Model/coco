@@ -40,6 +40,7 @@ contains
     real(8)                   ::    rr,     ri,      r,     sr,     si
     integer(4)                ::    ij,      k
   
+    !$acc kernels default(present)
     do ij = ijvstr, ijvend
        r1 = br(ij, kstr) * br(ij, kstr)                                 &
     &     + bi(ij, kstr) * bi(ij, kstr)
@@ -77,7 +78,7 @@ contains
     &                           - br(ij, k) * di(ij, k+1)
        end do
     end do
-  
+    !$acc end kernels
   end subroutine thmasc
   
   ! *********************************************************************
@@ -99,7 +100,8 @@ contains
   
     real(8)                   ::    fc
     integer(4)                ::    ij,       k,       n
-  
+
+    !$acc kernels default(present)
     do ij = ijtstr, ijtend
        ac(ij, kstr) = ac(ij, kstr) / ab(ij, kstr)
     end do
@@ -127,7 +129,7 @@ contains
           end do
        end do
     end do
-  
+    !$acc end kernels
   end subroutine thomas
   
 end module utrdg
