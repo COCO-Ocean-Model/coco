@@ -278,6 +278,7 @@ subroutine flxtrc( &
         call finadd(sxz(1, 1, n), nxdim, nydim, nzdim, 'SXZ', 'OCN')
         call finadd(syz(1, 1, n), nxdim, nydim, nzdim, 'SYZ', 'OCN')
      end do
+     !$acc update self(sx,sy,sz, sxx,syy,szz, sxy,sxz,syz)
      return
   end if
 
@@ -323,7 +324,7 @@ subroutine flxtrc( &
            end do
         end do
      end if
-
+     
 !    ---- area normal to u defined on UV-grid
      do k = kstr, kstr+kz-1
         do ij = 1, nxydim
@@ -355,7 +356,6 @@ subroutine flxtrc( &
         vlmz(ij) = hxt(ij) * dx * hyt(ij) * dy(ij)
         
      end do
-
 !---- 
      call rewnml(ifpar, jfpar)
      read(ifpar, nmcah, iostat=istat)
@@ -373,13 +373,12 @@ subroutine flxtrc( &
      read(ifpar, nmdifs, iostat=istat)
      call cstnml(jfpar, 'flxtrc', 'nmdifs', istat)
      write(jfpar, nmdifs)
-
+     !$acc enter data create(ahi3d, ahg3d, ahh3d)
      if ( iah .eq. 0 ) then
 
         write(jfpar, *) 'Background horizontal diffusion :', ahh
         write(jfpar, *) 'Isopycnal diffusion             :', ahi
         write(jfpar, *) 'G-M thickness diffusion         :', ahg
-
         do k = 1, nzdim
            do ij = 1, nxydim
               ahi3d(ij, k) = ahi
@@ -387,7 +386,7 @@ subroutine flxtrc( &
               ahh3d(ij, k) = ahh
            end do
         end do
-
+        
         if ( isvgm > 0 ) then
            write(jfpar, *) 'latitudinally varying GM diffusivity is used.'
            pi = atan( 1.d0 )*4.d0
@@ -483,7 +482,7 @@ subroutine flxtrc( &
         call scatter_3d( ahg3d, g3d )
 #endif
      end if
-
+     !$acc update device(ahh3d, ahi3d, ahg3d)
 #ifdef OPT_TRIPOLE
      call shift2( ahi3d,  ahg3d, &
           &       nxdim,  nydim,  nzdim, &
@@ -500,7 +499,62 @@ subroutine flxtrc( &
      call cstnml(jfpar, 'flxtrc', 'nmbbdh', istat)
      write(jfpar, nmbbdh)
 #endif
+     
+     !$acc enter data create(ftx,fty,ftz, ftxd,ftyd,ftzd)
+     !$acc enter data create(wzc,    rzm)
+     !$acc enter data create(fharmx, fharmy,   harm)
+     !$acc enter data create(hzbot)
+     !$acc enter data create(dh)
 
+     !$acc enter data create(xdzdx,  ydzdy)
+     !$acc enter data create(zdzdx,  zdzdy)
+     !$acc enter data create(xdtdz,  ydtdz)
+     !$acc enter data create(zdtdx,  zdtdy)
+
+     !$acc enter data create(adt2)
+     !$acc enter data create(adtd)
+     !$acc enter data create(adtah)
+     !$acc enter data create(adtgm)
+     !$acc enter data create(adtis)
+     !$acc enter data create(ftx2)
+     !$acc enter data create(fty2)
+     !$acc enter data create(ftz2)
+     !$acc enter data create(ftxah)
+     !$acc enter data create(ftyah)
+     !$acc enter data create(ftxgm)
+     !$acc enter data create(ftygm)
+     !$acc enter data create(ftzgm)
+     !$acc enter data create(ftxis)
+     !$acc enter data create(ftyis)
+     !$acc enter data create(ftzis)
+
+     !$acc enter data create(ublsx, vblsy)
+     !$acc enter data create(ublsw, vblsw)
+
+     !$acc enter data copyin(s0)
+     !$acc enter data copyin(sm)
+
+     !$acc enter data copyin(sx,sy,sz, sxx,syy,szz, sxy,sxz,syz)
+
+     !$acc enter data copyin(f0)
+     !$acc enter data copyin(fm)
+     !$acc enter data copyin(fx , fxx)
+     !$acc enter data copyin(fy , fyy)
+     !$acc enter data copyin(fz , fzz)
+     !$acc enter data copyin(fxy, fxz)
+     !$acc enter data copyin(fyz)
+     
+     !$acc enter data copyin(vlmx, vlmy)
+     !$acc enter data copyin(vlmz)     
+
+     !$acc enter data create(r)
+     !$acc enter data copyin(alf)
+     !$acc enter data create(uv)
+
+     !$acc enter data create(psigmx, psigmy)
+     !$acc enter data create(xpsiy,  ypsix)
+     !$acc enter data create(zpsix,  zpsiy)
+     !$acc enter data create( igsy,   igsx)  
   end if
 
   tsiv = 1.d0 / ts
@@ -512,7 +566,7 @@ subroutine flxtrc( &
      &  zpsix,  zpsiy, &
      &     ty,     tx,     hz )
 
-
+!$acc kernels default(present)
 !$omp parallel
 !$omp do
   do n = 1, ntdim
@@ -554,8 +608,10 @@ subroutine flxtrc( &
   end do
 !$omp end do
 !$omp end parallel
+!$acc end kernels
 
   do n = 1, ntdim
+!$acc kernels default(present)
 !$omp parallel private( &
 !$omp k, ij, ijls, ijlw, &
 !$omp fharmx, fharmy, harm &
@@ -594,8 +650,10 @@ subroutine flxtrc( &
      end do
 !$omp end do
 !$omp end parallel
+!$acc end kernels
   end do
-  
+
+!$acc kernels default(present)
 !$omp parallel
 !$omp do
   do ij = 1, nxydim
@@ -621,13 +679,15 @@ subroutine flxtrc( &
   end do
 !$omp end do
 !$omp end parallel
-  
+!$acc end kernels
+
   call chekin(wzc, 'WZC', &
      &     'ocean vertical velocity on sigma coordinate', 'cm/s', &
      & nx, ny, nz, nxyzdm, 'OCLVMT')
 
 ! ======  GM  isopycnal and diapycnal diffusion  ======
 ! ---- z diffusion flux of GM
+!$acc kernels default(present)
 !$omp parallel private(k, n, ij, kuu, ku, kd, ijls, ijlw, ijlsw)
 !$omp do
   do n = 1, ntdim
@@ -866,7 +926,8 @@ subroutine flxtrc( &
   end do
 !$omp end do
 !$omp end parallel
-
+!$acc end kernels
+  
 !  call chekin(psigmx, 'PSIGMX', nx, ny, nz, nxyzdm, 'OCN')
 !  call chekin(psigmy, 'PSIGMY', nx, ny, nz, nxyzdm, 'OCN')
 
@@ -874,7 +935,8 @@ subroutine flxtrc( &
 ! ---- SOM 
 
 ! ---- mass contained in a tracer grid
-  
+
+!$acc kernels default(present)
 !$omp do
   do n = 1, ntdim
 
@@ -929,10 +991,12 @@ subroutine flxtrc( &
   end do
 !$omp end do
 !$omp end parallel
-
+!$acc end kernels
+  
   do n = 1, ntdim
 
 ! ---- undershoot limiter (Method B) of Morales Maqueda and Holloway (2006)
+!$acc kernels default(present)
 !!*POPTION PARALLEL
 !$omp parallel do private( &
 !$omp ij, ijlw, ijle, k, s0m, s1m, s0p, sxp, &
@@ -1259,10 +1323,11 @@ subroutine flxtrc( &
         
      end do
 !$omp end parallel do
+!$acc end kernels
   end do
 
 ! ---- Y-direction
-
+!$acc kernels default(present)
 !$omp parallel do &
 !$omp private( ij, k, ijls, ijlsw )
   do k = kstr, kend
@@ -1277,10 +1342,11 @@ subroutine flxtrc( &
      end do
   end do
 !$omp end parallel do
-
+!$acc end kernels
   do n = 1, ntdim
 
 !    ---- undershoot limiter (Method B) of Morales Maqueda and Holloway (2006)
+!$acc kernels default(present)
 !!*POPTION PARALLEL
 !$omp parallel private( &
 !$omp ij, ijls, ijln, k, s0m, s1m, s0p, sxp, &
@@ -1369,6 +1435,7 @@ subroutine flxtrc( &
      end do
 !$omp end do
 !$omp end parallel
+!$acc end kernels
 
 !---- bug fix 2
 #ifdef OPT_TRIPOLE
@@ -1396,6 +1463,7 @@ subroutine flxtrc( &
 #endif
 
 !    ---- calculating ALF  and MASS between box (i,j-1,k) <---> (i,j,k)
+!$acc kernels default(present)
 !!*POPTION PARALLEL
 !$omp parallel private( &
 !$omp ij, ijls, ijln, k, s0m, s1m, s0p, sxp, &
@@ -1659,7 +1727,7 @@ subroutine flxtrc( &
      end do
 !$omp end do
 !$omp end parallel
-
+!$acc end kernels
   end do
 
 #ifdef OPT_BBL
@@ -1678,7 +1746,7 @@ subroutine flxtrc( &
 #endif
 
 ! ---- Z-direction
-
+!$acc kernels default(present)
 !$omp parallel do
   do k = kstr, kend
      do ij = ijtstr, ijtend
@@ -1690,7 +1758,8 @@ subroutine flxtrc( &
      end do
   end do
 !$omp end parallel do
-
+!$acc end kernels
+  
 #ifdef OPT_BBL
 !$omp parallel do private(ij, k)
   do ij = ijtstr, ijtend
@@ -1704,6 +1773,7 @@ subroutine flxtrc( &
   do n = 1, ntdim
 
 !    ---- undershoot limiter (Method B) of Morales Maqueda and Holloway (2006)
+!$acc kernels default(present)
 !!*POPTION PARALLEL
 !$omp parallel private( &
 !$omp ij, k, ku, kd, s0m, s1m, s0p, sxp, &
@@ -2022,10 +2092,11 @@ subroutine flxtrc( &
      end do
 !$omp end do
 !$omp end parallel
-
+!$acc end kernels
   end do
 
   do n = 1, ntdim
+!$acc kernels default(present)
 !$omp parallel
 !$omp do
      do k = kstr, kend
@@ -2068,6 +2139,7 @@ subroutine flxtrc( &
      end do
 !$omp end do
 !$omp end parallel
+!$acc end kernels     
   end do
 
 #ifdef OPT_BBL
@@ -2247,6 +2319,7 @@ subroutine flxtrc( &
   &            'tendency of salt by diffusion', 'psu/sec', &
   &            nx, ny, nz, nxyzdm, 'OCLVTT')
 
+  !$acc kernels default(present)
   do ij = ijtstr, ijtend
      dh(ij) = hx(ij) - hz(ij)
   end do
@@ -2258,6 +2331,7 @@ subroutine flxtrc( &
         end do
      end do
   end do
+  !$acc end kernels
   call chekin(adt2(1, 1, 1), 'DTDTV', &
        &            'tendency of temp by advection', 'K/sec', &
        &            nx, ny, nz, nxyzdm, 'OCLVTT')
@@ -2368,8 +2442,38 @@ subroutine dnsgrd( &
         &   c4(kstr), c5(kstr), c6(kstr), &
         &   d0(kstr), d1(kstr), d2(kstr), d3(kstr),  d4(kstr), &
         &   d5(kstr), d6(kstr), d7(kstr), d8(kstr),  d9(kstr))
+     !$acc enter data copyin(c0,c1,c2,c3,c4,c5,c6)
+     !$acc enter data copyin(d0,d1,d2,d3,d4,d5,d6,d7,d8,d9)
+
+     !$acc enter data create(cxpsy, cypsx)
+     !$acc enter data create(czpsx, czpsy)
+
+     !$acc enter data create(r)
+     !$acc enter data create(   hmld, hmld1)
+     !$acc enter data create( rmavez, rmav1)
+     !$acc enter data create(  dzsig, dzmsig)
+     !$acc enter data create(     zt,    ztm)
+     !$acc enter data create( rsigth)
+     !$acc enter data create(    nbv,     lf)
+     !$acc enter data create( xpsiy1, ypsix1)
+     !$acc enter data create( zpsix1, zpsiy1)
+     !$acc enter data create(  zmld0,  zhmld)
+     !$acc enter data create(  hmldx,  hmldy)
+     !$acc enter data create( xpsiyz, ypsixz)
+     !$acc enter data create(  kmld)
+
+     !$acc enter data create( rmavdx, rmavdy)
+     !$acc enter data create(   muzx,   muzy)
+
+     !$acc enter data create(  xpsiy,  ypsix)
+     !$acc enter data create(  zpsix,  zpsiy)
+     !$acc enter data create(     hz)
+
+     !$acc enter data create(   dtdx,   dtdy)
+     !$acc enter data create(  dtfdz)       
   end if
 
+!$acc kernels default(present)
 !$omp parallel private(n, k, ij, &
 !$omp tl, sl, p1, p2, rl, rlw, rls, rlu, dzdx, dzdy)
 !$omp do
@@ -2571,6 +2675,7 @@ subroutine dnsgrd( &
   ypsix(:,:) = 0.d0
   zpsix(:,:) = 0.d0
   zpsiy(:,:) = 0.d0
+!$acc end kernels
   if ( .not. omlep ) return
 
   if (ofirst2) then
@@ -2585,6 +2690,7 @@ subroutine dnsgrd( &
      cormin = 2.d0 * omega * sin( pi*abs(fminlt)/180.d0 )
      kzmin = mzmin + kstr - 1
 
+     !$acc kernels default(present)
      do ij = nxdim+2, nxydim
         if (ocoamp) then
            cxpsy(ij) = ce &
@@ -2638,8 +2744,10 @@ subroutine dnsgrd( &
              &                                              **2.0d0 )
         end if
      end do
+     !$acc end kernels
   end if
 
+!$acc kernels default(present)
 !$omp do
   do k = kstr, kend
      do ij = 1, nxydim
@@ -2710,7 +2818,8 @@ subroutine dnsgrd( &
      hmldx(ij) = 0.0d0
      hmldy(ij) = 0.0d0
   end do
-
+!$acc end kernels
+  
 ! calculating mixed layer depth hmld and mld-averaged buoyancy rmavez
 
 !  determine HMLD by N^2
@@ -2739,6 +2848,7 @@ subroutine dnsgrd( &
 !  end do
 
 ! determine HMLD by sigma_theta
+  !$acc kernels default(present)
   do ij = 1, nxydim
      hmld(ij) = ztm(ij, kstr)
      zhmld(ij, kstr) = ztm(ij, kstr)
@@ -2784,6 +2894,7 @@ subroutine dnsgrd( &
         lf(ij) = 1.0d0
      end if
   end do
+  !$acc end kernels
 
 !  if (ofltdm) then
 !#ifdef OPT_TRIPOLE
@@ -2869,13 +2980,15 @@ subroutine dnsgrd( &
 !     end do
 !  end if
 
+  !$acc kernels default(present)
   do ij = 1, nxydim
      if (kmld(ij) .lt. kzmin) then
         hmld(ij) = 0.0d0
      end if
      zmld0(ij) = kmld(ij) - kstr + 1
   end do
-
+  !$acc end kernels
+  
 ! for diagnosis
 !  call chekin(   hmld,   'HMLD', nx, ny,  1, nxydim, 'SFC')
 !  call chekin(  zmld0,   'KMLD', nx, ny,  1, nxydim, 'SFC')
@@ -2883,6 +2996,7 @@ subroutine dnsgrd( &
 !  call chekin(      r,      'R', nx, ny, nz, nxyzdm, 'OCN')
 !  call chekin(     lf,     'LF', nx, ny,  1, nxydim, 'SFC')
 
+  !$acc kernels default(present)
   do k = kstr, mz+kstr-1
      do ij = ijtstr, ijtend+nxdim
         dhmld = min(zhmld(ij, k), zhmld(ij+lw, k))
@@ -2966,6 +3080,7 @@ subroutine dnsgrd( &
           &            min(abs(ypsixz(ij, k+1)), vscl*dzmsig(ij, k+1))
      end do
   end do
+  !$acc end kernels
 
 !  if (ofltps) then
 !#ifdef OPT_TRIPOLE
@@ -3035,7 +3150,8 @@ subroutine dnsgrd( &
 !#endif
 !     end do
 !  end if
-        
+
+  !$acc kernels default(present)
   do k = kstr+1, kend
      do ij = ijtstr, ijtend
         zpsix(ij, k) = 0.5d0 * &
@@ -3044,7 +3160,8 @@ subroutine dnsgrd( &
           &   ( xpsiyz(ij, k) + xpsiyz(ij+le, k) ) * amftz(ij, k)
      end do
   end do
-
+  !$acc end kernels
+  
 ! for diagnosis
 !  call chekin(  cxpsy,  'CXPSY', nx, ny,  1, nxydim, 'SFC')
 !  call chekin(  cypsx,  'CYPSX', nx, ny,  1, nxydim, 'SFC')
