@@ -67,12 +67,14 @@ contains
    &                  ub,     vb,      w,   &
    &               nxdim,  nydim,  nzdim)
 #endif
+  !$acc kernels default(present)
   do ijk = 1, nxyzdm
      r(ijk) = 0.0d+0
   end do
-
+  !$acc end kernels
+  
   call ddenst(  r,   tb)
-
+  
 #ifdef OPT_TRIPOLE
   call shift1(     r, &
    &             nxdim,  nydim,  nzdim, &
@@ -159,7 +161,6 @@ contains
   call shift3( &
    &              wadv(1, 7),   wadv(1, 8),   wadv(1, 9), &
    &             nxdim,  nydim,  nzdim)
-
   call shift2( &
    &               amv,    ahv, &
    &             nxdim,  nydim,  nzdim)
