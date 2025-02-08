@@ -38,9 +38,11 @@ contains
   integer :: ijlw,   ijls,  ijlsw
 
   if (oinit .or. ofinal) then
+     !$acc enter data create(ftx,fty,dhdt,rhzbot)
      return
   end if
 
+  !$acc kernels default(present)
   do k = 1, nzdim
      do ij = 1, nxydim
             ftx(ij, k) = 0.d0
@@ -105,7 +107,7 @@ contains
   do ij = ijtstr-nxdim-1, ijtend+nxdim+1
      w(ij, kstr) = 0.d0
   end do
-
+  !$acc end kernels
   return
   end subroutine wdenst
 end module dwdns
