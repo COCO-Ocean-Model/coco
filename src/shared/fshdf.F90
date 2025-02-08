@@ -68,8 +68,10 @@ contains
        read(ifpar, nmdfsh, iostat = istat )
        call cstnml( jfpar, 'shdiff', 'nmdfsh', istat )
        write( jfpar, nmdfsh )
+       !$acc enter data create(tsh, fhx,fhy, ftx,fty, rhxbot, hx,tx)
     end if
 
+    !$acc kernels default(present)
     do n = 1, ntdim
        do k = kstr, kstr+kz-1
           do ij = 1, nxydim
@@ -127,7 +129,7 @@ contains
 
        end do
     end do
-
+    !$acc end kernels
   end subroutine shdiff
  
 end module fshdf
