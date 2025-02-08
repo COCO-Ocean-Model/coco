@@ -34,9 +34,11 @@ contains
   integer ::  ij,      k
 
   if (oinit .or. ofinal) then
+     !$acc enter data create(uavr,vavr, ubar,vbar)
      return
   end if
 
+  !$acc kernels default(present)
   do k = 1, nzdim
      do ij = 1, nxydim
         uadv(ij, k) = 0.0d0
@@ -67,7 +69,7 @@ contains
             vadv(ij, k) = (vbar(ij) + (v(ij, k) - vavr(ij))) * amskv(ij, k)
      end do
   end do
-
+  !$acc end kernels
   return
   end   subroutine veltad
 end module dvlta
