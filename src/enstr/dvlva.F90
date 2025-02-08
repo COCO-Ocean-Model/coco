@@ -35,7 +35,7 @@ contains
   
   subroutine velvad(                                                        &
     &               uadv,   vadv,   wadv,                                   &
-    &                  u,      v,      w)
+    &                  u,      v,      w )
    use zocdim, only :                                                       &
     &  nxydim, nxdim, nzdim, kstr, kend, kz, ijtstr, ijtend, ijvstr, ijvend,&
     &  le, ln, lnw, lne, lw, ls, lsw, lse,                                  &
@@ -51,7 +51,7 @@ contains
    real(8), intent(out) :: wadv(nxydim, nzdim,  9)
    real(8), intent(in)  ::    u(nxydim, nzdim),      v(nxydim, nzdim)
    real(8), intent(in)  ::    w(nxydim, nzdim)
-
+   
    integer ::    ij,      k,      l
    real(8) ::    an
 
@@ -60,17 +60,18 @@ contains
 
    logical, save :: ofirst = .true.
 
-
    if (oinit .or. ofinal) then
       return
    end if
  
    if (ofirst) then
+      !$acc enter data create(rn, rnn, plo, rcr)
       ofirst = .false.
 #ifdef OPT_BBL
       call rmmskv
 #endif
 
+    !$acc kernels default(present)
     do k = 1, nzdim
        do ij = 1, nxydim
           rn (ij, k) = 0.d0
@@ -123,13 +124,14 @@ contains
           end if
        end do
     end do
-
+    !$acc end  kernels
 #ifdef OPT_BBL
 !         call admkv1
          call admskv
 #endif
     end if
 
+    !$acc kernels default(present)
     do k = 1, nzdim
        do ij = 1, nxydim
           uadv(ij, k) = 0.d0
@@ -206,7 +208,8 @@ contains
     &                   rcr(ij+ln, k)
        enddo
     enddo
-
+    !$acc end  kernels
+    
     return
  end subroutine velvad
 #ifdef OPT_BBL
@@ -341,9 +344,16 @@ contains
     real(8) ::  wadv2(nxdim, nydim, nzdim, 9)
 
     integer i, j, k, n, istv, jstv
+    logical, save :: ofirst = .true.
 
+    if (ofirst) then
+       !$acc enter data create(wadv2)
+       ofirst = .false.
+    end if    
+    
     if(jrank .ne. jnodes-1) return
 
+    !$acc kernels default(present)
     do n=1,9
     do k=1,nzdim
     do j=1,nydim
@@ -353,8 +363,9 @@ contains
     end do
     end do
     end do
-
+    !$acc end kernels
     if(inodes .eq. 1) then
+       !$acc kernels default(present)
       do k=1, nzdim
       do j=jend+1, nydim
       do i=1,nxdim
@@ -383,8 +394,9 @@ contains
         wadv(i,j,k,9)=wadv2(i,j,k,5)
       end do
       end do
-
+      !$acc end kernels
     else if(irank .lt. inodes/2) then
+      !$acc kernels default(present)
       do k=1, nzdim
       do j=jend+1, nydim
       do i=1,nxdim
@@ -399,7 +411,9 @@ contains
       end do
       end do
       end do
+      !$acc end kernels
     else
+      !$acc kernels default(present)
       do k=1, nzdim
       do j=jend, nydim
       do i=1,nxdim
@@ -414,6 +428,7 @@ contains
       end do
       end do
       end do
+      !$acc end kernels
     end if
     
   return
