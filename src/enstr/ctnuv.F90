@@ -109,10 +109,14 @@ subroutine tnduvd( &
      call rstadd(yy2, oeof, nxdim, nydim, 1, 'YY2', 'SFC')
      call rstadd(yy3, oeof, nxdim, nydim, 1, 'YY3', 'SFC')
 #endif
+     !$acc enter data create(px,pxm, py,pym, uu,uv,vv, hvbot, dzsig) 
+     !$acc enter data create(xx1,yy1)
+     !$acc enter data copyin(xx2,xx3,yy2,yy3)
      return
   end if
 
   if (ofinal) then
+     !$acc update self(xx2,xx3,yy2,yy3)
      call finadd(xx2, nxdim, nydim, 1, 'XX2', 'SFC')
      call finadd(xx3, nxdim, nydim, 1, 'XX3', 'SFC')
      call finadd(yy2, nxdim, nydim, 1, 'YY2', 'SFC')
@@ -125,6 +129,7 @@ subroutine tnduvd( &
      cof = -0.25d0 * gravit / rhoo * 1.d-3
   end if
 
+  !$acc kernels default(present)
   do ij = ijvstr, ijvend+nxdim+1
      hvbot(ij) = (  (hy(ij) + hy(ij+le)) * dy(ij) &
         &         + (hy(ij+ln) + hy(ij+lne)) * dy(ij+ln)) * &
@@ -136,7 +141,9 @@ subroutine tnduvd( &
         dzsig(ij, k) = ds(k) * hvbot(ij)
      end do
   end do
-
+  !$acc end kernels
+  
+  !$acc kernels default(present)
   do ij = ijvstr, ijvend
      pxm(ij, kstr) = (  r(ij+lne, kstr) + r(ij+le, kstr) &
         &             - r(ij+ln , kstr) - r(ij   , kstr)) * &
@@ -163,6 +170,9 @@ subroutine tnduvd( &
      gyy(ij)       = yy(ij, kstr) * dzsig(ij, kstr) * &
         &            amskv(ij, kstr)
   end do
+  !$acc end kernels
+
+  !$acc kernels default(present)
   do k = kstr+1, kstr+kz-1
      do ij = ijvstr, ijvend
         pxm(ij, k) = (  r(ij+lne, k) + r(ij+le, k) &
@@ -193,7 +203,9 @@ subroutine tnduvd( &
            &         amskv(ij, k)
      end do
   end do
+  !$acc end kernels
 
+  !$acc kernels default(present)
   do k = kstr+kz, kend
      do ij = ijvstr, ijvend
         pxm(ij, k) = (  r(ij+lne, k) - r(ij+ln, k) &
@@ -222,8 +234,9 @@ subroutine tnduvd( &
         gyy(ij)    = gyy(ij) + yy(ij, k) * dzv(ij, k) * amskv(ij, k)
      end do
   end do
-
+  !$acc end kernels
 ! -----------------------------------------------------------------------
+  !$acc kernels default(present)
   do ij=1,nxydim
         xx1(ij)=0.d0
         yy1(ij)=0.d0
@@ -268,6 +281,7 @@ subroutine tnduvd( &
      &             rx * rym(ij) * rxu(ij) * ryu(ij) 
      enddo
   enddo
+  !$acc end kernels
 ! -----------------------------------------------------------------------
 !      do 300 ij = ijvstr, ijvend+nxdim+1
 !         fux (ij, kstr) = fux (ij, kstr) * dzsig(ij, kstr)
@@ -312,12 +326,12 @@ subroutine tnduvd( &
 !  400    continue
 !  410 continue
 
+  !$acc kernels default(present)
   do ij = 1, nxydim
      uu(ij) = 0.d0
      vv(ij) = 0.d0
      uv(ij) = 0.d0
   end do
-
   do ij = ijvstr, ijvend
          uu(ij) = uy(ij, kstr) * uy(ij, kstr) * &
      &            dzsig(ij, kstr) * amskv(ij, kstr)
@@ -357,12 +371,13 @@ subroutine tnduvd( &
          xx1(ij) = xx1(ij) * amskv(ij, kstr)
          yy1(ij) = yy1(ij) * amskv(ij, kstr)
   enddo
-
+  !$acc end kernels
 ! --- Adams-Bashforth scheme
       ncall=ncall +1
 
       if( (ncall .ge. 3) .or. (.not. oeof)) then
-      ncall=3
+        ncall=3
+        !$acc kernels default(present)
         do ij = ijvstr, ijvend
             gxx(ij) =  gxx(ij) &
      & +  cx1 *xx1(ij)  + cx2* xx2(ij) + cx3*xx3(ij) 
@@ -370,13 +385,17 @@ subroutine tnduvd( &
             gyy(ij) =  gyy(ij) &
      & +  cx1 *yy1(ij)  + cx2* yy2(ij) + cx3*yy3(ij) 
         end do
+        !$acc end kernels
       else
         if(ncall .eq. 1) then ! forward
+           !$acc kernels default(present) 
            do ij = ijvstr, ijvend
             gxx(ij) =  gxx(ij) + xx1(ij)
             gyy(ij) =  gyy(ij) + yy1(ij)
            end do
-        else if(ncall .eq. 2) then !2nd order ab       
+           !$acc end kernels
+        else if(ncall .eq. 2) then !2nd order ab
+          !$acc kernels default(present)  
           do ij = ijvstr, ijvend
             gxx(ij) =  gxx(ij) &
      &    +  1.5d0 *xx1(ij)  -0.5d0* xx2(ij)
@@ -384,10 +403,11 @@ subroutine tnduvd( &
             gyy(ij) =  gyy(ij) &
      &    +  1.5d0 *yy1(ij)  -0.5d0* yy2(ij)
           end do
+          !$acc end kernels
         end if
       end if
 
-
+      !$acc kernels default(present)  
       do ij = ijvstr, ijvend
           xx3(ij)=xx2(ij) !n-1 > n-2
           yy3(ij)=yy2(ij)
@@ -395,6 +415,7 @@ subroutine tnduvd( &
           xx2(ij)=xx1(ij) !n> n-1
           yy2(ij)=yy1(ij)
       end do
+      !$acc end kernels
 
 !      do 700 ij = ijvstr, ijvend
 !         gxx(ij) = gxx(ij)
