@@ -38,7 +38,8 @@ contains
   real(8), intent(inout) ::  t(nxdim, nydim, nzdim, ntdim)
   real(8), intent(in)    ::  r(nxdim, nydim, nzdim)
   integer ::     i,      j,      k,     ij,      n 
-
+  
+  !$acc kernels default(present)
   do n = 1, ntdim
      do k = 1, kstr-1
         do j = 1, nydim
@@ -57,7 +58,7 @@ contains
         end do
      end do
   end do
-
+  !$acc end kernels
   return
   end subroutine stbctr
 
