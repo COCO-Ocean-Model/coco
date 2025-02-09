@@ -37,7 +37,7 @@ module fshlw
 
 ! for tide
   logical, save :: otide = .false.
-  real(8), save :: ubtwof(nxydim) = 0.d0, vbtwof(nxydim) = 0.d0
+  real(8), save :: ubtwof(nxydim), vbtwof(nxydim)
   real(8), save  ::   bvf(nxydim)
   real(8), save  ::   rzm(nxydim, nzdim)
   real(8), save  ::   cfb
@@ -215,6 +215,8 @@ contains
           call scatter_2d( rght, g2d )
           deallocate ( buf2, g2d )
 #endif
+          !$acc enter data copyin(rght)
+          !$acc enter data create(rghn)
 #ifdef OPT_TRIPOLE
           call shift1(  rght,                                      &
                &       nxdim,  nydim,      1,                      &
@@ -227,6 +229,7 @@ contains
           ksfr = ksfr + kstr-1
           pi = 4.d0 * atan(1.d0)
           lscale = pi / lscale
+          !$acc kernels default(present)
           do ij = ijvstr, ijvend
              rghn(ij) = 0.25d0* ( rght(ij   )+ rght(ij+le ) &
                   &              +rght(ij+ln)+ rght(ij+lne))
@@ -238,8 +241,9 @@ contains
                 rghn(ij) = 0.d0
              end if
           end do
+          !$acc end kernels
           cfb = gravit / rhoo * 1.d-3
-          
+
 #ifdef OPT_TRIPOLE
           call shift1(  rghn,                                      &
                &       nxdim,  nydim,      1,                      &
@@ -316,11 +320,26 @@ contains
           
        end if ! iam
        end if ! lnovis
+       !$acc enter data copyin(gh, amhmod)
+       !$acc enter data create(fux,     fuy)
+       !$acc enter data create(fvx,     fvy)
+       !$acc enter data create(fhx,     fhy)
+       !$acc enter data create( gu,      gv)
+       !$acc enter data create(sxx,     syy)
+       !$acc enter data create(sxy,     syx)
        
+       !$acc enter data create(ubtwof, vbtwof)
+       !$acc enter data create(bvf)
+       !$acc enter data copyin(rzm)
+       
+       !$acc kernels
+       ubtwof(:)=0.d0
+       vbtwof(:)=0.d0
+       !$acc end kernels
     end if
-
+    
     if (lnovis) return
-
+!$acc kernels default(present)
 !$omp parallel do privete( ij )
     do ij = 1, nxydim
        fux(ij) = 0.d0
@@ -412,7 +431,7 @@ contains
     &            rxu(ij) * ryu(ij) * amskv(ij, kstr)
     end do
 !$omp end parallel do
-
+!$acc end kernels
   end subroutine modgxy
 
 ! =====================================================================
@@ -447,8 +466,8 @@ contains
     real(8),   intent(in)     ::  ptop(nxydim),    fw(nxydim)
 
 !----- for tide
-    real(8), save             ::    abv(nxydim) = 0.d0
-    real(8), save             ::  tidep(nxydim) = 0.d0
+    real(8), save             ::    abv(nxydim)
+    real(8), save             ::  tidep(nxydim)
     
 !----- local variables
     real(8)     ::     cf
@@ -456,6 +475,18 @@ contains
     integer(4)  ::   ijle,   ijln,   ijlw,   ijls
     integer(4)  ::   ijnw,   ijse,   ijsw
     integer(4)  ::  ifpar,  jfpar,   istat
+    logical     :: ofirst=.true.
+
+    if (ofirst) then
+       ofirst=.false.
+       !$acc enter data create(abv, tidep)
+       !$acc kernels default(present)
+       abv(:)=0.d0
+       tidep(:)=0.d0
+       !$acc end kernels
+    end if
+    
+!$acc kernels default(present)
 !$omp parallel do private( ij )
     do ij = 1, nxydim
        fux(ij) = 0.d0
@@ -489,18 +520,21 @@ contains
     &         - tss * fw(ij) * amskt(ij, kstr)
     end do
 !$omp end parallel do
-
+!$acc end kernels
     if ( otide ) then
+       !$acc kernels default(present)
        do ij = ijstr-nxdim-1, ijend+nxdim+1
           abv(ij) = ( bvf(ij   ) + bvf(ij+le ) &
                &    + bvf(ij+ln) + bvf(ij+lne) ) * rghn(ij)
        end do
+       !$acc end kernels
        call clcstr('TIDE')
        call tide(tidep)
        call clcend('TIDE')
     end if
-    
+
     if ( .not. lnovis ) then
+!$acc kernels default(present)
 !$omp parallel do &
 !$omp private( ij, ijls, ijlw, ijln, ijle, ijnw, ijse, ijsw )
     do ij = ijstr-nxdim-1, ijend+nxdim+1
@@ -569,8 +603,10 @@ contains
     &                      (hxu(ij) + hxu(ijls)) * 0.25d0
     end do
 !$omp end parallel do
+!$acc end kernels
     end if ! lnovis
- 
+
+!$acc kernels default(present)
 !$omp parallel do private( ij )
     do ij = ijstr-nxdim-1, ijend
        gu(ij) = gxx(ij) + cor(ij) * vbtx(ij)                         &
@@ -613,7 +649,7 @@ contains
     &             (gv(ij) - cf * gu(ij)) * amskv(ij, kstr)
     end do
 !$omp end parallel do
-
+!$acc end kernels
   end subroutine shalow
 
   subroutine bvfreq(t)
