@@ -118,8 +118,34 @@ contains
     end if
 
     if ( ofirst ) then
-
        ofirst = .false.
+       
+       !$acc enter data create(asm, asmb)
+       !$acc enter data create(sxx,syy)
+       !$acc enter data create(sxy,syx)
+       !$acc enter data create(bxx,byy)
+       !$acc enter data create(bxy,byx)
+       !$acc enter data create(hvbot)
+
+       !$acc enter data create(fux,fvx)
+       !$acc enter data create(fuy,fvy)
+       !$acc enter data create(fuz,fvz)
+       !$acc enter data create(rz, rzm)
+       !$acc enter data create(szx,szy)
+       !$acc enter data create(db)
+       !$acc enter data create(hu,hv)
+       !$acc enter data create(hux,hvx)
+       !$acc enter data create(huy,hvy)
+
+       !$acc enter data create( sxxne, sxxnw )
+       !$acc enter data create( sxxse, sxxsw )
+       !$acc enter data create( sxyne, sxynw )
+       !$acc enter data create( sxyse, sxysw )
+       !$acc enter data create( syyne, syynw )
+       !$acc enter data create( syyse, syysw )
+       !$acc enter data create(  dbsw,  dbnw )
+       !$acc enter data create(  dbse,  dbne )
+    
        call rewnml( ifpar, jfpar )
        read( ifpar, nmsmag, iostat = istat )
        call cstnml( jfpar, 'vscvel', 'nmsmag', istat )
@@ -130,14 +156,16 @@ contains
        write( jfpar, nmpslv )
 
        pi = 4.d0 * atan(1.d0)
+       !$acc kernels default(present)
        do ij = 1, nxydim
           asm(ij) = ( csm * min( dx*hxt(ij), dy(ij)*hyt(ij)) / pi ) ** 2
           asmb(ij) = csmb * min( dx*hxt(ij), dy(ij)*hyt(ij))**2        &
    &              / pi / sqrt(8.d0)
        end do
-      
+       !$acc end kernels
     end if
 
+    !$acc kernels default(present)
     do k = 1, nzdim
        do ij = 1, nxydim
           fux(ij, k) = 0.d0
@@ -187,8 +215,10 @@ contains
           gy(ij, k) = gy(ij, k) + (fvz(ij, k) - fvz(ij, k+1)) * rz(ij, k)
        end do
     end do
-
+    !$acc end kernels
+    
     if (opslvis) then
+       !$acc kernels default(present)
        do k = kstr, kend
           sxxsw(:) = 0.d0
           sxxnw(:) = 0.d0
@@ -557,7 +587,9 @@ contains
                   & * rxu(ij) * ryu(ij) + szy0 / rea) * amskv(ij, k)
           end do
        end do
+       !$acc end kernels
     else
+       !$acc kernels default(present)
        do k = kstr, kend
           do ij = 1, nxydim
              sxx(ij) = 0.d0
@@ -704,15 +736,17 @@ contains
                   &  +   szy(ij, k) / rea ) * amskv(ij, k)
           end do
        end do
+       !$acc end kernels
     end if
- 
+
+    !$acc kernels default(present)
     do k = kstr, kend
        do ij = ijvstr, ijvend
           xx(ij, k) = gx(ij, k)
           yy(ij, k) = gy(ij, k)
        end do
     end do
-
+    !$acc end kernels
   end subroutine vscvel
 
 
