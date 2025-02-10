@@ -137,8 +137,8 @@ subroutine vdiff( &
   integer ::      i,      j
   integer ::  ifpar,  jfpar,  istat
 
-  real(8), save ::  amv0(nz) = 0.0d0,  ahv0(nz) = 0.0d0
-  real(8), save ::  rahv(nz) = 1.0d0
+  real(8), save ::  amv0(nz),  ahv0(nz)
+  real(8), save ::  rahv(nz)
   real(8), save ::  btmfrc = 0.0d0
   real(8), save ::  estrm = 1.0d0,  estrn = -0.6666666666666666d0
   real(8), save ::  estrp = 2.0d0
@@ -166,8 +166,8 @@ subroutine vdiff( &
   
   real(8), save ::  tedn2d(nxydim)
   real(8), save ::  tedf2d(nxydim)
-  real(8), save ::  tedn3d(nxydim, nzdim) = 0.d0
-  real(8), save ::  tedf3d(nxydim, nzdim) = 0.d0
+  real(8), save ::  tedn3d(nxydim, nzdim)
+  real(8), save ::  tedf3d(nxydim, nzdim)
   real(8), save ::  cgamma = 0.2d0,  ahvemx = 1000.0d0,  epst = 1.d-20
   real(8), save ::    zeta = 500.d0 ! [m]
   logical, save ::  ofvcnt = .false., ofvpn = .false. ! vert. prof of far-field mixing
@@ -192,7 +192,7 @@ subroutine vdiff( &
   real(8)       ::    gint(nxydim)
   real(8)       ::  ahvted(nxydim, nzdim),  tedr(nxydim, nzdim)
   real(8)       ::     dep ! [cm]
-
+  
   namelist /nmvisv/ amv0
   namelist /nmdifv/ ahv0
   namelist /nmdfre/ rahv
@@ -210,6 +210,50 @@ subroutine vdiff( &
   namelist /nmdved/ iamn, iamf, cftedn, cftedf, cgamma, ahvemx, epst, zeta, ofvcnt, ofvpn
  
   if (oinit) then
+     !$acc enter data create(tke,  psi)
+     !$acc enter data create( ahv03d)
+     !$acc enter data create(  csamv,  csahv)
+     
+     !$acc enter data create(   amvt)
+     !$acc enter data create(   drdz,  duvdz)
+     !$acc enter data create(  dzsig, rzmsig)
+     !$acc enter data create(  depth, depthm)
+     !$acc enter data create(  epsil,    tls)
+     !$acc enter data create(     sh,     sm)
+     !$acc enter data create(  fwall)
+     !$acc enter data create(    fez,    rit)
+     !$acc enter data create(     aa,     ab)
+     !$acc enter data create(     ac,    ade)
+     !$acc enter data create( adefwd,   tke0)
+     !$acc enter data create( cdkdtl,  diffz)
+     !$acc enter data create(   cdmp)
+     !$acc enter data create( ufrc2s,        ufrc2b)
+     !$acc enter data create( ufrc2o,        ufrc2i)
+     !$acc enter data create( ufrc3s,        ufrc3o)
+     !$acc enter data create( taubtm)
+     !$acc enter data create(     gh,   ghul)
+     !$acc enter data create( z0sf2d,        prepmx)
+     !$acc enter data create(  dpsi0, scnp3d)
+     !$acc enter data create( ctkemn, ctfilt)
+
+     !$acc enter data create( cc0, cc1, cc2 )
+     !$acc enter data create( cc3, cc4, cc5, cc6 )
+     !$acc enter data create( d0, d1, d2, d3, d4 )
+     !$acc enter data create( d5, d6, d7, d8, d9 )
+     
+     !$acc enter data create( amv0, ahv0)
+     !$acc enter data create( rahv)
+     
+     !$acc enter data create( tedn2d)
+     !$acc enter data create( tedf2d)
+     !$acc enter data create( tedn3d)
+     !$acc enter data create( tedf3d)
+     
+     !$acc enter data create( depth0)
+     !$acc enter data create( dzmsig)
+     !$acc enter data create(gint)
+     !$acc enter data create(ahvted, tedr)
+     
      do k = 1, nzdim
         do ij = 1, nxydim
            tke(ij, k) = tkemin
@@ -225,16 +269,26 @@ subroutine vdiff( &
      call rstadd(tke, oeof, nxdim, nydim, nzdim, 'TKE', 'OCN')
      call rstadd(psi, oeof, nxdim, nydim, nzdim, 'PSI', 'OCN')
 #endif
+     !$acc update device(tke, psi)
      return
   end if
 
   if (ofinal) then
+     !$acc update self(tke, psi)
      call finadd(tke, nxdim, nydim, nzdim, 'TKE', 'OCN')
      call finadd(psi, nxdim, nydim, nzdim, 'PSI', 'OCN')
      return
   end if
 
   if (ofirst) then
+     !$acc kernels default(present)
+     amv0(:)=0.d0
+     ahv0(:)=0.d0
+     rahv(:)=1.d0
+     tedn3d(:,:)=0.d0
+     tedf3d(:,:)=0.d0
+     !$acc end kernels
+
 !     ofirst = .false.
      call rewnml(ifpar, jfpar)
      read (ifpar, nmvisv, iostat=istat)
@@ -264,14 +318,17 @@ subroutine vdiff( &
      read (ifpar, nmdved, iostat=istat)
      call cstnml(jfpar, 'vdiff', 'nmdved', istat)
      write(jfpar, nmdved)
-
+     !$acc update device(amv0, ahv0)
+     
      if (oeof) then
+        !$acc kernels default(present)
         do k = 1, nzdim
            do ij = 1, nxydim
               tke(ij, k) = tkemin
               psi(ij, k) = psimin
            end do
         end do
+        !$acc end kernels
      end if
 
      call secoef( &
@@ -279,7 +336,11 @@ subroutine vdiff( &
        &          cc4(kstr), cc5(kstr), cc6(kstr), &
        &          d0(kstr), d1(kstr), d2(kstr), d3(kstr),  d4(kstr), &
        &          d5(kstr), d6(kstr), d7(kstr), d8(kstr),  d9(kstr))
-
+     !$acc update device( cc0, cc1, cc2 )
+     !$acc update device( cc3, cc4, cc5, cc6 )
+     !$acc update device( d0, d1, d2, d3, d4 )
+     !$acc update device( d5, d6, d7, d8, d9 )
+     
      r0 = rhoo * 1.d3
 
      if (.not. osfcwv) then
@@ -319,7 +380,7 @@ subroutine vdiff( &
      end if
 
      nitr = nitr0
-
+     !$acc kernels default(present)
      do k = kstr+1, kend
         do ij = ijstr-nxdim-1, ijend
            csamv(ij, k) = (  amftz(ij   , k) + amftz(ij+le , k) &
@@ -342,7 +403,8 @@ subroutine vdiff( &
            end if
         end do
      end do
-
+     !$acc end kernels
+     
 ! --- reduce the background diffusion around EQ. ---
 !
      pi = atan( 1.d0 )*4.d0
@@ -371,7 +433,7 @@ subroutine vdiff( &
            endif
         end do
      end do
-
+     
 !----- reducing background vert. diffusivity in Arctic Ocean
      if ( ovdfao ) then
         corao = 2.D0 * omega * sin( pi * 65.D0 / 180.D0 )
@@ -385,12 +447,15 @@ subroutine vdiff( &
            end do
         end do
      end if
-
+     !$acc update device(ahv03d)
+     
 !---- applying turbulent energy dissipation rate
+     !$acc kernels default(present)
      do ij = 1, nxydim
         tedn2d(ij) = 0.d0
         tedf2d(ij) = 0.d0
      end do
+     !$acc end kernels
      if ( iamn == 0 ) then
         write(jfpar, *) ' Turbulent energy dissipation rate (near-field) is not used.'
      else
@@ -418,6 +483,7 @@ subroutine vdiff( &
         end if
         call scatter_2d( tedn2d, g2d )
         deallocate( buf2, g2d )
+        !$acc update device(tedn2d)
 #endif
 #ifdef OPT_TRIPOLE
         call shift1(tedn2d,                                      &
@@ -428,6 +494,7 @@ subroutine vdiff( &
     &                nxdim,  nydim,      1)
 #endif
         rzeta = 1.d0 / zeta * 1.d-2
+        !$acc kernels default(present)
         do ij = 1, nxydim
            depth0(ij, kstr) = 0.d0
         end do
@@ -436,12 +503,15 @@ subroutine vdiff( &
               depth0(ij, k) = depth0(ij, k-1) + dz(ij, k-1)
            end do
         end do
+        !$acc end kernels
      end if
      if ( iamf == 0 ) then
         write(jfpar, *) ' Turbulent energy dissipation rate (far-field) is not used.'
+        !$acc kernels default(present)
         do ij = 1, nxydim
            tedf2d(ij) = 0.d0
         end do
+        !$acc end kernels
      else
 !---- reading file of far-field tidal energy dissipation rate
 #ifdef OPT_IO_COCOMPI
@@ -467,6 +537,7 @@ subroutine vdiff( &
         end if
         call scatter_2d( tedf2d, g2d )
         deallocate( buf2, g2d )
+        !$acc update device(tedf2d)
 #endif
         if (ofvcnt) then
            write(jfpar, *) 'Vertically constant for far-field mixing'
@@ -487,7 +558,6 @@ subroutine vdiff( &
 #endif
      end if
 !---
-
   end if
 
 !     -- second step of Euler-Eackward sheme --
@@ -500,6 +570,7 @@ subroutine vdiff( &
   call admkt1
 #endif
 
+  !$acc kernels default(present)
   do k = kstr, kstr+kz-1
      do ij = 1, nxydim
         dzsig (ij, k) = (hy(ij) + zbot) * ds(k)
@@ -541,6 +612,7 @@ subroutine vdiff( &
         drdz(ij, k) = 0.d0
      end do
   end do
+
   do k = kstr+1, kend
      do ij = ijstr-nxdim-1, ijend+nxdim+1
         tl = ty(ij, k, 1)
@@ -580,7 +652,7 @@ subroutine vdiff( &
         duvdz(ij, k) = dudz * dudz + dvdz * dvdz
      end do
   end do
-
+  !$acc end kernels
 
 !     Initial guess for TKE and PSI
 !     NITR, N. of iteration, at the first step is set to 20.
@@ -635,17 +707,20 @@ subroutine vdiff( &
   end if
 
   do iitr = 1, nitr
-
 !    tke backup
+     !$acc kernels default(present)
      do k = 1, nzdim
         do ij = 1, nxydim
            tke0(ij, k) = tke(ij, k)
         end do
      end do
-
+     !$acc end kernels
+     
 !     dissipation epsil and turbulent length scale tls.
 !     an upper limit for tls is also introduced (eq.(42))
 !     turbultent richardson number rit is also calculated.
+
+     !$acc kernels default(present)
      do k = kstr+1, kend
         do ij = ijstr-nxdim-1, ijend+nxdim+1
            epsil(ij, k) = ceps &
@@ -660,7 +735,8 @@ subroutine vdiff( &
              &          / tke(ij,k) * 0.5d0
         end do
      end do
-
+     !$acc end kernels
+     
 !    Kantha and Clayson (1994) quasi-equilibrium stability function
 !     Eq.(33) of Warner et al. (2005, OM) has TYPOGRAPHICAL ERRORs;
 !      - It should be Gh = Ghul - ( (Ghul-Ghcr)**2 / (Ghul+Gh0-2Ghcr) )
@@ -670,6 +746,8 @@ subroutine vdiff( &
 !      between the two papers).
 !
 !    '12.01.19: bug fix (due to the typograpical error dscribed above)
+
+     !$acc kernels default(present)
      do k = kstr+1, kend
         do ij = ijstr-nxdim-1, ijend+nxdim+1
            ghul(ij, k) = (-0.5d0) * &
@@ -685,8 +763,10 @@ subroutine vdiff( &
              &         / (1.0d0 - csfsm3 * gh(ij, k))
         end do
      end do
+     !$acc end kernels
 
 !     Vertical eddy viscosity at T-grid amvt and diffusivity ahv
+     !$acc kernels default(present)
      do k = kstr+1, kend
         do ij = ijstr-nxdim-1, ijend+nxdim+1
            q = sqrt( 2.0d0 * tke(ij, k) )
@@ -696,15 +776,19 @@ subroutine vdiff( &
              &               csfe * q * tls(ij, k) * sh(ij, k) )
         end do
      end do
-
+     !$acc end kernels
+     
 !     Wall function fwall is just a dummy
+     !$acc kernels default(present)
      do k = kstr-1, kend+1
         do ij = ijstr-nxdim-1, ijend+nxdim+1
            fwall(ij, k) = 1.0d0
         end do
      end do
-      
+     !$acc end kernels
+     
 !     Frictional velocity and surface roughness
+     !$acc kernels default(present)
      do ij = ijstr-nxdim-1-nxdim-1, ijend+nxdim+1
         taubtm(ij) = 0.0d0
      end do
@@ -750,14 +834,18 @@ subroutine vdiff( &
            z0sf2d(ij) = z0sfc
         endif
      end do
+     !$acc end kernels
 
 !    Schmidt number for psi
+     !$acc kernels default(present)
      do k = 1, nzdim
         do ij = 1, nxydim
            scnp3d(ij, k) = scnpsi
         end do
      end do
+     !$acc end kernels
      if (osfcwv) then
+        !$acc kernels default(present)
         do ij = 1, nxydim
            prepmx(ij) = epscmp
         end do
@@ -790,15 +878,20 @@ subroutine vdiff( &
                 &  + rscnp*scnpsi
            end do
         end do
+        !$acc end kernels
      else
+        !$acc kernels default(present)
         do k = kstr, kend+1
            do ij = ijstr-nxdim-1, ijend+nxdim+1
               scnp3d(ij, k) = scnpsi
            end do
         end do
+        !$acc end kernels
      end if
 
+
 !    tke equation
+     !$acc kernels default(present)
      do k = kstr+1, kend
         do ij = ijstr-nxdim-1, ijend+nxdim+1
            cdkdtl(ij, k) = &  ! gamma = -(p+b)/k (temporary)
@@ -812,8 +905,10 @@ subroutine vdiff( &
              &    + epsil(ij, k)) * amftz(ij, k)
         end do
      end do
-
+     !$acc end kernels
+     
 !    -- Semi-implicit : adjusted alps in each time step --
+     !$acc kernels default(present)
      do k = kstr+1, kend
         do ij = ijstr-nxdim-1, ijend+nxdim+1
            p = cdkdtl(ij, k) * dt   ! gamma * dt
@@ -835,10 +930,12 @@ subroutine vdiff( &
                 &        + cdmp(ij, k)    ! (1-mu)*gamma + delta
         end do
      end do
-
+     !$acc end kernels
+     
 !    --- Boundary condition for tke ---
 !     "diffz(ij, kstr+1)=0"  & "diffz(ij, nbot(ij)+1)=0"
 !      ==>  "aa(ij, kstr+1)=0" & "ac(ij, nbot(ij))=0".
+     !$acc kernels default(present)
      do k = 1, nzdim
         do ij = 1, nxydim
            diffz(ij, k) = 0.d0
@@ -853,8 +950,10 @@ subroutine vdiff( &
            fez(ij, k) = diffz(ij, k) * (tke(ij, k-1) - tke(ij, k))
         end do
      end do
-
+     !$acc end kernels
+     
 !    tke flux by surface wave breaking, after Carniel et al.(2009)
+     !$acc kernels default(present)
      do ij = ijstr-nxdim-1, ijend+nxdim+1
         fez(ij, kstr+1) = cw * ufrc3o(ij)
      end do
@@ -899,10 +998,13 @@ subroutine vdiff( &
              &          ) * amftz(ij, k)
         end do
      end do
-
+     !$acc end kernels
+     
 !    Surface and bottom tke estimation
 !    for surface tke, surface wave breaking effect is accounted
 !     (after Carniel et al. (2009)).
+
+     !$acc kernels default(present)
      do ij = ijstr-nxdim-1, ijend+nxdim+1
         tke(ij, kstr) = 1.0d0 / (cmu0*cmu0) * &
           &        (ufrc3s(ij) + ufrc3o(ij) * csftkw * cw)**(2.0d0/3.0d0)
@@ -919,8 +1021,10 @@ subroutine vdiff( &
            tke(ij, k) = max(tke(ij, k), tkemin)
         end do
      end do
-
+     !$acc end kernels
+     
 !    GLS quantity psi equation
+     !$acc kernels default(present)
      do k = kstr+1, kend
         do ij = ijstr-nxdim-1, ijend+nxdim+1
            cdkdtl(ij, k) = &  ! gamma = -(c1*p+c3*b)/k (temporary) 
@@ -936,8 +1040,11 @@ subroutine vdiff( &
              &  * amftz(ij, k)
         end do
      end do
-
+     !$acc end kernels
+     
 !    -- Semi-implicit : adjusted alps in each time step --
+
+     !$acc kernels default(present)
      do k = kstr+1, kend
         do ij = ijstr-nxdim-1, ijend+nxdim+1
            p = cdkdtl(ij, k) * dt   ! gamma * dt
@@ -959,10 +1066,13 @@ subroutine vdiff( &
              &           + cdmp(ij, k)  ! (1-mu)*gamma + delta
         end do
      end do
-
+     !$acc end kernels
+     
 !    --- Boundary condition for psi ---
 !     "diffz(ij, kstr+1)=0"  & "diffz(ij, nbot(ij)+1)=0"
 !       ==> "aa(ij, kstr+1)=0" & "ac(ij, nbot(ij))=0"
+
+     !$acc kernels default(present)
      do k = 1, nzdim
         do ij = 1, nxydim
            diffz(ij, k) = 0.d0
@@ -977,10 +1087,13 @@ subroutine vdiff( &
            fez(ij, k) = diffz(ij, k) * (psi(ij, k-1) - psi(ij, k))
         end do
      end do
-
+     !$acc end kernels
+     
 !    fez(ij, kstr+1) & fez(ij, nbot(ij)+1)
 !    eq.(54) of Warner et al. (2005, om) has TYPOGRAPHICAL ERROR;
 !      k^{n} must be \kappa^{n}.
+
+     !$acc kernels default(present)
      do ij = ijstr-nxdim-1, ijend+nxdim+1
         k = kstr+1
         tketmp = (tke0(ij, k-1) + tke0(ij, k))*0.5d0
@@ -1008,7 +1121,7 @@ subroutine vdiff( &
              &     * ( dstwal**(estrn-1.0d0) )
         end if
      end do
-      
+
      do k = kstr+1, kend
         do ij = ijstr-nxdim-1, ijend+nxdim+1
            ade(ij, k) = ( fez(ij, k) - fez(ij, k+1) ) * rzmsig(ij, k) &
@@ -1049,17 +1162,23 @@ subroutine vdiff( &
              &          ) * amftz(ij, k)
         end do
      end do
-
+     !$acc end kernels
+     
 !    Surface and bottom psi estimation
 !    (this part is only for output and will not be referred below,
 !     thus can be removed).
+
+     !$acc kernels default(present)
      do ij = ijstr-nxdim-1, ijend+nxdim+1
         psi(ij, kstr) = cpsibs * (ckarm*z0sf2d(ij))**(estrn) &
           &                    * (ufrc2s(ij)**(2.0d0*estrm))
         psi(ij, nbot(ij)+1) = cpsibb * (ufrc2s(ij)**(2.0d0*estrm))
      end do
-
+     !$acc end kernels
+     
 !    Limit on psi (psimin, and eq.(43) if stable stratification)
+
+     !$acc kernels default(present)
      do k = kstr, kend+1
         do ij = ijstr-nxdim-1, ijend+nxdim+1
            if (drdz(ij, k) .gt. 0.0d0) then
@@ -1075,14 +1194,15 @@ subroutine vdiff( &
            end if
         end do
      end do
-
+     !$acc end kernels
   end do
-
+  
   if (ofirst) then
      nitr = nitr0
      ofirst = .false.
   end if
 
+  !$acc kernels default(present)
   do k = kstr+1, kend
      do ij = ijstr, ijend
         amv(ij, k) = ( amvt(ij    , k) * amftz(ij    , k) &
@@ -1092,8 +1212,11 @@ subroutine vdiff( &
           &          ) * csamv(ij, k)
      end do
   end do
+  !$acc end kernels
 
+  
 ! -- Smoothing --
+  !$acc kernels default(present)
   do k = kstr+1, kend
      do ij = ijstr-nxdim-1, ijend
         amvt(ij, k) = ( ahv(ij    , k) * amftz(ij    , k) &
@@ -1110,7 +1233,6 @@ subroutine vdiff( &
           &          ) * csahv(ij, k)
      end do
   end do
-
   do k = kstr, kstr+mz-1
      do ij = ijstr-nxdim-1, ijend
         amv(ij, k) = min(amvmax, max(amv(ij, k), amv0(k-kstr+1)))
@@ -1123,6 +1245,8 @@ subroutine vdiff( &
         ahv(ij, k) = ahv03d(ij, k)
      end do
   end do
+  !$acc end kernels
+
 
 #ifdef OPT_TRIPOLE
   call shift2(   tke,    psi, &
@@ -1130,7 +1254,6 @@ subroutine vdiff( &
     &           1.d0,      0,      0 )
 #endif
 
-  
 !!--- sea-surface elevation is not considered
 !!---   for vertical structure function of energy dissipation rate
 !  if ( iamn /= 0 .or. iamf /= 0 ) then
@@ -1142,6 +1265,7 @@ subroutine vdiff( &
 !--- tidal turbulent energy dissipation rate
 ! near-field
   if ( iamn /= 0 ) then
+     !$acc kernels default(present)
      do ij = ijstr, ijend
         gint(ij) = 0.d0
      end do
@@ -1159,13 +1283,17 @@ subroutine vdiff( &
            tedn3d(ij, k) = gint(ij) * tedn2d(ij) * exp((depth(ij, k) - dep) * rzeta) * amftz(ij, k)
         end do
      end do
+     !$acc end kernels
   end if
 ! far-field
   if ( iamf /= 0 ) then
+     !$acc kernels default(present)
      do ij = ijstr, ijend
         gint(ij) = 0.d0
      end do
+     !$acc end kernels
      if (ofvcnt) then
+        !$acc kernels default(present)
         do k = kstr+1, kend
            do ij = 1, nxydim
               gint(ij) = gint(ij) + &
@@ -1182,8 +1310,10 @@ subroutine vdiff( &
               tedf3d(ij, k) = gint(ij) * tedf2d(ij) * amftz(ij, k)
            end do
         end do
+        !$acc end kernels
      else
         if (ofvpn) then ! prop to N
+           !$acc kernels default(present)
            do k = kstr+1, kend
               do ij = 1, nxydim
                  gint(ij) = gint(ij) + &
@@ -1200,7 +1330,9 @@ subroutine vdiff( &
                  tedf3d(ij, k) = gint(ij) * tedf2d(ij) * sqrt(abs(drdz(ij, k))) * amftz(ij, k)
               end do
            end do
+           !$acc end kernels
         else ! prop to N2
+           !$acc kernels default(present)
            do k = kstr+1, kend
               do ij = 1, nxydim
                  gint(ij) = gint(ij) + &
@@ -1217,10 +1349,12 @@ subroutine vdiff( &
                  tedf3d(ij, k) = gint(ij) * tedf2d(ij) * drdz(ij, k) * amftz(ij, k)
               end do
            end do
+           !$acc end kernels
         end if
      end if
   end if
 
+  !$acc kernels default(present)
   do k = kstr+1, kend
      do ij = ijstr, ijend
         ahvted(ij, k) = cgamma * (tedn3d(ij, k) + tedf3d(ij, k)) &
@@ -1231,7 +1365,8 @@ subroutine vdiff( &
              &                  * amftz(ij, k)
      end do
   end do
-
+  !$acc end kernels
+  
   call chekin(ahvted, 'AHVTED', &
        &          'ahv by ted', 'cm^2/s', &
        &          nx,       ny,       nz,     nxyzdm, 'OCLVMT')
@@ -1288,7 +1423,13 @@ subroutine puttao( &
   real(8), intent(in) ::   caic,   cais
 
   integer ::     ij
+  logical, save :: ofirst = .true.
+  if (ofirst) then
+     ofirst = .false.
+     !$acc enter data create(tauaox, tauaoy)
+  end if
 
+  !$acc kernels default(present)
   do ij = 1, nxydim
      tauaox(ij) = ( taox(ij) * caic &
        &          - taoy(ij) * sign(cais, cor(ij))) * &
@@ -1297,6 +1438,7 @@ subroutine puttao( &
        &          + taox(ij) * sign(cais, cor(ij))) * &
        &          amskv(ij, kstr)
   end do
+  !$acc end kernels
 
 #ifdef OPT_TRIPOLE
   call shift2( &
