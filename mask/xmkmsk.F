@@ -1796,14 +1796,14 @@ c =====================================================================
          END DO
       END DO
 
-      IF (IBBL .NE. 0) THEN
-         DO K = 1, NZDIM
-            DO J = 1, NYDIM
-               DO I = 1, NXDIM
-                  BLD(I, J, K) = 0.D0
-               END DO
+      DO K = 1, NZDIM
+         DO J = 1, NYDIM
+            DO I = 1, NXDIM
+               BLD(I, J, K) = 0.D0
             END DO
          END DO
+      END DO
+      IF (IBBL .NE. 0) THEN
          DO J = 1, NYDIM
             DO I = 1, NXDIM
                K = NBOT(I, J) + KSTR
