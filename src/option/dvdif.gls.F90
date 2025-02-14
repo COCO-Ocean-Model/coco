@@ -150,6 +150,7 @@ subroutine vdiff( &
   real(8), save ::  cpsi1 = 1.0d0,  cpsi2 = 1.22d0
   real(8), save ::  cpsi3p = 1.0d0,  cpsi3n = 0.1d0
   real(8), save ::  amvmax = 1000.0d0,  ahvmax = 1000.0d0
+  real(8), save ::  amvmin = 0.0d0,  ahvmin = 0.0d0
   real(8), save ::  scntke = 0.8d0,  scnpsi = 1.07d0
   real(8), save ::  tkemin = 7.6d-2,  psimin = 1.0d-12, ritc = 1.0d0
   real(8), save ::  z0sfc = 1.0d2,  z0btm = 1.0d2,  epscmp = 1.0d-15
@@ -205,7 +206,7 @@ subroutine vdiff( &
     &               tkemin, psimin, ritc, z0sfc, z0btm, &
     &               nitr0, nitr00, epscmp, mz, &
     &               osfcwv, cw, z0sfmn, alphch, oswnoi, alphci, &
-    &               obtkei, atfilt
+    &               obtkei, atfilt, amvmin, ahvmin
   namelist /nmdifvao/ ovdfao, ahv0ao, mzao
   namelist /nmdved/ iamn, iamf, cftedn, cftedf, cgamma, ahvemx, epst, zeta, ofvcnt, ofvpn
  
@@ -770,10 +771,10 @@ subroutine vdiff( &
      do k = kstr+1, kend
         do ij = ijstr-nxdim-1, ijend+nxdim+1
            q = sqrt( 2.0d0 * tke(ij, k) )
-           amvt(ij, k) = min( amvmax, &
-             &                csfe * q * tls(ij, k) * sm(ij, k) )
-           ahv(ij, k) = min( ahvmax, &
-             &               csfe * q * tls(ij, k) * sh(ij, k) )
+           amvt(ij, k) = max(min( amvmax, &
+             &                csfe * q * tls(ij, k) * sm(ij, k) ),amvmin)
+           ahv(ij, k) = max(min( ahvmax, &
+             &               csfe * q * tls(ij, k) * sh(ij, k) ),ahvmin)
         end do
      end do
      !$acc end kernels
