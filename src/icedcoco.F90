@@ -350,7 +350,7 @@ subroutine parset
 ! ---------------------------------------------------------------------
 
   use zocdim, only: &
-    & inodes, jnodes, &
+    & nxg, nyg, inodes, jnodes, &
 #ifdef OPT_TRIPOLE
     &   jupe,   jupw,  jupfy, jdownfy, &
 #endif
@@ -403,6 +403,22 @@ subroutine parset
      call mpi_finalize(ierr)
      stop
   end if
+
+  if ( (mod(nxg, inodes) .ne. 0) .or. (mod(nyg, jnodes) .ne. 0) ) then
+     write(*, *) ' #### NODE NUMBER ERROR #### '
+     write(*, *) ' The size of sub-regions must be identical. '
+     call mpi_finalize(ierr)
+     stop
+  end if
+
+#ifdef OPT_TRIPOLE
+  if ( (mod(inodes, 2) .ne. 0) .and. (inodes .ne. 1) ) then
+     write(*, *) ' #### NODE NUMBER ERROR #### '
+     write(*,*)'#### For tripolar grid, inodes shold be 1 or even.'
+     call mpi_finalize(ierr)
+     stop
+  end if
+#endif
 
   if ((ndroot < 0) .or. (ndroot > nprocs-1)) then
      write(jfpar, *) &
