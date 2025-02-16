@@ -6,6 +6,7 @@ RM	= rm -f
  SYSTEM	= nvhpc
 #SYSTEM = gfortran
 
+### optimization level @nvhpc ###
  BUILD = O0
 #BUILD = O3
 
@@ -23,12 +24,20 @@ OPTEXMASK = -DOPT_EXMASK
 #MPI=.mpi
 
 ### OpenACC ###
-#ACC=.acc
- ACC=
+ ACC=.acc
+#ACC=
 
 ### OpenMP ###
 #OMP=.omp
  OMP=
+
+### directives regarding OpenACC/OpenMP ###
+ DRC_OPT =
+ DRC_OPT += -DACC_
+ DRC_OPT += -DADF_
+ DRC_OPT += -DACS_
+
+#DRC_OPT += -DOMP_
 
 #OPTTOUZA = -DOPT_TOUZA
 

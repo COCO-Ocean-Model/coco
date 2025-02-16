@@ -22,22 +22,26 @@ endif
 
 # CUDA configuration
 #CUDAV=12.3
-#CUDAV=12.2
+ CUDAV=12.2
 #CUDAV=12.0
 #CUDAV=11.8
 #CUDAV=11.7
- CUDAV=11.6
+#CUDAV=11.6
 #CUDAV=11.2
 #CUDAV=10.2
  CCA=80
 #CCA=60
 
 ifeq "$(ACC)" ".acc"    
-FFLAGS += -acc -cuda -gpu=cuda${CUDAV},cc${CCA}
+ifeq ($(BUILD), O3)
+FFLAGS += -acc -cuda -gpu=cuda${CUDAV},cc${CCA} ${DRC_OPT}
+else ifeq ($(BUILD), O0)
+FFLAGS += -acc -cuda -gpu=cuda${CUDAV},cc${CCA},nofma ${DRC_OPT}
+endif
 endif
 
 ifeq "$(OMP)" ".omp"    
-FFLAGS += -mp
+FFLAGS += -mp ${DRC_OPT}
 endif
 
 # debug

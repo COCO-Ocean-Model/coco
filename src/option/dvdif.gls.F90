@@ -34,7 +34,7 @@ module dvdif
     &   zbot,    cor,   itst, ieuler
   use zocmsk,  only: &
 #ifdef OPT_BBL
-    &  amsktb, amskvb, nbotv, &
+    &  amsktb, amskvb, nbotv, amskt0, amskt1, &
 #endif
     &  amskt,  amskv,  amskb,  amftz,  amfvz, &
     &   nbot
@@ -65,6 +65,7 @@ subroutine vdiff( &
   use bchmk
   use qckot
   use bshft
+  use qckot
 #ifdef OPT_IO_COCOMPI
   use mpiio
 #else
@@ -495,14 +496,95 @@ subroutine vdiff( &
      return
   endif
 
-#ifdef OPT_BBL
-  call rmmskt
-  call admkt1
+#ifdef ADF_
+!$acc data copyin(dz, dzm)
+!$acc data copyin(ds, dsm)
+!$acc data copyin(amskb) 
+!$acc data copyin(amftz)
+!$acc data copyin(amfvz)
+!$acc data copyin(amskt0)
+!$acc data copyin(amsktb)
+!$acc data copyin(amskt1)
+!$acc data copy(amskt)
+!$acc data copyin(nbot)
+
+!$acc data copyin(tauaox, tauaoy) 
+
+!$acc data copy(amv, ahv)
+!$acc data copyin(uy, vy) 
+!$acc data copyin(ty, hy) 
+!$acc data copyin(taux, tauy) 
+
+!$acc data create(amvt) 
+!$acc data create(drdz) 
+!$acc data create(duvdz) 
+!$acc data create(dzsig)
+!$acc data create(rzmsig)
+!$acc data create(depth)
+!$acc data create(depthm)
+!$acc data create(epsil, tls) 
+!$acc data create(sh, sm)
+!$acc data create(fwall)
+!$acc data create(fez) 
+!$acc data create(rit) 
+!$acc data create(aa, ab, ac, ade)
+!$acc data create(adefwd)
+!$acc data create(tke0)
+!$acc data create(cdkdtl) 
+!$acc data create(diffz) 
+!$acc data create(cdmp)
+!$acc data create(ufrc2i, ufrc2o, ufrc2s, ufrc2b, ufrc3s, ufrc3o) 
+!$acc data create(taubtm)
+!$acc data create(gh, ghul)
+!$acc data create(z0sf2d, prepmx) 
+!$acc data create(dpsi0, scnp3d)
+!$acc data create(ctkemn)
+!$acc data create(gint) 
+!$acc data create(dzmsig) 
+!$acc data create(ahvted, tedr)
+
+!$acc data copy(tke)
+!$acc data copy(psi) 
+!$acc data copyin(ahv03d)
+!$acc data copyin(csamv, csahv)
+!$acc data copyin(cc0, cc1, cc2, cc3, cc4, cc5, cc6) 
+!$acc data copyin(d9, d8, d7, d6, d5, d4, d3, d2, d1, d0) 
+!$acc data copyin(amv0)
+!$acc data copyin(tedn2d)
+!$acc data copy(tedn3d)
+!$acc data copy(tedf3d)
+!$acc data copy(tedf2d)
 #endif
 
-#ifdef ACC_ON
+#ifdef OPT_BBL
+#ifdef ADF_
+!$acc data copyin(amskt0, nbot)
+!$acc data copy(amskt)
+#endif
+  call rmmskt
+#ifdef ADF_
+!$acc end data ! copyin(amskt0, nbot)
+!$acc end data ! copy(amskt)
+#endif
+#ifdef ADF_
+!$acc data copyin(amskt1)
+!$acc data copyin(nbot)
+!$acc data copy(amskt)
+#endif
+  call admkt1
+#ifdef ADF_
+!$acc end data ! copyin(amskt1)
+!$acc end data ! copyin(nbot)
+!$acc end data ! copy(amskt)
+#endif
+#endif
+
+#ifdef ACC_
+!$acc data copyin(hy)
+!$acc data copyin(dsm, ds)
+!$acc data copy(dzsig, rzmsig, dzmsig)
 !$acc kernels
-#elif  OMP_ON
+#elif  OMP_
 !$omp parallel do
 #endif
   do k = kstr, kstr+kz-1
@@ -512,14 +594,19 @@ subroutine vdiff( &
         dzmsig(ij, k) = (hy(ij) + zbot) * dsm(k)
      end do
   end do
-#ifdef ACC_ON
+#ifdef ACC_
 !$acc end kernels
-#elif  OMP_ON
+!$acc end data ! copyin(hy)
+!$acc end data ! copyin(dsm, ds)
+!$acc end data ! copy(dzsig, rzmsig, dzmsig)
+#elif  OMP_
 !$omp end parallel do
 #endif
-#ifdef ACC_ON
+#ifdef ACC_
+!$acc data copyin(dzm, dz)
+!$acc data copy(dzsig, rzmsig, dzmsig)
 !$acc kernels
-#elif  OMP_ON
+#elif  OMP_
 !$omp parallel do
 #endif
   do k = kstr+kz, kend
@@ -529,14 +616,17 @@ subroutine vdiff( &
         dzmsig(ij, k) = dzm(ij, k)
      end do
   end do
-#ifdef ACC_ON
+#ifdef ACC_
 !$acc end kernels
-#elif  OMP_ON
+!$acc end data ! copyin(dzm, dz)
+!$acc end data ! copy(dzsig, rzmsig, dzmsig)
+#elif  OMP_
 !$omp end parallel do
 #endif
-#ifdef ACC_ON
+#ifdef ACC_
+!$acc data copy(depth, depthm)
 !$acc kernels
-#elif  OMP_ON
+#elif  OMP_
 !$omp parallel do
 #endif
   do k = 1, nzdim
@@ -545,60 +635,88 @@ subroutine vdiff( &
         depthm(ij, k) = 0.0d0
      end do
   end do
-#ifdef ACC_ON
+#ifdef ACC_
 !$acc end kernels
-#elif  OMP_ON
+!$acc end data ! copy(depth, depthm)
+#elif  OMP_
 !$omp end parallel do
 #endif
+#ifdef ACC_
+!$acc data copy(depth)
+!$acc data copyin(dzsig)
+#endif
   do k = kstr+1, kend+1
-#ifdef ACC_ON
+#ifdef ACC_
 !$acc kernels
-#elif  OMP_ON
+#elif  OMP_
 !$omp parallel do
 #endif
      do ij = 1, nxydim
         depth(ij, k) = depth(ij, k-1) + dzsig(ij, k-1)
      end do
-#ifdef ACC_ON
+#ifdef ACC_
 !$acc end kernels
-#elif  OMP_ON
+#elif  OMP_
 !$omp end parallel do
 #endif
   end do
+#ifdef ACC_
+!$acc end data ! copy(depth)
+!$acc end data ! copyin(dzsig)
+#endif
+#ifdef ACC_
+!$acc data copy(depthm)
+!$acc data copyin(hy)
+!$acc data copyin(dsm)
+#endif
   do k = kstr, kstr+kz-1
-#ifdef ACC_ON
+#ifdef ACC_
 !$acc kernels
-#elif  OMP_ON
+#elif  OMP_
 !$omp parallel do
 #endif
      do ij = 1, nxydim
         depthm(ij, k) = depthm(ij, k-1) + (hy(ij) + zbot) * dsm(k)
      end do
-#ifdef ACC_ON
+#ifdef ACC_
 !$acc end kernels
-#elif  OMP_ON
+#elif  OMP_
 !$omp end parallel do
 #endif
   end do
+#ifdef ACC_
+!$acc end data ! copy(depthm)
+!$acc end data ! copyin(hy)
+!$acc end data ! copyin(dsm)
+#endif
+#ifdef ACC_
+!$acc data copy(depthm)
+!$acc data copyin(dzm)
+#endif
   do k = kstr+kz, kend
-#ifdef ACC_ON
+#ifdef ACC_
 !$acc kernels
-#elif  OMP_ON
+#elif  OMP_
 !$omp parallel do
 #endif
      do ij = 1, nxydim
         depthm(ij, k) = depthm(ij, k-1) + dzm(ij, k)
      end do
-#ifdef ACC_ON
+#ifdef ACC_
 !$acc end kernels
-#elif  OMP_ON
+#elif  OMP_
 !$omp end parallel do
 #endif
   end do
+#ifdef ACC_
+!$acc end data ! copy(depthm)
+!$acc end data ! copyin(dzm)
+#endif
 
-#ifdef ACC_ON
+#ifdef ACC_
+!$acc data copy(drdz)
 !$acc kernels
-#elif  OMP_ON
+#elif  OMP_
 !$omp parallel do
 #endif
   do k = 1, nzdim
@@ -606,14 +724,21 @@ subroutine vdiff( &
         drdz(ij, k) = 0.d0
      end do
   end do
-#ifdef ACC_ON
+#ifdef ACC_
 !$acc end kernels
-#elif  OMP_ON
+!$acc end data ! copy(drdz)
+#elif  OMP_
 !$omp end parallel do
 #endif
-#ifdef ACC_ON
+
+#ifdef ACC_
+!$acc data copyin(uy, vy, ty) 
+!$acc data copyin(rzmsig) 
+!$acc data copy(drdz, duvdz) 
+!$acc data copyin(cc0, cc1, cc2, cc3, cc4, cc5, cc6) 
+!$acc data copyin(d9, d8, d7, d6, d5, d4, d3, d2, d1, d0) 
 !$acc kernels
-#elif  OMP_ON
+#elif  OMP_
 !$omp parallel do private(tl, sl, p1, p2, rl, rlu, dudz, dvdz)
 #endif
   do k = kstr+1, kend
@@ -655,9 +780,14 @@ subroutine vdiff( &
         duvdz(ij, k) = dudz * dudz + dvdz * dvdz
      end do
   end do
-#ifdef ACC_ON
+#ifdef ACC_
 !$acc end kernels
-#elif  OMP_ON
+!$acc end data ! copyin(cc0, cc1, cc2, cc3, cc4, cc5, cc6)
+!$acc end data ! copyin(d9, d8, d7, d6, d5, d4, d3, d2, d1, d0)
+!$acc end data ! copyin(uy, vy, ty)
+!$acc end data ! copyin(rzmsig)
+!$acc end data ! copy(drdz, duvdz)
+#elif  OMP_
 !$omp end parallel do
 #endif
 
@@ -717,9 +847,11 @@ subroutine vdiff( &
   do iitr = 1, nitr
 
 !    tke backup
-#ifdef ACC_ON
+#ifdef ACC_
+!$acc data copy(tke0)
+!$acc data copyin(tke)
 !$acc kernels
-#elif  OMP_ON
+#elif  OMP_
 !$omp parallel do
 #endif
      do k = 1, nzdim
@@ -727,18 +859,32 @@ subroutine vdiff( &
            tke0(ij, k) = tke(ij, k)
         end do
      end do
-#ifdef ACC_ON
+#ifdef ACC_
 !$acc end kernels
-#elif  OMP_ON
+!$acc end data ! copy(tke0)
+!$acc end data ! copyin(tke)
+#elif  OMP_
 !$omp end parallel do
 #endif
 
 !     dissipation epsil and turbulent length scale tls.
 !     an upper limit for tls is also introduced (eq.(42))
 !     turbultent richardson number rit is also calculated.
-#ifdef ACC_ON
+#ifdef ACS_
+#ifdef ADF_
+!$acc update host(tke, psi) 
+!$acc update host(drdz) 
+!$acc update host(epsil, tls, rit) 
+#endif
+!$omp parallel do
+#elif  ACC_
+!$acc data copyin(tke, psi) 
+!$acc data copyin(drdz) 
+!$acc data copy(epsil) 
+!$acc data copy(tls) 
+!$acc data copy(rit) 
 !$acc kernels
-#elif  OMP_ON
+#elif  OMP_
 !$omp parallel do
 #endif
      do k = kstr+1, kend
@@ -755,9 +901,19 @@ subroutine vdiff( &
              &          / tke(ij,k) * 0.5d0
         end do
      end do
-#ifdef ACC_ON
+#ifdef ACS_
+!$omp end parallel do
+#ifdef ADF_
+!$acc update device(epsil, tls, rit) 
+#endif
+#elif  ACC_
 !$acc end kernels
-#elif  OMP_ON
+!$acc end data ! copyin(tke, psi)
+!$acc end data ! copyin(drdz)
+!$acc end data ! copy(rit)
+!$acc end data ! copy(tls)
+!$acc end data ! copy(epsil)
+#elif  OMP_
 !$omp end parallel do
 #endif
 
@@ -770,9 +926,13 @@ subroutine vdiff( &
 !      between the two papers).
 !
 !    '12.01.19: bug fix (due to the typograpical error dscribed above)
-#ifdef ACC_ON
+#ifdef ACC_
+!$acc data copyin(drdz, tls, tke)
+!$acc data copy(ghul)
+!$acc data copy(gh)
+!$acc data copy(sh, sm)
 !$acc kernels
-#elif  OMP_ON
+#elif  OMP_
 !$omp parallel do
 #endif
      do k = kstr+1, kend
@@ -790,16 +950,32 @@ subroutine vdiff( &
              &         / (1.0d0 - csfsm3 * gh(ij, k))
         end do
      end do
-#ifdef ACC_ON
+#ifdef ACC_
 !$acc end kernels
-#elif  OMP_ON
+!$acc end data ! copyin(drdz, tls, tke)
+!$acc end data ! copy(ghul)
+!$acc end data ! copy(gh)
+!$acc end data ! copy(sh, sm)
+#elif  OMP_
 !$omp end parallel do
 #endif
 
 !     Vertical eddy viscosity at T-grid amvt and diffusivity ahv
-#ifdef ACC_ON
+#ifdef ACS_
+#ifdef ADF_
+!$acc update host(tke) 
+!$acc update host(sm, tls, sh) 
+!$acc update host(amvt) 
+!$acc update host(ahv) 
+#endif
+!$omp parallel do private(q)
+#elif  ACC_
+!$acc data copyin(tke) 
+!$acc data copyin(sm, tls, sh) 
+!$acc data copy(amvt) 
+!$acc data copy(ahv) 
 !$acc kernels
-#elif  OMP_ON
+#elif  OMP_
 !$omp parallel do private(q)
 #endif
      do k = kstr+1, kend
@@ -811,16 +987,27 @@ subroutine vdiff( &
              &               csfe * q * tls(ij, k) * sh(ij, k) )
         end do
      end do
-#ifdef ACC_ON
+#ifdef ACS_
+!$omp end parallel do
+#ifdef ADF_
+!$acc update device(amvt)
+!$acc update device(ahv)
+#endif
+#elif  ACC_
 !$acc end kernels
-#elif  OMP_ON
+!$acc end data ! copyin(tke)
+!$acc end data ! copyin(sm, tls, sh)
+!$acc end data ! copy(amvt)
+!$acc end data ! copy(ahv)
+#elif  OMP_
 !$omp end parallel do
 #endif
 
 !     Wall function fwall is just a dummy
-#ifdef ACC_ON
+#ifdef ACC_
+!$acc data copy(fwall)
 !$acc kernels
-#elif  OMP_ON
+#elif  OMP_
 !$omp parallel do
 #endif
      do k = kstr-1, kend+1
@@ -828,30 +1015,36 @@ subroutine vdiff( &
            fwall(ij, k) = 1.0d0
         end do
      end do
-#ifdef ACC_ON
+#ifdef ACC_
 !$acc end kernels
-#elif  OMP_ON
+!$acc end data ! copy(fwall)
+#elif  OMP_
 !$omp end parallel do
 #endif
       
 !     Frictional velocity and surface roughness
-#ifdef ACC_ON
+#ifdef ACC_
+!$acc data copy(taubtm)  ! PASS
 !$acc kernels
-#elif  OMP_ON
+#elif  OMP_
 !$omp parallel do
 #endif
      do ij = ijstr-nxdim-1-nxdim-1, ijend+nxdim+1
         taubtm(ij) = 0.0d0
      end do
-#ifdef ACC_ON
+#ifdef ACC_
 !$acc end kernels
-#elif  OMP_ON
+!$acc end data ! copy(taubtm)
+#elif  OMP_
 !$omp end parallel do
 #endif
      do k = kstr, kend
-#ifdef ACC_ON
+#ifdef ACC_
+!$acc data copyin(amskb) 
+!$acc data copyin(vy, uy) 
+!$acc data copy(taubtm)
 !$acc kernels
-#elif  OMP_ON
+#elif  OMP_
 !$omp parallel do
 #endif
         do ij = ijstr-nxdim-1-nxdim-1, ijend+nxdim+1
@@ -859,15 +1052,32 @@ subroutine vdiff( &
              &        ( uy(ij, k) * uy(ij, k) + vy(ij, k) * vy(ij, k) ) &
              &        * amskb(ij, k)
         end do
-#ifdef ACC_ON
+#ifdef ACC_
 !$acc end kernels
-#elif  OMP_ON
+!$acc end data ! copyin(amskb) 
+!$acc end data ! copyin(vy, uy) 
+!$acc end data ! copy(taubtm)
+#elif  OMP_
 !$omp end parallel do
 #endif
      end do
-#ifdef ACC_ON
+#ifdef ACS_
+#ifdef ADF_
+!$acc update host(tauaox, tauaoy) 
+!$acc update host(amskt) 
+!$acc update host(taubtm) 
+!$acc update host(ufrc2i, ufrc2o, ufrc2s, ufrc2b, ufrc3s, ufrc3o, z0sf2d) 
+!$acc update host(tauy, taux) 
+#endif
+!$omp parallel do private(avrtx, avrty, avrtox, avrtoy)
+#elif  ACC_
+!$acc data copyin(tauaox, tauaoy) 
+!$acc data copyin(amskt) 
+!$acc data copyin(tauy, taux) 
+!$acc data copyin(taubtm) 
+!$acc data copy(ufrc2i, ufrc2o, ufrc2s, ufrc2b, ufrc3s, ufrc3o, z0sf2d) 
 !$acc kernels
-#elif  OMP_ON
+#elif  OMP_
 !$omp parallel do private(avrtx, avrty, avrtox, avrtoy)
 #endif
      do ij = ijstr-nxdim-1, ijend+nxdim+1
@@ -905,16 +1115,27 @@ subroutine vdiff( &
            z0sf2d(ij) = z0sfc
         endif
      end do
-#ifdef ACC_ON
+#ifdef ACS_
+!$omp end parallel do
+#ifdef ADF_
+!$acc update device(ufrc2i, ufrc2o, ufrc2s, ufrc2b, ufrc3s, ufrc3o, z0sf2d) 
+#endif
+#elif  ACC_
 !$acc end kernels
-#elif  OMP_ON
+!$acc end data ! copyin(amskt)
+!$acc end data ! copyin(tauaox, tauaoy)
+!$acc end data ! copyin(tauy, taux)
+!$acc end data ! copyin(taubtm)
+!$acc end data ! copy(ufrc2i, ufrc2o, ufrc2s, ufrc2b, ufrc3s, ufrc3o, z0sf2d)
+#elif  OMP_
 !$omp end parallel do
 #endif
 
 !    Schmidt number for psi
-#ifdef ACC_ON
+#ifdef ACC_
+!$acc data copy(scnp3d) 
 !$acc kernels
-#elif  OMP_ON
+#elif  OMP_
 !$omp parallel do
 #endif
      do k = 1, nzdim
@@ -922,33 +1143,42 @@ subroutine vdiff( &
            scnp3d(ij, k) = scnpsi
         end do
      end do
-#ifdef ACC_ON
+#ifdef ACC_
 !$acc end kernels
-#elif  OMP_ON
+!$acc end data ! copy(scnp3d)
+#elif  OMP_
 !$omp end parallel do
 #endif
      if (osfcwv) then
-#ifdef ACC_ON
+#ifdef ACC_
+!$acc data copy(prepmx) 
 !$acc kernels
-#elif  OMP_ON
+#elif  OMP_
 !$omp parallel do
 #endif
         do ij = 1, nxydim
            prepmx(ij) = epscmp
         end do
-#ifdef ACC_ON
+#ifdef ACC_
 !$acc end kernels
-#elif  OMP_ON
+!$acc end data ! copy(prepmx)
+#elif  OMP_
 !$omp end parallel do
 #endif
          
-#ifdef ACC_ON
+#ifdef ACC_
+!$acc data copyin(nbot)
+!$acc data copyin(epsil, amvt, duvdz, depth, dzsig)
+!$acc data copy(prepmx, dpsi0)
 !$acc kernels
-#elif  OMP_ON
+#elif  OMP_
 !$omp parallel do private(preps0, preps)
 #endif
         do ij = ijstr-nxdim-1, ijend+nxdim+1
            preps0 = 0.0d0
+#ifdef ACC_
+!$acc loop seq
+#endif
            do k = kstr+1, nbot(ij)
               if (prepmx(ij) .lt. 1.0d0) then
                  preps = amvt(ij, k) * duvdz(ij, k) &
@@ -966,15 +1196,20 @@ subroutine vdiff( &
                 &         / max(prepmx(ij), epscmp)
            end if
         end do
-#ifdef ACC_ON
+#ifdef ACC_
 !$acc end kernels
-#elif  OMP_ON
+!$acc end data ! copyin(nbot)
+!$acc end data ! copyin(epsil, amvt, duvdz, depth, dzsig)
+!$acc end data ! copy(prepmx, dpsi0)
+#elif  OMP_
 !$omp end parallel do
 #endif
 
-#ifdef ACC_ON
+#ifdef ACC_
+!$acc data copyin(fwall, dpsi0, depthm)
+!$acc data copy(scnp3d)
 !$acc kernels
-#elif  OMP_ON
+#elif  OMP_
 !$omp parallel do private(rscnp)
 #endif
         do k = kstr, kend
@@ -985,15 +1220,18 @@ subroutine vdiff( &
                 &  + rscnp*scnpsi
            end do
         end do
-#ifdef ACC_ON
+#ifdef ACC_
 !$acc end kernels
-#elif  OMP_ON
+!$acc end data ! copyin(fwall, dpsi0, depthm)
+!$acc end data ! copy(scnp3d)
+#elif  OMP_
 !$omp end parallel do
 #endif
      else
-#ifdef ACC_ON
+#ifdef ACC_
+!$acc data copy(scnp3d)
 !$acc kernels
-#elif  OMP_ON
+#elif  OMP_
 !$omp parallel do
 #endif
         do k = kstr, kend+1
@@ -1001,17 +1239,26 @@ subroutine vdiff( &
               scnp3d(ij, k) = scnpsi
            end do
         end do
-#ifdef ACC_ON
+#ifdef ACC_
 !$acc end kernels
-#elif  OMP_ON
+!$acc end data ! copy(scnp3d)
+#elif  OMP_
 !$omp end parallel do
 #endif
      end if
 
 !    tke equation
-#ifdef ACC_ON
+#ifdef ACC_
+!$acc data copyin(ahv)
+!$acc data copyin(amftz)
+!$acc data copyin(tke)
+!$acc data copyin(drdz, amvt, duvdz)
+!$acc data copyin(epsil)
+!$acc data copy(adefwd)
+!$acc data copy(cdkdtl)
+!$acc data copy(cdmp)
 !$acc kernels
-#elif  OMP_ON
+#elif  OMP_
 !$omp parallel do
 #endif
      do k = kstr+1, kend
@@ -1027,16 +1274,32 @@ subroutine vdiff( &
              &    + epsil(ij, k)) * amftz(ij, k)
         end do
      end do
-#ifdef ACC_ON
+#ifdef ACC_
 !$acc end kernels
-#elif  OMP_ON
+!$acc end data ! copyin(ahv)
+!$acc end data ! copyin(amftz)
+!$acc end data ! copyin(tke)
+!$acc end data ! copyin(drdz, amvt, duvdz)
+!$acc end data ! copyin(epsil)
+!$acc end data ! copy(adefwd)
+!$acc end data ! copy(cdkdtl)
+!$acc end data ! copy(cdmp)
+#elif  OMP_
 !$omp end parallel do
 #endif
 
 !    -- Semi-implicit : adjusted alps in each time step --
-#ifdef ACC_ON
+#ifdef ACS_
+#ifdef ADF_
+!$acc update host(rit, cdmp) 
+!$acc update host(cdkdtl) 
+#endif
+!$omp parallel do private(p, alps)
+#elif  ACC_
+!$acc data copyin(rit, cdmp) 
+!$acc data copy(cdkdtl) 
 !$acc kernels
-#elif  OMP_ON
+#elif  OMP_
 !$omp parallel do private(p, alps)
 #endif
      do k = kstr+1, kend
@@ -1060,18 +1323,26 @@ subroutine vdiff( &
                 &        + cdmp(ij, k)    ! (1-mu)*gamma + delta
         end do
      end do
-#ifdef ACC_ON
+#ifdef ACS_
+!$omp end parallel do
+#ifdef ADF_
+!$acc update device(cdkdtl) 
+#endif
+#elif  ACC_
 !$acc end kernels
-#elif  OMP_ON
+!$acc end data ! copyin(rit, cdmp) 
+!$acc end data ! copy(cdkdtl) 
+#elif  OMP_
 !$omp end parallel do
 #endif
 
 !    --- Boundary condition for tke ---
 !     "diffz(ij, kstr+1)=0"  & "diffz(ij, nbot(ij)+1)=0"
 !      ==>  "aa(ij, kstr+1)=0" & "ac(ij, nbot(ij))=0".
-#ifdef ACC_ON
+#ifdef ACC_
+!$acc data copy(diffz, fez)
 !$acc kernels
-#elif  OMP_ON
+#elif  OMP_
 !$omp parallel do
 #endif
      do k = 1, nzdim
@@ -1080,14 +1351,20 @@ subroutine vdiff( &
            fez(ij, k) = 0.d0
         end do
      end do
-#ifdef ACC_ON
+#ifdef ACC_
 !$acc end kernels
-#elif  OMP_ON
+!$acc end data ! copy(diffz, fez)
+#elif  OMP_
 !$omp end parallel do
 #endif
-#ifdef ACC_ON
+#ifdef ACC_
+!$acc data copyin(tke) 
+!--- module copy
+!$acc data copyin(dzsig, amvt) 
+!$acc data copyin(amskt) 
+!$acc data copy(diffz, fez) 
 !$acc kernels
-#elif  OMP_ON
+#elif  OMP_
 !$omp parallel do
 #endif
      do k = kstr+2, kend
@@ -1098,30 +1375,44 @@ subroutine vdiff( &
            fez(ij, k) = diffz(ij, k) * (tke(ij, k-1) - tke(ij, k))
         end do
      end do
-#ifdef ACC_ON
+#ifdef ACC_
 !$acc end kernels
-#elif  OMP_ON
+!$acc end data ! copyin(tke) 
+!--- module copy
+!$acc end data ! copyin(dzsig, amvt) 
+!$acc end data ! copyin(amskt) 
+!$acc end data ! copy(diffz, fez) 
+#elif  OMP_
 !$omp end parallel do
 #endif
 
 !    tke flux by surface wave breaking, after Carniel et al.(2009)
-#ifdef ACC_ON
+#ifdef ACC_
+!$acc data copyin(ufrc3o) 
+!$acc data copyin(cdkdtl, rzmsig, diffz) 
+!$acc data copy(fez)
 !$acc kernels
-#elif  OMP_ON
+#elif  OMP_
 !$omp parallel do
 #endif
      do ij = ijstr-nxdim-1, ijend+nxdim+1
         fez(ij, kstr+1) = cw * ufrc3o(ij)
      end do
-#ifdef ACC_ON
+#ifdef ACC_
 !$acc end kernels
-#elif  OMP_ON
+!$acc end data ! copyin(ufrc3o)
+!$acc end data ! copyin(cdkdtl, rzmsig, diffz)
+!$acc end data ! copy(fez)
+#elif  OMP_
 !$omp end parallel do
 #endif
       
-#ifdef ACC_ON
+#ifdef ACC_
+!$acc data copyin(rzmsig) 
+!$acc data copyin(adefwd, fez) 
+!$acc data copy(ade)
 !$acc kernels
-#elif  OMP_ON
+#elif  OMP_
 !$omp parallel do
 #endif
      do k = kstr+1, kend
@@ -1130,15 +1421,20 @@ subroutine vdiff( &
              &        + adefwd(ij, k)
         end do
      end do
-#ifdef ACC_ON
+#ifdef ACC_
 !$acc end kernels
-#elif  OMP_ON
+!$acc end data ! copyin(rzmsig)
+!$acc end data ! copyin(adefwd, fez)
+!$acc end data ! copy(ade)
+#elif  OMP_
 !$omp end parallel do
 #endif
 
-#ifdef ACC_ON
+#ifdef ACC_
+!$acc data copyin(cdkdtl, rzmsig, diffz)
+!$acc data copy(aa, ab, ac)
 !$acc kernels
-#elif  OMP_ON
+#elif  OMP_
 !$omp parallel do
 #endif
      do k = kstr+1, kend
@@ -1149,27 +1445,35 @@ subroutine vdiff( &
              &       + dt * cdkdtl(ij, k)
         end do
      end do
-#ifdef ACC_ON
+#ifdef ACC_
 !$acc end kernels
+!$acc end data ! copyin(cdkdtl, rzmsig, diffz)
+!$acc end data ! copy(aa, ab, ac)
 #endif
-#ifdef ACC_ON
+#ifdef ACC_
+!$acc data copyin(ab) 
+!$acc data copy(ac, ade)
 !$acc kernels
-#elif  OMP_ON
+#elif  OMP_
 !$omp parallel do
 #endif
      do ij = ijstr-nxdim-1, ijend+nxdim+1
         ac(ij, kstr+1) = ac(ij, kstr+1) / ab(ij, kstr+1)
         ade(ij, kstr+1) = ade(ij, kstr+1) / ab(ij, kstr+1)
      end do
-#ifdef ACC_ON
+#ifdef ACC_
 !$acc end kernels
-#elif  OMP_ON
+!$acc end data ! copyin(ab) 
+!$acc end data ! copy(ac, ade)
+#elif  OMP_
 !$omp end parallel do
 #endif
      do k = kstr+2, kend
-#ifdef ACC_ON
+#ifdef ACC_
+!$acc data copyin(ab, aa) 
+!$acc data copy(ac, ade)
 !$acc kernels
-#elif  OMP_ON
+#elif  OMP_
 !$omp parallel do private(fc)
 #endif
         do ij = ijstr-nxdim-1, ijend+nxdim+1
@@ -1177,31 +1481,40 @@ subroutine vdiff( &
            ac(ij, k) = ac(ij, k) * fc
            ade(ij, k) = (ade(ij, k) - aa(ij, k) * ade(ij, k-1)) * fc
         end do
-#ifdef ACC_ON
+#ifdef ACC_
 !$acc end kernels
-#elif  OMP_ON
+!$acc end data ! copyin(ab, aa)
+!$acc end data ! copy(ac, ade)
+#elif  OMP_
 !$omp end parallel do
 #endif
      end do
      do k = kend-1, kstr+1, -1
-#ifdef ACC_ON
+#ifdef ACC_
+!$acc data copyin(aa, ab, ac) 
+!$acc data copy(ade)
 !$acc kernels
-#elif  OMP_ON
+#elif  OMP_
 !$omp parallel do
 #endif
         do ij = ijstr-nxdim-1, ijend+nxdim+1
            ade(ij, k) = ade(ij, k) - ac(ij, k) * ade(ij, k+1)
         end do
-#ifdef ACC_ON
+#ifdef ACC_
 !$acc end kernels
-#elif  OMP_ON
+!$acc end data ! copyin(aa, ab, ac)
+!$acc end data ! copy(ade)
+#elif  OMP_
 !$omp end parallel do
 #endif
      end do
 
-#ifdef ACC_ON
+#ifdef ACC_
+!$acc data copyin(amftz)
+!$acc data copyin(ade)
+!$acc data copy(tke)
 !$acc kernels
-#elif  OMP_ON
+#elif  OMP_
 !$omp parallel do
 #endif
      do k = kstr+1, kend
@@ -1212,18 +1525,31 @@ subroutine vdiff( &
              &          ) * amftz(ij, k)
         end do
      end do
-#ifdef ACC_ON
+#ifdef ACC_
 !$acc end kernels
-#elif  OMP_ON
+!$acc end data ! copyin(amftz) 
+!$acc end data ! copyin(ade) 
+!$acc end data ! copy(tke)
+#elif  OMP_
 !$omp end parallel do
 #endif
 
 !    Surface and bottom tke estimation
 !    for surface tke, surface wave breaking effect is accounted
 !     (after Carniel et al. (2009)).
-#ifdef ACC_ON
+#ifdef ACS_
+#ifdef ADF_
+!$acc update host(nbot) 
+!$acc update host(ufrc2b, ufrc3s, ufrc3o) 
+!$acc update host(tke) 
+#endif
+!$omp parallel do
+#elif  ACC_
+!$acc data copyin(nbot) 
+!$acc data copyin(ufrc2b, ufrc3s, ufrc3o) 
+!$acc data copy(tke) 
 !$acc kernels
-#elif  OMP_ON
+#elif  OMP_
 !$omp parallel do
 #endif
      do ij = ijstr-nxdim-1, ijend+nxdim+1
@@ -1231,15 +1557,25 @@ subroutine vdiff( &
           &        (ufrc3s(ij) + ufrc3o(ij) * csftkw * cw)**(2.0d0/3.0d0)
         tke(ij, nbot(ij)+1) = ufrc2b(ij) / (cmu0*cmu0)
      end do
-#ifdef ACC_ON
+#ifdef ACS_
+!$omp end parallel do
+#ifdef ADF_
+!$acc update device(tke) 
+#endif
+#elif  ACC_
 !$acc end kernels
-#elif  OMP_ON
+!$acc end data ! copyin(nbot)
+!$acc end data ! copyin(ufrc2b, ufrc3s, ufrc3o)
+!$acc end data ! copy(tke)
+#elif  OMP_
 !$omp end parallel do
 #endif
 
-#ifdef ACC_ON
+#ifdef ACC_
+!$acc data copy(ctkemn)
+!$acc data copy(tke)
 !$acc kernels
-#elif  OMP_ON
+#elif  OMP_
 !$omp parallel do
 #endif
      do k = kstr, kend+1
@@ -1252,16 +1588,24 @@ subroutine vdiff( &
            tke(ij, k) = max(tke(ij, k), tkemin)
         end do
      end do
-#ifdef ACC_ON
+#ifdef ACC_
 !$acc end kernels
-#elif  OMP_ON
+!$acc end data ! copy(ctkemn)
+!$acc end data ! copy(tke)
+#elif  OMP_
 !$omp end parallel do
 #endif
 
 !    GLS quantity psi equation
-#ifdef ACC_ON
+#ifdef ACC_
+!$acc data copyin(fwall, tke0) 
+!$acc data copyin(psi, amftz, drdz, amvt, duvdz, epsil) 
+!$acc data copy(cdkdtl, cdmp, adefwd)
+!--- arugument
+!$acc data copyin(ahv) 
+!$acc data copyin(psi) 
 !$acc kernels
-#elif  OMP_ON
+#elif  OMP_
 !$omp parallel do
 #endif
      do k = kstr+1, kend
@@ -1279,16 +1623,30 @@ subroutine vdiff( &
              &  * amftz(ij, k)
         end do
      end do
-#ifdef ACC_ON
+#ifdef ACC_
 !$acc end kernels
-#elif  OMP_ON
+!$acc end data ! copyin(fwall, tke0) 
+!$acc end data ! copyin(psi, amftz, drdz, amvt, duvdz, epsil) 
+!$acc end data ! copy(cdkdtl, cdmp, adefwd)
+!--- arugument
+!$acc end data ! copyin(ahv) 
+!$acc end data ! copyin(psi) 
+#elif  OMP_
 !$omp end parallel do
 #endif
 
 !    -- Semi-implicit : adjusted alps in each time step --
-#ifdef ACC_ON
+#ifdef ACS_
+#ifdef ADF_
+!$acc update host(rit, cdmp) 
+!$acc update host(cdkdtl) 
+#endif
+!$omp parallel do private(p, alps)
+#elif  ACC_
+!$acc data copyin(rit, cdmp) 
+!$acc data copy(cdkdtl) 
 !$acc kernels
-#elif  OMP_ON
+#elif  OMP_
 !$omp parallel do private(p, alps)
 #endif
      do k = kstr+1, kend
@@ -1312,18 +1670,26 @@ subroutine vdiff( &
              &           + cdmp(ij, k)  ! (1-mu)*gamma + delta
         end do
      end do
-#ifdef ACC_ON
+#ifdef ACS_
+!$omp end parallel do
+#ifdef ADF_
+!$acc update device(cdkdtl) 
+#endif
+#elif  ACC_
 !$acc end kernels
-#elif  OMP_ON
+!$acc end data ! copyin(rit, cdmp)
+!$acc end data ! copy(cdkdtl)
+#elif  OMP_
 !$omp end parallel do
 #endif
 
 !    --- Boundary condition for psi ---
 !     "diffz(ij, kstr+1)=0"  & "diffz(ij, nbot(ij)+1)=0"
 !       ==> "aa(ij, kstr+1)=0" & "ac(ij, nbot(ij))=0"
-#ifdef ACC_ON
+#ifdef ACC_
+!$acc data copy(fez, diffz)
 !$acc kernels
-#elif  OMP_ON
+#elif  OMP_
 !$omp parallel do
 #endif
      do k = 1, nzdim
@@ -1332,14 +1698,19 @@ subroutine vdiff( &
            fez(ij, k) = 0.d0
         end do
      end do
-#ifdef ACC_ON
+#ifdef ACC_
 !$acc end kernels
-#elif  OMP_ON
+!$acc end data ! copy(fez, diffz)
+#elif  OMP_
 !$omp end parallel do
 #endif
-#ifdef ACC_ON
+#ifdef ACC_
+!$acc data copyin(amskt)  
+!$acc data copyin(psi)  
+!$acc data copyin(dzsig, scnp3d, amvt)  
+!$acc data copy(fez, diffz)
 !$acc kernels
-#elif  OMP_ON
+#elif  OMP_
 !$omp parallel do
 #endif
      do k = kstr+2, kend
@@ -1350,18 +1721,32 @@ subroutine vdiff( &
            fez(ij, k) = diffz(ij, k) * (psi(ij, k-1) - psi(ij, k))
         end do
      end do
-#ifdef ACC_ON
+#ifdef ACC_
 !$acc end kernels
-#elif  OMP_ON
+!$acc end data ! copyin(amskt)  
+!$acc end data ! copyin(psi)  
+!$acc end data ! copyin(dzsig, scnp3d, amvt)  
+!$acc end data ! copy(fez, diffz)
+#elif  OMP_
 !$omp end parallel do
 #endif
 
 !    fez(ij, kstr+1) & fez(ij, nbot(ij)+1)
 !    eq.(54) of Warner et al. (2005, om) has TYPOGRAPHICAL ERROR;
 !      k^{n} must be \kappa^{n}.
-#ifdef ACC_ON
+#ifdef ACS_
+#ifdef ADF_
+!$acc update host(fez)
+!$acc update host(tke0, z0sf2d, dzsig, scnp3d, ufrc3o, amvt)
+!$acc update host(nbot)
+#endif
+!$omp parallel do private(k, tketmp, dstwal)
+#elif  ACC_
+!$acc data copy(fez)
+!$acc data copyin(tke0, z0sf2d, dzsig, scnp3d, ufrc3o, amvt)
+!$acc data copyin(nbot)
 !$acc kernels
-#elif  OMP_ON
+#elif  OMP_
 !$omp parallel do private(k, tketmp, dstwal)
 #endif
      do ij = ijstr-nxdim-1, ijend+nxdim+1
@@ -1391,15 +1776,25 @@ subroutine vdiff( &
              &     * ( dstwal**(estrn-1.0d0) )
         end if
      end do
-#ifdef ACC_ON
+#ifdef ACS_
+!$omp end parallel do
+#ifdef ADF_
+!$acc update device(fez)
+#endif
+#elif  ACC_
 !$acc end kernels
-#elif  OMP_ON
+!$acc end data ! copy(fez)
+!$acc end data ! copyin(tke0, z0sf2d, dzsig, scnp3d, ufrc3o)
+!$acc end data ! copyin(nbot)
+#elif  OMP_
 !$omp end parallel do
 #endif
       
-#ifdef ACC_ON
+#ifdef ACC_
+!$acc data copyin(adefwd, rzmsig, fez)  
+!$acc data copy(ade)
 !$acc kernels
-#elif  OMP_ON
+#elif  OMP_
 !$omp parallel do
 #endif
      do k = kstr+1, kend
@@ -1408,15 +1803,19 @@ subroutine vdiff( &
              &          + adefwd(ij, k)
         end do
      end do
-#ifdef ACC_ON
+#ifdef ACC_
 !$acc end kernels
-#elif  OMP_ON
+!$acc end data ! copyin(adefwd, rzmsig, fez)  
+!$acc end data ! copy(ade)
+#elif  OMP_
 !$omp end parallel do
 #endif
 
-#ifdef ACC_ON
+#ifdef ACC_
+!$acc data copyin(cdkdtl, rzmsig, diffz)  
+!$acc data copy(aa, ab, ac)
 !$acc kernels
-#elif  OMP_ON
+#elif  OMP_
 !$omp parallel do
 #endif
      do k = kstr+1, kend
@@ -1427,29 +1826,39 @@ subroutine vdiff( &
              &       + dt * cdkdtl(ij, k)
         end do
      end do
-#ifdef ACC_ON
+#ifdef ACC_
 !$acc end kernels
-#elif  OMP_ON
+!$acc end data ! copyin(cdkdtl, rzmsig, diffz)  
+!$acc end data ! copy(aa, ab, ac)
+#elif  OMP_
 !$omp end parallel do
 #endif
-#ifdef ACC_ON
+#ifdef ACC_
+!$acc data copyin(ab)  
+!$acc data copy(ade, ac)
 !$acc kernels
-#elif  OMP_ON
+#elif  OMP_
 !$omp parallel do
 #endif
      do ij = ijstr-nxdim-1, ijend+nxdim+1
         ac(ij, kstr+1) = ac(ij, kstr+1) / ab(ij, kstr+1)
         ade(ij, kstr+1) = ade(ij, kstr+1) / ab(ij, kstr+1)
      end do
-#ifdef ACC_ON
+#ifdef ACC_
 !$acc end kernels
-#elif  OMP_ON
+!$acc end data ! copyin(ab)  
+!$acc end data ! copy(ade, ac)
+#elif  OMP_
 !$omp end parallel do
 #endif
+#ifdef ACC_
+!$acc data copyin(ab, aa)  
+!$acc data copy(ade, ac)
+#endif
      do k = kstr+2, kend
-#ifdef ACC_ON
+#ifdef ACC_
 !$acc kernels
-#elif  OMP_ON
+#elif  OMP_
 !$omp parallel do
 #endif
         do ij = ijstr-nxdim-1, ijend+nxdim+1
@@ -1457,31 +1866,42 @@ subroutine vdiff( &
            ac(ij, k) = ac(ij, k) * fc
            ade(ij, k) = (ade(ij, k) - aa(ij, k) * ade(ij, k-1)) * fc
         end do
-#ifdef ACC_ON
+#ifdef ACC_
 !$acc end kernels
-#elif  OMP_ON
+#elif  OMP_
 !$omp end parallel do
 #endif
      end do
+#ifdef ACC_
+!$acc end data ! copyin(ab, aa)  
+!$acc end data ! copy(ade, ac)
+#endif
      do k = kend-1, kstr+1, -1
-#ifdef ACC_ON
+#ifdef ACC_
+!$acc data copy(ade)
+!$acc data copyin(ac)
 !$acc kernels
-#elif  OMP_ON
+#elif  OMP_
 !$omp parallel do
 #endif
         do ij = ijstr-nxdim-1, ijend+nxdim+1
            ade(ij, k) = ade(ij, k) - ac(ij, k) * ade(ij, k+1)
         end do
-#ifdef ACC_ON
+#ifdef ACC_
 !$acc end kernels
-#elif  OMP_ON
+!$acc end data ! copy(ade)
+!$acc end data ! copyin(ac)
+#elif  OMP_
 !$omp end parallel do
 #endif
      end do
 
-#ifdef ACC_ON
+#ifdef ACC_
+!$acc data copyin(amftz) 
+!$acc data copyin(ade) 
+!$acc data copy(psi)
 !$acc kernels
-#elif  OMP_ON
+#elif  OMP_
 !$omp parallel do
 #endif
      do k = kstr+1, kend
@@ -1492,18 +1912,24 @@ subroutine vdiff( &
              &          ) * amftz(ij, k)
         end do
      end do
-#ifdef ACC_ON
+#ifdef ACC_
 !$acc end kernels
-#elif  OMP_ON
+!$acc end data ! copyin(amftz) 
+!$acc end data ! copyin(ade) 
+!$acc end data ! copy(psi)
+#elif  OMP_
 !$omp end parallel do
 #endif
 
 !    Surface and bottom psi estimation
 !    (this part is only for output and will not be referred below,
 !     thus can be removed).
-#ifdef ACC_ON
+#ifdef ACC_
+!$acc data copy(psi)
+!$acc data copyin(nbot)
+!$acc data copyin(z0sf2d, ufrc2s)
 !$acc kernels
-#elif  OMP_ON
+#elif  OMP_
 !$omp parallel do
 #endif
      do ij = ijstr-nxdim-1, ijend+nxdim+1
@@ -1511,16 +1937,29 @@ subroutine vdiff( &
           &                    * (ufrc2s(ij)**(2.0d0*estrm))
         psi(ij, nbot(ij)+1) = cpsibb * (ufrc2s(ij)**(2.0d0*estrm))
      end do
-#ifdef ACC_ON
+#ifdef ACC_
 !$acc end kernels
-#elif  OMP_ON
+!$acc end data ! copy(psi)
+!$acc end data ! copyin(nbot)
+!$acc end data ! copyin(z0sf2d, ufrc2s)
+#elif  OMP_
 !$omp end parallel do
 #endif
 
 !    Limit on psi (psimin, and eq.(43) if stable stratification)
-#ifdef ACC_ON
+#ifdef ACS_
+#ifdef ADF_
+!$acc update host(drdz) 
+!$acc update host(tke) 
+!$acc update host(psi) 
+#endif
+!$omp parallel do private(psilm)
+#elif  ACC_
+!$acc data copyin(drdz) 
+!$acc data copy(psi) 
+!$acc data copyin(tke) 
 !$acc kernels
-#elif  OMP_ON
+#elif  OMP_
 !$omp parallel do private(psilm)
 #endif
      do k = kstr, kend+1
@@ -1538,9 +1977,17 @@ subroutine vdiff( &
            end if
         end do
      end do
-#ifdef ACC_ON
+#ifdef ACS_
+!$omp end parallel do
+#ifdef ADF_
+!$acc update device(psi) 
+#endif
+#elif  ACC_
 !$acc end kernels
-#elif  OMP_ON
+!$acc end data ! copyin(drdz) 
+!$acc end data ! copy(psi) 
+!$acc end data ! copyin(tke) 
+#elif  OMP_
 !$omp end parallel do
 #endif
 
@@ -1551,9 +1998,14 @@ subroutine vdiff( &
      ofirst = .false.
   end if
 
-#ifdef ACC_ON
+#ifdef ACC_
+!--- moduel global
+!$acc data copyin(amftz) 
+!$acc data copyin(csamv) 
+!$acc data copyin(amvt) 
+!$acc data copy(amv)
 !$acc kernels
-#elif  OMP_ON
+#elif  OMP_
 !$omp parallel do
 #endif
   do k = kstr+1, kend
@@ -1565,16 +2017,25 @@ subroutine vdiff( &
           &          ) * csamv(ij, k)
      end do
   end do
-#ifdef ACC_ON
+#ifdef ACC_
 !$acc end kernels
-#elif  OMP_ON
+!$acc end data ! copyin(amftz) 
+!$acc end data ! copyin(csamv) 
+!$acc end data ! copyin(amvt) 
+!$acc end data ! copy(amv)
+#elif  OMP_
 !$omp end parallel do
 #endif
 
 ! -- Smoothing --
-#ifdef ACC_ON
+#ifdef ACC_
+!$acc data copyin(csamv, csahv)
+!--- module gloal
+!$acc data copyin(amfvz, amftz)
+!$acc data copy(ahv)
+!$acc data copy(amvt)
 !$acc kernels
-#elif  OMP_ON
+#elif  OMP_
 !$omp parallel do
 #endif
   do k = kstr+1, kend
@@ -1593,15 +2054,22 @@ subroutine vdiff( &
           &          ) * csahv(ij, k)
      end do
   end do
-#ifdef ACC_ON
+#ifdef ACC_
 !$acc end kernels
-#elif  OMP_ON
+!$acc end data ! copyin(csamv, csahv)
+!--- module gloal
+!$acc end data ! copyin(amfvz, amftz)
+!$acc end data ! copy(ahv)
+!$acc end data ! copy(amvt, ahv)
+#elif  OMP_
 !$omp end parallel do
 #endif
 
-#ifdef ACC_ON
+#ifdef ACC_
+!$acc data copyin(amv0, ahv03d)
+!$acc data copy(amv, ahv)
 !$acc kernels
-#elif  OMP_ON
+#elif  OMP_
 !$omp parallel do
 #endif
   do k = kstr, kstr+mz-1
@@ -1610,14 +2078,18 @@ subroutine vdiff( &
         ahv(ij, k) = max(ahv(ij, k), ahv03d(ij, k))
      end do
   end do
-#ifdef ACC_ON
+#ifdef ACC_
 !$acc end kernels
-#elif  OMP_ON
+!$acc end data ! copyin(amv0, ahv03d)
+!$acc end data ! copy(amv, ahv)
+#elif  OMP_
 !$omp end parallel do
 #endif
-#ifdef ACC_ON
+#ifdef ACC_
+!$acc data copyin(amv0, ahv03d)
+!$acc data copy(amv, ahv)
 !$acc kernels
-#elif  OMP_ON
+#elif  OMP_
 !$omp parallel do
 #endif
   do k = kstr+mz, kend
@@ -1626,16 +2098,24 @@ subroutine vdiff( &
         ahv(ij, k) = ahv03d(ij, k)
      end do
   end do
-#ifdef ACC_ON
+#ifdef ACC_
 !$acc end kernels
-#elif  OMP_ON
+!$acc end data ! copyin(amv0, ahv03d)
+!$acc end data ! copy(amv, ahv)
+#elif  OMP_
 !$omp end parallel do
 #endif
 
+#ifdef ADF_
+!$acc update host(tke, psi)
+#endif
 #ifdef OPT_TRIPOLE
   call shift2(   tke,    psi, &
     &          nxdim,  nydim,  nzdim, &
     &           1.d0,      0,      0 )
+#endif
+#ifdef ADF_
+!$acc update device(tke, psi)
 #endif
 
   
@@ -1650,23 +2130,40 @@ subroutine vdiff( &
 !--- tidal turbulent energy dissipation rate
 ! near-field
   if ( iamn /= 0 ) then
-#ifdef ACC_ON
+#ifdef ACC_
+!$acc data copyout(gint)
 !$acc kernels
-#elif  OMP_ON
+#elif  OMP_
 !$omp parallel do
 #endif
      do ij = ijstr, ijend
         gint(ij) = 0.d0
      end do
-#ifdef ACC_ON
+#ifdef ACC_
 !$acc end kernels
-#elif  OMP_ON
+!$acc end data ! copyout(gint)
+#elif  OMP_
 !$omp end parallel do
 #endif
+#ifdef ACS_
+#ifdef ADF_
+!$acc update host(gint)
+!$acc update host(dzmsig)
+!$acc update host(depth)
+!$acc update host(nbot, amftz)
+#endif
+#elif  ACC_
+!$acc data copy(gint) 
+#endif
      do k = kstr+1, kend
-#ifdef ACC_ON
+#ifdef ACS_
+!$omp parallel do private(dep)
+#elif  ACC_
+!$acc data copyin(depth)
+!$acc data copyin(dzmsig)
+!$acc data copyin(nbot, amftz)
 !$acc kernels
-#elif  OMP_ON
+#elif  OMP_
 !$omp parallel do private(dep)
 #endif
         do ij = 1, nxydim
@@ -1674,16 +2171,50 @@ subroutine vdiff( &
            gint(ij) = gint(ij) + &
                 & dzmsig(ij, k) * exp((depth(ij, k) - dep) * rzeta) * amftz(ij, k)
         end do
-#ifdef ACC_ON
+#ifdef ACS_
+!$omp end parallel do
+#elif  ACC_
 !$acc end kernels
-#elif  OMP_ON
+!$acc end data ! copyin(dzmsig)
+!$acc end data ! copyin(depth)
+!$acc end data ! copyin(nbot, amftz)
+#elif  OMP_
 !$omp end parallel do
 #endif
      end do
-     where(gint /= 0.d0) gint = 1.d0 / gint
-#ifdef ACC_ON
+#ifdef ACS_
+#ifdef ADF_
+!$acc update device(gint)
+#endif
+#elif  ACC_
+!$acc end data ! copy(gint)
+#endif
+#ifdef ACC_
+!$acc data copy(gint)
 !$acc kernels
-#elif  OMP_ON
+#endif
+     where(gint /= 0.d0) gint = 1.d0 / gint
+#ifdef ACC_
+!$acc end kernels
+!$acc end data ! copy(gint)
+#endif
+#ifdef ACS_
+#ifdef ADF_
+!$acc update host(nbot, amftz)
+!$acc update host(depth)
+!$acc update host(gint) 
+!$acc update host(tedn3d)
+!$acc update host(tedn2d)
+#endif
+!$omp parallel do private(dep)
+#elif  ACC_
+!$acc data copyin(nbot, amftz)
+!$acc data copyin(depth)
+!$acc data copyin(gint) 
+!$acc data copyin(tedn2d)
+!$acc data copy(tedn3d)
+!$acc kernels
+#elif  OMP_
 !$omp parallel do private(dep)
 #endif
      do k = kstr+1, kend
@@ -1692,47 +2223,69 @@ subroutine vdiff( &
            tedn3d(ij, k) = gint(ij) * tedn2d(ij) * exp((depth(ij, k) - dep) * rzeta) * amftz(ij, k)
         end do
      end do
-#ifdef ACC_ON
+#ifdef ACS_
+!$omp end parallel do
+#ifdef ADF_
+!$acc update device(gint) 
+!$acc update device(tedn3d)
+#endif
+#elif  ACC_
 !$acc end kernels
-#elif  OMP_ON
+!$acc end data ! copyin(gint)
+!$acc end data ! copyin(depth)
+!$acc end data ! copyin(nbot, amftz)
+!$acc end data ! copyin(tedn2d)
+!$acc end data ! copy(tedn3d)
+#elif  OMP_
 !$omp end parallel do
 #endif
   end if
 ! far-field
   if ( iamf /= 0 ) then
-#ifdef ACC_ON
+#ifdef ACC_
+!$acc data copy(gint)
 !$acc kernels
-#elif  OMP_ON
+#elif  OMP_
 !$omp parallel do
 #endif
      do ij = ijstr, ijend
         gint(ij) = 0.d0
      end do
-#ifdef ACC_ON
+#ifdef ACC_
 !$acc end kernels
-#elif  OMP_ON
+!$acc end data ! copy(gint)
+#elif  OMP_
 !$omp end parallel do
 #endif
      if (ofvcnt) then
+#ifdef ACC_
+!$acc data copy(gint)
+!$acc data copyin(dzmsig, amftz)
+#endif
         do k = kstr+1, kend
-#ifdef ACC_ON
+#ifdef ACC_
 !$acc kernels
-#elif  OMP_ON
+#elif  OMP_
 !$omp parallel do
 #endif
            do ij = 1, nxydim
               gint(ij) = gint(ij) + &
                    & dzmsig(ij, k) * amftz(ij, k)
            end do
-#ifdef ACC_ON
+#ifdef ACC_
 !$acc end kernels
-#elif  OMP_ON
+#elif  OMP_
 !$omp end parallel do
 #endif
         end do
-#ifdef ACC_ON
+#ifdef ACC_
+!$acc end data ! copy(gint)
+!$acc end data ! copyin(dzmsig, amftz)
+#endif
+#ifdef ACC_
+!$acc data copy(gint)
 !$acc kernels
-#elif  OMP_ON
+#elif  OMP_
 !$omp parallel do
 #endif
         do ij = ijstr, ijend
@@ -1740,14 +2293,19 @@ subroutine vdiff( &
               gint(ij) = 1.d0 / gint(ij)
            end if
         end do
-#ifdef ACC_ON
+#ifdef ACC_
 !$acc end kernels
-#elif  OMP_ON
+!$acc end data ! copy(gint)
+#elif  OMP_
 !$omp end parallel do
 #endif
-#ifdef ACC_ON
+#ifdef ACC_
+!$acc data copy(tedf3d)
+!$acc data copyin(tedf2d)
+!$acc data copyin(gint)
+!$acc data copyin(amftz)
 !$acc kernels
-#elif  OMP_ON
+#elif  OMP_
 !$omp parallel do
 #endif
         do k = kstr+1, kend
@@ -1755,32 +2313,60 @@ subroutine vdiff( &
               tedf3d(ij, k) = gint(ij) * tedf2d(ij) * amftz(ij, k)
            end do
         end do
-#ifdef ACC_ON
+#ifdef ACC_
 !$acc end kernels
-#elif  OMP_ON
+!$acc end data ! copy(tedf3d)
+!$acc end data ! copyin(tedf2d)
+!$acc end data ! copyin(gint)
+!$acc end data ! copyin(amftz)
+#elif  OMP_
 !$omp end parallel do
 #endif
      else
         if (ofvpn) then ! prop to N
+#ifdef ACS_
+#ifdef ADF_
+!$acc update host(gint, drdz)
+!$acc update host(dzmsig, amftz)
+#endif
+#endif
            do k = kstr+1, kend
-#ifdef ACC_ON
+#ifdef ACS_
+!$omp parallel do
+#elif  ACC_
+!--- local
+!$acc data copy(gint)
+!$acc data copyin(drdz)
+!$acc data copyin(dzmsig, amftz)
 !$acc kernels
-#elif  OMP_ON
+#elif  OMP_
 !$omp parallel do
 #endif
               do ij = 1, nxydim
                  gint(ij) = gint(ij) + &
                       & dzmsig(ij, k) * sqrt(abs(drdz(ij, k))) * amftz(ij, k)
               end do
-#ifdef ACC_ON
+#ifdef ACS_
+!$omp end parallel do
+#elif  ACC_
 !$acc end kernels
-#elif  OMP_ON
+!--- local
+!$acc end data ! copy(gint)
+!$acc end data ! copyin(drdz)
+!$acc end data ! copyin(dzmsig amftz)
+#elif  OMP_
 !$omp end parallel do
 #endif
            end do
-#ifdef ACC_ON
+#ifdef ACS_
+#ifdef ADF_
+!$acc update device(gint)
+#endif
+#endif
+#ifdef ACC_
+!$acc data copy(gint)
 !$acc kernels
-#elif  OMP_ON
+#elif  OMP_
 !$omp parallel do
 #endif
            do ij = ijstr, ijend
@@ -1788,14 +2374,28 @@ subroutine vdiff( &
                  gint(ij) = 1.d0 / gint(ij)
               end if
            end do
-#ifdef ACC_ON
+#ifdef ACC_
 !$acc end kernels
-#elif  OMP_ON
+!$acc end data ! copy(gint)
+#elif  OMP_
 !$omp end parallel do
 #endif
-#ifdef ACC_ON
+#ifdef ACS_
+#ifdef ADF_
+!$acc update host(tedf3d)
+!$acc update host(tedf2d)
+!--- local bariables
+!$acc update host(gint, drdz)
+!$acc update host(amftz)
+#endif
+!$omp parallel do
+#elif  ACC_
+!$acc data copy(tedf3d)
+!$acc data copyin(tedf2d)
+!$acc data copyin(gint, drdz)
+!$acc data copyin(amftz)
 !$acc kernels
-#elif  OMP_ON
+#elif  OMP_
 !$omp parallel do
 #endif
            do k = kstr+1, kend
@@ -1803,31 +2403,47 @@ subroutine vdiff( &
                  tedf3d(ij, k) = gint(ij) * tedf2d(ij) * sqrt(abs(drdz(ij, k))) * amftz(ij, k)
               end do
            end do
-#ifdef ACC_ON
+#ifdef ACS_
+!$omp end parallel do
+#ifdef ADF_
+!$acc update device(tedf3d)
+#endif
+#elif  ACC_
 !$acc end kernels
-#elif  OMP_ON
+!$acc end data ! copy(tedf3d)
+!$acc end data ! copyin(tedf2d)
+!$acc end data ! copyin(gint, drdz)
+!$acc end data ! copyin(amftz)
+#elif  OMP_
 !$omp end parallel do
 #endif
         else ! prop to N2
            do k = kstr+1, kend
-#ifdef ACC_ON
+#ifdef ACC_
+!$acc data copy(gint)
+!$acc data copyin(drdz)
+!$acc data copyin(dzmsig, amftz)
 !$acc kernels
-#elif  OMP_ON
+#elif  OMP_
 !$omp parallel do
 #endif
               do ij = 1, nxydim
                  gint(ij) = gint(ij) + &
                       & dzmsig(ij, k) * drdz(ij, k) * amftz(ij, k)
               end do
-#ifdef ACC_ON
+#ifdef ACC_
 !$acc end kernels
-#elif  OMP_ON
+!$acc end data ! copy(gint)
+!$acc end data ! copyin(drdz)
+!$acc end data ! copyin(dzmsig, amftz)
+#elif  OMP_
 !$omp end parallel do
 #endif
            end do
-#ifdef ACC_ON
+#ifdef ACC_
+!$acc data copy(gint)
 !$acc kernels
-#elif  OMP_ON
+#elif  OMP_
 !$omp parallel do
 #endif
            do ij = ijstr, ijend
@@ -1835,14 +2451,19 @@ subroutine vdiff( &
                  gint(ij) = 1.d0 / gint(ij)
               end if
            end do
-#ifdef ACC_ON
+#ifdef ACC_
 !$acc end kernels
-#elif  OMP_ON
+!$acc end data ! copy(gint)
+#elif  OMP_
 !$omp end parallel do
 #endif
-#ifdef ACC_ON
+#ifdef ACC_
+!$acc data copyin(amftz)
+!$acc data copyin(gint, drdz, amftz)
+!$acc data copyin(tedf2d)
+!$acc data copy(tedf3d)
 !$acc kernels
-#elif  OMP_ON
+#elif  OMP_
 !$omp parallel do
 #endif
            do k = kstr+1, kend
@@ -1850,18 +2471,27 @@ subroutine vdiff( &
                  tedf3d(ij, k) = gint(ij) * tedf2d(ij) * drdz(ij, k) * amftz(ij, k)
               end do
            end do
-#ifdef ACC_ON
+#ifdef ACC_
 !$acc end kernels
-#elif  OMP_ON
+!$acc end data ! copyin(amftz)
+!$acc end data ! copyin(gint, drdz, amftz)
+!$acc end data ! copyin(tedf2d)
+!$acc end data ! copy(tedf3d)
+#elif  OMP_
 !$omp end parallel do
 #endif
         end if
      end if
   end if
 
-#ifdef ACC_ON
+#ifdef ACC_
+!$acc data copyin(amftz)
+!$acc data copyin(drdz)
+!$acc data copy(ahvted, tedr)
+!$acc data copyin(tedn3d, tedf3d)
+!$acc data copy(ahv)
 !$acc kernels
-#elif  OMP_ON
+#elif  OMP_
 !$omp parallel do
 #endif
   do k = kstr+1, kend
@@ -1874,12 +2504,21 @@ subroutine vdiff( &
              &                  * amftz(ij, k)
      end do
   end do
-#ifdef ACC_ON
+#ifdef ACC_
 !$acc end kernels
-#elif  OMP_ON
+!$acc end data ! copyin(amftz)
+!$acc end data ! copyin(drdz, ahvted)
+!$acc end data ! copy(tedr)
+!$acc end data ! copyin(tedn3d, tedf3d)
+!$acc end data ! copy(ahv)
+#elif  OMP_
 !$omp end parallel do
 #endif
 
+#ifdef ADF_
+!$acc update host(tedn3d, tedf3d)
+!$acc update host(ahvted, tedr)
+#endif
   call chekin(ahvted, 'AHVTED', &
        &          'ahv by ted', 'cm^2/s', &
        &          nx,       ny,       nz,     nxyzdm, 'OCLVMT')
@@ -1895,8 +2534,24 @@ subroutine vdiff( &
 
 
 #ifdef OPT_BBL
+#ifdef ADF_
+!$acc data copyin(amskt0, nbot)
+!$acc data copy(amskt)
+#endif
   call rmmskt
+#ifdef ADF_
+!$acc end data ! copyin(amskt0, nbot)
+!$acc end data ! copy(amskt)
+#endif
+#ifdef ADF_
+!$acc data copyin(amsktb)
+!$acc data copy(amskt)
+#endif
   call admktb
+#ifdef ADF_
+!$acc end data ! copyin(amsktb)
+!$acc end data ! copy(amskt)
+#endif
 #endif
 
 !  call chekin(tke  ,'TKE', &
@@ -1921,6 +2576,67 @@ subroutine vdiff( &
 !    &         nx,     ny,     nz, nxyzdm, 'OCN')      
 !  call chekin(ctkemn, 'CTKEMN', &
 !    &         nx,     ny,     nz, nxyzdm, 'OCN')
+
+#ifdef ADF_
+!--- ADF_
+!$acc end data ! copyin(dz, dzm)
+!$acc end data ! copyin(ds, dsm)
+!$acc end data ! copyin(amskb) 
+!$acc end data ! copyin(amftz)
+!$acc end data ! copyin(amfvz)
+!$acc end data ! copyin(amskt0)
+!$acc end data ! copyin(amsktb)
+!$acc end data ! copyin(amskt1)
+!$acc end data ! copy(amskt)
+!$acc end data ! copyin(nbot)
+
+!$acc end data ! copyin(tauaox, tauaoy) 
+
+!$acc end data ! copy(amv, ahv)
+!$acc end data ! copyin(uy, vy) 
+!$acc end data ! copyin(ty, hy) 
+!$acc end data ! copyin(taux, tauy) 
+
+!$acc end data ! create(amvt) 
+!$acc end data ! create(drdz) 
+!$acc end data ! create(duvdz) 
+!$acc end data ! create(dzsig)
+!$acc end data ! create(rzmsig)
+!$acc end data ! create(depth)
+!$acc end data ! create(depthm)
+!$acc end data ! create(epsil, tls) 
+!$acc end data ! create(sh, sm)
+!$acc end data ! create(fwall)
+!$acc end data ! create(fez) 
+!$acc end data ! create(rit) 
+!$acc end data ! create(tke0)
+!$acc end data ! create(scnp3d)
+!$acc end data ! create(cdkdtl) 
+!$acc end data ! create(diffz) 
+!$acc end data ! create(cdmp)
+!$acc end data ! create(ufrc2i, ufrc2o, ufrc2s, ufrc2b, ufrc3s, ufrc3o) 
+!$acc end data ! create(taubtm)
+!$acc end data ! create(gh, ghul)
+!$acc end data ! create(z0sf2d, prepmx) 
+!$acc end data ! create(ctkemn)
+!$acc end data ! create(gint) 
+!$acc end data ! create(dzmsig) 
+!$acc end data ! create(ahvted, tedr)
+!$acc end data ! create(adefwd)
+!$acc end data ! create(aa, ab, ac, ade)
+
+!$acc end data ! copy(tke)
+!$acc end data ! copy(psi) 
+!$acc end data ! copyin(ahv03d)
+!$acc end data ! copyin(csamv, csahv)
+!$acc end data ! copyin(cc0, cc1, cc2, cc3, cc4, cc5, cc6) 
+!$acc end data ! copyin(d9, d8, d7, d6, d5, d4, d3, d2, d1, d0) 
+!$acc end data ! copyin(amv0)
+!$acc end data ! copyin(tedn2d)
+!$acc end data ! copy(tedn3d)
+!$acc end data ! copy(tedf3d)
+!$acc end data ! copy(tedf2d)
+#endif
 
   return
 
@@ -2003,6 +2719,20 @@ subroutine vdiffb( &
      write(jfpar, nmbbdv)
   end if
 
+#ifdef ADF_
+!$acc data copy(amv, ahv) 
+!$acc data create(amvb, ahvb, kvb, ktb) 
+!$acc data copyin(amsktb, amskvb, nbot, nbotv) 
+#endif
+
+#ifdef ACC_
+!$acc data copy(amv, ahv) 
+!$acc data copy(amvb, ahvb, kvb, ktb) 
+!$acc data copyin(amsktb, amskvb, nbot, nbotv) 
+!$acc kernels 
+#elif  OMP_
+!$omp parallel do private(ij, kt, kv)
+#endif
   do ij = ijstr, ijend
      kt = nbot(ij)
      kv = nbotv(ij)
@@ -2015,13 +2745,35 @@ subroutine vdiffb( &
      ktb(ij) = kt
      ahvb(ij) = ahv(ij, kt)
   end do
+#ifdef ACC_
+!$acc end kernels
+!$acc end data ! copy(amv, ahv)
+!$acc end data ! copy(amvb, ahvb, kvb, ktb)
+!$acc end data ! copyin(amsktb, amskvb, nbot, nbotv)
+#elif  OMP_
+!$omp end parallel do
+#endif
 
+#ifdef ACC_
+!$acc data copy(ahv, amv)      
+!$acc data copyin(nbot, nbotv) 
+!$acc kernels 
+#elif  OMP_
+!$omp parallel do private(ij, kt, kv)
+#endif
   do ij = ijstr, ijend
      kt = nbot(ij)
      kv = nbotv(ij)
      amv(ij, kend) = amv(ij, kv)
      ahv(ij, kend) = ahv(ij, kt)
   end do
+#ifdef ACC_
+!$acc end kernels
+!$acc end data ! copy(ahv, amv)
+!$acc end data ! copyin(nbot, nbotv)
+#elif  OMP_
+!$omp end parallel do
+#endif
 
 !  call chekin(ahv   ,'AHV3', &
 !    &         nx,     ny,     nz, nxyzdm, 'OCN')      
@@ -2033,6 +2785,12 @@ subroutine vdiffb( &
 !    &         nx,     ny,      1, nxydim, 'SFC')      
 !  call chekin(ktb   ,'KTB', &
 !    &         nx,     ny,      1, nxydim, 'SFC')      
+
+#ifdef ADF_
+!$acc end data ! copy(amv, ahv)
+!$acc end data ! create(amvb, ahvb, kvb, ktb)
+!$acc end data ! copyin(amsktb, amskvb, nbot, nbotv)
+#endif
 
   return
 end subroutine vdiffb

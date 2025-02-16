@@ -79,10 +79,20 @@ contains
  implicit none
  integer ::  ij
 
+#ifdef ACC_
+!$acc data copyin(amskt0, nbot)
+!$acc data copy(amskt)
+!$acc kernels
+#endif
  do ij = 1, nxydim
     amskt(ij, kend) = 0.d0
     amskt(ij, nbot(ij)) = amskt0(ij)
  end do
+#ifdef ACC_
+!$acc end kernels
+!$acc end data ! copyin(amskt0)
+!$acc end data ! copy(amskt)
+#endif
 
  return
  end subroutine rmmskt
@@ -95,9 +105,19 @@ contains
  implicit none
  integer ::  ij
 
+#ifdef ACC_
+!$acc data copyin(amsktb)
+!$acc data copy(amskt)
+!$acc kernels
+#endif
  do ij = 1, nxydim
     amskt(ij, kend) = amsktb(ij)
  end do
+#ifdef ACC_
+!$acc end kernels
+!$acc end data ! copyin(amsktb)
+!$acc end data ! copy(amskt)
+#endif
 
  return
  end subroutine admktb
@@ -110,9 +130,21 @@ contains
  implicit none
  integer ::  ij
 
+#ifdef ACC_
+!$acc data copyin(amskt1)
+!$acc data copyin(nbot)
+!$acc data copy(amskt)
+!$acc kernels
+#endif
  do ij = 1, nxydim
     amskt(ij, nbot(ij)) = amskt1(ij)
  end do
+#ifdef ACC_
+!$acc end kernels
+!$acc end data ! copy(amskt)
+!$acc end data ! copyin(amskt1)
+!$acc end data ! copyin(nbot)
+#endif
 
  return
  end subroutine admkt1
