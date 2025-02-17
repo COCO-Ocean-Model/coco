@@ -7,21 +7,37 @@ module zocdim
   integer, parameter :: nxg    =    360, nyg    =    256, nz     =     63
   integer, parameter :: kz     =     10
   integer, parameter :: nic    =      5
-  integer, parameter :: nxgdim =    364, nygdim =    260, nzdim  =     65
+  integer, parameter :: inodes =     36, jnodes =     32
+ 
   integer, parameter :: igstr  =      3, jgstr  =      3, kstr   =      2
-  integer, parameter :: igend  =    362, jgend  =    258, kend   =     64
+  integer, parameter :: nxgdim = nxg + 2*(igstr-1)
+  integer, parameter :: nygdim = nyg + 2*(jgstr-1)
+  integer, parameter ::  nzdim =  nz + 2*(kstr-1)
+  integer, parameter :: igend = igstr + nxg-1
+  integer, parameter :: jgend = jgstr + nyg-1
+  integer, parameter ::  kend =  kstr + nz-1
  
-  integer, parameter :: nxyg = nxg*nyg, nxyzg = nxyg*nz
-  integer, parameter :: nxygdm = nxgdim*nygdim, nxyzgd = nxygdm*nzdim
+  integer, parameter :: nxyg = nxg*nyg
+  integer, parameter :: nxygdm = nxgdim*nygdim
+  integer(8), parameter :: iz = nz, izdim = nzdim
+  integer(8), parameter :: ixyg = nxyg, ixygdm = nxygdm
+  integer(8), parameter :: nxyzg = ixyg*iz, nxyzgd = ixygdm*izdim
  
-  integer, parameter :: nx     =     10, ny     =      8
-  integer, parameter :: nxdim  =     14, nydim  =     12
+  integer, parameter :: nx = nxg/inodes
+  integer, parameter :: ny = nyg/jnodes
   integer, parameter :: istr   =      3, jstr   =      3
-  integer, parameter :: iend   =     12, jend   =     10
-  integer, parameter :: ijstr  =     31, ijend  =    138
+  integer, parameter :: nxdim = nx + 2*(istr-1)
+  integer, parameter :: nydim = ny + 2*(jstr-1)
+  integer, parameter :: iend = istr + nx -1
+  integer, parameter :: jend = jstr + ny -1
+  integer, parameter :: ijstr = istr + (jstr-1)*nxdim
+  integer, parameter :: ijend = iend + (jend-1)*nxdim
  
+! *** Write here the number of tracer.
+! *** The minimum number is 2, for temperature and salinity.
   integer, parameter :: ntdim =      2
  
+! ***
   integer, parameter :: nxy = nx*ny, nxyz = nxy*nz
   integer, parameter :: nxydim = nxdim*nydim, nxyzdm = nxydim*nzdim
   integer, parameter :: nztdim = nzdim*ntdim
@@ -39,7 +55,6 @@ module zocdim
   integer, parameter :: lse = -nxdim+1, lsw = -nxdim-1
   integer, parameter :: lww = -2, lss = -2 * nxdim
  
-  integer, parameter :: inodes =     36, jnodes =     32
   integer, parameter :: icomm = istr-1, jcomm = jstr-1
  
  
