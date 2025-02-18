@@ -34,7 +34,22 @@ module ucloc
   data htitle / nclmax*' ' /
 
 contains
-
+  subroutine clc_skip(httl, oskip)
+    use zocdim, only: oinit, ofinal
+    character(*),  intent(in)  ::  httl
+    logical,       intent(out) :: oskip
+    
+    if ( oinit .or. ofinal ) then
+       oskip=.true.
+    else
+       oskip=.false.
+    end if
+    
+    if (httl == 'SETUP' ) oskip=.false.
+    if (httl == 'CHKOUT') oskip=.false.
+    if (httl == 'FINOUT') oskip=.false.
+  end subroutine clc_skip
+  
   subroutine clcout
     use ufile
     implicit none
@@ -62,6 +77,10 @@ contains
     implicit none
     character(*),           intent(in)     ::  httl
     integer(4)  ::  ic
+    logical     :: oskip
+
+    call clc_skip(httl, oskip)
+    if(oskip) return
 
     if (ofirst) then
        ofirst = .false.
@@ -91,6 +110,10 @@ contains
     implicit none
     character(*),           intent(in)     ::  httl
     integer(4)  ::  ic
+    logical     :: oskip
+    
+    call clc_skip(httl, oskip)
+    if(oskip) return
 
     call yclock( cput, wclt )
     do ic = 1, nclock
