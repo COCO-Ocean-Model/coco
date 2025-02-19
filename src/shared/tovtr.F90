@@ -176,15 +176,17 @@ subroutine ovturn( &
   real(8) ::     p1,     p2
   integer ::     ij,      k,     kk,      n
   logical :: obtmld
-
   real(8), save :: to(nxydim, nzdim, ntdim)
-
+  logical, save :: ofirst = .true.
 ! common /work/ ttl, w2, conv, dzsig, lup, lov
 
   if (oinit .or. ofinal) then
+     return
+  end if
+  if (ofirst) then
+     ofirst = .false.
      !$acc enter data create(zt, conv, cnvdep, dzsig, ttl, w2, n2, mld)
      !$acc enter data create(dptmsig, dptsig, dzmsig, delb, lup,lov, to)
-     return
   end if
 
   !$acc kernels default(present)
@@ -208,9 +210,7 @@ subroutine ovturn( &
         dptsig(ij, k) = dptsig(ij, k-1) + (h(ij) + zbot) * ds(k)
      end do
   end do
-  !$acc end kernels
   k = kstr+kz
-  !$acc kernels default(present)
   do ij = 1, nxydim
      dzmsig(ij, k) = (h(ij) + zbot) * 0.5d0 * ds(k-1) &
        &           + 0.5d0 * dz(ij, k)
@@ -224,8 +224,6 @@ subroutine ovturn( &
         dptsig(ij, k) = dptsig(ij, k-1) + dz(ij, k)
      end do
   end do
-  !$acc end kernels
-  !$acc kernels default(present)
   do k = 1, nzdim
      do ij = 1, nxydim
         conv(ij, k) = 0.d0
@@ -251,7 +249,6 @@ subroutine ovturn( &
         dzsig(ij, k) = dz(ij, k) * gamma(k-kstr+1)
      end do
   end do
-  !$acc end kernels
 #ifdef OPT_BBL
   do ij = ijtstr, ijtend
      k = nbot(ij)
@@ -259,7 +256,6 @@ subroutine ovturn( &
         &         + dzsig(ij, k) * (1.d0 - amsktb(ij))
   end do
 #endif
-  !$acc kernels default(present)
   do ij = 1, nxydim
      zt(ij, kstr) = 0.d0
   end do
@@ -284,8 +280,9 @@ subroutine ovturn( &
      end do
   end do
   !$acc end kernels
-  !$acc kernels default(present)
+
   do k = kstr+1, kend
+     !$acc kernels default(present)
      do ij = ijtstr, ijtend
         tu = t(ij, k-1, 1) * amskt(ij, k-1)
         su = t(ij, k-1, 2) * amskt(ij, k-1)
@@ -311,6 +308,7 @@ subroutine ovturn( &
            conv(ij, k) = 1.d0
            cnvdep(ij)=depth(ij,k)
            lov(ij) = .true.
+           !$acc loop seq
            do n = 1, ntdim
               ttl(ij, n) = ttl(ij, n) &
                 &        + t(ij, k, n) * dzsig(ij, k)
@@ -318,24 +316,29 @@ subroutine ovturn( &
         else
            lup(ij) = k
            lov(ij) = .false.
+           !$acc loop seq
            do n = 1, ntdim
               ttl(ij, n) = t(ij, k, n) * dzsig(ij, k)
            end do
         end if
         w2 (ij) = 1.d0 / (zt(ij, k+1) - zt(ij, lup(ij)))
      end do
-
+     !$acc end kernels
+     !$acc kernels default(present)
      do kk = kstr, k
         do ij = ijtstr, ijtend
            if ((kk .ge. lup(ij)) .and. lov(ij)) then
+              !$acc loop seq
               do n = 1, ntdim
                  t(ij, kk, n) = ttl(ij, n) * w2(ij)
               end do
            end if
         end do
      end do
+     !$acc end kernels
   end do
 
+  !$acc kernels default(present)
   do n = 1, ntdim
      do ij = ijtstr, ijtend
         do k = kstr+1, nbot(ij)
@@ -343,10 +346,8 @@ subroutine ovturn( &
         end do
      end do
   end do
-  !$acc end kernels  
 ! do k = kstr, kend
   k = kstr
-  !$acc kernels default(present)
   do ij = ijtstr, ijtend
      tl = t(ij, k, 1) * amskt(ij, k)
      sl = t(ij, k, 2) * amskt(ij, k)
@@ -359,8 +360,8 @@ subroutine ovturn( &
      &           + (d8s + d9s * tl * tl) * sqrt(sl)) * sl
      r(ij, k) = p1 / p2 - 1.d3
   enddo
-  !$acc end kernels  
 ! enddo
+  !$acc end kernels
 
   !$acc kernels default(present)
   do k = kstr+1, kend
@@ -401,7 +402,9 @@ subroutine ovturn( &
         delb(ij, k) = - gravit * (rr - rl) / rl
      end do
   end do
-
+  !$acc end kernels
+  
+  !$acc kernels default(present)
   do ij = ijtstr, ijtend
      obtmld = .true.
      do k = kref+kstr, nbot(ij)
