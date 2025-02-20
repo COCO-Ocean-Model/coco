@@ -543,11 +543,16 @@ contains
     real(8),                  intent(in)     ::  fact
     integer(4),               intent(in)     ::  ioff,  joff
 #endif
+    logical, save :: ofirst= .true.
 
-    !$acc data create(sdbfx1,sdbfx2,rvbfx1,rvbfx2, sdbfy1,sdbfy2,rvbfy1,rvbfy2) if(shift_gpu)
+    if(ofirst) then
+       ofirst = .false.
+       !$acc enter data create(sdbfx1,sdbfx2,rvbfx1,rvbfx2, sdbfy1,sdbfy2,rvbfy1,rvbfy2)
 #ifdef OPT_TRIPOLE
-    !$acc data create(sdbfn1,sdbfn2,rvbfn1,rvbfn2, sdbfx1n,sdbfx2n,rvbfx1n,rvbfx2n) if(shift_gpu)
+       !$acc enter data create(sdbfn1,sdbfn2,rvbfn1,rvbfn2, sdbfx1n,sdbfx2n,rvbfx1n,rvbfx2n)
 #endif
+    end if
+
     if (idown /= mpi_proc_null) then
        !$acc kernels default(present) if(shift_gpu)
        do k = 1, kdim
@@ -806,8 +811,6 @@ contains
        end if
     end if
 #endif
-    !$acc end data
-    !$acc end data
   end subroutine instant_shift
   
   subroutine shifts(nbfdim, nbfdim0, rbf1, rbf2, sbf1, sbf2, n_down, n_up)
