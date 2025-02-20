@@ -1960,6 +1960,35 @@ subroutine flxtrc( &
            alfq  = alf(ij, k) * alf(ij, k)
            alf1  = 1.d0 - alf(ij, k)
            alf1q = alf1 * alf1
+           if ( uv(ij, k) .le. 0.d0 ) then
+!          ---- flux from (k) to (k-1),  when w < 0
+             
+              sm (ij, k, n) = sm(ij, k, n) - fm(ij, ku)
+              s0 (ij, k, n) = s0(ij, k, n) - f0(ij, ku)
+
+              sz (ij, k, n) = alf1q * ( &
+                &     sz(ij, k, n) &
+                &   + 3.d0 * alf(ij, k) * szz(ij, k, n)  )
+              szz(ij, k, n) = alf1 * alf1q * szz(ij, k, n)
+
+              sx (ij, k, n) = sx (ij, k, n) - fx (ij, ku)
+              sxx(ij, k, n) = sxx(ij, k, n) - fxx(ij, ku)
+
+              sy (ij, k, n) = sy (ij, k, n) - fy (ij, ku)
+              syy(ij, k, n) = syy(ij, k, n) - fyy(ij, ku)
+
+              sxz(ij, k, n) = alf1q * sxz(ij, k, n)
+              syz(ij, k, n) = alf1q * syz(ij, k, n)
+              sxy(ij, k, n) = sxy(ij, k, n) - fxy(ij, ku)
+             
+           end if
+        end do
+
+        do ij = ijtstr, ijtend
+
+           alfq  = alf(ij, k) * alf(ij, k)
+           alf1  = 1.d0 - alf(ij, k)
+           alf1q = alf1 * alf1
            if ( uv(ij, k) .gt. 0.d0 ) then
 !          ---- flux from (k-1) to (k),  when w > 0
 
@@ -1982,30 +2011,9 @@ subroutine flxtrc( &
               syz(ij, ku, n) = alf1q * syz(ij, ku, n)
               sxy(ij, ku, n) = sxy(ij, ku, n) - fxy(ij, ku)
              
-           else
-!          ---- flux from (k) to (k-1),  when w < 0
-             
-              sm (ij, k, n) = sm(ij, k, n) - fm(ij, ku)
-              s0 (ij, k, n) = s0(ij, k, n) - f0(ij, ku)
-
-              sz (ij, k, n) = alf1q * ( &
-                &     sz(ij, k, n) &
-                &   + 3.d0 * alf(ij, k) * szz(ij, k, n)  )
-              szz(ij, k, n) = alf1 * alf1q * szz(ij, k, n)
-
-              sx (ij, k, n) = sx (ij, k, n) - fx (ij, ku)
-              sxx(ij, k, n) = sxx(ij, k, n) - fxx(ij, ku)
-
-              sy (ij, k, n) = sy (ij, k, n) - fy (ij, ku)
-              syy(ij, k, n) = syy(ij, k, n) - fyy(ij, ku)
-
-              sxz(ij, k, n) = alf1q * sxz(ij, k, n)
-              syz(ij, k, n) = alf1q * syz(ij, k, n)
-              sxy(ij, k, n) = sxy(ij, k, n) - fxy(ij, ku)
-             
            end if
-          
         end do
+
      end do
 !$omp end do
 
