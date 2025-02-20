@@ -1175,6 +1175,36 @@ subroutine flxtrc( &
            alfq  = alf(ij, k) * alf(ij, k)
            alf1  = 1.d0 - alf(ij, k)
            alf1q = alf1 * alf1
+           if ( uv(ij, k) .le. 0.d0 ) then
+!          ---- flux from (i) to (i-1),  when u < 0
+             
+              sm (ij, k, n) = sm(ij, k, n) - fm(ijlw, k)
+              s0 (ij, k, n) = s0(ij, k, n) - f0(ijlw, k)
+
+              sx (ij, k, n) = alf1q * ( &
+                &    sx(ij, k, n) + 3.d0 * alf(ij, k) * sxx(ij, k, n)  )
+              sxx(ij, k, n) = alf1 * alf1q * sxx(ij, k, n)
+
+              sy (ij, k, n) = sy (ij, k, n) - fy (ijlw, k)
+              syy(ij, k, n) = syy(ij, k, n) - fyy(ijlw, k)
+
+              sz (ij, k, n) = sz (ij, k, n) - fz (ijlw, k)
+              szz(ij, k, n) = szz(ij, k, n) - fzz(ijlw, k)
+
+              sxy(ij, k, n) = alf1q * sxy(ij, k, n)
+              sxz(ij, k, n) = alf1q * sxz(ij, k, n)
+              syz(ij, k, n) = syz(ij, k, n) - fyz(ijlw, k)
+             
+           end if
+        end do
+
+        do ij = ijtstr-nxdim-1, ijtend+nxdim+1
+
+           ijlw  = ij + lw
+
+           alfq  = alf(ij, k) * alf(ij, k)
+           alf1  = 1.d0 - alf(ij, k)
+           alf1q = alf1 * alf1
            if ( uv(ij, k) .gt. 0.d0 ) then
 !          ---- flux from (i-1) to (i),  when u > 0
 
@@ -1196,29 +1226,7 @@ subroutine flxtrc( &
               sxy(ijlw, k, n) = alf1q * sxy(ijlw, k, n)
               sxz(ijlw, k, n) = alf1q * sxz(ijlw, k, n)
               syz(ijlw, k, n) = syz(ijlw, k, n) - fyz(ijlw, k)
-             
-           else
-!          ---- flux from (i) to (i-1),  when u < 0
-             
-              sm (ij, k, n) = sm(ij, k, n) - fm(ijlw, k)
-              s0 (ij, k, n) = s0(ij, k, n) - f0(ijlw, k)
-
-              sx (ij, k, n) = alf1q * ( &
-                &    sx(ij, k, n) + 3.d0 * alf(ij, k) * sxx(ij, k, n)  )
-              sxx(ij, k, n) = alf1 * alf1q * sxx(ij, k, n)
-
-              sy (ij, k, n) = sy (ij, k, n) - fy (ijlw, k)
-              syy(ij, k, n) = syy(ij, k, n) - fyy(ijlw, k)
-
-              sz (ij, k, n) = sz (ij, k, n) - fz (ijlw, k)
-              szz(ij, k, n) = szz(ij, k, n) - fzz(ijlw, k)
-
-              sxy(ij, k, n) = alf1q * sxy(ij, k, n)
-              sxz(ij, k, n) = alf1q * sxz(ij, k, n)
-              syz(ij, k, n) = syz(ij, k, n) - fyz(ijlw, k)
-             
            end if
-          
         end do
 
 !    ---- put the temporary moments (fi) into appropriate neighboring boxes
