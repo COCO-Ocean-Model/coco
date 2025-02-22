@@ -79,6 +79,8 @@ module bshft
   real(8)        ::   rvbfn1(1:nxdim, 1:jcomm, 1:nztdim+nzdim)
   real(8)        ::   rvbfn2(1:nxdim, 0:jcomm, 1:nztdim+nzdim)
 
+  real(8)        :: qb(nxdim, nydim, nztdim+nzdim)
+  
   real(8), allocatable :: sdbffy(:,:,:), rvbffy(:,:,:)
 #endif
   
@@ -115,9 +117,11 @@ contains
     
     if (.not. pack_mode) return
     nelems = icomm * ny * koffset(num_packed + 1)
-    call shiftx                         &
-     &   ( west_recv, east_recv,        &
-     &     west_send, east_send, nelems )
+    call shifts                         &
+     &   (    nelems,    nelems,        &
+     &     west_recv, east_recv,        &
+     &     west_send, east_send,        &
+               idown,       iup  )
 
     do k = 1, koffset(num_packed + 1)
        do j = 1, jcomm
@@ -132,9 +136,11 @@ contains
     end do
 
     nelems = nxdim * jcomm * koffset(num_packed + 1)
-    call shifty                          &
-         &   ( south_recv, north_recv,   &
-         &     south_send, north_send, nelems)
+    call shifts                          &
+         &   (     nelems,     nelems,   &
+         &     south_recv, north_recv,   &
+         &     south_send, north_send,   &
+         &          jdown,        jup  )
 
 #ifdef OPT_TRIPOLE
     if (is_tri_edge) then
@@ -254,8 +260,10 @@ contains
           end do
 
           nelems = icomm * (jcomm + 1) * kpacked
-          call shiftx( tri_west_recv, tri_east_recv, &
-               &       tri_west_send, tri_east_send, nelems )
+          call shifts(        nelems,        nelems, &
+               &       tri_west_recv, tri_east_recv, &
+               &       tri_west_send, tri_east_send, &
+               &               idown,           iup  )
 
           do k = 1, kpacked
              do j = 1, jcomm + 1
@@ -384,15 +392,14 @@ contains
     if (pack_mode) then
        call shift_pack(q1, kdim, fact, ioff, joff)
     else
-       call instant_shift1(                                           &
+       call instant_shift(                                            &
     &                 q1,                                             &
-#ifndef OPT_TRIPOLE    
+#ifndef OPT_TRIPOLE
     &               idim,   jdim,   kdim )
 #else
-    &               idim,   jdim,   kdim,                             & 
+    &               idim,   jdim,   kdim,                             &
     &               fact,   ioff,   joff )
 #endif
-
     end if
   end subroutine shift1
 
@@ -414,15 +421,26 @@ contains
     if (pack_mode) then
        call shift_pack(q1, kdim, fact, ioff, joff)
        call shift_pack(q2, kdim, fact, ioff, joff)
-    else          
-       call instant_shift2(                                           &
-    &                 q1,     q2,                                     &
+    else
+       !call shift_pack_begin
+       !call shift_pack(q1, kdim, fact, ioff, joff)
+       !call shift_pack(q2, kdim, fact, ioff, joff)
+       !call shift_pack_end
+       !call shift_unpack(q1, 1)
+       !call shift_unpack(q2, 2)
+
+       qb(:,:,     1:kdim  ) = q1(:,:,1:kdim)
+       qb(:,:,kdim+1:2*kdim) = q2(:,:,1:kdim)
+       call instant_shift(                                            &
+    &                 qb,                                             &
 #ifndef OPT_TRIPOLE
-    &               idim,   jdim,   kdim )
+    &               idim,   jdim, 2*kdim )
 #else
-    &               idim,   jdim,   kdim,                             &
+    &               idim,   jdim, 2*kdim,                             &
     &               fact,   ioff,   joff )
 #endif
+       q1(:,:,1:kdim)=qb(:,:,     1:kdim  )
+       q2(:,:,1:kdim)=qb(:,:,kdim+1:2*kdim)
     end if
   end subroutine shift2
 
@@ -447,21 +465,35 @@ contains
        call shift_pack(q2, kdim, fact, ioff, joff)
        call shift_pack(q3, kdim, fact, ioff, joff)
     else
-       call instant_shift3(               &
-    &                 q1,     q2,     q3, &
+       !call shift_pack_begin
+       !call shift_pack(q1, kdim, fact, ioff, joff)
+       !call shift_pack(q2, kdim, fact, ioff, joff)
+       !call shift_pack(q3, kdim, fact, ioff, joff)
+       !call shift_pack_end
+       !call shift_unpack(q1, 1)
+       !call shift_unpack(q2, 2)
+       !call shift_unpack(q3, 3)
+
+       qb(:,:,       1:kdim  ) = q1(:,:,1:kdim)
+       qb(:,:,  kdim+1:2*kdim) = q2(:,:,1:kdim)
+       qb(:,:,2*kdim+1:3*kdim) = q3(:,:,1:kdim)
+       call instant_shift(                                            &
+    &                 qb,                                             &
 #ifndef OPT_TRIPOLE
-    &               idim,   jdim,   kdim )
+    &               idim,   jdim,   3*kdim )
 #else
-    &               idim,   jdim,   kdim, &
+    &               idim,   jdim,   3*kdim,                           &
     &               fact,   ioff,   joff )
 #endif
+       q1(:,:,1:kdim)=qb(:,:,       1:kdim  )
+       q2(:,:,1:kdim)=qb(:,:,  kdim+1:2*kdim)
+       q3(:,:,1:kdim)=qb(:,:,2*kdim+1:3*kdim)
     end if
   end subroutine shift3
 
 
 !========================================================================================
-    
-  subroutine instant_shift1(                                          &
+  subroutine instant_shift(                                           &
     &                 q1,                                             &
 #ifndef OPT_TRIPOLE    
     &               idim,   jdim,   kdim )
@@ -499,11 +531,10 @@ contains
           end do
        end do
     end if
+    
     nbfdim = kdim * ny * icomm
-    call shiftx(                                                      &
-    &            rvbfx1, rvbfx2,                                      &
-    &            sdbfx1, sdbfx2,                                      &
-    &            nbfdim )
+    call shifts(nbfdim, nbfdim, rvbfx1, rvbfx2, sdbfx1, sdbfx2, idown, iup)
+    
     if (idown /= mpi_proc_null) then
        do k = 1, kdim
           do j = 1, ny
@@ -541,11 +572,10 @@ contains
           end do
        end do
     end if
+    
     nbfdim = kdim * nxdim * jcomm
-    call shifty(                                                      &
-    &            rvbfy1, rvbfy2,                                      &
-    &            sdbfy1, sdbfy2,                                      &
-    &            nbfdim  )
+    call shifts(nbfdim, nbfdim, rvbfy1, rvbfy2, sdbfy1, sdbfy2, jdown, jup)
+    
     if (jdown /= mpi_proc_null) then
        do k = 1, kdim
           do j = 1, jcomm
@@ -587,12 +617,11 @@ contains
              end do
           end do
        end if
+       
        nbfdim = kdim * nxdim * jcomm
        nbfdm0 = kdim * nxdim * (jcomm+1)
-       call shiftnv(                                                  &
-    &            rvbfn1, rvbfn2,                                      &
-    &            sdbfn1, sdbfn2,                                      &
-    &            nbfdim, nbfdm0  )
+       call shifts(nbfdim, nbfdm0, rvbfn1, rvbfn2, sdbfn1, sdbfn2, jupe, jupw)
+       
        if (jupe /= mpi_proc_null) then
           do k = 1, kdim
              do j = 1, jcomm
@@ -634,11 +663,10 @@ contains
              end do
           end do
        end if
+       
        nbfdim = kdim * nxdim * jcomm
-       call shiftyn(                                                  &
-    &            rvbfy1, rvbfy2,                                      &
-    &            sdbfy1, sdbfy2,                                      &
-    &            nbfdim  )
+       call shifts(nbfdim, nbfdim, rvbfy1, rvbfy2, sdbfy1, sdbfy2, jupe, jupw)
+       
        if (jupe /= mpi_proc_null) then
           do k = 1, kdim
              do j = 1, jcomm
@@ -679,11 +707,10 @@ contains
              end do
           end do
        end if
+       
        nbfdim = kdim * (jcomm+1) * icomm
-       call shiftx(                                                   &
-    &            rvbfx1n, rvbfx2n,                                    &
-    &            sdbfx1n, sdbfx2n,                                    &
-    &            nbfdim  )
+       call shifts(nbfdim, nbfdim, rvbfx1n, rvbfx2n, sdbfx1n, sdbfx2n, idown, iup)
+       
        if (idown /= mpi_proc_null) then
           do k = 1, kdim
              do j = 1, jcomm+1
@@ -703,568 +730,37 @@ contains
           end do
        end if
     end if
-
 #endif
 
-  end subroutine instant_shift1
-
-! =====================================================================
-
-  subroutine instant_shift2(                                          &
-    &                 q1,     q2,                                     &
-#ifndef OPT_TRIPOLE
-    &               idim,   jdim,   kdim )
-#else
-    &               idim,   jdim,   kdim,                             &
-    &               fact,   ioff,   joff )
-#endif
-
+  end subroutine instant_shift
+  
+  subroutine shifts(nbfdim, nbfdim0, rbf1, rbf2, sbf1, sbf2, n_down, n_up)
     implicit none
-
 #include "mpif.h"
+    real(8),      intent(inout) ::  rbf1(:,:,:)
+    real(8),      intent(inout) ::  rbf2(:,:,:)
+    real(8),      intent(in)    ::  sbf1(:,:,:)
+    real(8),      intent(in)    ::  sbf2(:,:,:)
+    integer(4),   intent(in)    ::  nbfdim, nbfdim0, n_down, n_up
+!---- internal work
+    integer(4)  ::  is1, is2, ir1, ir2
+    integer(4)  ::  istmpi(mpi_status_size)
 
-    real(8),                  intent(inout)  ::    q1(1:idim,1:jdim,1:kdim)
-    real(8),                  intent(inout)  ::    q2(1:idim,1:jdim,1:kdim)
-    integer(4),               intent(in)     ::  idim,  jdim,  kdim
-#ifdef OPT_TRIPOLE
-    real(8),                  intent(in)     ::  fact
-    integer(4),               intent(in)     ::  ioff,  joff
-#endif
+    call mpi_isend(sbf1, nbfdim0, mpi_real8, n_down, 1, mpi_comm_world, is1, ierr)
 
-    if (idown /= mpi_proc_null) then
-       do k = 1, kdim
-          do j = 1, ny
-             do i = 1, icomm
-                sdbfx1(i, j, k) = q1(i+istr-1, j+jstr-1, k)
-                sdbfx1(i, j, k+kdim) = q2(i+istr-1, j+jstr-1, k)
-             end do
-          end do
-       end do
-    end if
-    if (iup /= mpi_proc_null) then
-       do k = 1, kdim
-          do j = 1, ny
-             do i = 1, icomm
-                sdbfx2(i, j, k) = q1(i+iend-icomm, j+jstr-1, k)
-                sdbfx2(i, j, k+kdim) = q2(i+iend-icomm, j+jstr-1, k)
-             end do
-          end do
-       end do
-    end if
-    nbfdim = 2 * kdim * ny * icomm
-    call shiftx(                                                      &
-    &            rvbfx1, rvbfx2,                                      &
-    &            sdbfx1, sdbfx2,                                      &
-    &            nbfdim  )
-    if (idown /= mpi_proc_null) then
-       do k = 1, kdim
-          do j = 1, ny
-             do i = 1, icomm
-                q1(i, j+jstr-1, k) = rvbfx1(i, j, k)
-                q2(i, j+jstr-1, k) = rvbfx1(i, j, k+kdim)
-             end do
-          end do
-       end do
-    end if
-    if (iup /= mpi_proc_null) then
-       do k = 1, kdim
-          do j = 1, ny
-             do i = 1, icomm
-                q1(iend+i, j+jstr-1, k) = rvbfx2(i, j, k)
-                q2(iend+i, j+jstr-1, k) = rvbfx2(i, j, k+kdim)
-             end do
-          end do
-       end do
-    end if
+    call mpi_isend(sbf2, nbfdim,  mpi_real8,   n_up, 2, mpi_comm_world, is2, ierr) 
 
-    if (jdown /= mpi_proc_null) then
-       do k = 1, kdim
-          do j = 1, jcomm
-             do i = 1, nxdim
-                sdbfy1(i, j, k) = q1(i, j+jstr-1, k)
-                sdbfy1(i, j, k+kdim) = q2(i, j+jstr-1, k)
-             end do
-          end do
-       end do
-    end if
-    if (jup /= mpi_proc_null) then
-       do k = 1, kdim
-          do j = 1, jcomm
-             do i = 1, nxdim
-                sdbfy2(i, j, k) = q1(i, j+jend-jcomm, k)
-                sdbfy2(i, j, k+kdim) = q2(i, j+jend-jcomm, k)
-             end do
-          end do
-       end do
-    end if
-    nbfdim = 2 * kdim * nxdim * jcomm
-    call shifty(                                                      &
-    &            rvbfy1, rvbfy2,                                      &
-    &            sdbfy1, sdbfy2,                                      &
-    &            nbfdim  )
-    if (jdown /= mpi_proc_null) then
-       do k = 1, kdim
-          do j = 1, jcomm
-             do i = 1, nxdim
-                q1(i, j, k) = rvbfy1(i, j, k)
-                q2(i, j, k) = rvbfy1(i, j, k+kdim)
-             end do
-          end do
-       end do
-    end if
-    if (jup /= mpi_proc_null) then
-       do k = 1, kdim
-          do j = 1, jcomm
-             do i = 1, nxdim
-                q1(i, jend+j, k) = rvbfy2(i, j, k)
-                q2(i, jend+j, k) = rvbfy2(i, j, k+kdim)
-             end do
-          end do
-       end do
-    end if
-#ifdef OPT_TRIPOLE
-    if ( joff == -1 ) then
+    call mpi_irecv(rbf2, nbfdim0, mpi_real8,   n_up, 1, mpi_comm_world, ir1, ierr)
 
-       if (jupe /= mpi_proc_null) then
-          do k = 1, kdim
-             do j = 0, jcomm
-                do i = 1+iabs(ioff), nxdim-iabs(ioff)
-                   sdbfn1(i, j, k) = fact*q1(nxdim-i+1+ioff, jend-j, k)
-                   sdbfn1(i, j, k+kdim) = fact*q2(nxdim-i+1+ioff, jend-j, k)
-                end do
-             end do
-          end do
-       end if
-       if (jupw /= mpi_proc_null) then
-          do k = 1, kdim
-             do j = 1, jcomm
-                do i = 1+iabs(ioff), nxdim-iabs(ioff)
-                   sdbfn2(i, j, k) = fact*q1(nxdim-i+1+ioff, jend-j, k)
-                   sdbfn2(i, j, k+kdim) = fact*q2(nxdim-i+1+ioff, jend-j, k)
-                end do
-             end do
-          end do
-       end if
-       nbfdim = 2 * kdim * nxdim * jcomm
-       nbfdm0 = 2 * kdim * nxdim * (jcomm+1)
-       call shiftnv(                                                  &
-    &            rvbfn1, rvbfn2,                                      &
-    &            sdbfn1, sdbfn2,                                      &
-    &            nbfdim, nbfdm0  )
-       if (jupe /= mpi_proc_null) then
-          do k = 1, kdim
-             do j = 1, jcomm
-                do i = 1, nxdim
-                   q1(i, jend+j, k) = rvbfn1(i, j, k)
-                   q2(i, jend+j, k) = rvbfn1(i, j, k+kdim)
-                end do
-             end do
-          end do
-       end if
+    call mpi_irecv(rbf1, nbfdim,  mpi_real8, n_down, 2, mpi_comm_world, ir2, ierr)
 
-       istv=1
-       if(inodes == 1) istv=nxdim/2+1
-       if (jupw /= mpi_proc_null) then
-          do k = 1, kdim
-             do j = 0, jcomm
-                do i = istv, nxdim
-                   q1(i, jend+j, k) = rvbfn2(i, j, k)
-                   q2(i, jend+j, k) = rvbfn2(i, j, k+kdim)
-                end do
-             end do
-          end do
-       end if
-
-    else
-       if (jupe /= mpi_proc_null) then
-          do k = 1, kdim
-             do j = 1, jcomm
-                do i = 1+iabs(ioff), nxdim-iabs(ioff)
-                   sdbfy1(i, j, k) = fact*q1(nxdim-i+1+ioff,jend-j+1+joff,k)
-                   sdbfy1(i, j, k+kdim) = fact*q2(nxdim-i+1+ioff,jend-j+1+joff,k)
-                end do
-             end do
-          end do
-       end if
-       if (jupw /= mpi_proc_null) then
-          do k = 1, kdim
-             do j = 1, jcomm
-                do i = 1+iabs(ioff), nxdim-iabs(ioff)
-                   sdbfy2(i, j, k) = fact*q1(nxdim-i+1+ioff,jend-j+1+joff,k)
-                   sdbfy2(i, j, k+kdim) = fact*q2(nxdim-i+1+ioff,jend-j+1+joff,k)
-                end do
-             end do
-          end do
-       end if
-       nbfdim = 2 * kdim * nxdim * jcomm
-       call shiftyn(                                                  &
-    &            rvbfy1, rvbfy2,                                      &
-    &            sdbfy1, sdbfy2,                                      &
-    &            nbfdim  )
-       if (jupe /= mpi_proc_null) then
-          do k = 1, kdim
-             do j = 1, jcomm
-                do i = 1, nxdim
-                   q1(i, jend+j, k) = rvbfy1(i, j, k)
-                   q2(i, jend+j, k) = rvbfy1(i, j, k+kdim)
-                end do
-             end do
-          end do
-       end if
-       if (jupw /= mpi_proc_null) then
-          do k = 1, kdim
-             do j = 1, jcomm
-                do i = 1, nxdim
-                   q1(i, jend+j, k) = rvbfy2(i, j, k)
-                   q2(i, jend+j, k) = rvbfy2(i, j, k+kdim)
-                end do
-             end do
-          end do
-       end if
-
-    end if
+    call mpi_wait( is1, istmpi, ierr )
+    call mpi_wait( is2, istmpi, ierr )
+    call mpi_wait( ir1, istmpi, ierr )
+    call mpi_wait( ir2, istmpi, ierr )
+  end subroutine shifts
 
 
-    if ( ioff /= 0 .and. jrank == jnodes-1 ) then
-       if (idown /= mpi_proc_null) then
-          do k = 1, kdim
-             do j = 1, jcomm+1
-                do i = 1, icomm
-                   sdbfx1n(i, j, k) = q1(i+istr-1, j+jend-1, k)
-                   sdbfx1n(i, j, k+kdim) = q2(i+istr-1, j+jend-1, k)
-                end do
-             end do
-          end do
-       end if
-       if (iup /= mpi_proc_null) then
-          do k = 1, kdim
-             do j = 1, jcomm+1
-                do i = 1, icomm
-                   sdbfx2n(i, j, k) = q1(i+iend-icomm, j+jend-1, k)
-                   sdbfx2n(i, j, k+kdim) = q2(i+iend-icomm, j+jend-1, k)
-                end do
-             end do
-          end do
-       end if
-       nbfdim = 2 * kdim * (jcomm+1) * icomm
-       call shiftx(                                                   &
-    &            rvbfx1n, rvbfx2n,                                    &
-    &            sdbfx1n, sdbfx2n,                                    &
-    &            nbfdim  )
-       if (idown /= mpi_proc_null) then
-          do k = 1, kdim
-             do j = 1, jcomm+1
-                do i = 1, icomm
-                   q1(i, j+jend-1, k) = rvbfx1n(i, j, k)
-                   q2(i, j+jend-1, k) = rvbfx1n(i, j, k+kdim)
-                end do
-             end do
-          end do
-       end if
-       if (iup /= mpi_proc_null) then
-          do k = 1, kdim
-             do j = 1, jcomm+1
-                do i = 1, icomm
-                   q1(iend+i, j+jend-1, k) = rvbfx2n(i, j, k)
-                   q2(iend+i, j+jend-1, k) = rvbfx2n(i, j, k+kdim)
-                end do
-             end do
-          end do
-       end if
-    end if
-
-#endif
- 
-  end subroutine instant_shift2
-
-! =====================================================================
-
-  subroutine instant_shift3(              &
-    &                 q1,     q2,     q3, &
-#ifndef OPT_TRIPOLE
-    &               idim,   jdim,   kdim )
-#else
-    &               idim,   jdim,   kdim, &
-    &               fact,   ioff,   joff )
-#endif
-
-    implicit none
-     
-#include "mpif.h"
-
-    real(8),                  intent(inout)  ::    q1(1:idim,1:jdim,1:kdim)
-    real(8),                  intent(inout)  ::    q2(1:idim,1:jdim,1:kdim)
-    real(8),                  intent(inout)  ::    q3(1:idim,1:jdim,1:kdim)
-    integer(4),               intent(in)     ::  idim,  jdim,  kdim
-#ifdef OPT_TRIPOLE
-    real(8),                  intent(in)     ::  fact
-    integer(4),               intent(in)     ::  ioff,  joff
-#endif
-
-    if (idown /= mpi_proc_null) then
-       do k = 1, kdim
-          do j = 1, ny
-             do i = 1, icomm
-                sdbfx1(i, j, k) = q1(i+istr-1, j+jstr-1, k)
-                sdbfx1(i, j, k+kdim) = q2(i+istr-1, j+jstr-1, k)
-                sdbfx1(i, j, k+kdim*2) = q3(i+istr-1, j+jstr-1, k)
-             end do
-          end do
-       end do
-    end if
-    if (iup /= mpi_proc_null) then
-       do k = 1, kdim
-          do j = 1, ny
-             do i = 1, icomm
-                sdbfx2(i, j, k) = q1(i+iend-icomm, j+jstr-1, k)
-                sdbfx2(i, j, k+kdim) = q2(i+iend-icomm, j+jstr-1, k)
-                sdbfx2(i, j, k+kdim*2) = q3(i+iend-icomm, j+jstr-1, k)
-             end do
-          end do
-       end do
-    end if
-    nbfdim = 3 * kdim * ny * icomm
-    call shiftx(                                                      &
-    &            rvbfx1, rvbfx2,                                      &
-    &            sdbfx1, sdbfx2,                                      &
-    &            nbfdim  ) 
-    if (idown /= mpi_proc_null) then
-       do k = 1, kdim
-          do j = 1, ny
-             do i = 1, icomm
-                q1(i, j+jstr-1, k) = rvbfx1(i, j, k)
-                q2(i, j+jstr-1, k) = rvbfx1(i, j, k+kdim)
-                q3(i, j+jstr-1, k) = rvbfx1(i, j, k+kdim*2)
-             end do
-          end do
-       end do
-    end if
-    if (iup /= mpi_proc_null) then
-       do k = 1, kdim
-          do j = 1, ny
-             do i = 1, icomm
-                q1(iend+i, j+jstr-1, k) = rvbfx2(i, j, k)
-                q2(iend+i, j+jstr-1, k) = rvbfx2(i, j, k+kdim)
-                q3(iend+i, j+jstr-1, k) = rvbfx2(i, j, k+kdim*2)
-             end do
-          end do
-       end do
-    end if
-
-    if (jdown /= mpi_proc_null) then
-       do k = 1, kdim
-          do j = 1, jcomm
-             do i = 1, nxdim
-                sdbfy1(i, j, k) = q1(i, j+jstr-1, k)
-                sdbfy1(i, j, k+kdim) = q2(i, j+jstr-1, k)
-                sdbfy1(i, j, k+kdim*2) = q3(i, j+jstr-1, k)
-             end do
-          end do
-       end do
-    end if
-    if (jup /= mpi_proc_null) then
-       do k = 1, kdim
-          do j = 1, jcomm
-             do i = 1, nxdim
-                sdbfy2(i, j, k) = q1(i, j+jend-jcomm, k)
-                sdbfy2(i, j, k+kdim) = q2(i, j+jend-jcomm, k)
-                sdbfy2(i, j, k+kdim*2) = q3(i, j+jend-jcomm, k)
-             end do
-          end do
-       end do
-    end if
-    nbfdim = 3 * kdim * nxdim * jcomm
-    call shifty(                                                      &
-    &            rvbfy1, rvbfy2,                                      &
-    &            sdbfy1, sdbfy2,                                      &
-    &            nbfdim  )
-    if (jdown /= mpi_proc_null) then
-       do k = 1, kdim
-          do j = 1, jcomm
-             do i = 1, nxdim
-                q1(i, j, k) = rvbfy1(i, j, k)
-                q2(i, j, k) = rvbfy1(i, j, k+kdim)
-                q3(i, j, k) = rvbfy1(i, j, k+kdim*2)
-             end do
-          end do
-       end do
-    end if
-    if (jup /= mpi_proc_null) then
-       do k = 1, kdim
-          do j = 1, jcomm
-             do i = 1, nxdim
-                q1(i, jend+j, k) = rvbfy2(i, j, k)
-                q2(i, jend+j, k) = rvbfy2(i, j, k+kdim)
-                q3(i, jend+j, k) = rvbfy2(i, j, k+kdim*2)
-             end do
-          end do
-       end do
-    end if
-#ifdef OPT_TRIPOLE
-    if ( joff == -1 ) then
-
-       if (jupe /= mpi_proc_null) then
-          do k = 1, kdim
-             do j = 0, jcomm
-                do i = 1+iabs(ioff), nxdim-iabs(ioff)
-                   sdbfn1(i, j, k) = fact*q1(nxdim-i+1+ioff, jend-j, k)
-                   sdbfn1(i, j, k+kdim) = fact*q2(nxdim-i+1+ioff, jend-j, k)
-                   sdbfn1(i, j, k+2*kdim) = fact*q3(nxdim-i+1+ioff, jend-j, k)
-                end do
-             end do
-          end do
-       end if
-       if (jupw /= mpi_proc_null) then
-          do k = 1, kdim
-             do j = 1, jcomm
-                do i = 1+iabs(ioff), nxdim-iabs(ioff)
-                   sdbfn2(i, j, k) = fact*q1(nxdim-i+1+ioff, jend-j, k)
-                   sdbfn2(i, j, k+kdim) = fact*q2(nxdim-i+1+ioff, jend-j, k)
-                   sdbfn2(i, j, k+2*kdim) = fact*q3(nxdim-i+1+ioff, jend-j, k)
-                end do
-             end do
-          end do
-       end if
-       nbfdim = 3 * kdim * nxdim * jcomm
-       nbfdm0 = 3 * kdim * nxdim * (jcomm+1)
-       call shiftnv(                                                  &
-    &            rvbfn1, rvbfn2,                                      &
-    &            sdbfn1, sdbfn2,                                      &
-    &            nbfdim, nbfdm0  )
-       if (jupe /= mpi_proc_null) then
-          do k = 1, kdim
-             do j = 1, jcomm
-                do i = 1, nxdim
-                   q1(i, jend+j, k) = rvbfn1(i, j, k)
-                   q2(i, jend+j, k) = rvbfn1(i, j, k+kdim)
-                   q3(i, jend+j, k) = rvbfn1(i, j, k+2*kdim)
-                end do
-             end do
-          end do
-       end if
-
-       istv=1
-       if(inodes == 1) istv=nxdim/2+1
-       if (jupw /= mpi_proc_null) then
-          do k = 1, kdim
-             do j = 0, jcomm
-                do i = istv, nxdim
-                   q1(i, jend+j, k) = rvbfn2(i, j, k)
-                   q2(i, jend+j, k) = rvbfn2(i, j, k+kdim)
-                   q3(i, jend+j, k) = rvbfn2(i, j, k+2*kdim)
-                end do
-             end do
-          end do
-       end if
-
-    else
-       if (jupe /= mpi_proc_null) then
-          do k = 1, kdim
-             do j = 1, jcomm
-                do i = 1+iabs(ioff), nxdim-iabs(ioff)
-                   sdbfy1(i,j,k) = fact*q1(nxdim-i+1+ioff,jend-j+1+joff,k)
-                   sdbfy1(i,j,k+kdim) = fact*q2(nxdim-i+1+ioff,jend-j+1+joff,k)
-                   sdbfy1(i,j,k+2*kdim) = fact*q3(nxdim-i+1+ioff,jend-j+1+joff,k)
-                end do
-             end do
-          end do
-       end if
-       if (jupw /= mpi_proc_null) then
-          do k = 1, kdim
-             do j = 1, jcomm
-                do i = 1+iabs(ioff), nxdim-iabs(ioff)
-                   sdbfy2(i,j,k) = fact*q1(nxdim-i+1+ioff,jend-j+1+joff,k)
-                   sdbfy2(i,j,k+kdim) = fact*q2(nxdim-i+1+ioff,jend-j+1+joff,k)
-                   sdbfy2(i,j,k+2*kdim) = fact*q3(nxdim-i+1+ioff,jend-j+1+joff,k)
-                end do
-             end do
-          end do
-       end if
-       nbfdim = 3 * kdim * nxdim * jcomm
-       call shiftyn(                                                  &
-    &            rvbfy1, rvbfy2,                                      &
-    &            sdbfy1, sdbfy2,                                      &
-    &            nbfdim  )
-       if (jupe /= mpi_proc_null) then
-          do k = 1, kdim
-             do j = 1, jcomm
-                do i = 1, nxdim
-                   q1(i, jend+j, k) = rvbfy1(i, j, k)
-                   q2(i, jend+j, k) = rvbfy1(i, j, k+kdim)
-                   q3(i, jend+j, k) = rvbfy1(i, j, k+2*kdim)
-                end do
-             end do
-          end do
-       end if
-       if (jupw /= mpi_proc_null) then
-          do k = 1, kdim
-             do j = 1, jcomm
-                do i = 1, nxdim
-                   q1(i, jend+j, k) = rvbfy2(i, j, k)
-                   q2(i, jend+j, k) = rvbfy2(i, j, k+kdim)
-                   q3(i, jend+j, k) = rvbfy2(i, j, k+2*kdim)
-                end do
-             end do
-          end do
-       end if
-    end if
-
-
-    if ( ioff /=0 .and. jrank == jnodes-1 ) then
-       if (idown /= mpi_proc_null) then
-          do k = 1, kdim
-             do j = 1, jcomm+1
-                do i = 1, icomm
-                   sdbfx1n(i, j, k) = q1(i+istr-1, j+jend-1, k)
-                   sdbfx1n(i, j, k+kdim) = q2(i+istr-1, j+jend-1, k)
-                   sdbfx1n(i, j, k+kdim*2) = q3(i+istr-1, j+jend-1, k)
-                end do
-             end do
-          end do
-       end if
-       if (iup /= mpi_proc_null) then
-          do k = 1, kdim
-             do j = 1, jcomm+1
-                do i = 1, icomm
-                   sdbfx2n(i, j, k) = q1(i+iend-icomm, j+jend-1, k)
-                   sdbfx2n(i, j, k+kdim) = q2(i+iend-icomm, j+jend-1, k)
-                   sdbfx2n(i, j, k+kdim*2) = q3(i+iend-icomm, j+jend-1, k)
-                end do
-             end do
-          end do
-       end if
-       nbfdim = 3 * kdim * (jcomm+1) * icomm
-       call shiftx(                                                   &
-    &            rvbfx1n, rvbfx2n,                                    &
-    &            sdbfx1n, sdbfx2n,                                    &
-    &            nbfdim  )
-       if (idown /= mpi_proc_null) then
-          do k = 1, kdim
-             do j = 1, jcomm+1
-                do i = 1, icomm
-                   q1(i, j+jend-1, k) = rvbfx1n(i, j, k)
-                   q2(i, j+jend-1, k) = rvbfx1n(i, j, k+kdim)
-                   q3(i, j+jend-1, k) = rvbfx1n(i, j, k+kdim*2)
-                end do
-             end do
-          end do
-       end if
-       if (iup /= mpi_proc_null) then
-          do k = 1, kdim
-             do j = 1, jcomm+1
-                do i = 1, icomm
-                   q1(iend+i, j+jend-1, k) = rvbfx2n(i, j, k)
-                   q2(iend+i, j+jend-1, k) = rvbfx2n(i, j, k+kdim)
-                   q3(iend+i, j+jend-1, k) = rvbfx2n(i, j, k+kdim*2)
-                end do
-             end do
-          end do
-       end if
-    end if
-
-#endif
-
-  end subroutine instant_shift3
 #ifdef OPT_TRIPOLE
 !========================================================================================
     
@@ -1303,192 +799,8 @@ contains
 
   return
   end subroutine shiftf1
-#endif
 
 ! *********************************************************************
-
-  subroutine shiftx(                                                  &
-    &            rvbfx1l, rvbfx2l,                                    &
-    &            sdbfx1l, sdbfx2l,                                    &
-    &            nbfdim  )
-
-    implicit none
-
-#include "mpif.h"
-
-    real(8),      intent(inout) ::  rvbfx1l(:,:,:)
-    real(8),      intent(inout) ::  rvbfx2l(:,:,:)
-    real(8),      intent(in)    ::  sdbfx1l(:,:,:)
-    real(8),      intent(in)    ::  sdbfx2l(:,:,:)
-    integer(4),   intent(inout) ::  nbfdim
-
-!---- internal work
-    integer(4)  ::  isrqx1, isrqx2
-    integer(4)  ::  irrqx1, irrqx2
-    integer(4)  ::  istmpi(mpi_status_size)
-
-    call mpi_isend(                                                  &
-    &              sdbfx1l, nbfdim, mpi_real8,                       &
-    &                idown,      1, mpi_comm_ogcm,                  &
-    &               isrqx1,   ierr)
-    call mpi_isend(                                                  &
-    &              sdbfx2l, nbfdim, mpi_real8,                       &
-    &                  iup,      2, mpi_comm_ogcm,                  &
-    &               isrqx2,   ierr) 
-    call mpi_irecv(                                                  &
-    &              rvbfx2l, nbfdim, mpi_real8,                       &
-    &                  iup,      1, mpi_comm_ogcm,                  &
-    &               irrqx1,   ierr)
-    call mpi_irecv(                                                  &
-    &              rvbfx1l, nbfdim, mpi_real8,                       &
-    &                idown,      2, mpi_comm_ogcm,                  &
-    &               irrqx2,   ierr)
-
-    call mpi_wait( isrqx1, istmpi, ierr )
-    call mpi_wait( isrqx2, istmpi, ierr )
-    call mpi_wait( irrqx1, istmpi, ierr )
-    call mpi_wait( irrqx2, istmpi, ierr )
-
-  end subroutine shiftx
-
-! *********************************************************************
-
-  subroutine shifty(                                                  &
-    &            rvbfy1l, rvbfy2l,                                    &
-    &            sdbfy1l, sdbfy2l,                                    &
-    &            nbfdim )
-
-    implicit none
-
-#include "mpif.h"
-
-    real(8),      intent(inout) ::  rvbfy1l(:,:,:)
-    real(8),      intent(inout) ::  rvbfy2l(:,:,:)
-    real(8),      intent(in)    ::  sdbfy1l(:,:,:)
-    real(8),      intent(in)    ::  sdbfy2l(:,:,:)
-    integer(4),   intent(inout) ::  nbfdim
-
-!---- internal work
-    integer(4)  ::  isrqy1, isrqy2
-    integer(4)  ::  irrqy1, irrqy2
-    integer(4)  ::  istmpi(mpi_status_size)
-
-    call mpi_isend(                                                   &
-    &              sdbfy1l, nbfdim, mpi_real8,                        &
-    &                jdown,      3, mpi_comm_ogcm,                   &
-    &               isrqy1,   ierr)
-    call mpi_isend(                                                   &
-    &              sdbfy2l, nbfdim, mpi_real8,                        &
-    &                  jup,      4, mpi_comm_ogcm,                   &
-    &               isrqy2,   ierr)
-    call mpi_irecv(                                                   &
-    &              rvbfy2l, nbfdim, mpi_real8,                        &
-    &                  jup,      3, mpi_comm_ogcm,                   &
-    &               irrqy1,   ierr)
-    call mpi_irecv(                                                   &
-    &              rvbfy1l, nbfdim, mpi_real8,                        &
-    &                jdown,      4, mpi_comm_ogcm,                   &
-    &               irrqy2,   ierr)
-
-    call mpi_wait( isrqy1, istmpi, ierr )
-    call mpi_wait( isrqy2, istmpi, ierr )
-    call mpi_wait( irrqy1, istmpi, ierr )
-    call mpi_wait( irrqy2, istmpi, ierr )
-
-  end subroutine shifty
-
-#ifdef OPT_TRIPOLE
-
-  subroutine shiftyn(                                                 &
-    &            rvbfy1l, rvbfy2l,                                    &
-    &            sdbfy1l, sdbfy2l,                                    &
-    &            nbfdim )
-
-    implicit none
-
-#include "mpif.h"
-
-    real(8),      intent(inout) ::  rvbfy1l(:,:,:)
-    real(8),      intent(inout) ::  rvbfy2l(:,:,:)
-    real(8),      intent(in)    ::  sdbfy1l(:,:,:)
-    real(8),      intent(in)    ::  sdbfy2l(:,:,:)
-    integer(4),   intent(inout) ::  nbfdim
-
-!---- internal work
-    integer(4)  ::  isrqy1, isrqy2
-    integer(4)  ::  irrqy1, irrqy2
-    integer(4)  ::  istmpi(mpi_status_size)
-
-    call mpi_isend(                                                   &
-    &             sdbfy1l, nbfdim, mpi_real8,                         &
-    &                jupe,       3, mpi_comm_ogcm,                   &
-    &               isrqy1,   ierr)
-    call mpi_isend(                                                   &
-    &              sdbfy2l, nbfdim, mpi_real8,                        &
-    &                 jupw,      4, mpi_comm_ogcm,                   &
-    &               isrqy2,   ierr) 
-    call mpi_irecv(                                                   &
-    &              rvbfy2l, nbfdim, mpi_real8,                        &
-    &                 jupw,      3, mpi_comm_ogcm,                   &
-    &               irrqy1,   ierr)
-    call mpi_irecv(                                                   &
-    &              rvbfy1l, nbfdim, mpi_real8,                        &
-    &                 jupe,      4, mpi_comm_ogcm,                   &
-    &               irrqy2,   ierr)
-
-    call mpi_wait( isrqy1, istmpi, ierr )
-    call mpi_wait( isrqy2, istmpi, ierr )
-    call mpi_wait( irrqy1, istmpi, ierr )
-    call mpi_wait( irrqy2, istmpi, ierr )
-
-  end subroutine shiftyn
-
-  subroutine shiftnv(                                                 &
-    &            rvbfn1l, rvbfn2l,                                    &
-    &            sdbfn1l, sdbfn2l,                                    &
-    &             nbfdim, nbfdm0   )
-
-    implicit none
-
-#include "mpif.h"
-
-    real(8),      intent(inout) ::  rvbfn1l(:,:,:)
-    real(8),      intent(inout) ::  rvbfn2l(:,:,:)
-    real(8),      intent(in)    ::  sdbfn1l(:,:,:)
-    real(8),      intent(in)    ::  sdbfn2l(:,:,:)
-    integer(4),   intent(inout) ::  nbfdim,   nbfdm0
-
-!---- internal work
-    integer(4)  ::  isrqy1, isrqy2
-    integer(4)  ::  irrqy1, irrqy2
-    integer(4)  ::  istmpi(mpi_status_size)
-
-    call mpi_isend(                                                   &
-    &              sdbfn1l, nbfdm0, mpi_real8,                        &
-    &                jupe,       3, mpi_comm_ogcm,                   &
-    &               isrqy1,   ierr)
-    call mpi_isend(                                                   &
-    &              sdbfn2l, nbfdim, mpi_real8,                        &
-    &                 jupw,      4, mpi_comm_ogcm,                   &
-    &               isrqy2,   ierr) 
-    call mpi_irecv(                                                   &
-    &              rvbfn2l, nbfdm0, mpi_real8,                        &
-    &                 jupw,      3, mpi_comm_ogcm,                   &
-    &               irrqy1,   ierr)
-    call mpi_irecv(                                                   &
-    &              rvbfn1l, nbfdim, mpi_real8,                        &
-    &                 jupe,      4, mpi_comm_ogcm,                   &
-    &               irrqy2,   ierr)
-
-    call mpi_wait( isrqy1, istmpi, ierr )
-    call mpi_wait( isrqy2, istmpi, ierr )
-    call mpi_wait( irrqy1, istmpi, ierr )
-    call mpi_wait( irrqy2, istmpi, ierr )
-
-  end subroutine shiftnv
-
-! *********************************************************************
-
   subroutine shiftfy(                                                 &
     &            rvbffy,                                              &
     &            sdbffy,                                              &

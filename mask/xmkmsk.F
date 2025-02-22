@@ -896,29 +896,39 @@ c     &     / ABS(DCONF(ZQ, ZA, ZB, ZC, WC))
      & 'integer, parameter :: kz     =', KZ
       WRITE(*, '(2X,A,I7)')
      & 'integer, parameter :: nic    =', NIC
-      WRITE(*, '(2X,A,2(A8,I7,A),A8,I7)')
+      WRITE(*, '(2X,A,A8,I7,A,A8,I7)')
      & 'integer, parameter :: ',
-     & 'nxgdim =', NXDIM, ', ',
-     & 'nygdim =', NYDIM, ', ',
-     & 'nzdim  =', NZDIM
+     & 'inodes =', INODES, ', ',
+     & 'jnodes =', JNODES
+      WRITE(*, *)
+
       WRITE(*, '(2X,A,2(A8,I7,A),A8,I7)')
      & 'integer, parameter :: ',
      & 'igstr  =', ISTR, ', ',
      & 'jgstr  =', JSTR, ', ',
      & 'kstr   =', KSTR
-      WRITE(*, '(2X,A,2(A8,I7,A),A8,I7)')
-     & 'integer, parameter :: ',
-     & 'igend  =', IEND, ', ',
-     & 'jgend  =', JEND, ', ',
-     & 'kend   =', KEND
+
+      WRITE(*, '(2X,A)')
+     & 'integer, parameter :: nxgdim = nxg + 2*(igstr-1)'
+      WRITE(*, '(2X,A)')
+     & 'integer, parameter :: nygdim = nyg + 2*(jgstr-1)'
+      WRITE(*, '(2X,A)')
+     & 'integer, parameter ::  nzdim =  nz + 2*(kstr-1)'
+      
+      WRITE(*, '(2X,A)')
+     & 'integer, parameter :: igend = igstr + nxg-1'
+      WRITE(*, '(2X,A)')
+     & 'integer, parameter :: jgend = jgstr + nyg-1'
+      WRITE(*, '(2X,A)')
+     & 'integer, parameter ::  kend =  kstr + nz-1'
+
 #ifndef OPT_TRIPOLE
-      WRITE(*, '(2X,A,A8,I7,A,A8,I7)')
-     & 'integer, parameter :: ',
-     & 'ijgstr =', ISTR+(JSTR-1)*NXDIM, ', ',
-     & 'ijgend =', IEND+(JEND-1)*NXDIM
+      WRITE(*, '(2X,A)')
+     & 'integer, parameter :: ijgstr = igstr + (jgstr-1)*nxgdim'
+      WRITE(*, '(2X,A)')
+     & 'integer, parameter :: ijgend = igend + (jgend-1)*nxgdim'
 #endif
       WRITE(*, *)
-
       WRITE(*, '(2X,A)')
      & 'integer, parameter :: nxyg = nxg*nyg'
       WRITE(*, '(2X,A)')
@@ -942,26 +952,29 @@ c     &     / ABS(DCONF(ZQ, ZA, ZB, ZC, WC))
       IJSSTR = NXSDIM * (JSSTR - 1) + ISSTR
       IJSEND = NXSDIM * (JSEND - 1) + ISEND
 
-      WRITE(*, '(2X,A,A8,I7,A,A8,I7)')
-     & 'integer, parameter :: ',
-     & 'nx     =', NXS, ', ',
-     & 'ny     =', NYS
-      WRITE(*, '(2X,A,A8,I7,A,A8,I7)')
-     & 'integer, parameter :: ',
-     & 'nxdim  =', NXSDIM, ', ',
-     & 'nydim  =', NYSDIM
+      WRITE(*, '(2X,A)') 'integer, parameter :: nx = nxg/inodes'
+      WRITE(*, '(2X,A)') 'integer, parameter :: ny = nyg/jnodes'
+
       WRITE(*, '(2X,A,A8,I7,A,A8,I7)')
      & 'integer, parameter :: ',
      & 'istr   =', ISSTR, ', ',
      & 'jstr   =', JSSTR
-      WRITE(*, '(2X,A,A8,I7,A,A8,I7)')
-     & 'integer, parameter :: ',
-     & 'iend   =', ISEND, ', ',
-     & 'jend   =', JSEND
-      WRITE(*, '(2X,A,A8,I7,A,A8,I7)')
-     & 'integer, parameter :: ',
-     & 'ijstr  =', IJSSTR, ', ',
-     & 'ijend  =', IJSEND
+
+      WRITE(*, '(2X,A)')
+     & 'integer, parameter :: nxdim = nx + 2*(istr-1)'
+      WRITE(*, '(2X,A)')
+     & 'integer, parameter :: nydim = ny + 2*(jstr-1)'
+
+      WRITE(*, '(2X,A)')
+     & 'integer, parameter :: iend = istr + nx -1'
+      WRITE(*, '(2X,A)')
+     & 'integer, parameter :: jend = jstr + ny -1'
+
+      WRITE(*, '(2X,A)')
+     & 'integer, parameter :: ijstr = istr + (jstr-1)*nxdim'
+      WRITE(*, '(2X,A)')
+     & 'integer, parameter :: ijend = iend + (jend-1)*nxdim'
+
       WRITE(*, *)
 
       WRITE(*, '(A)') '! *** Write here the number of tracer.'
@@ -1007,11 +1020,6 @@ c     &     / ABS(DCONF(ZQ, ZA, ZB, ZC, WC))
       WRITE(*, '(2X,A)')
      & 'integer, parameter :: lww = -2, lss = -2 * nxdim'
       WRITE(*, *)
-
-      WRITE(*, '(2X,A,A8,I7,A,A8,I7)')
-     & 'integer, parameter :: ',
-     & 'inodes =', INODES, ', ',
-     & 'jnodes =', JNODES
       WRITE(*, '(2X,A)')
      & 'integer, parameter :: icomm = istr-1, jcomm = jstr-1'
       WRITE(*, *)
@@ -1796,14 +1804,14 @@ c =====================================================================
          END DO
       END DO
 
-      IF (IBBL .NE. 0) THEN
-         DO K = 1, NZDIM
-            DO J = 1, NYDIM
-               DO I = 1, NXDIM
-                  BLD(I, J, K) = 0.D0
-               END DO
+      DO K = 1, NZDIM
+         DO J = 1, NYDIM
+            DO I = 1, NXDIM
+               BLD(I, J, K) = 0.D0
             END DO
          END DO
+      END DO
+      IF (IBBL .NE. 0) THEN
          DO J = 1, NYDIM
             DO I = 1, NXDIM
                K = NBOT(I, J) + KSTR

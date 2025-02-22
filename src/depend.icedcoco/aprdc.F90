@@ -72,7 +72,8 @@ contains
     use qckot
     use ucaln
     use bshft
-
+    use ufile
+    
     implicit none
 
     real(8),    intent(inout)  ::     hx(nxydim) 
@@ -101,13 +102,75 @@ contains
     real(8),    intent(inout)  ::   wadv(nxyzdm)
 
 !---- local variables
-    integer(4)  ::  itsplt,     ij,    ijk,      n
-    logical     ::    oeof
+    real(8), save, allocatable ::  ubtset(:,:), vbtset(:,:)
+    real(8), save :: tbnext
+    integer, save :: ibnext(1:6)
+    integer, save ::  nbcnt
+    integer, save ::    nbt = 25, iobint = 1, iubint = 4
+    logical, save ::  otide = .false.
 
+    integer  :: itstrt(1:6), itend(1:6), iutstp, ntsplt
+    real(8)  ::  tmstp
+    integer  ::  ifpar, jfpar, istat
+    integer  ::  itsplt,     ij,    ijk,      n
+    logical  ::    oeof
+
+    namelist /nmtide/  otide
+    namelist /nmtime/ itstrt,  itend,  tmstp, iutstp, ntsplt
+    namelist /nmbfav/    nbt, iobint, iubint
+    
     if (       ( myrank >= ijnode )                                   &
     &    .and. (.not. oinit) .and. (.not. ofinal)) return
 
     if (oinit) then
+       call rewnml(ifpar, jfpar)
+       read(ifpar, nmtide, iostat=istat)
+       call cstnml(jfpar, 'predco', 'nmtide', istat)
+       write(jfpar, nmtide)
+
+       if ( otide ) then
+          call rewnml(ifpar, jfpar)
+          read(ifpar, nmtime, iostat=istat)
+          call cstnml(jfpar, 'predco', 'nmtime', istat)
+          write(jfpar, nmtime)
+          call rewnml(ifpar, jfpar)
+          read(ifpar, nmbfav, iostat=istat)
+          call cstnml(jfpar, 'predco', 'nmbfav', istat)
+          write(jfpar, nmbfav)
+          ibnext(1:6) = itstrt(1:6)
+          ibnext(iubint) = ibnext(iubint) + iobint
+          call cyh2ss( tbnext, ibnext )
+          call css2yh( ibnext, tbnext )
+          allocate( ubtset(nxydim, nbt+1) )
+          allocate( vbtset(nxydim, nbt+1) )
+
+          do n = 1, nbt
+#ifdef OPT_TRIPOLE
+             call rstadd(ubtset(1, n), oeof, nxdim, nydim, 1, &
+                  &     'UBTSET', 'SFC', 1.d0,  0,  0 )
+             call rstadd(vbtset(1, n), oeof, nxdim, nydim, 1, &
+                  &     'VBTSET', 'SFC', 1.d0,  0,  0 )
+#else
+             call rstadd(ubtset(1, n), oeof, nxdim, nydim, 1, &
+                  &     'UBTSET', 'SFC')
+             call rstadd(vbtset(1, n), oeof, nxdim, nydim, 1, &
+                  &     'VBTSET', 'SFC')
+#endif
+          end do
+          if (oeof) then
+             ubtset(:,1:nbt) = 0.d0
+             vbtset(:,1:nbt) = 0.d0
+          end if
+          nbcnt = 0
+          ubtset(:,nbt+1) = 0.d0
+          vbtset(:,nbt+1) = 0.d0
+          ubtwof(:) = 0.d0 ! fshlw
+          vbtwof(:) = 0.d0 ! fshlw
+          do n = 1, nbt
+             ubtwof(:) = ubtwof(:) + ubtset(:, n)
+             vbtwof(:) = vbtwof(:) + vbtset(:, n)
+          end do
+       end if
 #ifdef OPT_TRIPOLE
        call rstadd(h1, oeof, nxdim, nydim, 1, 'H1', 'SFC',            &
     &                                      1.d0,  0,  0 )
@@ -122,6 +185,14 @@ contains
     end if
 
     if (ofinal) then
+       if ( otide ) then
+          do n = 1, nbt
+             call finadd(ubtset(1, n), nxdim, nydim, 1, &
+                  &     'UBTSET', 'SFC')
+             call finadd(vbtset(1, n), nxdim, nydim, 1, &
+                  &     'VBTSET', 'SFC')
+          end do
+       end if
        call finadd(h1, nxdim, nydim, 1, 'H1', 'SFC')
     end if
 
@@ -242,8 +313,11 @@ contains
     &                nxdim,  nydim,      1)
 #endif
           call btavst( ubtav,  vbtav )
+          if ( otide ) then
+             call bvfreq(ty)
+          end if
           do itsplt = 1, ntss
-
+             ttsp = tt - dble(ntss - itsplt + 1) * tss
              htmp (1:nxydim) = hx  (1:nxydim)
              ubtmp(1:nxydim) = ubtx(1:nxydim)
              vbtmp(1:nxydim) = vbtx(1:nxydim)
@@ -297,6 +371,12 @@ contains
     &                 ubtav,  vbtav,                                  &
     &                 nxdim,  nydim,      1)
 #endif
+          if ( otide ) then
+             call bfbtav(                                             &
+    &                    ubtset, vbtset,                              &
+    &                     ubtav,  vbtav,    nbt,  nbcnt,              &
+    &                    ibnext, tbnext, iobint, iubint)
+          end if
        end if
        hxb(1:nxydim) = hx(1:nxydim)
     end if
@@ -526,6 +606,64 @@ contains
             & 'ocean meridional transport', 'cm^2/s', &    
             &           nx,     ny,      1, nxydim, 'OCSFCV')
     end if
+
+  contains
+    subroutine bfbtav(                                                &
+    &                   ubtset, vbtset,                               &
+    &                    ubtav,  vbtav,    nbt,  nbcnt,               &
+    &                   ibnext, tbnext, iobint, iubint )
+      use zocdim
+      use zocgrd
+
+      real(8), intent(inout) :: ubtset(nxydim, nbt+1), vbtset(nxydim, nbt+1)
+      real(8), intent(inout) :: tbnext
+      integer, intent(inout) :: ibnext(6), nbcnt
+      integer, intent(in)    :: iobint, iubint, nbt
+      real(8), intent(in)    :: ubtav(nxydim),  vbtav(nxydim)
+
+      integer :: ij, n, nl
+
+      nbcnt = nbcnt + 1
+      n = nbt+1
+      do ij = 1, nxydim
+         ubtset(ij, n) = ubtset(ij, n) + ubtav(ij)
+         vbtset(ij, n) = vbtset(ij, n) + vbtav(ij)
+      end do
+
+      if ( tt .ge. tbnext ) then
+         do ij = 1, nxydim
+            ubtwof(ij) = ubtwof(ij) - ubtset(ij, 1)
+            vbtwof(ij) = vbtwof(ij) - vbtset(ij, 1)
+         end do
+         do n = 2, nbt
+            nl = n-1
+            do ij = 1, nxydim
+               ubtset(ij, nl) = ubtset(ij, n)
+               vbtset(ij, nl) = vbtset(ij, n)
+            end do
+         end do
+         n = nbt+1
+         nbcnt = nbcnt*nbt
+         do ij = 1, nxydim
+            ubtset(ij, nbt) = ubtset(ij, n) / dble(nbcnt)
+            vbtset(ij, nbt) = vbtset(ij, n) / dble(nbcnt)
+         end do
+         do ij = 1, nxydim
+            ubtwof(ij) = ubtwof(ij) + ubtset(ij, nbt)
+            vbtwof(ij) = vbtwof(ij) + vbtset(ij, nbt)
+         end do
+         
+         nbcnt = 0
+         do ij = 1, nxydim
+            ubtset(ij, n) = 0.d0
+            vbtset(ij, n) = 0.d0
+         end do
+         ibnext(iubint) = ibnext(iubint) + iobint
+         call cyh2ss( tbnext, ibnext )
+         call css2yh( ibnext, tbnext )
+      end if
+
+    end subroutine bfbtav
 
   end subroutine predco
 

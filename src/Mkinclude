@@ -1,4 +1,5 @@
-OGCMDIR	= /home/G10206/komuro/coco_latest
+#OGCMDIR	= /home/G10206/komuro/coco_latest
+ OGCMDIR        = /home/takateru.yamagishi/coco/coco_latest.origin.502+1
 RM	= rm -f
 
 #SYSTEM	= fugaku
@@ -24,7 +25,7 @@ OPTEXMASK = -DOPT_EXMASK
 #MPI=.mpi
 
 ### OpenACC ###
- ACC=.acc
+#ACC=.acc
 #ACC=
 
 ### OpenMP ###

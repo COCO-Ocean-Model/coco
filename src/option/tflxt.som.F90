@@ -323,7 +323,7 @@ subroutine flxtrc( &
            end do
         end do
      end if
-
+     
 !    ---- area normal to u defined on UV-grid
      do k = kstr, kstr+kz-1
         do ij = 1, nxydim
@@ -355,7 +355,6 @@ subroutine flxtrc( &
         vlmz(ij) = hxt(ij) * dx * hyt(ij) * dy(ij)
         
      end do
-
 !---- 
      call rewnml(ifpar, jfpar)
      read(ifpar, nmcah, iostat=istat)
@@ -379,7 +378,6 @@ subroutine flxtrc( &
         write(jfpar, *) 'Background horizontal diffusion :', ahh
         write(jfpar, *) 'Isopycnal diffusion             :', ahi
         write(jfpar, *) 'G-M thickness diffusion         :', ahg
-
         do k = 1, nzdim
            do ij = 1, nxydim
               ahi3d(ij, k) = ahi
@@ -387,7 +385,7 @@ subroutine flxtrc( &
               ahh3d(ij, k) = ahh
            end do
         end do
-
+        
         if ( isvgm > 0 ) then
            write(jfpar, *) 'latitudinally varying GM diffusivity is used.'
            pi = atan( 1.d0 )*4.d0

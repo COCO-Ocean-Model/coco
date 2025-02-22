@@ -363,7 +363,6 @@ contains
 !         enddo
 !      enddo
   endif
-
   call shift1(                                                                 &
    &             amftx,                                                        &
    &             nxdim,  nydim,  nzdim,                                        &

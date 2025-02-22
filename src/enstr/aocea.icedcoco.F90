@@ -183,7 +183,7 @@ subroutine ocean ( &
   real(8), save ::     qao(nxydim)
   real(8), save ::     qai(nxydim, nic),    qio(nxydim, nic)
   real(8), save ::     qii(nxydim, nic)
-  real(8), save ::     wev(nxydim)=0.d0,    wsb(nxydim, nic)
+  real(8), save ::     wev(nxydim),    wsb(nxydim, nic)
   real(8), save ::    prec(nxydim),   snow(nxydim)
   real(8), save ::    roff(nxydim),   soff(nxydim)
   real(8), save ::  tauaix(nxydim), tauaiy(nxydim)

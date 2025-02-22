@@ -138,8 +138,8 @@ subroutine vdiff( &
   integer ::      i,      j
   integer ::  ifpar,  jfpar,  istat
 
-  real(8), save ::  amv0(nz) = 0.0d0,  ahv0(nz) = 0.0d0
-  real(8), save ::  rahv(nz) = 1.0d0
+  real(8), save ::  amv0(nz),  ahv0(nz)
+  real(8), save ::  rahv(nz)
   real(8), save ::  btmfrc = 0.0d0
   real(8), save ::  estrm = 1.0d0,  estrn = -0.6666666666666666d0
   real(8), save ::  estrp = 2.0d0
@@ -151,6 +151,7 @@ subroutine vdiff( &
   real(8), save ::  cpsi1 = 1.0d0,  cpsi2 = 1.22d0
   real(8), save ::  cpsi3p = 1.0d0,  cpsi3n = 0.1d0
   real(8), save ::  amvmax = 1000.0d0,  ahvmax = 1000.0d0
+  real(8), save ::  amvmin = 0.0d0,  ahvmin = 0.0d0
   real(8), save ::  scntke = 0.8d0,  scnpsi = 1.07d0
   real(8), save ::  tkemin = 7.6d-2,  psimin = 1.0d-12, ritc = 1.0d0
   real(8), save ::  z0sfc = 1.0d2,  z0btm = 1.0d2,  epscmp = 1.0d-15
@@ -167,8 +168,8 @@ subroutine vdiff( &
   
   real(8), save ::  tedn2d(nxydim)
   real(8), save ::  tedf2d(nxydim)
-  real(8), save ::  tedn3d(nxydim, nzdim) = 0.d0
-  real(8), save ::  tedf3d(nxydim, nzdim) = 0.d0
+  real(8), save ::  tedn3d(nxydim, nzdim)
+  real(8), save ::  tedf3d(nxydim, nzdim)
   real(8), save ::  cgamma = 0.2d0,  ahvemx = 1000.0d0,  epst = 1.d-20
   real(8), save ::    zeta = 500.d0 ! [m]
   logical, save ::  ofvcnt = .false., ofvpn = .false. ! vert. prof of far-field mixing
@@ -193,7 +194,7 @@ subroutine vdiff( &
   real(8)       ::    gint(nxydim)
   real(8)       ::  ahvted(nxydim, nzdim),  tedr(nxydim, nzdim)
   real(8)       ::     dep ! [cm]
-
+  
   namelist /nmvisv/ amv0
   namelist /nmdifv/ ahv0
   namelist /nmdfre/ rahv
@@ -206,7 +207,7 @@ subroutine vdiff( &
     &               tkemin, psimin, ritc, z0sfc, z0btm, &
     &               nitr0, nitr00, epscmp, mz, &
     &               osfcwv, cw, z0sfmn, alphch, oswnoi, alphci, &
-    &               obtkei, atfilt
+    &               obtkei, atfilt, amvmin, ahvmin
   namelist /nmdifvao/ ovdfao, ahv0ao, mzao
   namelist /nmdved/ iamn, iamf, cftedn, cftedf, cgamma, ahvemx, epst, zeta, ofvcnt, ofvpn
  
@@ -236,6 +237,12 @@ subroutine vdiff( &
   end if
 
   if (ofirst) then
+     amv0(:)=0.d0
+     ahv0(:)=0.d0
+     rahv(:)=1.d0
+     tedn3d(:,:)=0.d0
+     tedf3d(:,:)=0.d0
+
 !     ofirst = .false.
      call rewnml(ifpar, jfpar)
      read (ifpar, nmvisv, iostat=istat)
@@ -981,10 +988,10 @@ subroutine vdiff( &
      do k = kstr+1, kend
         do ij = ijstr-nxdim-1, ijend+nxdim+1
            q = sqrt( 2.0d0 * tke(ij, k) )
-           amvt(ij, k) = min( amvmax, &
-             &                csfe * q * tls(ij, k) * sm(ij, k) )
-           ahv(ij, k) = min( ahvmax, &
-             &               csfe * q * tls(ij, k) * sh(ij, k) )
+           amvt(ij, k) = max(min( amvmax, &
+             &                csfe * q * tls(ij, k) * sm(ij, k) ),amvmin)
+           ahv(ij, k) = max(min( ahvmax, &
+             &               csfe * q * tls(ij, k) * sh(ij, k) ),ahvmin)
         end do
      end do
 #ifdef ACS_
@@ -1992,7 +1999,7 @@ subroutine vdiff( &
 #endif
 
   end do
-
+  
   if (ofirst) then
      nitr = nitr0
      ofirst = .false.
