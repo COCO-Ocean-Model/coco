@@ -39,6 +39,17 @@ contains
   real(8), intent(in)    ::  r(nxdim, nydim, nzdim)
   integer ::     i,      j,      k,     ij,      n 
 
+#ifdef ADF_
+!$acc data copy(t) 
+!$acc data copyin(nbot) 
+#endif
+
+#ifdef OMP_
+!$omp parallel do collapse(2) private(n, k, j, i)
+#elif  ACC_
+!$acc data copy(t) 
+!$acc kernels 
+#endif
   do n = 1, ntdim
      do k = 1, kstr-1
         do j = 1, nydim
@@ -48,7 +59,20 @@ contains
         end do
      end do
   end do
+#ifdef OMP_
+!$omp end parallel do
+#elif  ACC_
+!$acc end kernels
+!$acc end data ! copy(t)
+#endif
 
+#ifdef OMP_
+!$omp parallel do collapse(2) private(n, j, i, ij)
+#elif  ACC_
+!$acc data copy(t) 
+!$acc data copyin(nbot) 
+!$acc kernels 
+#endif
   do n = 1, ntdim
      do j = 1, nydim
         do i = 1, nxdim
@@ -57,6 +81,18 @@ contains
         end do
      end do
   end do
+#ifdef OMP_
+!$omp end parallel do
+#elif  ACC_
+!$acc end kernels
+!$acc end data ! copy(t)
+!$acc end data ! copyin(nbot)
+#endif
+
+#ifdef ADF_
+!$acc end data ! copy(t)
+!$acc end data ! copyin(nbot)
+#endif
 
   return
   end subroutine stbctr
@@ -70,18 +106,58 @@ contains
   real(8), intent(inout) ::   gx(nxydim, nzdim),     gy(nxydim, nzdim)
   integer ::   ij,      k
 
+#ifdef ADF_
+!$acc data copyin(amskvb, nbotv) 
+!$acc data copyin(amskv) 
+!$acc data copy(gy, gx) 
+#endif
+
+#ifdef OMP_
+!$omp parallel do private(ij, k)
+#elif  ACC_
+!$acc data copyin(amskvb, nbotv) 
+!$acc data copy(gy, gx) 
+!$acc kernels 
+#endif
   do ij = ijvstr, ijvend
      k = nbotv(ij)
      gx(ij, k) = gx(ij, k) * (1.d0 - amskvb(ij)) + gx(ij, kend) * amskvb(ij) 
      gy(ij, k) = gy(ij, k) * (1.d0 - amskvb(ij)) + gy(ij, kend) * amskvb(ij)
   end do
+#ifdef OMP_
+!$omp end parallel do
+#elif  ACC_
+!$acc end kernels
+!$acc end data ! copyin(amskvb, nbotv)
+!$acc end data ! copy(gy, gx)
+#endif
 
+#ifdef OMP_
+!$omp parallel do private(k, ij)
+#elif  ACC_
+!$acc data copyin(amskv) 
+!$acc data copy(gx, gy) 
+!$acc kernels 
+#endif
   do k = kstr, kend
      do ij = ijvstr, ijvend
         gx(ij, k) = gx(ij, k) * amskv(ij, k)
         gy(ij, k) = gy(ij, k) * amskv(ij, k)
      end do
   end do
+#ifdef OMP_
+!$omp end parallel do
+#elif  ACC_
+!$acc end kernels
+!$acc end data ! copyin(amskvb)
+!$acc end data ! copy(gy, gx)
+#endif
+
+#ifdef ADF_
+!$acc end data ! copyin(amskvb, nbotv)
+!$acc end data ! copyin(amskv)
+!$acc end data ! copy(gy, gx)
+#endif
 
   return
   end subroutine stbbgv
@@ -97,11 +173,31 @@ contains
   real(8), intent(inout) ::  u(nxydim, nzdim),      v(nxydim, nzdim)
   integer ::  ij,      k
 
+#ifdef ADF_
+!$acc data copy(u, v) 
+!$acc data copyin(amskvb, nbotv) 
+#endif
+
+#ifdef OMP_
+!$omp parallel do private(ij, k)
+#elif  ACC_
+!$acc kernels 
+#endif
   do ij = ijvstr, ijvend
      k = nbotv(ij)
      u(ij, kend) = u(ij, k) * amskvb(ij)
      v(ij, kend) = v(ij, k) * amskvb(ij)
   end do
+#ifdef OMP_
+!$omp end parallel do
+#elif  ACC_
+!$acc end kernels
+#endif
+
+#ifdef ADF_
+!$acc end data ! copy(u, v)
+!$acc end data ! copyin(amskvb, nbotv)
+#endif
 
   return
   end subroutine stbbuv
@@ -117,11 +213,31 @@ contains
   real(8), intent(inout) ::    u(nxydim, nzdim),      v(nxydim, nzdim)
   integer ::    ij,      k
 
+#ifdef ADF_
+!$acc data copyin(nbotv, amskvb) 
+!$acc data copy(u, v) 
+#endif
+
+#ifdef OMP_
+!$omp parallel do private(ij, k)
+#elif  ACC_
+!$acc kernels 
+#endif
   do ij = ijvstr, ijvend
      k = nbotv(ij)
      u(ij, k) = u(ij, kend) * amskvb(ij) + u(ij, k) * (1.d0 - amskvb(ij))
      v(ij, k) = v(ij, kend) * amskvb(ij) + v(ij, k) * (1.d0 - amskvb(ij))
   end do
+#ifdef OMP_
+!$omp end parallel do
+#elif  ACC_
+!$acc end kernels
+#endif
+
+#ifdef ADF_
+!$acc end data ! copyin(nbotv, amskvb)
+!$acc end data ! copy(u, v)
+#endif
 
   return
   end subroutine stbbvt
@@ -138,20 +254,50 @@ contains
   real(8), intent(inout) ::  diffz(nxydim, nzdim)
   integer ::  ij,      k,      n
 
+#ifdef ADF_
+!$acc data copyin(nbot, amskt, amsktb) 
+!$acc data copy(adt, diffz) 
+#endif
+
   do n = 1, ntdim
+#ifdef OMP_
+!$omp parallel do private(ij, k)
+#elif  ACC_
+!$acc kernels 
+#endif
      do ij = ijtstr, ijtend
         k = nbot(ij)
         adt(ij, k, n) = adt(ij, k, n) * (1.d0 - amsktb(ij))                    &
    &                  + adt(ij, kend, n) * amsktb(ij)
      end do
+#ifdef OMP_
+!$omp end parallel do
+#elif  ACC_
+!$acc end kernels
+#endif
 
+#ifdef OMP_
+!$omp parallel do private(ij, k)
+#elif  ACC_
+!$acc kernels 
+#endif
      do k = kstr, kend
         do ij = ijtstr, ijtend
            adt(ij, k, n) = adt(ij, k, n) * amskt(ij, k)
            diffz(ij, k) = diffz(ij, k) * amskt(ij, k)
         end do
      end do
+#ifdef OMP_
+!$omp end parallel do
+#elif  ACC_
+!$acc end kernels
+#endif
   enddo
+
+#ifdef ADF_
+!$acc end data ! copy(adt, diffz)
+!$acc end data ! copyin(nbot, amsktv, amsktb)
+#endif
 
   return
   end subroutine stbbgt
@@ -167,12 +313,32 @@ contains
   real(8), intent(inout) ::   t(nxydim, nzdim, ntdim)
   integer ::   ij,      k,      n
 
+#ifdef ADF_
+!$acc data copy(t) 
+!$acc data copyin(nbot) 
+#endif 
+
+#ifdef OMP_
+!$omp parallel do collapse(2) private(n, ij, k)
+#elif  ACC_
+!$acc kernels 
+#endif 
   do n = 1, ntdim
      do ij = ijtstr, ijtend
         k = nbot(ij)
         t(ij, kend, n) = t(ij, k, n)
      end do
   enddo
+#ifdef OMP_
+!$omp end parallel do
+#elif  ACC_
+!$acc end kernels
+#endif 
+
+#ifdef ADF_
+!$acc end data ! copyin(nbot)
+!$acc end data ! copy(t)
+#endif 
 
   return
   end subroutine stbbtr
@@ -188,6 +354,16 @@ contains
   real(8), intent(inout) ::   t(nxydim, nzdim, ntdim)      
   integer ::   ij,      k,      n
 
+#ifdef ADF_
+!$acc data copy(t) 
+!$acc data copyin(nbot, amsktb) 
+#endif 
+
+#ifdef OMP_
+!$omp parallel do collapse(2) private(n, ij, k) 
+#elif  ACC_
+!$acc kernels 
+#endif 
   do n = 1, ntdim
      do ij = ijtstr, ijtend
         k = nbot(ij)
@@ -195,6 +371,16 @@ contains
    &                + t(ij, k, n) * (1.d0 - amsktb(ij))
      end do
   enddo
+#ifdef OMP_
+!$omp end parallel do
+#elif  ACC_
+!$acc end kernels
+#endif 
+
+#ifdef ADF_
+!$acc end data ! copy(t) 
+!$acc end data ! copyin(nbot, amsktb) 
+#endif 
 
   return
   end subroutine stbbt2

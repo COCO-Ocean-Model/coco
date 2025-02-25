@@ -1999,7 +1999,7 @@ subroutine vdiff( &
 #endif
 
   end do
-  
+
   if (ofirst) then
      nitr = nitr0
      ofirst = .false.
@@ -2026,6 +2026,7 @@ subroutine vdiff( &
   end do
 #ifdef ACC_
 !$acc end kernels
+!--- moduel global
 !$acc end data ! copyin(amftz) 
 !$acc end data ! copyin(csamv) 
 !$acc end data ! copyin(amvt) 
@@ -2383,6 +2384,7 @@ subroutine vdiff( &
            end do
 #ifdef ACC_
 !$acc end kernels
+!--- local
 !$acc end data ! copy(gint)
 #elif  OMP_
 !$omp end parallel do

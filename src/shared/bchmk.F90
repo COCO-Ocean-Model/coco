@@ -17,10 +17,34 @@ contains
  implicit none
  integer ::  ij
 
+#ifdef ADF_
+!$acc data copy(amskv)  ! pcast
+!$acc data copyin(amskv0, nbotv) 
+#endif 
+
+#ifdef ACC_
+!$acc data copy(amskv)  ! pcast
+!$acc data copyin(amskv0, nbotv) 
+!$acc kernels 
+#elif  OMP_
+!$omp parallel do private(ij)
+#endif 
  do ij = 1, nxydim
     amskv(ij, kend) = 0.d0
     amskv(ij, nbotv(ij)) = amskv0(ij)
  end do
+#ifdef ACC_
+!$acc end kernels
+!$acc end data ! copyin(amskv0, nbot) 
+!$acc end data ! copy(amskv) ! pcast
+#elif  OMP_
+!$omp end parallel do
+#endif 
+
+#ifdef ADF_
+!$acc end data ! copyin(amskv0, nbot) 
+!$acc end data ! copy(amskv) ! pcast
+#endif 
 
  return
  end subroutine rmmskv
@@ -33,9 +57,33 @@ contains
  implicit none
  integer ::  ij
 
+#ifdef ADF_
+!$acc data copy(amskv)  ! must, pcast
+!$acc data copyin(amskv1, nbotv) 
+#endif 
+
+#ifdef ACC_
+!$acc data copy(amskv)  ! must, pcast
+!$acc data copyin(amskv1, nbotv) 
+!$acc kernels 
+#elif  OMP_
+!$omp parallel do private(ij)
+#endif 
  do ij = 1, nxydim
     amskv(ij, nbotv(ij)) = amskv1(ij)
  end do
+#ifdef ACC_
+!$acc end kernels
+!$acc end data ! copyin(amskv1, nbot) 
+!$acc end data ! copy(amskv)
+#elif  OMP_
+!$omp end parallel do
+#endif 
+
+#ifdef ADF_
+!$acc end data ! copyin(amskv1, nbot) 
+!$acc end data ! copy(amskv)
+#endif 
 
  return
  end subroutine admkv1

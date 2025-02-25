@@ -70,6 +70,18 @@ subroutine srcvel( &
      write(jfpar, nmbtmf)
   end if
 
+#ifdef ADF_
+!$acc data copyin(amskb, dzv) 
+!$acc data copy(gx, gy, xx, yy) 
+!$acc data copyin(ux, vx) 
+#endif
+
+#ifdef ACC_
+!$acc data copy(gx, gy, xx, yy)
+!$acc kernels 
+#elif  OMP_
+!$omp parallel do private(k, ij)
+#endif
   do k = 1, nzdim
      do ij = 1, nxydim
         gx(ij, k) = 0.d0
@@ -78,7 +90,21 @@ subroutine srcvel( &
         yy(ij, k) = 0.d0
      end do
   end do
+#ifdef ACC_
+!$acc end kernels
+!$acc end data ! copy(gx, gy, xx, yy)
+#elif  OMP_
+!$omp end parallel do
+#endif
 
+#ifdef ACC_
+!$acc data copyin(vx, ux) 
+!$acc data copy(gy, gx, yy, xx) 
+!$acc data copyin(amskb, dzv) 
+!$acc kernels 
+#elif  OMP_
+!$omp parallel do private(k, ij, abv)
+#endif
   do k = kstr, kend
      do ij = ijvstr, ijvend
         abv = - btmfrc / dzv(ij, k) * &
@@ -89,6 +115,20 @@ subroutine srcvel( &
         yy(ij, k) = gy(ij, k)
      end do
   end do
+#ifdef ACC_
+!$acc end kernels
+!$acc end data ! copyin(amskb, dzv)
+!$acc end data ! copy(gy, gx, yy, xx)
+!$acc end data ! copyin(vx, ux)
+#elif  OMP_
+!$omp end parallel do
+#endif
+
+#ifdef ADF_
+!$acc end data ! copyin(ux, vx)
+!$acc end data ! copy(gx, gy, xx, yy)
+!$acc end data ! copyin(amskb, dzv)
+#endif
 
   return
 
@@ -116,7 +156,9 @@ subroutine srcvlb( &
   real(8), intent(out) ::      xx(nxydim, nzdim),     yy(nxydim, nzdim)
   real(8), intent(in)  ::      ux(nxydim, nzdim),     vx(nxydim, nzdim)
 
+#ifndef ADC_SRCVLB
   real(8), save ::    rfrc(nxydim)
+#endif
 
   real(8) ::    abv
   integer ::     ij,      k
@@ -154,8 +196,23 @@ subroutine srcvlb( &
            rfrc(ij) = 0.d0
         end if
      end do
+#ifdef ADC_SRCVLB
+!$acc update device(rfrc)
+#endif
   end if
 
+#ifdef ADF_
+!$acc data copy(xx, yy, gx, gy) 
+!$acc data copyin(ux, vx) 
+!$acc data copyin(amskvb, dzv) 
+!$acc data copyin(rfrc) 
+#endif
+
+#ifdef ACC_
+!$acc kernels 
+#elif  OMP_
+!$omp parallel do private(ij, abv)
+#endif
   do ij = ijvstr, ijvend
      abv = - btmfrc / dzv(ij, kend) * &
        &     sqrt(  ux(ij, kend) * ux(ij, kend) &
@@ -166,6 +223,18 @@ subroutine srcvlb( &
      xx(ij, kend) = gx(ij, kend)
      yy(ij, kend) = gy(ij, kend)
   end do
+#ifdef ACC_
+!$acc end kernels
+#elif  OMP_
+!$omp end parallel do
+#endif
+
+#ifdef ADF_
+!$acc end data ! copy(xx, yy, gx, gy) 
+!$acc end data ! copyin(ux, vx)
+!$acc end data ! copyin(amskvb, dzv)
+!$acc end data ! copyin(rfrc)
+#endif
 
   return
 

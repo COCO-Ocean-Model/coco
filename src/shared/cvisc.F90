@@ -1,4 +1,3 @@
-
 module cvisc
 
 ! --- information -----------------------------------------------------
@@ -195,6 +194,10 @@ contains
        
     end if
 
+#ifdef ACC_
+!$acc data copy(fux, fvx, fuy, fvy, fuz, fvz) 
+!$acc kernels 
+#endif
     do k = 1, nzdim
        do ij = 1, nxydim
           fux(ij, k) = 0.d0
@@ -205,12 +208,37 @@ contains
           fvz(ij, k) = 0.d0
        end do
     end do
+#ifdef ACC_
+!$acc end kernels
+!$acc end data ! copy(fux, fvx, fuy, fvy, fuz, fvz)
+#endif
 
+#ifdef ACC_
+!$acc data copy(fuz, fvz) 
+!$acc data copyin(taux, tauy) 
+!$acc kernels 
+#endif
     do ij = ijvstr, ijvend
        fuz(ij, kstr) = taux(ij)
        fvz(ij, kstr) = tauy(ij)
     end do
+#ifdef ACC_
+!$acc end kernels
+!$acc end data ! copy(fuz, fvz)
+!$acc end data ! copyin(taux, tauy)
+#endif
 
+#ifdef ACC_
+!$acc data copyin(dy, dzm, rym, rs) 
+!$acc data copyin(dzv, rsm) 
+!$acc data copyin(hx) 
+!$acc data copy(rz, rzm) 
+!$acc data copy(hvbot) 
+#endif
+
+#ifdef ACC_
+!$acc kernels 
+#endif
     do ij = ijvstr, ijvend
        hvbot(ij) = (  (hx(ij)    + hx(ij+le) ) * dy(ij)               &
     &               + (hx(ij+ln) + hx(ij+lne)) * dy(ij+ln) ) *        &
@@ -218,35 +246,99 @@ contains
     &             + zbot
        hvbot(ij) = 1.d0 / hvbot(ij)
     end do
+#ifdef ACC_
+!$acc end kernels
+#endif
+
+#ifdef ACC_
+!$acc kernels 
+#endif
     do k = kstr, kstr+kz-1
        do ij = ijvstr, ijvend
           rz (ij, k) = 1.d0 * rs (k) * hvbot(ij)
           rzm(ij, k) = 1.d0 * rsm(k) * hvbot(ij)
        end do
     end do
+#ifdef ACC_
+!$acc end kernels
+#endif
+
+#ifdef ACC_
+!$acc kernels 
+#endif
     do k = kstr+kz, kend
        do ij = ijvstr, ijvend
           rz (ij, k) = 1.d0 / dzv(ij, k)
           rzm(ij, k) = 1.d0 / dzm(ij, k)
        end do
     end do
+#ifdef ACC_
+!$acc end kernels
+#endif
 
+#ifdef ACC_
+!$acc end data ! copyin(dy, dzm, rym, rs)
+!$acc end data ! copyin(dzv, rsm)
+!$acc end data ! copyin(hx)
+!$acc end data ! copy(rz, rzm)
+!$acc end data ! copy(hvbot)
+#endif
+
+#ifdef ACC_
+!$acc data copy(gx, gy) 
+!$acc data copyin(amv, vx, ux) 
+!$acc data copy(fuz, fvz) 
+!$acc data copyin(rz, rzm) 
+#endif
+
+#ifdef ACC_
+!$acc kernels
+#endif
     do k = kstr+1, kend
        do ij = ijvstr, ijvend
           fuz(ij, k) = amv(ij, k) * rzm(ij, k) * ( ux(ij, k-1) - ux(ij, k) )
           fvz(ij, k) = amv(ij, k) * rzm(ij, k) * ( vx(ij, k-1) - vx(ij, k) )
        end do
     end do
+#ifdef ACC_
+!$acc end kernels
+#endif
 
+#ifdef ACC_
+!$acc kernels
+#endif
     do k = kstr, kend
        do ij = ijvstr, ijvend
           gx(ij, k) = gx(ij, k) + (fuz(ij, k) - fuz(ij, k+1)) * rz(ij, k)
           gy(ij, k) = gy(ij, k) + (fvz(ij, k) - fvz(ij, k+1)) * rz(ij, k)
        end do
     end do
+#ifdef ACC_
+!$acc end kernels
+#endif
+
+#ifdef ACC_
+!$acc end data ! copy(gx, gy)
+!$acc end data ! copyin(amv, vx, ux)
+!$acc end data ! copy(fuz, fvz)
+!$acc end data ! copyin(rz, rzm)
+#endif
 
     if (opslvis) then ! partial step lateral viscosity
        do k = kstr, kend
+#ifdef ACC_
+!$acc data copy(gx, gy)
+!$acc data copyin(amv, vx, ux)
+!$acc data copyout(smx2d, smy2d)
+!$acc data copy(sxxe, sxxw, sxyn, sxys, syxe, syxw, syyn, syys)
+!$acc data copyin(dzv)
+!$acc data copyin(hxu, hyu, hxyu, hyxu)
+!$acc data copyin(amskv)
+!$acc data copyin(ry, rym, rxu, ryu)
+!$acc data copyin(rz)
+!$acc data copyin(amhmod)
+!$acc kernels
+#endif
           do ij = ijvstr, ijvend
              ijls = ij + ls
              ijlw = ij + lw
@@ -396,9 +488,32 @@ contains
                   &               + smy2d(ij)) * amskv(ij, k)
 
           end do
+#ifdef ACC_
+!$acc end kernels
+!$acc end data ! copy(gx, gy)
+!$acc end data ! copyin(amv, vx, ux)
+!$acc end data ! copyout(smx2d, smy2d)
+!$acc end data ! copy(sxxe, sxxw, sxyn, sxys, syxe, syxw, syyn, syys)
+!$acc end data ! copyin(hxu, hyu, hxyu, hyxu)
+!$acc end data ! copyin(amskv)
+!$acc end data ! copyin(ry, rym, rxu, ryu)
+!$acc end data ! copyin(dzv)
+!$acc end data ! copyin(rz)
+!$acc end data ! copyin(amhmod)
+#endif
        end do
     else ! previous version
        do k = kstr, kend
+#ifdef ACC_
+!$acc data copyin(ux, vx, amv)
+!$acc data copy(sxx, syy, sxy, syx, szx, szy)
+!$acc data copyin(amhmod)
+!$acc data copyin(rz)
+!$acc data copyin(hxu, hyu, hxyu, hyxu)
+!$acc data copyin(ry)
+!$acc data copyin(dy)
+!$acc kernels
+#endif
           do ij = ijstr, ijend+nxdim+1
              ijls = ij + ls
              ijlw = ij + lw
@@ -450,7 +565,23 @@ contains
                   &                 (  (amv(ij, k) + amv(ij, k+1)) * 0.5d0 / rea    &
                   &                  + (amv(ij, k) - amv(ij, k+1)) * rz(ij, k))
           end do
+#ifdef ACC_
+!$acc end kernels
+!$acc end data ! copyin(ux, vx, amv)
+!$acc end data ! copy(sxx, syy, sxy, syx, szx, szy)
+!$acc end data ! copyin(amhmod)
+!$acc end data ! copyin(rz)
+!$acc end data ! copyin(hxu, hyu, hxyu, hyxu)
+!$acc end data ! copyin(ry)
+!$acc end data ! copyin(dy)
+#endif
 
+#ifdef ACC_
+!$acc data copy(fux, fvx)
+!$acc data copyin(sxx, syx)
+!$acc data copyin(hyu, amfvx)
+!$acc kernels
+#endif
           do ij = ijvstr, ijvend+1
              ijlw = ij + lw
              fux(ij, k) = sxx(ij) * (hyu(ij) + hyu(ijlw)) *              &
@@ -460,7 +591,19 @@ contains
                   &                            (hyu(ij) + hyu(ijlw)) * 0.25d0 *     &
                   &                   amfvx(ij, k)
           end do
+#ifdef ACC_
+!$acc end kernels
+!$acc end data ! copy(fux, fvx)
+!$acc end data ! copyin(sxx, syx)
+!$acc end data ! copyin(hyu, amfvx)
+#endif
 
+#ifdef ACC_
+!$acc data copy(fuy, fvy)
+!$acc data copyin(sxy, syy)
+!$acc data copyin(hxu, amfvy)
+!$acc kernels
+#endif
           do ij = ijvstr, ijvend+nxdim
              ijls = ij + ls
              fuy(ij, k) = sxy(ij) * (hxu(ij) + hxu(ijls)) *              &
@@ -470,14 +613,39 @@ contains
                   &                            (hxu(ij) + hxu(ijls)) * 0.25d0 *     &
                   &                  amfvy(ij, k)
           end do
+#ifdef ACC_
+!$acc end kernels
+!$acc end data ! copy(fuy, fvy)
+!$acc end data ! copyin(sxy, syy)
+!$acc end data ! copyin(hxu, amfvy)
+#endif
 
+#ifdef ACC_
+!$acc data copy(smx, smy)  
+!$acc data copyin(szy, szx) 
+!$acc kernels
+#endif
           do ij = ijvstr, ijvend
              smx(ij, k) = szx(ij) / rea
              smy(ij, k) = szy(ij) / rea
           end do
+#ifdef ACC_
+!$acc end kernels
+!$acc end data ! copyin(szy, szx)
+!$acc end data ! copy(smx, smy) 
+#endif
 
        end do
 
+#ifdef ACC_
+!$acc data copyin(fvy, fvx, fuy, fux)
+!$acc data copy(smx, smy) 
+!$acc data copy(gx, gy)
+!$acc data copyin(rxu, ryu)
+!$acc data copyin(amskv)
+!$acc data copyin(rym)
+!$acc kernels
+#endif
        do k = kstr, kstr+kz-1
           do ij = ijvstr, ijvend
              gx(ij, k) = (  gx(ij, k)                                    &
@@ -494,7 +662,26 @@ contains
                   &                + smy(ij, k) ) * amskv(ij, k)
           end do
        end do
+#ifdef ACC_
+!$acc end kernels
+!$acc end data ! copy(gx, gy)
+!$acc end data ! copy(smx, smy) 
+!$acc end data ! copyin(fvy, fvx, fuy, fux)
+!$acc end data ! copyin(rxu, ryu)
+!$acc end data ! copyin(amskv)
+!$acc end data ! copyin(rym)
+#endif
 
+#ifdef ACC_
+!$acc data copy(gx, gy)
+!$acc data copy(smx, smy) 
+!$acc data copyin(fvy, fvx, fuy, fux)
+!$acc data copyin(rxu, ryu)
+!$acc data copyin(amskv)
+!$acc data copyin(rym)
+!$acc data copyin(rz)
+!$acc kernels
+#endif
        do k = kstr+kz, kend
           do ij = ijvstr, ijvend
              gx(ij, k) = (  gx(ij, k)                                   &
@@ -513,14 +700,34 @@ contains
                   &                + smy(ij, k) ) * amskv(ij, k)
           end do
        end do
+#ifdef ACC_
+!$acc end kernels
+!$acc end data ! copy(gx, gy)
+!$acc end data ! copy(smx, smy) 
+!$acc end data ! copyin(fvy, fvx, fuy, fux)
+!$acc end data ! copyin(rxu, ryu)
+!$acc end data ! copyin(amskv)
+!$acc end data ! copyin(rym)
+!$acc end data ! copyin(rz)
+#endif
     end if
  
+#ifdef ACC_
+!$acc data copy(xx, yy) 
+!$acc data copyin(gx, gy) 
+!$acc kernels
+#endif
     do k = kstr, kend
        do ij = ijvstr, ijvend
           xx(ij, k) = gx(ij, k)
           yy(ij, k) = gy(ij, k)
        end do
     end do
+#ifdef ACC_
+!$acc end kernels
+!$acc end data ! copy(xx, yy)
+!$acc end data ! copyin(gx, gy)
+#endif
 
   end subroutine vscvel
 
@@ -670,19 +877,72 @@ contains
 
     k = kend
 
+#ifdef ADF_
+!$acc data copyin(nbotv) 
+!$acc data copyin(ry, hyu, hxyu, dy, hxu, hyxu) 
+!$acc data copyin(hyu, amfvx) 
+!$acc data copyin(hxu, amfvy) 
+!$acc data copyin(rym, rxu, amskvb, ryu) 
+!$acc data copy(gx, gy, xx, yy) 
+!$acc data copyin(xx, yy, uy, ux, vy, vx, amv) 
+!$acc data create(fux, fvx) 
+!$acc data create(fuy, fvy) 
+!$acc data create(fuz, fvz) 
+!$acc data create(smx, smy) 
+#endif
+
+#ifdef ACC_
+!$acc data copyin(fux, fuy, fvx, fvy) 
+!$acc kernels 
+#elif  OMP_
+!$omp parallel do private(ij)
+#endif
     do ij = 1, nxydim
        fux(ij) = 0.d0
        fvx(ij) = 0.d0
        fuy(ij) = 0.d0
        fvy(ij) = 0.d0
     end do
+#ifdef ACC_
+!$acc end kernels
+!$acc end data ! copyin(fux, fuy, fvx, fvy)
+#elif  OMP_
+!$omp end parallel do
+#endif
 
+#ifdef ACC_
+!$acc data copyin(amv, ux, vx) 
+!$acc data copyin(rzm) 
+!$acc data copyin(nbotv) 
+!$acc data copy(fvz, fuz) 
+!$acc kernels 
+#elif  OMP_
+!$omp parallel do private(ij, kup)
+#endif
     do ij = ijvstr, ijvend
        kup = max( nbotv(ij)-1, 1 )
        fuz(ij) = amv(ij, kend) * rzm(ij) * (ux(ij, kup) - ux(ij, kend))
        fvz(ij) = amv(ij, kend) * rzm(ij) * (vx(ij, kup) - vx(ij, kend))
     end do
+#ifdef ACC_
+!$acc end kernels
+!$acc end data ! copyin(amv, ux, vx)
+!$acc end data ! copyin(rzm)
+!$acc end data ! copyin(nbotv)
+!$acc end data ! copy(fvz, fuz)
+#elif  OMP_
+!$omp end parallel do
+#endif
 
+#ifdef ACC_
+!$acc data copyin(vx, ux, amv) 
+!$acc data copyin(ry, hyu, hxyu, dy, hxu, hyxu) 
+!$acc data copy(syy, syx, sxx, sxy, szy, szx) 
+!$acc data copyin(amhmod) 
+!$acc kernels 
+#elif  OMP_
+!$omp parallel do private(ij, ijls, ijlw, ijln, ijle, ijnw, ijse, ijsw)
+#endif
     do ij = ijstr, ijend+nxdim+1
        ijls = ij + ls
        ijlw = ij + lw
@@ -730,7 +990,24 @@ contains
        szx(ij) = - ux(ij, k) * amv(ij, k) / rea
        szy(ij) = - vx(ij, k) * amv(ij, k) / rea
     end do
+#ifdef ACC_
+!$acc end kernels
+!$acc end data ! copyin(vx, ux, amv)
+!$acc end data ! copyin(ry, hyu, hxyu, dy, hxu, hyxu)
+!$acc end data ! copy(syy, syx, sxx, sxy, szy, szx)
+!$acc end data ! copyin(amhmod)
+#elif  OMP_
+!$omp end parallel do
+#endif
      
+#ifdef ACC_
+!$acc data copyin(syx, sxx) 
+!$acc data copyin(hyu, amfvx) 
+!$acc data copy(fux, fvx) 
+!$acc kernels 
+#elif  OMP_
+!$omp parallel do private(ij, ijlw)
+#endif
     do ij = ijvstr, ijvend+1
        ijlw = ij + lw
        fux(ij) = sxx(ij) * (hyu(ij) + hyu(ijlw)) *                    &
@@ -740,6 +1017,23 @@ contains
     &                      (hyu(ij) + hyu(ijlw)) * 0.25d0 *           &
     &            amfvx(ij, k)
     end do
+#ifdef ACC_
+!$acc end kernels
+!$acc end data ! copyin(syx, sxx)
+!$acc end data ! copyin(hyu, amfvx)
+!$acc end data ! copy(fux, fvx)
+#elif  OMP_
+!$omp end parallel do
+#endif
+
+#ifdef ACC_
+!$acc data copyin(syy, sxy) 
+!$acc data copyin(hxu, amfvy) 
+!$acc data copy(fuy, fvy) 
+!$acc kernels 
+#elif  OMP_
+!$omp parallel do private(ij, ijls)
+#endif
     do ij = ijvstr, ijvend+nxdim
        ijls = ij + ls
        fuy(ij) = sxy(ij) * (hxu(ij) + hxu(ijls)) *                    &
@@ -749,12 +1043,45 @@ contains
     &                      (hxu(ij) + hxu(ijls)) * 0.25d0 *           &
     &            amfvy(ij, k)
     end do
+#ifdef ACC_
+!$acc end kernels
+!$acc end data ! copyin(syy, sxy)
+!$acc end data ! copyin(hxu, amfvy)
+!$acc end data ! copy(fuy, fvy)
+#elif  OMP_
+!$omp end parallel do
+#endif
     
+#ifdef ACC_
+!$acc data copy(smx, smy) 
+!$acc data copyin(szy, szx) 
+!$acc kernels 
+#elif  OMP_
+!$omp parallel do private(ij)
+#endif
     do ij = ijvstr, ijvend
        smx(ij) = szx(ij) / rea
        smy(ij) = szy(ij) / rea
     end do
+#ifdef ACC_
+!$acc end kernels
+!$acc end data ! copy(smx, smy)
+!$acc end data ! copyin(szy, szx)
+#elif  OMP_
+!$omp end parallel do
+#endif
 
+#ifdef ACC_
+!--- local varialbes
+!$acc data copyin(fvy, fuz, fvx, fux, fuy, fvz, smx, smy) 
+!$acc data copyin(rym, rxu, amskvb, ryu) 
+!--- local varialbes saved
+!$acc data copyin(rz) 
+!$acc data copy(gx, gy) 
+!$acc kernels 
+#elif  OMP_
+!$omp parallel do private(ij)
+#endif
     do ij = ijvstr, ijvend
        gx(ij, k) = (  gx(ij, k)                                      &
     &               + fuz(ij) * rz(ij)                               &
@@ -773,12 +1100,51 @@ contains
     &                 ) * rxu(ij) * ryu(ij) * rz(ij)                 &
     &               + smy(ij)) * amskvb(ij)
     end do
+#ifdef ACC_
+!$acc end kernels
+!--- local varialbes
+!$acc end data ! copyin(fvy, fuz, fvx, fux, fuy, fvz, smx, smy) 
+!$acc end data ! copyin(rym, rxu, amskvb, ryu) 
+!--- local varialbes saved
+!$acc end data ! copyin(rz) 
+!$acc end data ! copy(gx, gy)
+#elif  OMP_
+!$omp end parallel do
+#endif
 
+#ifdef ACC_
+!$acc data copyin(gx, gy) 
+!$acc data copy(xx, yy) 
+!$acc kernels 
+#elif  OMP_
+!$omp parallel do private(ij)
+#endif
     do ij = ijvstr, ijvend
        xx(ij, kend) = gx(ij, kend)
        yy(ij, kend) = gy(ij, kend)
     end do
-    
+#ifdef ACC_
+!$acc end kernels
+!$acc end data ! copyin(gx, gy)
+!$acc end data ! copy(xx, yy)
+#elif  OMP_
+!$omp end parallel do
+#endif
+
+#ifdef ADF_
+!$acc end data ! copyin(nbotv)
+!$acc end data ! copyin(ry, hyu, hxyu, dy, hxu, hyxu)
+!$acc end data ! copyin(hyu, amfvx)
+!$acc end data ! copyin(hxu, amfvy)
+!$acc end data ! copyin(rym, rxu, amskvb, ryu) 
+!$acc end data ! copy(gx, gy, xx, yy)
+!$acc end data ! copyin(xx, yy, uy, ux, vy, vx, amv)
+!$acc end data ! create(fux, fvx)
+!$acc end data ! create(fuy, fvy)
+!$acc end data ! create(fuz, fvz)
+!$acc end data ! create(smx, smy)
+#endif
+   
   end subroutine vscvlb
 
 #endif

@@ -1,5 +1,4 @@
-#OGCMDIR	= /home/G10206/komuro/coco_latest
- OGCMDIR        = /home/takateru.yamagishi/coco/coco_latest.origin.502+1
+ OGCMDIR	= /home/G10206/komuro/coco_latest
 RM	= rm -f
 
 #SYSTEM	= fugaku
@@ -25,7 +24,7 @@ OPTEXMASK = -DOPT_EXMASK
 #MPI=.mpi
 
 ### OpenACC ###
-#ACC=.acc
+ ACC=.acc
 #ACC=
 
 ### OpenMP ###
@@ -34,9 +33,9 @@ OPTEXMASK = -DOPT_EXMASK
 
 ### directives regarding OpenACC/OpenMP ###
  DRC_OPT =
- DRC_OPT += -DACC_
- DRC_OPT += -DADF_
  DRC_OPT += -DACS_
+ DRC_OPT += -DADF_
+ DRC_OPT += -DACC_
 
 #DRC_OPT += -DOMP_
 
