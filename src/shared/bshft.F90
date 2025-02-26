@@ -88,7 +88,7 @@ module bshft
   integer(4)     ::   nbfdim, nbfdm0,   istv
   integer(4)     :: ifpar, jfpar
 
-  logical, save :: shift_gpu=.true.,shift_rdgeo=.false.
+  logical, save :: shift_gpu=.true.,shift_rdgeo=.false., shift_of=.true.
 
   public  ::  shift1,  shift2,  shift3, shift_pack_begin, shift_pack_end, shift_unpack, shift_gpu, shift_rdgeo
 #ifdef OPT_TRIPOLE
@@ -441,7 +441,10 @@ contains
        !call shift_unpack(q1, 1)
        !call shift_unpack(q2, 2)
 
-       !$acc data create(qb) if(shift_gpu)
+       if(shift_of) then
+          shift_of=.false.
+          !$acc enter data create(qb)
+       end if
        !$acc kernels default(present) if(shift_gpu)
        qb(:,:,     1:kdim  ) = q1(:,:,1:kdim)
        qb(:,:,kdim+1:2*kdim) = q2(:,:,1:kdim)
@@ -458,7 +461,6 @@ contains
        q1(:,:,1:kdim)=qb(:,:,     1:kdim  )
        q2(:,:,1:kdim)=qb(:,:,kdim+1:2*kdim)
        !$acc end kernels
-       !$acc end data
     end if
     shift_gpu=.true.
   end subroutine shift2
@@ -498,7 +500,10 @@ contains
        !call shift_unpack(q2, 2)
        !call shift_unpack(q3, 3)
 
-       !$acc data create(qb) if(shift_gpu)
+       if(shift_of) then
+          shift_of=.false.
+          !$acc enter data create(qb)
+       end if
        !$acc kernels default(present) if(shift_gpu)
        qb(:,:,       1:kdim  ) = q1(:,:,1:kdim)
        qb(:,:,  kdim+1:2*kdim) = q2(:,:,1:kdim)
@@ -517,7 +522,6 @@ contains
        q2(:,:,1:kdim)=qb(:,:,  kdim+1:2*kdim)
        q3(:,:,1:kdim)=qb(:,:,2*kdim+1:3*kdim)
        !$acc end kernels
-       !$acc end data
     end if
     shift_gpu=.true.
   end subroutine shift3
