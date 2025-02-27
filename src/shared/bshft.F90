@@ -378,17 +378,21 @@ contains
   
   subroutine shift1(                                                  &
     &                 q1,                                             &
-#ifndef OPT_TRIPOLE    
-    &               idim,   jdim,   kdim )
-#else
     &               idim,   jdim,   kdim,                             & 
-    &               fact,   ioff,   joff )
-#endif
+    &              fact0,  ioff0,   joff0)
     implicit none
     real(8),                  intent(inout)  ::    q1(1:idim,1:jdim,1:kdim)
     integer(4),               intent(in)     ::  idim,  jdim,  kdim
+    real(8),    intent(in), optional         ::  fact0
+    integer(4), intent(in), optional         ::  ioff0,  joff0
     real(8)                                  ::  fact
     integer(4)                               ::  ioff,  joff
+
+    if(present(fact0)) then
+       fact=fact0
+       ioff=ioff0
+       joff=joff0
+    end if
 
     if (oinit) shift_gpu=.false.
     if (shift_rdgeo) then
@@ -400,30 +404,31 @@ contains
     else
        call instant_shift(                                            &
     &                 q1,                                             &
-#ifndef OPT_TRIPOLE
-    &               idim,   jdim,   kdim )
-#else
     &               idim,   jdim,   kdim,                             &
     &               fact,   ioff,   joff )
-#endif
     end if
     shift_gpu=.true.
   end subroutine shift1
 
+
   subroutine shift2(                                                  &
     &                 q1,     q2,                                     &
-#ifndef OPT_TRIPOLE
-    &               idim,   jdim,   kdim )
-#else
     &               idim,   jdim,   kdim,                             &
-    &               fact,   ioff,   joff )
-#endif
+    &              fact0,  ioff0,   joff0)
     implicit none
     real(8),                  intent(inout)  ::    q1(1:idim,1:jdim,1:kdim)
     real(8),                  intent(inout)  ::    q2(1:idim,1:jdim,1:kdim)
     integer(4),               intent(in)     ::  idim,  jdim,  kdim
+    real(8),    intent(in), optional         ::  fact0
+    integer(4), intent(in), optional         ::  ioff0,  joff0
     real(8)                                  ::  fact
     integer(4)                               ::  ioff,  joff
+
+    if(present(fact0)) then
+       fact=fact0
+       ioff=ioff0
+       joff=joff0
+    end if
 
     if (oinit) shift_gpu=.false.
     if (shift_rdgeo) then
@@ -451,12 +456,8 @@ contains
        !$acc end kernels
        call instant_shift(                                            &
     &                 qb,                                             &
-#ifndef OPT_TRIPOLE
-    &               idim,   jdim, 2*kdim )
-#else
     &               idim,   jdim, 2*kdim,                             &
     &               fact,   ioff,   joff )
-#endif
        !$acc kernels default(present) if(shift_gpu)
        q1(:,:,1:kdim)=qb(:,:,     1:kdim  )
        q2(:,:,1:kdim)=qb(:,:,kdim+1:2*kdim)
@@ -467,19 +468,24 @@ contains
 
   subroutine shift3(                      &
     &                 q1,     q2,     q3, &
-#ifndef OPT_TRIPOLE
-    &               idim,   jdim,   kdim )
-#else
     &               idim,   jdim,   kdim, &
-    &               fact,   ioff,   joff )
-#endif
+    &              fact0,  ioff0,   joff0)
+
     implicit none     
     real(8),                  intent(inout)  ::    q1(1:idim,1:jdim,1:kdim)
     real(8),                  intent(inout)  ::    q2(1:idim,1:jdim,1:kdim)
     real(8),                  intent(inout)  ::    q3(1:idim,1:jdim,1:kdim)
     integer(4),               intent(in)     ::  idim,  jdim,  kdim
+    real(8),    intent(in), optional         ::  fact0
+    integer(4), intent(in), optional         ::  ioff0,  joff0
     real(8)                                  ::  fact
     integer(4)                               ::  ioff,  joff
+
+    if(present(fact0)) then
+       fact=fact0
+       ioff=ioff0
+       joff=joff0
+    end if
 
     if (oinit) shift_gpu=.false.
     if (shift_rdgeo) then
@@ -511,12 +517,8 @@ contains
        !$acc end kernels
        call instant_shift(                                            &
     &                 qb,                                             &
-#ifndef OPT_TRIPOLE
-    &               idim,   jdim,   3*kdim )
-#else
     &               idim,   jdim,   3*kdim,                           &
     &               fact,   ioff,   joff )
-#endif
        !$acc kernels default(present) if(shift_gpu)
        q1(:,:,1:kdim)=qb(:,:,       1:kdim  )
        q2(:,:,1:kdim)=qb(:,:,  kdim+1:2*kdim)
@@ -530,23 +532,15 @@ contains
 !========================================================================================
   subroutine instant_shift(                                           &
     &                 q1,                                             &
-#ifndef OPT_TRIPOLE    
-    &               idim,   jdim,   kdim )
-#else
     &               idim,   jdim,   kdim,                             & 
     &               fact,   ioff,   joff )
-#endif
-
     implicit none
      
 #include "mpif.h"
-
     real(8),                  intent(inout)  ::    q1(1:idim,1:jdim,1:kdim)
     integer(4),               intent(in)     ::  idim,  jdim,  kdim
-#ifdef OPT_TRIPOLE    
     real(8),                  intent(in)     ::  fact
     integer(4),               intent(in)     ::  ioff,  joff
-#endif
     logical, save :: ofirst= .true.
 
     if(ofirst) then
