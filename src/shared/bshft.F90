@@ -78,11 +78,11 @@ module bshft
   real(8)        ::   sdbfn2(1:nxdim, 1:jcomm, 1:nztdim+nzdim)
   real(8)        ::   rvbfn1(1:nxdim, 1:jcomm, 1:nztdim+nzdim)
   real(8)        ::   rvbfn2(1:nxdim, 0:jcomm, 1:nztdim+nzdim)
-
-  real(8)        :: qb(nxdim, nydim, nztdim+nzdim)
   
   real(8), allocatable :: sdbffy(:,:,:), rvbffy(:,:,:)
 #endif
+
+  real(8)        :: qb(nxdim, nydim, nztdim+nzdim)
   
   integer(4)     ::        i,      j,      k,      n
   integer(4)     ::   nbfdim, nbfdm0,   istv
