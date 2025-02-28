@@ -483,15 +483,7 @@ subroutine flxtrc( &
 #endif
      end if
      !$acc update device(ahh3d, ahi3d, ahg3d)
-#ifdef OPT_TRIPOLE
-     call shift2( ahi3d,  ahg3d, &
-          &       nxdim,  nydim,  nzdim, &
-          &        1.d0,      0,      0 )
-#else
-     call shift2( &
-          &       ahi3d,  ahg3d, &
-          &       nxdim,  nydim,  nzdim )
-#endif
+     call shift2(ahi3d, ahg3d, nxdim, nydim, nzdim,  1.d0,  0,  0)
 
 #ifdef OPT_BBL
      call rewnml(ifpar, jfpar)
@@ -1446,29 +1438,11 @@ subroutine flxtrc( &
 !$acc end kernels
 
 !---- bug fix 2
-#ifdef OPT_TRIPOLE
-     call shift1( sy(:,:,n), &
-       &           nxdim,  nydim,  nzdim, &
-       &           -1.d0,      0,      0 )
-     call shift1( syy(:,:,n), &
-       &           nxdim,  nydim,  nzdim, &
-       &            1.d0,      0,      0 )
-     call shift1( sxy(:,:,n), &
-       &           nxdim,  nydim,  nzdim, &
-       &           -1.d0,      0,      0 )
-     call shift1( syz(:,:,n), &
-       &           nxdim,  nydim,  nzdim, &
-       &           -1.d0,      0,      0 )
-     call shift1( s0(:,:,n), &
-       &           nxdim,  nydim,  nzdim, &
-       &            1.d0,      0,      0 )
-#else
-     call shift1( sy (:,:,n), nxdim, nydim, nzdim )
-     call shift1( syy(:,:,n), nxdim, nydim, nzdim )
-     call shift1( sxy(:,:,n), nxdim, nydim, nzdim )
-     call shift1( syz(:,:,n), nxdim, nydim, nzdim )
-     call shift1( s0 (:,:,n), nxdim, nydim, nzdim )
-#endif
+     call shift1( sy(:,:,n), nxdim, nydim, nzdim,  -1.d0,  0,  0)
+     call shift1(syy(:,:,n), nxdim, nydim, nzdim,   1.d0,  0,  0)
+     call shift1(sxy(:,:,n), nxdim, nydim, nzdim,  -1.d0,  0,  0)
+     call shift1(syz(:,:,n), nxdim, nydim, nzdim,  -1.d0,  0,  0)
+     call shift1( s0(:,:,n), nxdim, nydim, nzdim,   1.d0,  0,  0)
 
 !    ---- calculating ALF  and MASS between box (i,j-1,k) <---> (i,j,k)
 !$acc kernels default(present)
@@ -2216,46 +2190,15 @@ subroutine flxtrc( &
   call stbbtr( syz )
 #endif
 
-#ifdef OPT_TRIPOLE
-  call shift1(    sx, &
-    &          nxdim, nydim, nztdim, &
-    &           1.d0,     0,      0 )
-  call shift1(    sy, &
-    &          nxdim, nydim, nztdim, &
-    &          -1.d0,     0,      0 )
-  call shift1(    sz, &
-    &          nxdim, nydim, nztdim, &
-    &           1.d0,     0,      0 )
-  call shift1(   sxx, &
-    &          nxdim, nydim, nztdim, &
-    &           1.d0,     0,      0 )
-  call shift1(   syy, &
-    &          nxdim, nydim, nztdim, &
-    &           1.d0,     0,      0 )
-  call shift1(   szz, &
-    &          nxdim, nydim, nztdim, &
-    &           1.d0,     0,      0 )
-  call shift1(   sxy, &
-    &          nxdim, nydim, nztdim, &
-    &          -1.d0,     0,      0 )
-  call shift1(   sxz, &
-    &          nxdim, nydim, nztdim, &
-    &           1.d0,     0,      0 )
-  call shift1(   syz, &
-    &          nxdim, nydim, nztdim, &
-    &          -1.d0,     0,      0 )
-#else
-!  call shift1( s0 , nxdim, nydim, nztdim )
-  call shift1( sx , nxdim, nydim, nztdim )
-  call shift1( sy , nxdim, nydim, nztdim )
-  call shift1( sz , nxdim, nydim, nztdim )
-  call shift1( sxx, nxdim, nydim, nztdim )
-  call shift1( syy, nxdim, nydim, nztdim )
-  call shift1( szz, nxdim, nydim, nztdim )
-  call shift1( sxy, nxdim, nydim, nztdim )
-  call shift1( sxz, nxdim, nydim, nztdim )
-  call shift1( syz, nxdim, nydim, nztdim )
-#endif
+  call shift1( sx, nxdim, nydim, nztdim,  1.d0,  0,  0)
+  call shift1( sy, nxdim, nydim, nztdim, -1.d0,  0,  0)
+  call shift1( sz, nxdim, nydim, nztdim,  1.d0,  0,  0)
+  call shift1(sxx, nxdim, nydim, nztdim,  1.d0,  0,  0)
+  call shift1(syy, nxdim, nydim, nztdim,  1.d0,  0,  0)
+  call shift1(szz, nxdim, nydim, nztdim,  1.d0,  0,  0)
+  call shift1(sxy, nxdim, nydim, nztdim, -1.d0,  0,  0)
+  call shift1(sxz, nxdim, nydim, nztdim,  1.d0,  0,  0)
+  call shift1(syz, nxdim, nydim, nztdim, -1.d0,  0,  0)
 
 !---- for CMIP6 output
   call chekin(  ublsx, 'UBOLUS', &
