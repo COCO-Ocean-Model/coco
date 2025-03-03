@@ -65,6 +65,9 @@ subroutine vdiff( &
   use bchmk
   use qckot
   use bshft
+#ifdef ACC_
+  use bshft_acc
+#endif
   use qckot
 #ifdef OPT_IO_COCOMPI
   use mpiio
@@ -2118,9 +2121,15 @@ subroutine vdiff( &
 !$acc update host(tke, psi)
 #endif
 #ifdef OPT_TRIPOLE
+#ifdef ACC_
+  call shift2_acc(   tke,    psi, &
+    &          nxdim,  nydim,  nzdim, &
+    &           1.d0,      0,      0 )
+#else
   call shift2(   tke,    psi, &
     &          nxdim,  nydim,  nzdim, &
     &           1.d0,      0,      0 )
+#endif
 #endif
 #ifdef ADF_
 !$acc update device(tke, psi)

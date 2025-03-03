@@ -156,7 +156,7 @@ subroutine srcvlb( &
   real(8), intent(out) ::      xx(nxydim, nzdim),     yy(nxydim, nzdim)
   real(8), intent(in)  ::      ux(nxydim, nzdim),     vx(nxydim, nzdim)
 
-#ifndef ADC_SRCVLB
+#ifndef ADC_
   real(8), save ::    rfrc(nxydim)
 #endif
 
@@ -196,7 +196,7 @@ subroutine srcvlb( &
            rfrc(ij) = 0.d0
         end if
      end do
-#ifdef ADC_SRCVLB
+#ifdef ADC_
 !$acc update device(rfrc)
 #endif
   end if

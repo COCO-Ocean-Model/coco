@@ -11,6 +11,7 @@ SRCS_SHARED = \
 	brdge$(MPI).F90 \
 	bshfi.F90 \
 	bshft.F90 \
+	bshft_acc.F90 \
 	cadvc.F90 \
 	csrvl.F90 \
 	ctnuv.F90 \
