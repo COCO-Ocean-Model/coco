@@ -14,10 +14,6 @@ module bshft
 !     '21.05.21  M.Kurogi: packed shift communication from MIROC6 (2013.05.23  Dr. Koji Ogochi)
 ! ---------------------------------------------------------------------
 
-!  use zocdim,  only  :                                                &
-!        nxdim,   nzdim,  nztdim,                                      &
-!           nx,      ny,      nz,                                      &
-!        icomm,   jcomm
   use zocdim
   use ufile, only : rewnml 
   implicit none
@@ -59,7 +55,6 @@ module bshft
 
   real(8), allocatable :: sdbffy(:,:,:), rvbffy(:,:,:)
 #endif
-
   
   integer(4)     ::        i,      j,      k,      n
   integer(4)     ::   nbfdim, nbfdm0,   istv
@@ -102,6 +97,69 @@ contains
     is_tri_edge = jrank .eq. jnodes -1
 
   end subroutine shift_pack_begin
+
+!=======================================================================
+  subroutine shift_pack(qq, ksize, fact2, ioff2, joff2)
+    real(8) :: qq(:,:,:)
+    integer :: ksize
+    real(8) :: fact2
+    integer :: ioff2, joff2
+    integer i, j, k, k0
+
+    if (num_packed .ge. max_num_packed) then
+       call rewnml(ifpar, jfpar)
+       write(jfpar,*)' ### packed_shift: exceed the limit of num_packed.'
+       call mpi_abort(mpi_comm_ogcm, 1, ierr)
+    endif
+
+    num_packed = num_packed + 1
+    k0 = koffset(num_packed)
+    if (k0 + ksize .gt. max_ksize) then
+       call rewnml(ifpar, jfpar)
+       write(jfpar,*)' ### packed_shift: exceed the limit of max_ksize.'
+       call mpi_abort(mpi_comm_ogcm, 1, ierr)
+    endif
+
+    !$acc kernels default(present) if(shift_gpu)
+    do k = 1, ksize
+       do j = 1, ny
+          do i = 1, icomm
+             west_send(i,j,k0+k) = qq(i+istr-1,    j+jstr-1,k)
+             east_send(i,j,k0+k) = qq(i+iend-icomm,j+jstr-1,k)
+          end do
+       end do
+    end do
+
+    do k = 1, ksize
+       do j = 1, jcomm
+          do i = istr, iend
+             south_send(i,j,k0+k) = qq(i,j+jstr-1,    k)
+             north_send(i,j,k0+k) = qq(i,j+jend-jcomm,k)
+          end do
+       end do
+    end do
+    !$acc end kernels
+    koffset(num_packed + 1) = k0 + ksize
+
+#ifdef OPT_TRIPOLE
+    if (is_tri_edge) then
+       !$acc kernels default(present) if(shift_gpu)
+       do k = 1, ksize
+          do j = 1, jcomm - joff2
+             do i = istr, iend
+                tri_send(i+ioff2,j+joff2,k0+k) = fact2 * qq(nxdim + 1 - i, jend + 1 - j, k)
+             end do
+          end do
+       end do
+       !$acc end kernels
+    endif
+    !$acc kernels default(present) if(shift_gpu)
+    facts(num_packed) = fact2
+    ioffs(num_packed) = ioff2
+    joffs(num_packed) = joff2
+    !$acc end kernels
+#endif
+  end subroutine shift_pack
 
 !=======================================================================
   subroutine shift_pack_end
@@ -289,69 +347,6 @@ contains
     endif
 #endif
   end subroutine shift_unpack
-
-!=======================================================================
-  subroutine shift_pack(qq, ksize, fact2, ioff2, joff2)
-    real(8) :: qq(:,:,:)
-    integer :: ksize
-    real(8) :: fact2
-    integer :: ioff2, joff2
-    integer i, j, k, k0
-
-    if (num_packed .ge. max_num_packed) then
-       call rewnml(ifpar, jfpar)
-       write(jfpar,*)' ### packed_shift: exceed the limit of num_packed.'
-       call mpi_abort(mpi_comm_ogcm, 1, ierr)
-    endif
-
-    num_packed = num_packed + 1
-    k0 = koffset(num_packed)
-    if (k0 + ksize .gt. max_ksize) then
-       call rewnml(ifpar, jfpar)
-       write(jfpar,*)' ### packed_shift: exceed the limit of max_ksize.'
-       call mpi_abort(mpi_comm_ogcm, 1, ierr)
-    endif
-
-    !$acc kernels default(present) if(shift_gpu)
-    do k = 1, ksize
-       do j = 1, ny
-          do i = 1, icomm
-             west_send(i,j,k0+k) = qq(i+istr-1,    j+jstr-1,k)
-             east_send(i,j,k0+k) = qq(i+iend-icomm,j+jstr-1,k)
-          end do
-       end do
-    end do
-
-    do k = 1, ksize
-       do j = 1, jcomm
-          do i = istr, iend
-             south_send(i,j,k0+k) = qq(i,j+jstr-1,    k)
-             north_send(i,j,k0+k) = qq(i,j+jend-jcomm,k)
-          end do
-       end do
-    end do
-    !$acc end kernels
-    koffset(num_packed + 1) = k0 + ksize
-
-#ifdef OPT_TRIPOLE
-    if (is_tri_edge) then
-       !$acc kernels default(present) if(shift_gpu)
-       do k = 1, ksize
-          do j = 1, jcomm - joff2
-             do i = istr, iend
-                tri_send(i+ioff2,j+joff2,k0+k) = fact2 * qq(nxdim + 1 - i, jend + 1 - j, k)
-             end do
-          end do
-       end do
-       !$acc end kernels
-    endif
-    !$acc kernels default(present) if(shift_gpu)
-    facts(num_packed) = fact2
-    ioffs(num_packed) = ioff2
-    joffs(num_packed) = joff2
-    !$acc end kernels
-#endif
-  end subroutine shift_pack
 
 !=======================================================================
 
