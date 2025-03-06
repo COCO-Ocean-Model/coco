@@ -153,18 +153,12 @@ contains
 #ifdef OPT_BBL
     call vdiffb(   amv,    ahv  )
 #endif
-
-#ifdef OPT_TRIPOLE
-    call shift1(    amv,                                              &
-    &             nxdim,  nydim,  nzdim,                              &
-    &              1.D0,     -1,     -1   )
-    call shift1(    ahv,                                              &
-    &             nxdim,  nydim,  nzdim,                              &
-    &              1.d0,      0,      0   )
-#else
-    call shift2(    amv,    ahv,                                      &
-    &             nxdim,  nydim,  nzdim)
-#endif
+    call shift_pack_begin
+    call shift1(amv, nxdim, nydim, nzdim, 1.d0, -1, -1)
+    call shift1(ahv, nxdim, nydim, nzdim, 1.d0,  0,  0)
+    call shift_pack_end
+    call shift_unpack(amv, 1)
+    call shift_unpack(ahv, 2)
     call clcend('COEFF')
 
 ! *** baroclinic flow ***
@@ -261,20 +255,13 @@ contains
           call modgxy(  gxx,    gyy,                                  &
     &                  ubtx,   vbtx  )
 
-#ifdef OPT_TRIPOLE
-          call shift2(   gxx,    gyy,                                 &
-    &                  nxdim,  nydim,      1,                         &
-    &                  -1.D0,     -1,     -1 )
-          call shift1(ft(1,2),                                        &
-    &                   nxdim,  nydim,      1,                        &
-    &                    1.d0,      0,      0 )
-#else
-          call shift2(                                                &
-    &                  gxx,    gyy,                                   &
-    &                nxdim,  nydim,      1)
-          call shift1(ft(1,2),                                        &
-    &                   nxdim,  nydim,      1)
-#endif
+          call shift_pack_begin
+          call shift2(    gxx, gyy, nxdim, nydim, 1, -1.d0, -1, -1)
+          call shift1(ft(:,2),      nxdim, nydim, 1,  1.d0,  0,  0)
+          call shift_pack_end
+          call shift_unpack(    gxx, 1)
+          call shift_unpack(    gyy, 2)
+          call shift_unpack(ft(:,2), 3)
           
           nb = ntss * 2
           !$acc kernels default(present)
@@ -296,18 +283,13 @@ contains
     &                      hx,   ubtx,   vbtx,                        &
     &                     gxx,    gyy,   ptop,  ft(1,2))
 
-#ifdef OPT_TRIPOLE
-             call shift2( ubtmp,  vbtmp,                              &
-    &                     nxdim,  nydim,      1,                      &
-    &                     -1.d0,     -1,     -1 )
-             call shift1(  htmp,                                      &
-    &                     nxdim,  nydim,      1,                      &
-    &                      1.d0,      0,      0 )
-#else
-             call shift3(                                             &
-    &                     htmp,  ubtmp,  vbtmp,                       &
-    &                    nxdim,  nydim,      1)
-#endif
+             call shift_pack_begin
+             call shift2(ubtmp, vbtmp, nxdim, nydim, 1, -1.d0, -1, -1)
+             call shift1( htmp,        nxdim, nydim, 1,  1.d0,  0,  0)
+             call shift_pack_end
+             call shift_unpack(ubtmp, 1)
+             call shift_unpack(vbtmp, 2)
+             call shift_unpack( htmp, 3)
              
              fact = 2.d0 * dble(nb-itsplt+1) / dble(nb * (nb+1))
              !$acc kernels default(present)
@@ -321,38 +303,29 @@ contains
     &                    htmp,  ubtmp,  vbtmp,                        &
     &                     gxx,    gyy,   ptop,  ft(1,2))
 
-#ifdef OPT_TRIPOLE
-             call shift2(  ubtx,   vbtx,                              &
-    &                     nxdim,  nydim,      1,                      &
-    &                     -1.d0,     -1,     -1 )
-             call shift1(    hx,                                      &
-    &                     nxdim,  nydim,      1,                      &
-    &                      1.d0,      0,      0 )
-#else
-             call shift3(                                             &
-    &                       hx,   ubtx,   vbtx,                       &
-    &                    nxdim,  nydim,      1)
-#endif
+
+             call shift_pack_begin
+             call shift2(ubtx, vbtx, nxdim, nydim, 1, -1.d0, -1, -1)
+             call shift1(  hx,       nxdim, nydim, 1,  1.d0,  0,  0)
+             call shift_pack_end
+             call shift_unpack(ubtx, 1)
+             call shift_unpack(vbtx, 2)
+             call shift_unpack(  hx, 3)
+
              !$acc kernels default(present)
              hav(:) = hav(:) + hx(:) / dble(nb+1)
              !$acc end kernels
          end do
 
-#ifdef OPT_TRIPOLE
-          call shift2( ubtav,  vbtav,                                 &
-    &                  nxdim,  nydim,      1,                         &
-    &                  -1.d0,     -1,     -1 )
-          call shift2(ubtav2, vbtav2,                                 &
-    &                  nxdim,  nydim,      1,                         &
-    &                  -1.d0,     -1,     -1 )
-#else
-          call shift2(                                                &
-    &                 ubtav,  vbtav,                                  &
-    &                 nxdim,  nydim,      1)
-          call shift2(                                                &
-    &                ubtav2, vbtav2,                                  &
-    &                 nxdim,  nydim,      1)
-#endif
+         call shift_pack_begin
+         call shift2( ubtav,  vbtav, nxdim,  nydim, 1, -1.d0, -1, -1)
+         call shift2(ubtav2, vbtav2, nxdim,  nydim, 1, -1.d0, -1, -1)
+         call shift_pack_end
+         call shift_unpack( ubtav, 1)
+         call shift_unpack( vbtav, 2)
+         call shift_unpack(ubtav2, 3)
+         call shift_unpack(vbtav2, 4)
+
        end if
        !$acc kernels default(present)
        hx  (:) = hav   (:)
@@ -377,14 +350,10 @@ contains
 
 #ifdef OPT_TRIPOLE
     if (.not.(oinit .or. ofinal)) then
-       call shift2(   uadv,    vadv,                                  &
-    &                nxdim,   nydim,  nzdim,                          &
-    &                -1.d0,      -1,     -1 )
+#endif
+       call shift2(uadv, vadv, nxdim, nydim, nzdim, -1.d0, -1, -1)
+#ifdef OPT_TRIPOLE
     end if
-#else
-    call shift2(                                                      &
-    &                uadv,   vadv,                                    &
-    &               nxdim,  nydim,  nzdim)
 #endif
     
 #ifdef OPT_BBL
@@ -464,21 +433,13 @@ contains
     &                   ft,  swabs,     fs,     hz,   ssfc,           &
     &                   ax)
 
-#ifdef OPT_TRIPOLE
-          call shift1(    tx,                                         &
-    &                  nxdim,   nydim, nztdim,                        &
-    &                   1.d0,       0,      0 )
-          call shift1(    hx,                                         &
-    &                  nxdim,   nydim,      1,                        &
-    &                   1.d0,       0,      0 )
-#else
-          call shift1(                                                &
-    &                   tx,                                           &
-    &                nxdim,  nydim, nztdim)
-          call shift1(                                                &
-    &                   hx,                                           &
-    &                nxdim,  nydim,      1)
-#endif
+          call shift_pack_begin
+          call shift1(tx, nxdim, nydim, nztdim, 1.d0, 0, 0)
+          call shift1(hx, nxdim, nydim,      1, 1.d0, 0, 0)
+          call shift_pack_end
+          call shift_unpack(tx, 1)
+          call shift_unpack(hx, 2)
+    
           call shdiff(   tx,     hx)
           call clcstr('TUNDIF')
           call tundif(   tx,     hx)
@@ -488,27 +449,14 @@ contains
           call stbbtr(   tx   )
 #endif
 
-#ifdef OPT_TRIPOLE
-          call shift1(   r,                                           &
-    &                nxdim,   nydim,  nzdim,                          &
-    &                 1.d0,       0,      0 )
-          call shift1(  tx,                                           &
-    &                nxdim,   nydim, nztdim,                          &
-    &                 1.d0,       0,      0 )
-          call shift1(  hx,                                           &
-    &                nxdim,   nydim,      1,                          &
-    &                 1.d0,       0,      0 )
-#else
-          call shift1(                                                &
-    &                     r,                                          &
-    &                 nxdim,  nydim,  nzdim)
-          call shift1(                                                &
-    &                    tx,                                          &
-    &                 nxdim,  nydim, nztdim)
-          call shift1(                                                &
-    &                    hx,                                          &
-    &                 nxdim,  nydim,      1)
-#endif
+          call shift_pack_begin
+          call shift1( r, nxdim, nydim,  nzdim,  1.d0, 0, 0)
+          call shift1(tx, nxdim, nydim, nztdim,  1.d0, 0, 0)
+          call shift1(hx, nxdim, nydim,      1,  1.d0, 0, 0)
+          call shift_pack_end
+          call shift_unpack( r, 1)
+          call shift_unpack(tx, 2)
+          call shift_unpack(hx, 3)
 
           call stbctr(    tx,      r)
        end if
@@ -530,15 +478,7 @@ contains
     &             ubtav, vbtav,   uadv,   vadv)
 !    &             ubtx,   vbtx,   uadv,   vadv)
 
-#ifdef OPT_TRIPOLE
-    call shift2(    ux,     vx,                                       &
-    &            nxdim,  nydim,  nzdim,                               &
-    &            -1.d0,     -1,     -1 )
-#else
-    call shift2(                                                      &
-    &               ux,     vx,                                       &
-    &            nxdim,  nydim,  nzdim)
-#endif
+    call shift2(ux, vx, nxdim, nydim, nzdim, -1.d0, -1, -1)
 
 #ifdef OPT_BBL
     call rmmskt
@@ -562,50 +502,39 @@ contains
     &                w) 
     call stbbvt(    ux,     vx    )
 
-#ifdef OPT_TRIPOLE
-    call shift2(    ux,     vx,                                       &
-    &            nxdim,  nydim,  nzdim,                               &
-    &            -1.d0,     -1,     -1 )
-#else
-    call shift2(                                                      &
-    &               ux,     vx,                                       &
-    &            nxdim,  nydim,  nzdim)
-#endif
+    call shift2(ux, vx, nxdim, nydim, nzdim, -1.d0, -1, -1)
+
     call rmmskv
     call admkv1
 #endif
 
+    call shift_pack_begin
+    call shift1(uadv,      nxdim, nydim, nzdim, -1.d0,  0,  0)
+    call shift1(vadv,      nxdim, nydim, nzdim, -1.d0,  0,  0)
+    call shift1(wadv(:,1), nxdim, nydim, nzdim,  1.d0, -1, -1)
+    call shift1(wadv(:,2), nxdim, nydim, nzdim,  1.d0, -1, -1)
+    call shift1(wadv(:,3), nxdim, nydim, nzdim,  1.d0, -1, -1)
+    call shift1(wadv(:,4), nxdim, nydim, nzdim,  1.d0, -1, -1)
+    call shift1(wadv(:,5), nxdim, nydim, nzdim,  1.d0, -1, -1)
+    call shift1(wadv(:,6), nxdim, nydim, nzdim,  1.d0, -1, -1)
+    call shift1(wadv(:,7), nxdim, nydim, nzdim,  1.d0, -1, -1)
+    call shift1(wadv(:,8), nxdim, nydim, nzdim,  1.d0, -1, -1)
+    call shift1(wadv(:,9), nxdim, nydim, nzdim,  1.d0, -1, -1)
+    call shift_pack_end
+    call shift_unpack(     uadv,  1)
+    call shift_unpack(     vadv,  2)
+    call shift_unpack(wadv(:,1),  3)
+    call shift_unpack(wadv(:,2),  4)
+    call shift_unpack(wadv(:,3),  5)
+    call shift_unpack(wadv(:,4),  6)
+    call shift_unpack(wadv(:,5),  7)
+    call shift_unpack(wadv(:,6),  8)
+    call shift_unpack(wadv(:,7),  9)
+    call shift_unpack(wadv(:,8), 10)
+    call shift_unpack(wadv(:,9), 11)
+
 #ifdef OPT_TRIPOLE
-    call shift2(                                                      &
-    &             uadv,   vadv,                                       &
-    &            nxdim,  nydim,  nzdim,                               &
-    &            -1.d0,      0,      0)
-    call shift3(                                                      &
-    &            wadv(1,1), wadv(1,2), wadv(1,3),                     &
-    &            nxdim,  nydim,  nzdim,                               &
-    &             1.d0,     -1,     -1)
-    call shift3(                                                      &
-    &            wadv(1,4), wadv(1,5), wadv(1,6),                     &
-    &            nxdim,  nydim,  nzdim,                               &
-    &             1.d0,     -1,     -1)
-    call shift3(                                                      &
-    &            wadv(1,7), wadv(1,8), wadv(1,9),                     &
-    &            nxdim,  nydim,  nzdim,                               &
-    &             1.d0,     -1,     -1)
     call excngw(  wadv  )
-#else
-    call shift2(                                                      &
-    &             uadv,   vadv,                                       &
-    &            nxdim,  nydim,  nzdim)
-    call shift3(                                                      &
-    &            wadv(1,1), wadv(1,2), wadv(1,3),                     &
-    &            nxdim,  nydim,  nzdim)
-    call shift3(                                                      &
-    &            wadv(1,4), wadv(1,5), wadv(1,6),                     &
-    &            nxdim,  nydim,  nzdim)
-    call shift3(                                                      &
-    &            wadv(1,7), wadv(1,8), wadv(1,9),                     &
-    &            nxdim,  nydim,  nzdim)
 #endif
     call clcend('VDIAG')
 
