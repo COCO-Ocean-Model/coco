@@ -209,15 +209,8 @@ contains
 #endif
             !$acc enter data create(sdmp2d, garea)
             !$acc update device(sdmp2d)
-#ifdef OPT_TRIPOLE
-            call shift1(sdmp2d, &
-              &          nxdim,  nydim,      1, &
-              &           1.d0,      0,      0 )
-#else
-            call shift1( &
-              &         sdmp2d, &
-              &          nxdim,  nydim,      1)
-#endif
+
+            call shift1(sdmp2d, nxdim, nydim, 1, 1.d0, 0, 0)
          end if
          !$acc kernels default(present)
          do ij = 1, nxydim
