@@ -445,16 +445,7 @@ subroutine predci( &
     &             ux,     vx,     hy,   ptop, &
     &         tauaix, tauaiy, tauaox, tauaoy )
 
-#ifdef OPT_TRIPOLE
-  call shift2( &
-    &           taux,    tauy, &
-    &          nxdim,   nydim,     1, &
-    &          -1.d0,      -1,    -1 )
-#else
-  call shift2( &
-    &           taux,   tauy, &
-    &          nxdim,  nydim,      1 )
-#endif
+  call shift2(taux, tauy, nxdim, nydim, 1, -1.d0, -1, -1)
 
   call clcend('ICEDYN')
 
@@ -508,37 +499,23 @@ subroutine predci( &
     &         improf, &
     &             ax,    hix,    hsx)
 
-#ifdef OPT_TRIPOLE
-  call shift3( &
-    &             ax,    hix,    hsx, &
-    &          nxdim,  nydim,  nic+1, &
-    &          1.0d0,      0,      0 )
-  call shift3( &
-    &            eix,    tix,    asx, &
-    &          nxdim,  nydim,  nic+1, &
-    &          1.0d0,      0,      0 )
-  call shift3( &
-    &          frlvx,   vmpx,  frmpx, &
-    &          nxdim,  nydim,  nic+1, &
-    &          1.0d0,      0,      0 )
-  call shift2( &
-    &           dsdx,   dsbx, &
-    &          nxdim,  nydim,  nic+1, &
-    &          1.0d0,      0,      0 )
-#else
-  call shift3( &
-    &             ax,    hix,    hsx, &
-    &          nxdim,  nydim,  nic+1 )
-  call shift3( &
-    &            eix,    tix,    asx, &
-    &          nxdim,  nydim,  nic+1)
-  call shift3( &
-    &          frlvx,   vmpx,  frmpx, &
-    &          nxdim,  nydim,  nic+1)
-  call shift2( &
-    &           dsdx,   dsbx, &
-    &          nxdim,  nydim,  nic+1)
-#endif
+  call shift_pack_begin
+  call shift3(  ax,   hix,   hsx, nxdim, nydim, nic+1, 1.0d0, 0, 0)
+  call shift3(  eix,  tix,   asx, nxdim, nydim, nic+1, 1.0d0, 0, 0)
+  call shift3(frlvx, vmpx, frmpx, nxdim, nydim, nic+1, 1.0d0, 0, 0)
+  call shift2( dsdx, dsbx,        nxdim, nydim, nic+1, 1.0d0, 0, 0)
+  call shift_pack_end
+  call shift_unpack(   ax,  1)
+  call shift_unpack(  hix,  2)
+  call shift_unpack(  hsx,  3)
+  call shift_unpack(  eix,  4)
+  call shift_unpack(  tix,  5)
+  call shift_unpack(  asx,  6)
+  call shift_unpack(frlvx,  7)
+  call shift_unpack( vmpx,  8)
+  call shift_unpack(frmpx,  9)
+  call shift_unpack( dsdx, 10)
+  call shift_unpack( dsbx, 11)
 
   call padvct( &
     &             ax,    hix,    eix,    hsx,    tix, &
@@ -569,38 +546,24 @@ subroutine predci( &
     &         improf, &
     &             ax,    hix,    hsx)
 
-#ifdef OPT_TRIPOLE
-  call shift3( &
-    &             ax,    hix,    hsx, &
-    &          nxdim,  nydim,  nic+1, &
-    &          1.0d0,      0,      0 )
-  call shift3( &
-    &            eix,    tix,    asx, &
-    &          nxdim,  nydim,  nic+1, &
-    &          1.0d0,      0,      0 )
-  call shift3( &
-    &          frlvx,   vmpx,  frmpx, &
-    &          nxdim,  nydim,  nic+1, &
-    &          1.0d0,      0,      0 )
-  call shift2( &
-    &           dsdx,   dsbx, &
-    &          nxdim,  nydim,  nic+1, &
-    &          1.0d0,      0,      0 )
-#else
-  call shift3( &
-    &             ax,    hix,    hsx, &
-    &          nxdim,  nydim,  nic+1 )
-  call shift3( &
-    &            eix,    tix,    asx, &
-    &          nxdim,  nydim,  nic+1)
-  call shift3( &
-    &          frlvx,   vmpx,  frmpx, &
-    &          nxdim,  nydim,  nic+1)
-  call shift2( &
-    &           dsdx,   dsbx, &
-    &          nxdim,  nydim,  nic+1)
-#endif  
-
+  call shift_pack_begin
+  call shift3(  ax,   hix,   hsx, nxdim, nydim, nic+1, 1.0d0, 0, 0)
+  call shift3(  eix,  tix,   asx, nxdim, nydim, nic+1, 1.0d0, 0, 0)
+  call shift3(frlvx, vmpx, frmpx, nxdim, nydim, nic+1, 1.0d0, 0, 0)
+  call shift2( dsdx, dsbx,        nxdim, nydim, nic+1, 1.0d0, 0, 0)
+  call shift_pack_end
+  call shift_unpack(   ax,  1)
+  call shift_unpack(  hix,  2)
+  call shift_unpack(  hsx,  3)
+  call shift_unpack(  eix,  4)
+  call shift_unpack(  tix,  5)
+  call shift_unpack(  asx,  6)
+  call shift_unpack(frlvx,  7)
+  call shift_unpack( vmpx,  8)
+  call shift_unpack(frmpx,  9)
+  call shift_unpack( dsdx, 10)
+  call shift_unpack( dsbx, 11)
+  
   if (myrank .ge. ijnode) then
      return
   end if
