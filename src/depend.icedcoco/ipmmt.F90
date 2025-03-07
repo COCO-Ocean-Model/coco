@@ -308,15 +308,8 @@ subroutine pmomnt( &
         end if
      end do
      !$acc end kernels
-#ifdef OPT_TRIPOLE
-     call shift3( sgmxx,  sgmyy,  sgmxy, &
-       &          nxdim,  nydim,      1, &
-       &           1.d0,      0,      0 )
-#else
-     call shift3( &
-       &          sgmxx,  sgmyy,  sgmxy, &
-       &          nxdim,  nydim,      1)
-#endif
+
+     call shift3(sgmxx, sgmyy, sgmxy, nxdim, nydim, 1, 1.d0, 0, 0)
 
      !$acc kernels default(present)
      do ij = ijvstr, ijvend
@@ -380,17 +373,9 @@ subroutine pmomnt( &
         end if
      end do
      !$acc end kernels
-     
-#ifdef OPT_TRIPOLE
-     call shift2(   uix,    vix, &
-       &          nxdim,  nydim,      1, &
-       &          -1.d0,     -1,     -1 )
-#else
-     call shift2( &
-       &            uix,    vix, &
-       &          nxdim,  nydim,      1)
-#endif
-     
+
+     call shift2(uix, vix, nxdim, nydim, 1, -1.d0, -1, -1)
+
      call strain( &
        &            exx,    eyy,    exy, &
        &            uix,    vix)
