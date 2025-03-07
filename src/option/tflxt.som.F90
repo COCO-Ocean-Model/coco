@@ -1438,12 +1438,18 @@ subroutine flxtrc( &
 !$acc end kernels
 
 !---- bug fix 2
+     call shift_pack_begin
      call shift1( sy(:,:,n), nxdim, nydim, nzdim,  -1.d0,  0,  0)
      call shift1(syy(:,:,n), nxdim, nydim, nzdim,   1.d0,  0,  0)
      call shift1(sxy(:,:,n), nxdim, nydim, nzdim,  -1.d0,  0,  0)
      call shift1(syz(:,:,n), nxdim, nydim, nzdim,  -1.d0,  0,  0)
      call shift1( s0(:,:,n), nxdim, nydim, nzdim,   1.d0,  0,  0)
-
+     call shift_pack_end
+     call shift_unpack( sy(:,:,n), 1)
+     call shift_unpack(syy(:,:,n), 2)
+     call shift_unpack(sxy(:,:,n), 3)
+     call shift_unpack(syz(:,:,n), 4)
+     call shift_unpack( s0(:,:,n), 5)
 !    ---- calculating ALF  and MASS between box (i,j-1,k) <---> (i,j,k)
 !$acc kernels default(present)
 !!*POPTION PARALLEL
@@ -2190,6 +2196,7 @@ subroutine flxtrc( &
   call stbbtr( syz )
 #endif
 
+  call shift_pack_begin
   call shift1( sx, nxdim, nydim, nztdim,  1.d0,  0,  0)
   call shift1( sy, nxdim, nydim, nztdim, -1.d0,  0,  0)
   call shift1( sz, nxdim, nydim, nztdim,  1.d0,  0,  0)
@@ -2199,6 +2206,16 @@ subroutine flxtrc( &
   call shift1(sxy, nxdim, nydim, nztdim, -1.d0,  0,  0)
   call shift1(sxz, nxdim, nydim, nztdim,  1.d0,  0,  0)
   call shift1(syz, nxdim, nydim, nztdim, -1.d0,  0,  0)
+  call shift_pack_end
+  call shift_unpack( sx, 1)
+  call shift_unpack( sy, 2)
+  call shift_unpack( sz, 3)
+  call shift_unpack(sxx, 4)
+  call shift_unpack(syy, 5)
+  call shift_unpack(szz, 6)
+  call shift_unpack(sxy, 7)
+  call shift_unpack(sxz, 8)
+  call shift_unpack(syz, 9)
 
 !---- for CMIP6 output
   call chekin(  ublsx, 'UBOLUS', &
