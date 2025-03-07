@@ -486,14 +486,9 @@ subroutine vdiff( &
         deallocate( buf2, g2d )
         !$acc update device(tedn2d)
 #endif
-#ifdef OPT_TRIPOLE
-        call shift1(tedn2d,                                      &
-    &                nxdim,  nydim,      1,                      &
-    &                 1.d0,      0,      0 )
-#else
-        call shift1(tedn2d,                                      &
-    &                nxdim,  nydim,      1)
-#endif
+
+        call shift1(tedn2d, nxdim, nydim, 1, 1.d0, 0, 0)
+
         rzeta = 1.d0 / zeta * 1.d-2
         !$acc kernels default(present)
         do ij = 1, nxydim
@@ -549,14 +544,8 @@ subroutine vdiff( &
               write(jfpar, *) 'Dissipation rate is prop. to N^2 for far-field mixing'
            end if
         end if
-#ifdef OPT_TRIPOLE
-        call shift1(tedf2d,                                      &
-    &                nxdim,  nydim,      1,                      &
-    &                 1.d0,      0,      0 )
-#else
-        call shift1(tedf2d,                                      &
-    &                nxdim,  nydim,      1)
-#endif
+
+        call shift1(tedf2d, nxdim, nydim, 1, 1.d0, 0, 0)
      end if
 !---
   end if
@@ -1248,12 +1237,7 @@ subroutine vdiff( &
   end do
   !$acc end kernels
 
-
-#ifdef OPT_TRIPOLE
-  call shift2(   tke,    psi, &
-    &          nxdim,  nydim,  nzdim, &
-    &           1.d0,      0,      0 )
-#endif
+  call shift2(tke, psi, nxdim, nydim, nzdim, 1.d0, 0, 0)
 
 !!--- sea-surface elevation is not considered
 !!---   for vertical structure function of energy dissipation rate
@@ -1440,18 +1424,7 @@ subroutine puttao( &
        &          amskv(ij, kstr)
   end do
   !$acc end kernels
-
-#ifdef OPT_TRIPOLE
-  call shift2( &
-    &          tauaox, tauaoy, &
-    &           nxdim,  nydim,      1, &
-    &           -1.d0,     -1,     -1 )
-#else
-  call shift2( &
-    &          tauaox,   tauaoy, &
-    &           nxdim,    nydim,     1)
-#endif
-
+  call shift2(tauaox, tauaoy, nxdim, nydim, 1, -1.d0, -1, -1)
   return
 
 end subroutine puttao
