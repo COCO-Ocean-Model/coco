@@ -454,16 +454,7 @@ subroutine sfcflx( &
   dfbc(:) = 0.0d0
   !$acc end kernels
 
-#ifdef OPT_TRIPOLE
-  call shift2( &
-    &            psfc,   roff,         &
-    &           nxdim,  nydim,      1, &
-    &            1.d0,      0,      0 )
-#else
-  call shift2( &
-    &            psfc,   roff,         &
-    &           nxdim,  nydim,      1 )
-#endif
+  call shift2(psfc, roff, nxdim, nydim, 1, 1.d0, 0, 0)
   
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   !$acc kernels default(present)
@@ -558,20 +549,13 @@ subroutine sfcflx( &
        &                gricr,  grsnw,    tmi, &
        &                grasn,  grvmp, grfrmp )     
 
-#ifdef OPT_TRIPOLE
-     call shift2( &
-       &            taux,   tauy, &
-       &           nxdim,  nydim,      1, &
-       &          -1.0d0,      0,      0 )
-     call shift1( &
-       &              fm, &
-       &           nxdim,  nydim,      1, &
-       &           1.0d0,      0,      0 )
-#else
-     call shift3( &
-       &            taux,   tauy,    fm, &
-       &           nxdim,  nydim,     1 )
-#endif     
+     call shift_pack_begin
+     call shift2(taux, tauy, nxdim, nydim, 1, -1.0d0, 0, 0)
+     call shift1(  fm,       nxdim, nydim, 1,  1.0d0, 0, 0)
+     call shift_pack_end
+     call shift_unpack(taux, 1)
+     call shift_unpack(tauy, 2)
+     call shift_unpack(  fm, 3)
      
      if (l > 0) then
         !$acc kernels default(present)
@@ -704,23 +688,15 @@ subroutine sfcflx( &
     &              'erg/cm^2/s', &
     &              nx,       ny,        1,   nxydim, 'OCSFCT')
 
-#ifdef OPT_TRIPOLE
-  call shift2( tauaox,   tauaoy, &
-    &           nxdim,    nydim,    1, &
-    &          -1.0d0,     -1,     -1 )
-
-  call shift2( tauaix,   tauaiy, &
-    &           nxdim,    nydim,    1, &
-    &          -1.0d0,     -1,     -1 )
-#else
-  call shift2( &
-    &          tauaox,   tauaoy, &
-    &           nxdim,    nydim,     1 )
-  call shift2( &
-    &          tauaix,   tauaiy, &
-    &           nxdim,    nydim,     1 )
-#endif
-
+  call shift_pack_begin
+  call shift2( tauaox, tauaoy, nxdim, nydim, 1, -1.0d0, -1, -1)
+  call shift2( tauaix, tauaiy, nxdim, nydim, 1, -1.0d0, -1, -1)
+  call shift_pack_end
+  call shift_unpack(tauaox, 1)
+  call shift_unpack(tauaoy, 2)
+  call shift_unpack(tauaix, 3)
+  call shift_unpack(tauaiy, 4)
+     
   call chekin(   roff,  'ROFF', &
     &       'river runoff', 'cm/s', &
     &              nx,      ny,      1, nxydim, 'OCSFCT')
