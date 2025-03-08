@@ -292,55 +292,53 @@ contains
     end do
     !$acc update device(ft)
 
-#ifdef OPT_TRIPOLE
-    call shift2(    ub,      vb,                                      &
-    &             nxdim,   nydim,  nzdim,                             &
-    &             -1.d0,      -1,     -1 )
-    call shift1(   tb,                                                &
-    &             nxdim,   nydim, nztdim,                             &
-    &              1.d0,       0,      0)
-    call shift1(   amv,                                               &
-    &            nxdim,   nydim,  nzdim,                              &
-    &             1.d0,      -1,     -1 )
-    call shift2(     w,     ahv,                                      &
-    &            nxdim,   nydim,  nzdim,                              &
-    &             1.d0,       0,      0 )
-    call shift1(    hb,                                               &
-    &            nxdim,   nydim,      1,                              &
-    &             1.d0,       0,      0 )
-    call shift2(  ubtb,    vbtb,                                      &
-    &            nxdim,   nydim,      1,                              &
-    &            -1.d0,      -1,     -1 )
-    call shift3(    ab,     hib,    hsb,                              &
-    &            nxdim,   nydim,  nic+1,                              &
-    &             1.d0,       0,      0 )
-    call shift2(   tsi,     tib,                                      &
-    &            nxdim,   nydim,  nic+1,                              &
-    &             1.d0,       0,      0 )
-    call shift2(   uib,     vib,                                      &
-    &            nxdim,   nydim,      1,                              &
-    &            -1.d0,      -1,     -1 )
-    call shift1(    ft,                                               &
-    &            nxdim,   nydim,  ntdim,                              &
-    &             1.d0,       0,      0 )
-    call shift3(    fs,   swabs,   ptop,                              &
-    &            nxdim,   nydim,      1,                              &
-    &             1.d0,       0,      0 )
-    call shift2(  taux,    tauy,                                      &
-    &            nxdim,   nydim,      1,                              &
-    &            -1.d0,      -1,     -1 )
-#else
-    call shift3(    ub,     vb,      w,  nxdim,  nydim,  nzdim )
-    call shift1(    tb,                  nxdim,  nydim, nztdim )
-    call shift2(   amv,    ahv,          nxdim,  nydim,  nzdim )
-    call shift3(    hb,   ubtb,   vbtb,  nxdim,  nydim,      1 )
-    call shift3(    ab,    hib,    hsb,  nxdim,  nydim,  nic+1 )
-    call shift2(   tsi,    tib,          nxdim,  nydim,  nic+1 )
-    call shift2(   uib,    vib,          nxdim,  nydim,      1 )
-    call shift1(    ft,                  nxdim,  nydim,  ntdim )
-    call shift2( swabs,     fs,          nxdim,  nydim,      1 )
-    call shift3(  taux,   tauy,   ptop,  nxdim,  nydim,      1 )
-#endif
+    call shift_pack_begin
+    call shift1(   ub, nxdim, nydim,  nzdim, -1.d0, -1, -1)
+    call shift1(   vb, nxdim, nydim,  nzdim, -1.d0, -1, -1)
+    call shift1(   tb, nxdim, nydim, nztdim,  1.d0,  0,  0)
+    call shift1(  amv, nxdim, nydim,  nzdim,  1.d0, -1, -1)
+    call shift1(    w, nxdim, nydim,  nzdim,  1.d0,  0,  0)
+    call shift1(  ahv, nxdim, nydim,  nzdim,  1.d0,  0,  0)
+    call shift1(   hb, nxdim, nydim,      1,  1.d0,  0,  0)
+    call shift1( ubtb, nxdim, nydim,      1, -1.d0, -1, -1)
+    call shift1( vbtb, nxdim, nydim,      1, -1.d0, -1, -1)
+    call shift1(   ab, nxdim, nydim,  nic+1,  1.d0,  0,  0)
+    call shift1(  hib, nxdim, nydim,  nic+1,  1.d0,  0,  0)
+    call shift1(  hsb, nxdim, nydim,  nic+1,  1.d0,  0,  0)
+    call shift1(  tsi, nxdim, nydim,  nic+1,  1.d0,  0,  0)
+    call shift1(  tib, nxdim, nydim,  nic+1,  1.d0,  0,  0)
+    call shift1(  uib, nxdim, nydim,      1, -1.d0, -1, -1)
+    call shift1(  vib, nxdim, nydim,      1, -1.d0, -1, -1)
+    call shift1(   ft, nxdim, nydim,  ntdim,  1.d0,  0,  0)
+    call shift1(   fs, nxdim, nydim,      1,  1.d0,  0,  0)
+    call shift1(swabs, nxdim, nydim,      1,  1.d0,  0,  0)
+    call shift1( ptop, nxdim, nydim,      1,  1.d0,  0,  0)
+    call shift1( taux, nxdim, nydim,      1, -1.d0, -1, -1)
+    call shift1( tauy, nxdim, nydim,      1, -1.d0, -1, -1)
+    call shift_pack_end
+    call shift_unpack(   ub,  1)
+    call shift_unpack(   vb,  2)
+    call shift_unpack(   tb,  3)
+    call shift_unpack(  amv,  4)
+    call shift_unpack(    w,  5)
+    call shift_unpack(  ahv,  6)
+    call shift_unpack(   hb,  7)
+    call shift_unpack( ubtb,  8)
+    call shift_unpack( vbtb,  9)
+    call shift_unpack(   ab, 10)
+    call shift_unpack(  hib, 11)
+    call shift_unpack(  hsb, 12)
+    call shift_unpack(  tsi, 13)
+    call shift_unpack(  tib, 14)
+    call shift_unpack(  uib, 15)
+    call shift_unpack(  vib, 16)
+    call shift_unpack(   ft, 17)
+    call shift_unpack(   fs, 18)
+    call shift_unpack(swabs, 19)
+    call shift_unpack( ptop, 20)
+    call shift_unpack( taux, 21)
+    call shift_unpack( tauy, 22)
+
     !$acc kernels default(present)
     ab(1:nxdim,1:nydim,0) = 1.d0
     do k = 1, nic
