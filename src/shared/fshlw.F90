@@ -217,15 +217,9 @@ contains
 #endif
           !$acc enter data copyin(rght)
           !$acc enter data create(rghn)
-#ifdef OPT_TRIPOLE
-          call shift1(  rght,                                      &
-               &       nxdim,  nydim,      1,                      &
-               &        1.d0,      0,      0 )
-#else
-          call shift1(                                             &
-               &        rght,                                      &
-               &       nxdim,  nydim,      1)
-#endif
+
+          call shift1(rght, nxdim, nydim, 1, 1.d0, 0, 0)
+
           ksfr = ksfr + kstr-1
           pi = 4.d0 * atan(1.d0)
           lscale = pi / lscale
@@ -244,15 +238,7 @@ contains
           !$acc end kernels
           cfb = gravit / rhoo * 1.d-3
 
-#ifdef OPT_TRIPOLE
-          call shift1(  rghn,                                      &
-               &       nxdim,  nydim,      1,                      &
-               &        1.d0,      0,      0 )
-#else
-          call shift1(                                             &
-               &        rghn,                                      &
-               &       nxdim,  nydim,      1)
-#endif
+          call shift1(rghn, nxdim, nydim, 1, 1.d0, 0, 0)
        end if
        
        if ( lnovis ) then
@@ -307,17 +293,7 @@ contains
           call scatter_2d( amhmod, g2d )
           deallocate ( buf2, g2d )
 #endif
-
-#ifdef OPT_TRIPOLE
-          call shift1(amhmod,                                      &
-    &                  nxdim,  nydim,      1,                      &
-    &                   1.d0,      0,      0 )
-#else
-          call shift1(                                             &
-    &                 amhmod,                                      &
-    &                  nxdim,  nydim,      1)
-#endif
-          
+          call shift1(amhmod, nxdim, nydim, 1, 1.d0, 0, 0)
        end if ! iam
        end if ! lnovis
        !$acc enter data copyin(gh, amhmod)
@@ -691,15 +667,9 @@ contains
        bvf(ij) = min(bvfmax, max(0.d0, cfb * (rl-ru) * rzm(ij, k)))
        bvf(ij) = sqrt(bvf(ij))
     end do
-#ifdef OPT_TRIPOLE
-    call shift1(   bvf,                                      &
-    &            nxdim,  nydim,      1,                      &
-    &             1.d0,      0,      0 )
-#else
-    call shift1(                                             &
-    &              bvf,                                      &
-    &            nxdim,  nydim,      1)
-#endif
+
+    call shift1(bvf, nxdim, nydim, 1, 1.d0, 0, 0)
+
   end subroutine bvfreq
 
   SUBROUTINE TIDE(TIDEP)
