@@ -154,51 +154,16 @@ contains
   call mpi_read_2d_dimx( hyxt, mpi_fh, disp)
   call mpi_read_2d_dimx( hyxu, mpi_fh, disp)
 
-#ifdef OPT_TRIPOLE
-  call shift2(    dy,     dept,                                                &
-   &             nxdim,  nydim,      1,                                        &
-   &              1.d0,      0,      0 )
-  call shift3(   dym,    cor,  rdepv,                                          &
-   &             nxdim,  nydim,      1,                                        &
-   &              1.d0,     -1,     -1 )
-  call shift2(    dz,    dzm,                                                  &
-   &             nxdim,  nydim,  nzdim,                                        &
-   &              1.d0,      0,      0 )
-  call shift1(   dzv,                                                          &
-   &             nxdim,  nydim,  nzdim,                                        &
-   &              1.d0,     -1,     -1 )
-  call shift2(   hxt,    hyt,                                                  &
-   &             nxdim,  nydim,      1,                                        &
-   &              1.d0,      0,      0 )
-  call shift2(   hxu,    hyu,                                                  &
-   &             nxdim,  nydim,      1,                                        &
-   &              1.d0,     -1,     -1 )
-  call shift2(  hxyt,   hyxt,                                                  &
-   &             nxdim,  nydim,      1,                                        &
-   &             -1.d0,      0,      0 )
-  call shift2(  hxyu,   hyxu,                                                  &
-   &             nxdim,  nydim,      1,                                        &
-   &             -1.d0,     -1,     -1 )
-#else
-  call shift2(                                                                 &
-   &                dy,    dym,                                                &
-   &             nxdim,  nydim,      1)
-  call shift3(                                                                 &
-   &                dz,    dzm,    dzv,                                        &
-   &             nxdim,  nydim,  nzdim)
-  call shift3(                                                                 &
-   &               cor,   dept,  rdepv,                                        &
-   &             nxdim,  nydim,      1)
-  call shift3(                                                                 &
-   &               hxt,    hxu,    hyt,                                        &
-   &             nxdim,  nydim,      1)
-  call shift3(                                                                 &
-   &               hyu,   hxyt,   hxyu,                                        &
-   &             nxdim,  nydim,      1)
-  call shift2(                                                                 &
-   &              hyxt,   hyxu,                                                &
-   &             nxdim,  nydim,      1)
+  call shift2(  dy, dept,        nxdim, nydim,     1,  1.d0,  0,  0)
+  call shift3( dym,  cor, rdepv, nxdim, nydim,     1,  1.d0, -1, -1)
+  call shift2(  dz,  dzm,        nxdim, nydim, nzdim,  1.d0,  0,  0)
+  call shift1( dzv,              nxdim, nydim, nzdim,  1.d0, -1, -1)
+  call shift2( hxt,  hyt,        nxdim, nydim,     1,  1.d0,  0,  0)
+  call shift2( hxu,  hyu,        nxdim, nydim,     1,  1.d0, -1, -1)
+  call shift2(hxyt, hyxt,        nxdim, nydim,     1, -1.d0,  0,  0)
+  call shift2(hxyu, hyxu,        nxdim, nydim,     1, -1.d0, -1, -1)
 
+#ifndef OPT_TRIPOLE
   if (jup .eq. mpi_proc_null) then
      do j = jend+1, nydim
         do i = 1, nxdim
@@ -294,18 +259,9 @@ contains
   call mpi_read_3d_dimx(amskb, mpi_fh, disp)
 
 #ifdef OPT_TRIPOLE
-  call shift2(                                                                 &
-   &             amskt,  amftz,                                                &
-   &             nxdim,  nydim,  nzdim,                                        &
-   &              1.d0,      0,      0 )
-  call shift2(                                                                 &
-   &             amskv,  amfvz,                                                &
-   &             nxdim,  nydim,  nzdim,                                        &
-   &              1.d0,     -1,     -1 )
-  call shift1(                                                                 &
-   &             amskb,                                                        &
-   &             nxdim,  nydim,  nzdim,                                        &
-   &              1.d0,     -1,     -1 )
+  call shift2(amskt, amftz, nxdim, nydim, nzdim, 1.d0,  0,  0)
+  call shift2(amskv, amfvz, nxdim, nydim, nzdim, 1.d0, -1, -1)
+  call shift1(amskb,        nxdim, nydim, nzdim, 1.d0, -1, -1)
 
   call shft1i(                                                                 &
    &              nbot,                                                        &
@@ -315,16 +271,6 @@ contains
    &             nxdim,  nydim)
 
   if (jupe .ne. mpi_proc_null.or.jupw .ne. mpi_proc_null) then
-!      do j = jend+1, nydim
-!         do i = 2, nxdim
-!            ijw = (j - 1) * nxdim + i  - 1
-!            ij  = (j - 1) * nxdim + i
-!            do k=1,nzdim
-!               amftx(ij,k) = amskt(ij,k)*amskt(ijw,k)
-!     &                     * min(dz(ij,k),dz(ijw,k))
-!             enddo
-!         enddo
-!      enddo
   do j = jend+1, nydim
      do i = 1, nxdim
         ijs = (j - 2) * nxdim + i
@@ -335,51 +281,11 @@ contains
          enddo
      enddo
   enddo
-!      do j = jend+1, nydim-1
-!         do i = 2, nxdim
-!            ijn = j * nxdim + i
-!            ijw = (j - 1) * nxdim + i  - 1
-!            ij  = (j - 1) * nxdim + i
-!            do k= 1, kstr+kz-1
-!                amfvx(ij,k) = amskt(ij,k)*amskt(ijn,k)
-!            enddo
-!            do k=kstr+kz,nzdim
-!                amfvx(ij,k) = amskt(ij,k)*amskt(ijn,k)
-!     &                      * min(dzv(ij,k),dzv(ijw,k))
-!             enddo
-!         enddo
-!      enddo
-!      do j = jend+1, nydim
-!         do i = 1, nxdim-1
-!            ijs = (j - 2) * nxdim + i
-!            ije = (j - 1) * nxdim + i  + 1
-!            ij  = (j - 1) * nxdim + i
-!            do k= 1, kstr+kz-1
-!                amfvy(ij,k) = amskt(ij,k)*amskt(ije,k)
-!            enddo
-!            do k= kstr+kz,nzdim
-!                amfvy(ij,k) = amskt(ij,k)*amskt(ije,k)
-!     &                      * min(dzv(ij,k),dzv(ijs,k))
-!            enddo
-!         enddo
-!      enddo
   endif
-  call shift1(                                                                 &
-   &             amftx,                                                        &
-   &             nxdim,  nydim,  nzdim,                                        &
-   &             1.d0 ,      1,      0)
-  call shift1(                                                                 &
-   &             amfty,                                                        &
-   &             nxdim,  nydim,  nzdim,                                        &
-   &             1.d0 ,      0,      1)
-  call shift1(                                                                 &
-   &             amfvx,                                                        &
-   &             nxdim,  nydim,  nzdim,                                        &
-   &             1.d0 ,      0,     -1)
-  call shift1(                                                                 &
-   &             amfvy,                                                        &
-   &             nxdim,  nydim,  nzdim,                                        &
-   &             1.d0 ,     -1,      0)
+  call shift1(amftx, nxdim,  nydim,  nzdim, 1.d0,  1,  0)
+  call shift1(amfty, nxdim,  nydim,  nzdim, 1.d0,  0,  1)
+  call shift1(amfvx, nxdim,  nydim,  nzdim, 1.d0,  0, -1)
+  call shift1(amfvy, nxdim,  nydim,  nzdim, 1.d0, -1,  0)
 #else
   call shift3(                                                                 &
    &             amskt,  amskv,  amskb,                                        &
@@ -390,40 +296,20 @@ contains
   call shift3(                                                                 &
    &             amfvx,  amfvy,  amfvz,                                        &
    &             nxdim,  nydim,  nzdim)
-  call shft1i(                                                                 &
-   &              nbot,                                                        &
-   &             nxdim,  nydim)
+
+  call shft1i(nbot, nxdim, nydim)
 #endif
 
 #ifdef OPT_BBL
 #ifdef OPT_TRIPOLE
-  call shift3(                                                                 &
-   &            amsktb, amskt0, amskt1,                                        &
-   &             nxdim,  nydim,      1,                                        &
-   &              1.d0,      0,      0 )
-  call shift3(                                                                 &
-   &            amskvb, amskv0, amskv1,                                        &
-   &             nxdim,  nydim,      1,                                        &
-   &              1.d0,     -1,     -1 )
-  call shft1i(                                                                 &
-   &             nbotv,                                                        &
-   &             nxdim,  nydim)
-  call shftinv(                                                                &
-   &             nbotv,                                                        &
-   &             nxdim,  nydim)
-  call shft1i(                                                                 &
-   &             nbotv,                                                        &
-   &             nxdim,  nydim)
+  call shift3(amsktb, amskt0, amskt1, nxdim, nydim, 1, 1.d0,  0,  0)
+  call shift3(amskvb, amskv0, amskv1, nxdim, nydim, 1, 1.d0, -1, -1)
+
+  call shft1i( nbotv, nxdim, nydim)
+  call shftinv(nbotv, nxdim, nydim)
+  call shft1i( nbotv, nxdim, nydim)
 
   if (jupe .ne. mpi_proc_null.or.jupw .ne. mpi_proc_null) then
-!      do j = jend+1, nydim
-!         do i = 2, nxdim
-!            ijs = (j - 2) * nxdim + i
-!            ij  = (j - 1) * nxdim + i
-!            amftx(ij,kend) =  amsktb(ij)*amsktb(ijw)
-!     &                      * min(dz(ij,kend),dz(ijw,kend))
-!         enddo
-!      enddo
   do j = jend+1, nydim
      do i = 1, nxdim
         ijs = (j - 2) * nxdim + i
@@ -432,45 +318,14 @@ contains
    &                    * min(dz(ij,kend),dz(ijs,kend))
      enddo
   enddo
-!      do j = jend+1, nydim-1
-!         do i = 2, nxdim
-!            ijn = j * nxdim + i
-!            ijw = (j - 1) * nxdim + i  - 1
-!            ij  = (j - 1) * nxdim + i
-!            amfvx(ij,kend) =  amsktb(ij)*amsktb(ijn)
-!     &                      * min(dzv(ij,kend),dzv(ijw,kend))
-!         enddo
-!      enddo
-!      do j = jend+1, nydim
-!         do i = 1, nxdim-1
-!            ijs = (j - 2) * nxdim + i
-!            ije = (j - 1) * nxdim + i  + 1
-!            ij  = (j - 1) * nxdim + i
-!            amfvy(ij,kend) =  amsktb(ij)*amsktb(ije)
-!     &                      * min(dzv(ij,kend),dzv(ijs,kend))
-!         enddo
-!      enddo
   endif
-  call shift1(                                                                 &
-   &             amftx,                                                        &
-   &             nxdim,  nydim,  nzdim,                                        &
-   &             1.d0 ,      1,      0)
-  call shift1(                                                                 &
-   &             amfty,                                                        &
-   &             nxdim,  nydim,  nzdim,                                        &
-   &             1.d0 ,      0,      1)
-  call shift1(                                                                 &
-   &             amfvx,                                                        &
-   &             nxdim,  nydim,  nzdim,                                        &
-   &             1.d0 ,      0,     -1)
-  call shift1(                                                                 &
-   &             amfvy,                                                        &
-   &             nxdim,  nydim,  nzdim,                                        &
-   &             1.d0 ,     -1,      0)
+  call shift1(amftx, nxdim,  nydim,  nzdim, 1.d0,  1,  0)
+  call shift1(amfty, nxdim,  nydim,  nzdim, 1.d0,  0,  1)
+  call shift1(amfvx, nxdim,  nydim,  nzdim, 1.d0,  0, -1)
+  call shift1(amfvy, nxdim,  nydim,  nzdim, 1.d0, -1,  0)
 #else
-  call shft1i(                                                                 &
-   &             nbotv,                                                        &
-   &             nxdim,  nydim)
+  call shft1i( nbotv, nxdim,  nydim)
+
   call shift3(                                                                 &
    &            amsktb, amskt0, amskt1,                                        &
    &             nxdim,  nydim,      1)
@@ -485,16 +340,9 @@ contains
   call mpi_read_2d_dimx(glatt, mpi_fh, disp)
   call mpi_read_2d_dimx(rangt, mpi_fh, disp)
 
-#ifdef OPT_TRIPOLE
-  call shift3(                                                                 &
-   &           glont,  glatt,  rangt,                                          &
-   &           nxdim,  nydim,      1,                                          &
-   &            1.d0,      0,      0 )
-#else
-  call shift3(                                                                 &
-   &           glont,  glatt,  rangt,                                          &
-   &           nxdim,  nydim,      1)
-  
+  call shift3(glont, glatt, rangt, nxdim, nydim, 1, 1.d0, 0, 0)
+
+#ifndef OPT_TRIPOLE
   if (jup .eq. mpi_proc_null) then
      do j = jend+1, nydim
         do i = 1, nxdim
