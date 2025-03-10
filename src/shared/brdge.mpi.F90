@@ -258,17 +258,13 @@ contains
 #endif
   call mpi_read_3d_dimx(amskb, mpi_fh, disp)
 
-#ifdef OPT_TRIPOLE
   call shift2(amskt, amftz, nxdim, nydim, nzdim, 1.d0,  0,  0)
   call shift2(amskv, amfvz, nxdim, nydim, nzdim, 1.d0, -1, -1)
   call shift1(amskb,        nxdim, nydim, nzdim, 1.d0, -1, -1)
+  call shft1i( nbot, nxdim, nydim)
 
-  call shft1i(                                                                 &
-   &              nbot,                                                        &
-   &             nxdim,  nydim)
-  call shftint(                                                                &
-   &              nbot,                                                        &
-   &             nxdim,  nydim)
+#ifdef OPT_TRIPOLE
+  call shftint(nbot, nxdim, nydim)
 
   if (jupe .ne. mpi_proc_null.or.jupw .ne. mpi_proc_null) then
   do j = jend+1, nydim
@@ -282,30 +278,18 @@ contains
      enddo
   enddo
   endif
+#endif
   call shift1(amftx, nxdim,  nydim,  nzdim, 1.d0,  1,  0)
   call shift1(amfty, nxdim,  nydim,  nzdim, 1.d0,  0,  1)
   call shift1(amfvx, nxdim,  nydim,  nzdim, 1.d0,  0, -1)
   call shift1(amfvy, nxdim,  nydim,  nzdim, 1.d0, -1,  0)
-#else
-  call shift3(                                                                 &
-   &             amskt,  amskv,  amskb,                                        &
-   &             nxdim,  nydim,  nzdim)
-  call shift3(                                                                 &
-   &             amftx,  amfty,  amftz,                                        &
-   &             nxdim,  nydim,  nzdim)
-  call shift3(                                                                 &
-   &             amfvx,  amfvy,  amfvz,                                        &
-   &             nxdim,  nydim,  nzdim)
-
-  call shft1i(nbot, nxdim, nydim)
-#endif
 
 #ifdef OPT_BBL
-#ifdef OPT_TRIPOLE
   call shift3(amsktb, amskt0, amskt1, nxdim, nydim, 1, 1.d0,  0,  0)
   call shift3(amskvb, amskv0, amskv1, nxdim, nydim, 1, 1.d0, -1, -1)
-
   call shft1i( nbotv, nxdim, nydim)
+
+#ifdef OPT_TRIPOLE
   call shftinv(nbotv, nxdim, nydim)
   call shft1i( nbotv, nxdim, nydim)
 
@@ -323,15 +307,6 @@ contains
   call shift1(amfty, nxdim,  nydim,  nzdim, 1.d0,  0,  1)
   call shift1(amfvx, nxdim,  nydim,  nzdim, 1.d0,  0, -1)
   call shift1(amfvy, nxdim,  nydim,  nzdim, 1.d0, -1,  0)
-#else
-  call shft1i( nbotv, nxdim,  nydim)
-
-  call shift3(                                                                 &
-   &            amsktb, amskt0, amskt1,                                        &
-   &             nxdim,  nydim,      1)
-  call shift3(                                                                 &
-   &            amskvb, amskv0, amskv1,                                        &
-   &             nxdim,  nydim,      1)
 #endif
 #endif
 
