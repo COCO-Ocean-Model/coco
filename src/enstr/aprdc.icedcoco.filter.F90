@@ -141,7 +141,7 @@ contains
     end if
 
     if (ofinal) then
-       !$acc updete self(h1)
+       !$acc update self(h1)
        call finadd(h1, nxdim, nydim, 1, 'H1', 'SFC')
     end if
 
