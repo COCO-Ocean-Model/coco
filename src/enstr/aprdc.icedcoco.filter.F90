@@ -226,107 +226,86 @@ contains
     call clcend('BRCLI')
 ! *** barotropic flow and surface elevation ***
     call clcstr('BRTRO')
-    if (oinit .or. ofinal) then
-       call modgxy(   gxx,    gyy,                                    &
-    &                ubtx,   vbtx) 
-    else
-       if (ieuler == 2) then
-          !$acc kernels default(present)
-          do ij = 1, nxydim
-             hz   (ij) = hx   (ij)
-             htmp (ij) = hx   (ij)
-             ubtmp(ij) = ubtx (ij)
-             vbtmp(ij) = vbtx (ij)
-             hx   (ij) = hy   (ij)
-             ubtx (ij) = ubty (ij)
-             vbtx (ij) = vbty (ij)
-             hy   (ij) = htmp (ij)
-             ubty (ij) = ubtmp(ij)
-             vbty (ij) = vbtmp(ij)
-          end do
-          !$acc end kernels
-       else
-          !$acc kernels default(present)
-          do ij = 1, nxydim
-             hz(ij) = hx(ij)
-          end do
-          !$acc end kernels
+    if ( (.not. oinit) .and. (.not. ofinal) ) then
+       !$acc kernels default(present)
+       do ij = 1, nxydim
+          hz(ij) = hx(ij)
+       end do
+       !$acc end kernels
 
-          call modgxy(  gxx,    gyy,                                  &
-    &                  ubtx,   vbtx  )
+       call modgxy(  gxx,    gyy,                                  &
+    &               ubtx,   vbtx  )
+
+       call shift_pack_begin
+       call shift2(    gxx, gyy, nxdim, nydim, 1, -1.d0, -1, -1)
+       call shift1(ft(:,2),      nxdim, nydim, 1,  1.d0,  0,  0)
+       call shift_pack_end
+       call shift_unpack(    gxx, 1)
+       call shift_unpack(    gyy, 2)
+       call shift_unpack(ft(:,2), 3)
+          
+       nb = ntss * 2
+       !$acc kernels default(present)
+       ubtav (:) = 0.d0
+       vbtav (:) = 0.d0
+       ubtav2(:) = 0.d0
+       vbtav2(:) = 0.d0
+       hav   (:) = hx(:) / dble(nb+1)
+       !$acc end kernels
+          
+       do itsplt = 1, nb
+          !$acc kernels default(present)
+          htmp (:) = hx  (:)
+          ubtmp(:) = ubtx(:)
+          vbtmp(:) = vbtx(:)
+          !$acc end kernels
+          call shalow(                                             &
+    &                 htmp,  ubtmp,  vbtmp,                        &
+    &                   hx,   ubtx,   vbtx,                        &
+    &                  gxx,    gyy,   ptop,  ft(1,2))
 
           call shift_pack_begin
-          call shift2(    gxx, gyy, nxdim, nydim, 1, -1.d0, -1, -1)
-          call shift1(ft(:,2),      nxdim, nydim, 1,  1.d0,  0,  0)
+          call shift2(ubtmp, vbtmp, nxdim, nydim, 1, -1.d0, -1, -1)
+          call shift1( htmp,        nxdim, nydim, 1,  1.d0,  0,  0)
           call shift_pack_end
-          call shift_unpack(    gxx, 1)
-          call shift_unpack(    gyy, 2)
-          call shift_unpack(ft(:,2), 3)
-          
-          nb = ntss * 2
-          !$acc kernels default(present)
-          ubtav (:) = 0.d0
-          vbtav (:) = 0.d0
-          ubtav2(:) = 0.d0
-          vbtav2(:) = 0.d0
-          hav   (:) = hx(:) / dble(nb+1)
-          !$acc end kernels
-          
-          do itsplt = 1, nb
-             !$acc kernels default(present)
-             htmp (:) = hx  (:)
-             ubtmp(:) = ubtx(:)
-             vbtmp(:) = vbtx(:)
-             !$acc end kernels
-             call shalow(                                             &
-    &                    htmp,  ubtmp,  vbtmp,                        &
-    &                      hx,   ubtx,   vbtx,                        &
-    &                     gxx,    gyy,   ptop,  ft(1,2))
-
-             call shift_pack_begin
-             call shift2(ubtmp, vbtmp, nxdim, nydim, 1, -1.d0, -1, -1)
-             call shift1( htmp,        nxdim, nydim, 1,  1.d0,  0,  0)
-             call shift_pack_end
-             call shift_unpack(ubtmp, 1)
-             call shift_unpack(vbtmp, 2)
-             call shift_unpack( htmp, 3)
+          call shift_unpack(ubtmp, 1)
+          call shift_unpack(vbtmp, 2)
+          call shift_unpack( htmp, 3)
              
-             fact = 2.d0 * dble(nb-itsplt+1) / dble(nb * (nb+1))
-             !$acc kernels default(present)
-             ubtav (:) = ubtav (:) + ubtmp(:) * fact
-             vbtav (:) = vbtav (:) + vbtmp(:) * fact
-             ubtav2(:) = ubtav2(:) + ubtmp(:) / dble(nb)
-             vbtav2(:) = vbtav2(:) + vbtmp(:) / dble(nb)
-             !$acc end kernels
-             call shalow(                                             &
-    &                      hx,   ubtx,   vbtx,                        &
-    &                    htmp,  ubtmp,  vbtmp,                        &
-    &                     gxx,    gyy,   ptop,  ft(1,2))
+          fact = 2.d0 * dble(nb-itsplt+1) / dble(nb * (nb+1))
+          !$acc kernels default(present)
+          ubtav (:) = ubtav (:) + ubtmp(:) * fact
+          vbtav (:) = vbtav (:) + vbtmp(:) * fact
+          ubtav2(:) = ubtav2(:) + ubtmp(:) / dble(nb)
+          vbtav2(:) = vbtav2(:) + vbtmp(:) / dble(nb)
+          !$acc end kernels
+          call shalow(                                             &
+    &                   hx,   ubtx,   vbtx,                        &
+    &                 htmp,  ubtmp,  vbtmp,                        &
+    &                  gxx,    gyy,   ptop,  ft(1,2))
 
+          call shift_pack_begin
+          call shift2(ubtx, vbtx, nxdim, nydim, 1, -1.d0, -1, -1)
+          call shift1(  hx,       nxdim, nydim, 1,  1.d0,  0,  0)
+          call shift_pack_end
+          call shift_unpack(ubtx, 1)
+          call shift_unpack(vbtx, 2)
+          call shift_unpack(  hx, 3)
 
-             call shift_pack_begin
-             call shift2(ubtx, vbtx, nxdim, nydim, 1, -1.d0, -1, -1)
-             call shift1(  hx,       nxdim, nydim, 1,  1.d0,  0,  0)
-             call shift_pack_end
-             call shift_unpack(ubtx, 1)
-             call shift_unpack(vbtx, 2)
-             call shift_unpack(  hx, 3)
+          !$acc kernels default(present)
+          hav(:) = hav(:) + hx(:) / dble(nb+1)
+          !$acc end kernels
+       end do
 
-             !$acc kernels default(present)
-             hav(:) = hav(:) + hx(:) / dble(nb+1)
-             !$acc end kernels
-         end do
+       call shift_pack_begin
+       call shift2( ubtav,  vbtav, nxdim,  nydim, 1, -1.d0, -1, -1)
+       call shift2(ubtav2, vbtav2, nxdim,  nydim, 1, -1.d0, -1, -1)
+       call shift_pack_end
+       call shift_unpack( ubtav, 1)
+       call shift_unpack( vbtav, 2)
+       call shift_unpack(ubtav2, 3)
+       call shift_unpack(vbtav2, 4)
 
-         call shift_pack_begin
-         call shift2( ubtav,  vbtav, nxdim,  nydim, 1, -1.d0, -1, -1)
-         call shift2(ubtav2, vbtav2, nxdim,  nydim, 1, -1.d0, -1, -1)
-         call shift_pack_end
-         call shift_unpack( ubtav, 1)
-         call shift_unpack( vbtav, 2)
-         call shift_unpack(ubtav2, 3)
-         call shift_unpack(vbtav2, 4)
-
-       end if
        !$acc kernels default(present)
        hx  (:) = hav   (:)
        hxb (:) = hx    (:)
@@ -390,76 +369,64 @@ contains
        call shdiff(     tx,     hx)
        call ovturn(      r,     tx,     hx)
     else
-       if (ieuler == 2) then
-          !$acc kernels default(present)
-          do n = 1, ntdim
-             do ijk = 1, nxyzdm
-                gx(ijk)    = tx(ijk, n)
-                tx(ijk, n) = ty(ijk, n)
-                ty(ijk, n) = gx(ijk)
-             end do
-          end do
-          !$acc end kernels
-       else
-          call flxtrc(                                                &
+       call flxtrc(                                                   &
     &                   tmp,     xx,                                  &
     &                    tx,     hx,                                  &
     &                    ty,     hz,                                  &
     &                  uadv,   vadv,   wadv,                          &
     &                   ahv )
 #ifdef OPT_BBL
-          call flxtrb(                                                &
+       call flxtrb(                                                   &
     &                  tmp,     xx,                                   &
     &                   tx,                                           &
     &                   ty,                                           &
     &                 uadv,   vadv,   wadv,                           &
     &                  ahv)
-          call rmmskt
-          call admkt1
-          call stbbgt(  tmp,     xx)
+       call rmmskt
+       call admkt1
+       call stbbgt(  tmp,     xx)
 #endif
 #ifdef OPT_BODY
-          !$acc kernels default(present)
-          do n = 1, ntdim
-             do ijk = 1, nxyzdm
-                tmp(ijk, n) = tmp(ijk, n) + tq(ijk, n)
-             end do
+       !$acc kernels default(present)
+       do n = 1, ntdim
+          do ijk = 1, nxyzdm
+             tmp(ijk, n) = tmp(ijk, n) + tq(ijk, n)
           end do
-          !$acc end kernels
+       end do
+       !$acc end kernels
 #endif
-          call slvtrc(                                                &
+       call slvtrc(                                                   &
     &                   tx,     hx,                                   &
     &                  tmp,     xx,                                   &
     &                   ft,  swabs,     fs,     hz,   ssfc,           &
     &                   ax)
 
-          call shift_pack_begin
-          call shift1(tx, nxdim, nydim, nztdim, 1.d0, 0, 0)
-          call shift1(hx, nxdim, nydim,      1, 1.d0, 0, 0)
-          call shift_pack_end
-          call shift_unpack(tx, 1)
-          call shift_unpack(hx, 2)
+       call shift_pack_begin
+       call shift1(tx, nxdim, nydim, nztdim, 1.d0, 0, 0)
+       call shift1(hx, nxdim, nydim,      1, 1.d0, 0, 0)
+       call shift_pack_end
+       call shift_unpack(tx, 1)
+       call shift_unpack(hx, 2)
     
-          call shdiff(   tx,     hx)
-          call clcstr('TUNDIF')
-          call tundif(   tx,     hx)
-          call clcend('TUNDIF')
-          call ovturn(    r,     tx,     hx)
+       call shdiff(   tx,     hx)
+       call clcstr('TUNDIF')
+       call tundif(   tx,     hx)
+       call clcend('TUNDIF')
+       call ovturn(    r,     tx,     hx)
 #ifdef OPT_BBL
-          call stbbtr(   tx   )
+       call stbbtr(   tx   )
 #endif
 
-          call shift_pack_begin
-          call shift1( r, nxdim, nydim,  nzdim,  1.d0, 0, 0)
-          call shift1(tx, nxdim, nydim, nztdim,  1.d0, 0, 0)
-          call shift1(hx, nxdim, nydim,      1,  1.d0, 0, 0)
-          call shift_pack_end
-          call shift_unpack( r, 1)
-          call shift_unpack(tx, 2)
-          call shift_unpack(hx, 3)
+       call shift_pack_begin
+       call shift1( r, nxdim, nydim,  nzdim,  1.d0, 0, 0)
+       call shift1(tx, nxdim, nydim, nztdim,  1.d0, 0, 0)
+       call shift1(hx, nxdim, nydim,      1,  1.d0, 0, 0)
+       call shift_pack_end
+       call shift_unpack( r, 1)
+       call shift_unpack(tx, 2)
+       call shift_unpack(hx, 3)
 
-          call stbctr(    tx,      r)
-       end if
+       call stbctr(    tx,      r)
     end if
     call clcend('TRACE')
 ! *** velocity for momentum advection ***
