@@ -18,7 +18,7 @@ module fshlw
   implicit none
 
   private
-  public  ::  modgxy,  shalow,  bvfreq,  ttsp,  ubtwof,  vbtwof
+  public  ::  modgxy,  shalow,  bvfreq,  ttsp,  ubtwof,  vbtwof, lnovis, otide
 
   real(8),     save  ::    fux(nxydim),     fuy(nxydim)
   real(8),     save  ::    fvx(nxydim),     fvy(nxydim)
@@ -589,26 +589,26 @@ contains
     &         + (  (fux(ij+le) - fux(ij)) * rx * ryu(ij)             &
     &            + (fuy(ij+ln) - fuy(ij)) * rym(ij) * rxu(ij)) *     &
     &           rxu(ij) * ryu(ij)                                    &
-    &         - (  (  hy(ij+lne) + hy(ij+le)                         &
-    &               - hy(ij+ln ) - hy(ij   )) * gh(ij)               &
-    &            + (  ptop(ij+lne) + ptop(ij+le)                     &
-    &               - ptop(ij+ln ) - ptop(ij   ))                    &
+    &         - (  ( (hy(ij+lne)+hy(ij+le))                          &
+    &               -(hy(ij+ln )+hy(ij   )) ) * gh(ij)               &
+    &            + ( (ptop(ij+lne)+ptop(ij+le))                      &
+    &               -(ptop(ij+ln )+ptop(ij   )) )                    &
     &              / rdepv(ij) / rhoo                                &
-    &            + ( tidep(ij+lne) + tidep(ij+le)                    &
-    &              - tidep(ij+ln ) - tidep(ij   )) *alpha/ rdepv(ij) &
+    &            + ( (tidep(ij+lne)+tidep(ij+le))                    &
+    &              - (tidep(ij+ln )+tidep(ij   )) )*alpha/ rdepv(ij) &
     &           ) * 0.5d0 * rx * rxu(ij)                             &
     &         - abv(ij) * (ubtx(ij) - ubtwof(ij)) * rdepv(ij)
        gv(ij) = gyy(ij) - cor(ij) * ubtx(ij)                         &
     &         + (  (fvx(ij+le) - fvx(ij)) * rx * ryu(ij)             &
     &            + (fvy(ij+ln) - fvy(ij)) * rym(ij) * rxu(ij)) *     &
     &           rxu(ij) * ryu(ij)                                    &
-    &         - (  (  hy(ij+lne) + hy(ij+ln)                         &
-    &               - hy(ij+le ) - hy(ij   )) * gh(ij)               & 
-    &            + (  ptop(ij+lne) + ptop(ij+ln)                     &
-    &               - ptop(ij+le ) - ptop(ij   ))                    &
+    &         - (  ( (hy(ij+lne)+hy(ij+ln))                          &
+    &               -(hy(ij+le )+hy(ij   )) ) * gh(ij)               &
+    &            + ( (ptop(ij+lne)+ptop(ij+ln))                      &
+    &               -(ptop(ij+le )+ptop(ij   )) )                    &
     &              / rdepv(ij) / rhoo                                &
-    &            + ( tidep(ij+lne) + tidep(ij+ln)                    &
-    &              - tidep(ij+le ) - tidep(ij   )) *alpha/ rdepv(ij) &
+    &            + ( (tidep(ij+lne)+tidep(ij+ln))                    &
+    &              - (tidep(ij+le )+tidep(ij   )) )*alpha/ rdepv(ij) &
     &           ) * 0.5d0 * rym(ij) * ryu(ij)                        &
     &         - abv(ij) * (vbtx(ij) - vbtwof(ij)) * rdepv(ij)
     end do
