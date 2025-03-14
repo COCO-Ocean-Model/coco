@@ -264,14 +264,16 @@ contains
     &                   hx,   ubtx,   vbtx,                        &
     &                  gxx,    gyy,   ptop,  ft(1,2))
 
-          call shift_pack_begin
-          call shift2(ubtmp, vbtmp, nxdim, nydim, 1, -1.d0, -1, -1)
-          call shift1( htmp,        nxdim, nydim, 1,  1.d0,  0,  0)
-          call shift_pack_end
-          call shift_unpack(ubtmp, 1)
-          call shift_unpack(vbtmp, 2)
-          call shift_unpack( htmp, 3)
-             
+          if( (.not. lnovis) .or. otide) then
+             call shift_pack_begin
+             call shift2(ubtmp, vbtmp, nxdim, nydim, 1, -1.d0, -1, -1)
+             call shift1( htmp,        nxdim, nydim, 1,  1.d0,  0,  0)
+             call shift_pack_end
+             call shift_unpack(ubtmp, 1)
+             call shift_unpack(vbtmp, 2)
+             call shift_unpack( htmp, 3)
+          end if
+       
           fact = 2.d0 * dble(nb-itsplt+1) / dble(nb * (nb+1))
           !$acc kernels default(present)
           ubtav (:) = ubtav (:) + ubtmp(:) * fact
