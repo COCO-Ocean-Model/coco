@@ -110,7 +110,7 @@ contains
        call rewnml(ifpar, jfpar)
        write(jfpar,*)' ### packed_shift: exceed the limit of num_packed.'
        call mpi_abort(mpi_comm_ogcm, 1, ierr)
-    endif
+    end if
 
     num_packed = num_packed + 1
     k0 = koffset(num_packed)
@@ -118,9 +118,16 @@ contains
        call rewnml(ifpar, jfpar)
        write(jfpar,*)' ### packed_shift: exceed the limit of max_ksize.'
        call mpi_abort(mpi_comm_ogcm, 1, ierr)
-    endif
+    end if
+    koffset(num_packed + 1) = k0 + ksize
+#ifdef OPT_TRIPOLE
+    facts(num_packed) = fact2
+    ioffs(num_packed) = ioff2
+    joffs(num_packed) = joff2
+    !$acc update device(facts(num_packed:num_packed), ioffs(num_packed:num_packed), joffs(num_packed:num_packed)) async if(shift_gpu)
+#endif
 
-    !$acc kernels default(present) if(shift_gpu)
+    !$acc kernels default(present) async if(shift_gpu)
     do k = 1, ksize
        do j = 1, ny
           do i = 1, icomm
@@ -129,7 +136,9 @@ contains
           end do
        end do
     end do
+    !$acc end kernels
 
+    !$acc kernels default(present) async if(shift_gpu)
     do k = 1, ksize
        do j = 1, jcomm
           do i = istr, iend
@@ -139,11 +148,10 @@ contains
        end do
     end do
     !$acc end kernels
-    koffset(num_packed + 1) = k0 + ksize
 
 #ifdef OPT_TRIPOLE
+    !$acc kernels default(present) async if(shift_gpu)
     if (is_tri_edge) then
-       !$acc kernels default(present) if(shift_gpu)
        do k = 1, ksize
           do j = 1, jcomm - joff2
              do i = istr, iend
@@ -151,14 +159,10 @@ contains
              end do
           end do
        end do
-       !$acc end kernels
-    endif
-    !$acc kernels default(present) if(shift_gpu)
-    facts(num_packed) = fact2
-    ioffs(num_packed) = ioff2
-    joffs(num_packed) = joff2
+    end if
     !$acc end kernels
 #endif
+    !$acc wait
   end subroutine shift_pack
 
 !=======================================================================
@@ -166,17 +170,18 @@ contains
     integer :: nelems, koff
     
     if (.not. pack_mode) return
-    koff=koffset(num_packed + 1)
-    !$acc update device(koffset)
 
+    koff=koffset(num_packed + 1)
+    !$acc update device(koffset) async if(shift_gpu)
     nelems = icomm * ny * koff
     call shifts                         &
      &   (    nelems,    nelems,        &
      &     west_recv, east_recv,        &
      &     west_send, east_send,        &
                idown,       iup  )
-
-    !$acc kernels default(present) if(shift_gpu)
+    !$acc wait
+    
+    !$acc kernels default(present) async if(shift_gpu)
     do k = 1, koff
        do j = 1, jcomm
           do i = 1, icomm
@@ -190,16 +195,9 @@ contains
     end do
     !$acc end kernels
 
-    nelems = nxdim * jcomm * koff
-    call shifts                          &
-         &   (     nelems,     nelems,   &
-         &     south_recv, north_recv,   &
-         &     south_send, north_send,   &
-         &          jdown,        jup  )
-
 #ifdef OPT_TRIPOLE
+    !$acc kernels default(present) async if(shift_gpu)
     if (is_tri_edge) then
-       !$acc kernels default(present) if(shift_gpu)
        do n = 1, num_packed
           if (ioffs(n) .eq. -1) then
              do k = koffset(n) + 1, koffset(n + 1)
@@ -221,14 +219,27 @@ contains
                    end do
                 end do
              end do
-          endif
+          end if
        end do
-       !$acc end kernels
+    end if
+    !$acc end kernels
+#endif
+
+    !$acc wait
+    nelems = nxdim * jcomm * koff
+    call shifts                          &
+         &   (     nelems,     nelems,   &
+         &     south_recv, north_recv,   &
+         &     south_send, north_send,   &
+         &          jdown,        jup  )
+
+#ifdef OPT_TRIPOLE
+    if (is_tri_edge) then
        nelems = nxdim * (jcomm + 1) * koff
        call shift_tri_edge      &
             &      ( tri_recv,  &
             &        tri_send, nelems )
-    endif
+    end if
 #endif
     pack_mode = .false.
   end subroutine shift_pack_end
@@ -245,11 +256,11 @@ contains
     k0 = koffset(id)
     kpacked = koffset(id+1) - k0
 
-    !$acc kernels default(present) if(shift_gpu)
 #ifdef OPT_TRIPOLE
     ioff=ioffs(id)
     joff=joffs(id)
 #endif
+    !$acc kernels default(present) async if(shift_gpu)
     do k = 1, kpacked
        do j = 1, ny
           do i = 1, icomm
@@ -258,7 +269,9 @@ contains
           end do
        end do
     end do
+    !$acc end kernels
 
+    !$acc kernels default(present) async if(shift_gpu)
     if (jdown .ne. mpi_proc_null) then
        do k = 1, kpacked
           do j = 1, jcomm
@@ -268,7 +281,9 @@ contains
           end do
        end do
     end if
+    !$acc end kernels
 
+    !$acc kernels default(present) async if(shift_gpu)
     if (jup .ne. mpi_proc_null) then
        do k = 1, kpacked
           do j = 1, jcomm
@@ -279,28 +294,27 @@ contains
        end do
     end if
     !$acc end kernels
+    !$acc wait
 #ifdef OPT_TRIPOLE
     if (is_tri_edge) then
+       !$acc kernels default(present) async if(shift_gpu)
        if (joff .eq. -1 .and. jupw .ne. mpi_proc_null) then
           if (inodes .eq. 1) then
-             !$acc kernels default(present) if(shift_gpu)
              do k = 1, kpacked
                 do i = nxdim / 2 + 1, nxdim
                    q1(i,jend,k) = tri_recv(i,0,k0+k)
                 end do
              end do
-             !$acc end kernels
           else
-             !$acc kernels default(present) if(shift_gpu)
              do k = 1, kpacked
                 do i = 1, nxdim
                    q1(i,jend,k) = tri_recv(i,0,k0+k)
                 end do
              end do
-             !$acc end kernels
-          endif
-       endif
-       !$acc kernels default(present) if(shift_gpu)
+          end if
+       end if
+       !$acc end kernels
+       !$acc kernels default(present) async if(shift_gpu)
        do k = 1, kpacked
           do j = 1, jcomm
              do i = 1, nxdim
@@ -309,13 +323,13 @@ contains
           end do
        end do
        !$acc end kernels
-
+       !$acc wait
        if (ioff .eq. -1) then
           if (kpacked .gt. max_ksize0) then
              call rewnml(ifpar, jfpar)
              write(jfpar,*)' ### packed_shift: exceed the limit of max_ksize0.'
              call mpi_abort(mpi_comm_ogcm, 1, ierr)
-          endif
+          end if
           !$acc kernels default(present) if(shift_gpu)
           do k = 1, kpacked
              do j = 1, jcomm + 1
@@ -343,8 +357,8 @@ contains
              end do
           end do
           !$acc end kernels
-       endif
-    endif
+       end if
+    end if
 #endif
   end subroutine shift_unpack
 
@@ -369,14 +383,14 @@ contains
     else
        isrc  = jupw
        idest = jupw
-    endif
+    end if
 
     if (isrc .eq. myrank) then
        !$acc kernels default(present) if(shift_gpu)
        recvbuf(1:nelems) = sendbuf(1:nelems)
        !$acc end kernels
        return
-    endif
+    end if
 
     !$acc host_data use_device(sendbuf, recvbuf) if(shift_gpu)
     call mpi_sendrecv(sendbuf, nelems, mpi_double_precision,       &
