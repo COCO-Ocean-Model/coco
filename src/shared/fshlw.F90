@@ -13,12 +13,14 @@ module fshlw
 !     '12.06.29  H.Tatebe: for COCO5.0 in F90
 ! ---------------------------------------------------------------------
 
-  use zocdim,  only :  nxydim, nzdim, ntdim
-
+  use zocdim,  only :  nxydim, nzdim, ntdim, nxdim, nydim, nx, ny, istr, jstr, kstr
+#ifdef OPT_WIDE_BT_SHFT
+  use bt_shft, only :  nxydim_w
+#endif
   implicit none
 
   private
-  public  ::  modgxy,  shalow,  bvfreq,  ttsp,  ubtwof,  vbtwof, lnovis, otide
+  public  ::  modgxy,  shalow,  bvfreq,  ttsp,  ubtwof,  vbtwof, lnovis, otide, brtro_filt
 
   real(8),     save  ::    fux(nxydim),     fuy(nxydim)
   real(8),     save  ::    fvx(nxydim),     fvy(nxydim)
@@ -27,6 +29,16 @@ module fshlw
   real(8),     save  ::    sxx(nxydim),     syy(nxydim)
   real(8),     save  ::    sxy(nxydim),     syx(nxydim)
   real(8),     save  ::     gh(nxydim)
+
+#ifdef OPT_WIDE_BT_SHFT
+  real(8),     save  ::  amskt_w(nxydim_w), amskv_w(nxydim_w)
+  real(8),     save  ::     ry_w(nxydim_w),   rxt_w(nxydim_w),   ryt_w(nxydim_w)
+  real(8),     save  ::    rym_w(nxydim_w),   rxu_w(nxydim_w),   ryu_w(nxydim_w)
+  real(8),     save  ::    hxu_w(nxydim_w),   hyu_w(nxydim_w)
+  real(8),     save  ::    cor_w(nxydim_w), rdepv_w(nxydim_w)
+  real(8),     save  ::     gh_w(nxydim_w),   fhx_w(nxydim_w),   fhy_w(nxydim_w)
+  real(8),     save  ::     gu_w(nxydim_w),    gv_w(nxydim_w)
+#endif
 
   real(8),     save  :: amhmod(nxydim)
   real(8),     save  ::   accb,   acc
@@ -49,6 +61,452 @@ module fshlw
   real(8), save  ::  ttsp
 
 contains
+#ifdef OPT_WIDE_BT_SHFT
+  subroutine brtro_filt(gxx, gyy, fw, ptop,       &
+             &          ubtx, vbtx, hx,           &
+             &          ubtav, vbtav)
+    use zocgrd, only : ntss
+    use bshft
+
+    use bt_shft, only : &
+         bt_shift1, bt_shift2, bt_shift3, bt_shift_pack_begin, bt_shift_pack_end, bt_shift_unpack, &
+         istr_w, jstr_w, iend_w, jend_w, nxdim_w, nydim_w, ncomm
+
+    real(8), intent(inout) ::   gxx(nxdim, nydim),   gyy(nxdim, nydim), fw(nxdim, nydim)
+    real(8), intent(in)    ::  ptop(nxdim, nydim)
+    real(8), intent(inout) ::  ubtx(nxdim, nydim),  vbtx(nxdim, nydim), hx(nxdim, nydim)
+    real(8), intent(out)   :: ubtav(nxdim, nydim), vbtav(nxdim, nydim)
+
+    real(8) :: ubtav2(nxdim, nydim), vbtav2(nxdim, nydim),  hav(nxdim, nydim)
+    
+    real(8) ::   gxx_w(nxdim_w, nydim_w)
+    real(8) ::   gyy_w(nxdim_w, nydim_w)
+    real(8) ::    fw_w(nxdim_w, nydim_w)
+    real(8) ::  ptop_w(nxdim_w, nydim_w)
+
+    real(8) ::     h_w(nxdim_w, nydim_w)
+    real(8) ::   ubt_w(nxdim_w, nydim_w)
+    real(8) ::   vbt_w(nxdim_w, nydim_w)
+    real(8) ::  htmp_w(nxdim_w, nydim_w)
+    real(8) :: ubtmp_w(nxdim_w, nydim_w)
+    real(8) :: vbtmp_w(nxdim_w, nydim_w)
+
+    real(8) ::   fact
+    integer ::   i, j, nb, itsplt
+    logical,     save  ::  ofirst = .true.
+
+    if (ofirst) then
+       !$acc enter data create(ubtav2, vbtav2, hav)
+       !$acc enter data create(gxx_w, gyy_w, fw_w, ptop_w, h_w, ubt_w, vbt_w)
+       !$acc enter data create(htmp_w, ubtmp_w, vbtmp_w)
+    end if
+    
+    !$acc kernels default(present)
+    do j =1, nydim_w
+       do i =1, nxdim_w
+          gxx_w  (i,j)=0.d0
+          gyy_w  (i,j)=0.d0
+          ptop_w (i,j)=0.d0
+          fw_w   (i,j)=0.d0
+          h_w    (i,j)=0.d0
+          ubt_w  (i,j)=0.d0
+          vbt_w  (i,j)=0.d0
+       end do
+    end do
+    !$acc end kernels
+    
+    call modgxy_w(gxx, gyy, ubtx, vbtx)
+
+    !$acc kernels default(present)
+    do j =1, ny
+       do i =1, nx
+          gxx_w (i+istr_w-1, j+jstr_w-1) = gxx (i+istr-1, j+jstr-1)
+          gyy_w (i+istr_w-1, j+jstr_w-1) = gyy (i+istr-1, j+jstr-1)
+          fw_w  (i+istr_w-1, j+jstr_w-1) = fw  (i+istr-1, j+jstr-1)
+          ptop_w(i+istr_w-1, j+jstr_w-1) = ptop(i+istr-1, j+jstr-1)
+          h_w   (i+istr_w-1, j+jstr_w-1) = hx  (i+istr-1, j+jstr-1)
+          ubt_w (i+istr_w-1, j+jstr_w-1) = ubtx(i+istr-1, j+jstr-1)
+          vbt_w (i+istr_w-1, j+jstr_w-1) = vbtx(i+istr-1, j+jstr-1)
+       end do
+    end do
+    !$acc end kernels
+    
+    call bt_shift_pack_begin
+    call bt_shift2( gxx_w,  gyy_w,      nxdim_w, nydim_w, 1, -1.d0, -1, -1)
+    call bt_shift3(  fw_w, ptop_w, h_w, nxdim_w, nydim_w, 1,  1.d0,  0,  0)
+    call bt_shift2( ubt_w,  vbt_w,      nxdim_w, nydim_w, 1, -1.d0, -1, -1)
+    call bt_shift_pack_end
+    call bt_shift_unpack( gxx_w, 1)
+    call bt_shift_unpack( gyy_w, 2)
+    call bt_shift_unpack(  fw_w, 3)
+    call bt_shift_unpack(ptop_w, 4)
+    call bt_shift_unpack(   h_w, 5)
+    call bt_shift_unpack( ubt_w, 6)
+    call bt_shift_unpack( vbt_w, 7)
+    
+    nb = ntss * 2
+    !$acc kernels default(present)
+    do j = 1, nydim
+       do i = 1, nxdim
+          ubtav (i,j) = 0.d0
+          vbtav (i,j) = 0.d0
+          ubtav2(i,j) = 0.d0
+          vbtav2(i,j) = 0.d0
+          hav   (i,j) = hx(i,j) / dble(nb+1)
+       end do
+    end do
+    !$acc end kernels
+          
+    do itsplt = 1, nb
+       !$acc kernels default(present)
+       do j = 1, nydim_w
+          do i = 1, nxdim_w
+             htmp_w (i,j) = h_w  (i,j)
+             ubtmp_w(i,j) = ubt_w(i,j)
+             vbtmp_w(i,j) = vbt_w(i,j)
+          end do
+       end do
+       !$acc end kernels
+       call shalow_w(                                           &
+    &              htmp_w,  ubtmp_w,  vbtmp_w,                  &
+    &                 h_w,    ubt_w,    vbt_w,                  &
+    &               gxx_w,    gyy_w,   ptop_w,  fw_w)
+
+       call shalow_w(                                           &
+    &                 h_w,    ubt_w,    vbt_w,                  &
+    &              htmp_w,  ubtmp_w,  vbtmp_w,                  &
+    &               gxx_w,    gyy_w,   ptop_w,  fw_w)
+
+       if (mod(itsplt, ncomm/2) == 0) then
+          call bt_shift_pack_begin
+          call bt_shift2(ubt_w, vbt_w, nxdim_w, nydim_w, 1, -1.d0, -1, -1)
+          call bt_shift1(  h_w,        nxdim_w, nydim_w, 1,  1.d0,  0,  0)
+          call bt_shift_pack_end
+          call bt_shift_unpack(ubt_w, 1)
+          call bt_shift_unpack(vbt_w, 2)
+          call bt_shift_unpack(  h_w, 3)
+       end if
+       fact = 2.d0 * dble(nb-itsplt+1) / dble(nb * (nb+1))
+       !$acc kernels default(present)
+       do j = 1, ny
+          do i = 1, nx
+             ubtav (i+istr-1, j+jstr-1) = ubtav (i+istr-1, j+jstr-1) + ubtmp_w(i+istr_w-1, j+jstr_w-1) * fact
+             vbtav (i+istr-1, j+jstr-1) = vbtav (i+istr-1, j+jstr-1) + vbtmp_w(i+istr_w-1, j+jstr_w-1) * fact
+             ubtav2(i+istr-1, j+jstr-1) = ubtav2(i+istr-1, j+jstr-1) + ubtmp_w(i+istr_w-1, j+jstr_w-1) / dble(nb)
+             vbtav2(i+istr-1, j+jstr-1) = vbtav2(i+istr-1, j+jstr-1) + vbtmp_w(i+istr_w-1, j+jstr_w-1) / dble(nb)
+             hav   (i+istr-1, j+jstr-1) = hav   (i+istr-1, j+jstr-1) + h_w    (i+istr_w-1, j+jstr_w-1) / dble(nb+1)
+          end do
+       end do
+       !$acc end kernels
+    end do
+
+    call shift_pack_begin
+    call shift2( ubtav,  vbtav, nxdim,  nydim, 1, -1.d0, -1, -1)
+    call shift2(ubtav2, vbtav2, nxdim,  nydim, 1, -1.d0, -1, -1)
+    call shift1(   hav,         nxdim,  nydim, 1,  1.d0,  0,  0)
+    call shift_pack_end
+    call shift_unpack( ubtav, 1)
+    call shift_unpack( vbtav, 2)
+    call shift_unpack(ubtav2, 3)
+    call shift_unpack(vbtav2, 4)
+    call shift_unpack(   hav, 5)
+
+    !$acc kernels default(present)
+    do j = 1, nydim
+       do i = 1, nxdim
+          hx  (i,j) = hav   (i,j)
+          ubtx(i,j) = ubtav2(i,j)
+          vbtx(i,j) = vbtav2(i,j)
+       end do
+    end do
+    !$acc end kernels
+  end subroutine brtro_filt
+
+  subroutine modgxy_w(                                                &
+         &      gxx,    gyy,                                          &
+         &      ubtx,   vbtx  )
+
+    use zocphy,   only :  gravit, rhoo
+    use zocgrd,   only :  ry, rxt, ryt, rym, rxu, ryu, hxu, hyu, rdepv, cor
+    use bt_shft, only : bt_shift1, bt_shift2, bt_shift3, nxdim_w, nydim_w, nxydim_w, istr_w, jstr_w
+    use zocmsk,  only :  amskt,  amskv
+    use ufile
+    implicit none
+    real(8),   intent(in)  ::    gxx(nxydim),   gyy(nxydim)
+    real(8),   intent(in)  ::   ubtx(nxydim),  vbtx(nxydim)
+    logical,     save  ::  ofirst = .true.
+    integer(4)  ::  ifpar, jfpar, istat, ij, ij_w, i, j
+
+    namelist /nmaccb/ accb
+    namelist /nmaccv/ acc
+    namelist /nmnovis/ lnovis
+    namelist /nmtide/  otide
+    
+    if ( ofirst ) then
+       ofirst = .false.
+       call rewnml( ifpar, jfpar )
+       read( ifpar, nmaccb, iostat = istat ) 
+       call cstnml( jfpar, 'modgxy_w', 'nmaccb', istat )
+       write( jfpar, nmaccb )
+       call rewnml( ifpar, jfpar )
+       read( ifpar, nmaccv, iostat = istat ) 
+       call cstnml( jfpar, 'modgxy_w', 'nmaccv', istat )
+       write( jfpar, nmaccv )
+       call rewnml( ifpar, jfpar )
+       read( ifpar, nmnovis, iostat = istat )
+       call cstnml( jfpar, 'modgxy_w', 'nmnovis', istat )
+       write( jfpar, nmnovis )
+       call rewnml( ifpar, jfpar )
+       read( ifpar, nmtide, iostat = istat )
+       call cstnml( jfpar, 'modgxy_w', 'nmtide', istat )
+       write( jfpar, nmtide )
+
+       if( (.not. lnovis) .or. otide) then
+          write(jfpar,*) 'Error. OPT_WIDE_BT_SHFT is currently applicable ' &
+                       //'for lnovis=.ture.  and otide=.false. '
+          stop
+       end if
+
+       if ( accb <= 0.d0 ) then
+          accb = acc
+       end if
+       !$acc enter data create(amskt_w, amskv_w)
+       !$acc enter data create(ry_w, rxt_w, ryt_w)
+       !$acc enter data create(rym_w, rxu_w, ryu_w)
+       !$acc enter data create(hxu_w, hyu_w)
+       !$acc enter data create(cor_w, rdepv_w)
+       !$acc enter data create(gh_w, fhx_w, fhy_w)
+       !$acc enter data create(gu_w, gv_w)
+       
+       !$acc kernels default(present)
+       do ij = 1, nxydim_w
+          amskt_w(ij) = 0.d0
+          amskv_w(ij) = 0.d0
+          ry_w   (ij) = 0.d0
+          rxt_w  (ij) = 0.d0
+          ryt_w  (ij) = 0.d0
+          rym_w  (ij) = 0.d0
+          rxu_w  (ij) = 0.d0
+          ryu_w  (ij) = 0.d0
+          hxu_w  (ij) = 0.d0
+          hyu_w  (ij) = 0.d0
+          cor_w  (ij) = 1.d0
+          rdepv_w(ij) = 1.d0
+          gh_w   (ij) = 0.d0
+       end do
+       do j = 1, ny
+          do i = 1, nx
+             ij   = (i+ istr  -1)  + (j+jstr  -1 -1) *nxdim
+             ij_w = (i+ istr_w-1)  + (j+jstr_w-1 -1) *nxdim_w
+             amskt_w(ij_w) = amskt(ij, kstr)
+             amskv_w(ij_w) = amskv(ij, kstr)
+             ry_w   (ij_w) = ry   (ij)
+             rxt_w  (ij_w) = rxt  (ij)
+             ryt_w  (ij_w) = ryt  (ij)
+             rym_w  (ij_w) = rym  (ij)
+             rxu_w  (ij_w) = rxu  (ij)
+             ryu_w  (ij_w) = ryu  (ij)
+             hxu_w  (ij_w) = hxu  (ij)
+             hyu_w  (ij_w) = hyu  (ij)
+             cor_w  (ij_w) = cor  (ij)
+             rdepv_w(ij_w) = rdepv(ij)
+             gh_w   (ij_w) = gravit / rdepv(ij)
+          end do
+       end do
+       !$acc end kernels
+       call bt_shift1(amskt_w,               nxdim_w,  nydim_w, 1,  1.d0,  0,  0)
+       call bt_shift1(amskv_w,               nxdim_w,  nydim_w, 1,  1.d0, -1, -1)
+       call bt_shift3(  ry_w, rxt_w, ryt_w,  nxdim_w,  nydim_w, 1,  1.d0,  0,  0)
+       call bt_shift3( rym_w, rxu_w, ryu_w,  nxdim_w,  nydim_w, 1,  1.d0, -1, -1)
+       call bt_shift2( hxu_w, hyu_w,         nxdim_w,  nydim_w, 1,  1.d0, -1, -1)
+       call bt_shift3(cor_w, rdepv_w, gh_w,  nxdim_w,  nydim_w, 1,  1.d0, -1, -1)
+    end if
+  end subroutine modgxy_w
+
+  subroutine shalow_w(                                                &
+         &       hx,   ubtx,   vbtx,                                  &
+         &       hy,   ubty,   vbty,                                  &
+         &      gxx,    gyy,   ptop,    fw )
+
+    use zocphy,   only :  rhoo
+    use zocgrd,   only :  tss, rx 
+    use bt_shft, only :  nxydim_w, nxdim_w
+    implicit none
+ 
+    real(8),   intent(inout)  ::    hx(nxydim_w),  ubtx(nxydim_w),  vbtx(nxydim_w)
+    real(8),   intent(in)     ::    hy(nxydim_w),  ubty(nxydim_w),  vbty(nxydim_w)
+    real(8),   intent(in)     ::   gxx(nxydim_w),   gyy(nxydim_w)
+    real(8),   intent(in)     ::  ptop(nxydim_w),    fw(nxydim_w)
+
+    integer, parameter :: le = 1, lw = -1, ln = nxdim_w, ls = -nxdim_w
+    integer, parameter :: lne = nxdim_w+1, lsw = -nxdim_w-1
+
+    real(8)     ::     cf
+    integer(4)  ::     ij
+
+    !$acc kernels default(present)
+    do ij = 1, nxydim_w
+       fhx_w(ij) = 0.d0
+       fhy_w(ij) = 0.d0
+    end do
+
+    do ij = nxdim_w+2, nxydim_w
+       fhx_w(ij) = - (  ubty(ij+lw)  * hyu_w(ij+lw)                   &
+    &                 + ubty(ij+lsw) * hyu_w(ij+lsw)) * 0.5d0
+    end do
+
+    do ij = nxdim_w+2, nxydim_w
+       fhy_w(ij) = - (  vbty(ij+ls)  * hxu_w(ij+ls)                   &
+    &                 + vbty(ij+lsw) * hxu_w(ij+lsw)) * 0.5d0
+    end do
+
+    do ij = 1, nxydim_w - ln
+       hx(ij) = hx(ij)                                                &
+    &         + tss * (  (fhx_w(ij+le) - fhx_w(ij)) * rx              &
+    &                  + (fhy_w(ij+ln) - fhy_w(ij)) * ry_w(ij)) *     &
+    &           rxt_w(ij) * ryt_w(ij) * amskt_w(ij)                   &
+    &         - tss * fw(ij) * amskt_w(ij)
+    end do
+
+    do ij = 1, nxydim_w - lne
+       gu_w(ij) = gxx(ij) + cor_w(ij) * vbtx(ij)                     &
+    &         - (  ( (hy(ij+lne)+hy(ij+le))                          &
+    &               -(hy(ij+ln )+hy(ij   )) ) * gh_w(ij)             &
+    &            + ( (ptop(ij+lne)+ptop(ij+le))                      &
+    &               -(ptop(ij+ln )+ptop(ij   )) )                    &
+    &              / rdepv_w(ij) / rhoo                              &
+    &           ) * 0.5d0 * rx * rxu_w(ij)
+       gv_w(ij) = gyy(ij) - cor_w(ij) * ubtx(ij)                     &
+    &         - (  ( (hy(ij+lne)+hy(ij+ln))                          &
+    &               -(hy(ij+le )+hy(ij   )) ) * gh_w(ij)             &
+    &            + ( (ptop(ij+lne)+ptop(ij+ln))                      &
+    &               -(ptop(ij+le )+ptop(ij   )) )                    &
+    &              / rdepv_w(ij) / rhoo                              &
+    &           ) * 0.5d0 * rym_w(ij) * ryu_w(ij)
+    end do
+
+    do ij = 1, nxydim_w - lne
+       cf = cor_w(ij) * tss / accb * 0.5d0
+       ubtx(ij) = ubtx(ij)                                           &
+    &           + tss / accb / (1.d0 + cf * cf) *                    &
+    &             (gu_w(ij) + cf * gv_w(ij)) * amskv_w(ij)
+       vbtx(ij) = vbtx(ij)                                           &
+    &           + tss / accb / (1.d0 + cf * cf) *                    &
+    &             (gv_w(ij) - cf * gu_w(ij)) * amskv_w(ij)
+    end do
+    !$acc end kernels
+
+  end subroutine shalow_w
+
+#else
+  subroutine brtro_filt(gxx, gyy, fw, ptop,       &
+             &          ubtx, vbtx, hx,           &
+             &          ubtav, vbtav)
+    use zocgrd, only : ntss
+    use bshft
+    real(8), intent(inout) ::   gxx(nxydim),   gyy(nxydim), fw(nxydim)
+    real(8), intent(in)    ::   ptop(nxydim)
+    real(8), intent(inout) ::  ubtx(nxydim),  vbtx(nxydim), hx(nxydim)
+    real(8), intent(out)   :: ubtav(nxydim), vbtav(nxydim)
+
+    real(8) ::   htmp(nxydim),  ubtmp(nxydim), vbtmp(nxydim)
+    real(8) :: ubtav2(nxydim), vbtav2(nxydim),  hav(nxydim)
+    real(8) ::   fact
+    integer ::   ij, nb, itsplt
+    logical     :: ofirst=.true.
+
+    if (ofirst) then
+       !$acc enter data create(htmp, ubtmp, vbtmp)
+       !$acc enter data create(ubtav2, vbtav2, hav)
+    end if
+
+    call modgxy(gxx, gyy, ubtx, vbtx)
+
+    call shift_pack_begin
+    call shift2(gxx, gyy, nxdim, nydim, 1, -1.d0, -1, -1)
+    call shift1( fw,      nxdim, nydim, 1,  1.d0,  0,  0)
+    call shift_pack_end
+    call shift_unpack( gxx, 1)
+    call shift_unpack( gyy, 2)
+    call shift_unpack(  fw, 3)
+    
+    nb = ntss * 2
+    !$acc kernels default(present)
+    do ij = 1, nxydim
+       ubtav (ij) = 0.d0
+       vbtav (ij) = 0.d0
+       ubtav2(ij) = 0.d0
+       vbtav2(ij) = 0.d0
+       hav   (ij) = hx(ij) / dble(nb+1)
+    end do
+    !$acc end kernels
+          
+    do itsplt = 1, nb
+       !$acc kernels default(present)
+       do ij = 1, nxydim
+          htmp (ij) = hx  (ij)
+          ubtmp(ij) = ubtx(ij)
+          vbtmp(ij) = vbtx(ij)
+       end do
+       !$acc end kernels
+       call shalow(                                             &
+    &              htmp,  ubtmp,  vbtmp,                        &
+    &                hx,   ubtx,   vbtx,                        &
+    &               gxx,    gyy,   ptop,  fw)
+
+       if( (.not. lnovis) .or. otide) then
+          call shift_pack_begin
+          call shift2(ubtmp, vbtmp, nxdim, nydim, 1, -1.d0, -1, -1)
+          call shift1( htmp,        nxdim, nydim, 1,  1.d0,  0,  0)
+          call shift_pack_end
+          call shift_unpack(ubtmp, 1)
+          call shift_unpack(vbtmp, 2)
+          call shift_unpack( htmp, 3)
+       end if
+
+       call shalow(                                             &
+    &                hx,   ubtx,   vbtx,                        &
+    &              htmp,  ubtmp,  vbtmp,                        &
+    &               gxx,    gyy,   ptop,  fw)
+
+       call shift_pack_begin
+       call shift2(ubtx, vbtx, nxdim, nydim, 1, -1.d0, -1, -1)
+       call shift1(  hx,       nxdim, nydim, 1,  1.d0,  0,  0)
+       call shift_pack_end
+       call shift_unpack(ubtx, 1)
+       call shift_unpack(vbtx, 2)
+       call shift_unpack(  hx, 3)
+
+       fact = 2.d0 * dble(nb-itsplt+1) / dble(nb * (nb+1))
+       !$acc kernels default(present)
+       do ij = 1, nxydim
+          ubtav (ij) = ubtav (ij) + ubtmp(ij) * fact
+          vbtav (ij) = vbtav (ij) + vbtmp(ij) * fact
+          ubtav2(ij) = ubtav2(ij) + ubtmp(ij) / dble(nb)
+          vbtav2(ij) = vbtav2(ij) + vbtmp(ij) / dble(nb)
+          hav   (ij) = hav   (ij) + hx   (ij) / dble(nb+1)
+       end do
+       !$acc end kernels
+    end do
+
+    call shift_pack_begin
+    call shift2( ubtav,  vbtav, nxdim,  nydim, 1, -1.d0, -1, -1)
+    call shift2(ubtav2, vbtav2, nxdim,  nydim, 1, -1.d0, -1, -1)
+    call shift_pack_end
+    call shift_unpack( ubtav, 1)
+    call shift_unpack( vbtav, 2)
+    call shift_unpack(ubtav2, 3)
+    call shift_unpack(vbtav2, 4)
+
+    !$acc kernels default(present)
+    do ij = 1, nxydim
+       hx  (ij) = hav   (ij)
+       ubtx(ij) = ubtav2(ij)
+       vbtx(ij) = vbtav2(ij)
+    end do
+    !$acc end kernels
+  end subroutine brtro_filt
+#endif
 
   subroutine modgxy(                                                  &
          &      gxx,    gyy,                                          &

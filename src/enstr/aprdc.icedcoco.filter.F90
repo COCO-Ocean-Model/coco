@@ -21,17 +21,12 @@ module aprdc
 
   real(8)        ::    tmp(nxyzdm, ntdim)
   real(8)        ::     hz(nxydim)
-  real(8)        ::   htmp(nxydim),  ubtmp(nxydim),  vbtmp(nxydim)
   real(8), save  ::  ubtav(nxydim),  vbtav(nxydim)
 
   real(8)        ::    fux(nxyzdm),   fvx(nxyzdm)
   real(8)        ::    fuy(nxyzdm),   fvy(nxyzdm)
   real(8)        ::   fune(nxyzdm),  fvne(nxyzdm)
   real(8)        ::   fuse(nxyzdm),  fvse(nxyzdm)
-
-  real(8), save  :: ubtav2(nxydim), vbtav2(nxydim),    hav(nxydim)
-  real(8)        ::   fact
-  integer        ::     nb
 
   public  ::  predco
 
@@ -106,7 +101,7 @@ contains
 !---- local variables
     real(8)     ::    hxb(nxydim)
     real(8), save ::   h1(nxydim) 
-    integer(4)  ::  itsplt,     ij,    ijk,      n
+    integer(4)  ::     ij,    ijk,      n
     logical     ::    oeof
 
     if (       ( myrank >= ijnode )                                   &
@@ -115,13 +110,11 @@ contains
     if(oinit) then
     !$acc enter data create(   tmp)
     !$acc enter data create(    hz)
-    !$acc enter data create(  htmp,  ubtmp,  vbtmp)
     !$acc enter data create( ubtav,  vbtav)
     !$acc enter data create(   fux,   fvx)
     !$acc enter data create(   fuy,   fvy)
     !$acc enter data create(  fune,  fvne)
     !$acc enter data create(  fuse,  fvse)
-    !$acc enter data create( ubtav2, vbtav2,    hav)
     !$acc enter data create( hxb, h1)
        
 #ifdef OPT_TRIPOLE
@@ -233,87 +226,15 @@ contains
        end do
        !$acc end kernels
 
-       call modgxy(  gxx,    gyy,                                  &
-    &               ubtx,   vbtx  )
+       call brtro_filt(gxx, gyy, ft(:,2), ptop, &
+       &               ubtx, vbtx, hx,          &
+       &               ubtav, vbtav)
 
-       call shift_pack_begin
-       call shift2(    gxx, gyy, nxdim, nydim, 1, -1.d0, -1, -1)
-       call shift1(ft(:,2),      nxdim, nydim, 1,  1.d0,  0,  0)
-       call shift_pack_end
-       call shift_unpack(    gxx, 1)
-       call shift_unpack(    gyy, 2)
-       call shift_unpack(ft(:,2), 3)
-          
-       nb = ntss * 2
        !$acc kernels default(present)
-       ubtav (:) = 0.d0
-       vbtav (:) = 0.d0
-       ubtav2(:) = 0.d0
-       vbtav2(:) = 0.d0
-       hav   (:) = hx(:) / dble(nb+1)
-       !$acc end kernels
-          
-       do itsplt = 1, nb
-          !$acc kernels default(present)
-          htmp (:) = hx  (:)
-          ubtmp(:) = ubtx(:)
-          vbtmp(:) = vbtx(:)
-          !$acc end kernels
-          call shalow(                                             &
-    &                 htmp,  ubtmp,  vbtmp,                        &
-    &                   hx,   ubtx,   vbtx,                        &
-    &                  gxx,    gyy,   ptop,  ft(1,2))
-
-          if( (.not. lnovis) .or. otide) then
-             call shift_pack_begin
-             call shift2(ubtmp, vbtmp, nxdim, nydim, 1, -1.d0, -1, -1)
-             call shift1( htmp,        nxdim, nydim, 1,  1.d0,  0,  0)
-             call shift_pack_end
-             call shift_unpack(ubtmp, 1)
-             call shift_unpack(vbtmp, 2)
-             call shift_unpack( htmp, 3)
-          end if
-       
-          fact = 2.d0 * dble(nb-itsplt+1) / dble(nb * (nb+1))
-          !$acc kernels default(present)
-          ubtav (:) = ubtav (:) + ubtmp(:) * fact
-          vbtav (:) = vbtav (:) + vbtmp(:) * fact
-          ubtav2(:) = ubtav2(:) + ubtmp(:) / dble(nb)
-          vbtav2(:) = vbtav2(:) + vbtmp(:) / dble(nb)
-          !$acc end kernels
-          call shalow(                                             &
-    &                   hx,   ubtx,   vbtx,                        &
-    &                 htmp,  ubtmp,  vbtmp,                        &
-    &                  gxx,    gyy,   ptop,  ft(1,2))
-
-          call shift_pack_begin
-          call shift2(ubtx, vbtx, nxdim, nydim, 1, -1.d0, -1, -1)
-          call shift1(  hx,       nxdim, nydim, 1,  1.d0,  0,  0)
-          call shift_pack_end
-          call shift_unpack(ubtx, 1)
-          call shift_unpack(vbtx, 2)
-          call shift_unpack(  hx, 3)
-
-          !$acc kernels default(present)
-          hav(:) = hav(:) + hx(:) / dble(nb+1)
-          !$acc end kernels
+       do ij = 1, nxydim
+          hxb (ij) = hx    (ij)
+          h1  (ij) = 0.5d0 * (hz(ij) + hx(ij))
        end do
-
-       call shift_pack_begin
-       call shift2( ubtav,  vbtav, nxdim,  nydim, 1, -1.d0, -1, -1)
-       call shift2(ubtav2, vbtav2, nxdim,  nydim, 1, -1.d0, -1, -1)
-       call shift_pack_end
-       call shift_unpack( ubtav, 1)
-       call shift_unpack( vbtav, 2)
-       call shift_unpack(ubtav2, 3)
-       call shift_unpack(vbtav2, 4)
-
-       !$acc kernels default(present)
-       hx  (:) = hav   (:)
-       hxb (:) = hx    (:)
-       ubtx(:) = ubtav2(:)
-       vbtx(:) = vbtav2(:)
-       h1  (:) = 0.5d0 * (hz(:) + hx(:))
        !$acc end kernels
     end if
     call clcend('BRTRO')
