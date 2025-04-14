@@ -22,7 +22,7 @@ module bt_shft
 
 !  [internal save]
 #ifdef OPT_WIDE_BT_SHFT
-  integer, parameter :: ncomm=16
+  integer, parameter :: ncomm=40
   integer, parameter :: icomm=ncomm, jcomm=ncomm
   integer, parameter :: istr=icomm+1, jstr=jcomm+1
   integer, parameter :: nxdim = nx + 2*icomm

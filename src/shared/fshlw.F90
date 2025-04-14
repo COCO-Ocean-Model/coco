@@ -228,7 +228,7 @@ contains
 
     use zocphy,   only :  gravit, rhoo
     use zocgrd,   only :  ry, rxt, ryt, rym, rxu, ryu, hxu, hyu, rdepv, cor
-    use bt_shft, only : bt_shift1, bt_shift2, bt_shift3, nxdim_w, nydim_w, nxydim_w, istr_w, jstr_w
+    use bt_shft, only : bt_shift1, bt_shift2, bt_shift3, nxdim_w, nydim_w, nxydim_w, istr_w, jstr_w, ncomm
     use zocmsk,  only :  amskt,  amskv
     use ufile
     implicit none
@@ -261,6 +261,10 @@ contains
        call cstnml( jfpar, 'modgxy_w', 'nmtide', istat )
        write( jfpar, nmtide )
 
+       if (ncomm > min(nx,ny)) then
+          write(jfpar,*) 'Error. ncomm should be <= min(nx,ny)'
+          stop
+       end if
        if( (.not. lnovis) .or. otide) then
           write(jfpar,*) 'Error. OPT_WIDE_BT_SHFT is currently applicable ' &
                        //'for lnovis=.ture.  and otide=.false. '
