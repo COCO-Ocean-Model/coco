@@ -348,7 +348,7 @@ contains
     real(8)     ::     cf
     integer(4)  ::     ij
 
-    !$acc kernels default(present)
+    !$acc kernels default(present) async
     do ij = 1, nxydim_w
        fhx_w(ij) = 0.d0
        fhy_w(ij) = 0.d0
@@ -371,7 +371,9 @@ contains
     &           rxt_w(ij) * ryt_w(ij) * amskt_w(ij)                   &
     &         - tss * fw(ij) * amskt_w(ij)
     end do
+    !$acc end kernels
 
+    !$acc kernels default(present) async
     do ij = 1, nxydim_w - lne
        gu_w(ij) = gxx(ij) + cor_w(ij) * vbtx(ij)                     &
     &         - (  ( (hy(ij+lne)+hy(ij+le))                          &
@@ -399,7 +401,7 @@ contains
     &             (gv_w(ij) - cf * gu_w(ij)) * amskv_w(ij)
     end do
     !$acc end kernels
-
+    !$acc wait
   end subroutine shalow_w
 
 #else
