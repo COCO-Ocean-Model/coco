@@ -51,8 +51,15 @@ subroutine chksfx
   real(8) :: ofithm(nxydim), ofhfds(nxydim)
   real(8) :: ofvsfc(nxydim), ofsfdi(nxydim)
   integer ::     ij
+  logical, save :: of=.true.
 
-  call acc_enter_data  
+  call acc_enter_data
+  if (of) then
+     of=.false.
+     !$acc enter data create(ofithm, ofhfds, ofvsfc, ofsfdi)
+  end if
+
+  !$acc kernels default(present)
   do ij = 1, nxydim
 !    OFITHM: calculated by residual, not from OFWIWS,
 !            because ice-related FW is also added in ICTRNS
@@ -69,6 +76,7 @@ subroutine chksfx
      ofvsfc(ij) = 1.0d-3 * rhoo * ofsrst(ij) * amskt(ij, kstr)
      ofsfdi(ij) = 1.0d-3 * rhoo * ofsocn(ij) * amskt(ij, kstr)
   end do
+  !$acc end kernels
   
   call chekin( ofprec, 'OFPREC', &
     &          'Precipitation entering into the ocean', 'cm/s', &
@@ -237,12 +245,13 @@ subroutine cofptu( &
   integer ::     ij
 
   call acc_enter_data
+  !$acc kernels default(present)
   do ij = 1, nxydim
 !    fluxes are positive when entering the ocean (i.e., downward)
      oftaux(ij) = taux(ij) * amskv(ij, kstr)
      oftauy(ij) = tauy(ij) * amskv(ij, kstr)
   end do
-
+  !$acc end kernels
   return
 end subroutine cofptu
 ! =====================================================================
