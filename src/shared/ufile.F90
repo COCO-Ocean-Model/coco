@@ -19,7 +19,7 @@ module ufile
 #ifdef OPT_IO_COCOMPI
  & mpi_filopn, mpi_filcls, mpi_filcls_all, &
 #endif
- & filopn, filcls, rewnml, cstnml
+ & filopn, filcls, rewnml, cstnml, stop_msg
 
 
  logical, save   ::  opn(nfmax)
@@ -199,4 +199,19 @@ contains
 
  return
  end subroutine cstnml
+
+ subroutine stop_msg(cmsg, cfil, line)
+   implicit none
+   character(len=*), intent(in) :: cmsg, cfil
+   integer,          intent(in) :: line
+   integer :: ifpar, jfpar
+
+   call rewnml(ifpar, jfpar)
+   write(jfpar,'(a)')'===================================================='
+   write(jfpar,'(a,i4,a)')'program stopped at line ', line, ' of '//cfil
+   write(jfpar,'(a)')cmsg
+   write(jfpar,'(a)')'===================================================='
+   stop
+
+ end subroutine stop_msg
 end module ufile
