@@ -107,7 +107,6 @@ contains
     integer, save :: ibnext(1:6)
     integer, save ::  nbcnt
     integer, save ::    nbt = 25, iobint = 1, iubint = 4
-    logical, save ::  otide = .false.
 
     integer  :: itstrt(1:6), itend(1:6), iutstp, ntsplt
     real(8)  ::  tmstp
