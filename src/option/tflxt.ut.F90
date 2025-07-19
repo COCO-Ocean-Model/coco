@@ -39,6 +39,8 @@ module tflxt
     &   nbot
   use zocphy, only: &
     & gravit,   rhoo
+  use zocfil, only: &
+    &    ncf
 
   implicit none
   private
@@ -55,19 +57,38 @@ module tflxt
 
 contains 
 
-subroutine flxtrc( &
+subroutine flxtrc(  &
   &    adt,  diffz, &
-  &     tx,     hx,     ty,     hz, &
+  &     tx,     hx, &
+#ifndef OPT_OFFLINE
+  &     ty,     hz, &
+#else
+  &     hz,     hc, &
+#endif
   &     uy,     vy,      w,    ahv )
 
+  use bstbc
   use ufile
+#ifdef OPT_IO_COCOMPI
+  use mpiio
+#else
+  use bgs3d
+#endif
   use qckot
+  use bshft
+#include "mpif.h"
 
   real(8), intent(out) ::    adt(nxydim, nzdim, ntdim)    
   real(8), intent(out) ::  diffz(nxydim, nzdim)
   real(8), intent(in)  ::     tx(nxydim, nzdim, ntdim)
-  real(8), intent(in)  ::     ty(nxydim, nzdim, ntdim)
-  real(8), intent(in)  ::     hx(nxydim),     hz(nxydim)
+  real(8), intent(in)     ::     hx(nxydim)
+#ifdef OPT_OFFLINE
+  real(8)                 ::     ty(nxydim, nzdim, ntdim)
+  real(8), intent(in)     ::     hc(nxydim)
+#else  
+  real(8), intent(in)     ::     ty(nxydim, nzdim, ntdim)
+#endif  
+  real(8), intent(in)     ::     hz(nxydim)
   real(8), intent(in)  ::     uy(nxydim, nzdim),     vy(nxydim, nzdim)
   real(8), intent(in)  ::      w(nxydim, nzdim),    ahv(nxydim, nzdim)
 
@@ -122,6 +143,39 @@ subroutine flxtrc( &
   namelist /nmdifi/ ahi
   namelist /nmdifg/ ahg
 
+! ---- spatially varying isopycnal diffusion coefficient
+  real(8), save ::   ahh3d(nxydim, nzdim),  ahi3d(nxydim, nzdim)
+  real(8), save ::   ahg3d(nxydim, nzdim) 
+
+!---- 
+#ifdef OPT_IO_COCOMPI
+ integer :: mpi_fh
+ integer :: icread
+ integer (kind = mpi_offset_kind) :: disp
+#else
+  real(8) ::  buf3(nxg, nyg, nz)
+  real(8) ::  g3d(nxgdim, nygdim, nzdim)
+#endif
+
+!---- file name of isotropic diffusion and thickness diffusion
+  character(len=ncf) ::  cfahi = 'not-specified'
+  character(len=ncf) ::  cfahg = 'not-specified'
+  character(len= 16) ::  chead(64) 
+  integer :: iah = 0
+  integer :: nfahi, nfahg
+  namelist /nmcah/ cfahi, cfahg, iah
+
+!---- latitudinally varying GM diffusivity
+  integer, save ::  isvgm = -1
+  real(8), save ::  ahgno = 1.d7, nlats =  40.d0, nlatn =  50.d0
+  real(8), save ::  ahgso = 1.d7, slatn = -40.d0, slats = -50.d0
+  real(8) :: pi, lat
+  real(8) :: cort, omega
+
+  namelist /nmsvgm/ isvgm
+  namelist /nmdifn/ ahgno, nlats, nlatn
+  namelist /nmdifs/ ahgso, slatn, slats
+
   if (oinit .or. ofinal) then
      return
   end if
@@ -145,6 +199,144 @@ subroutine flxtrc( &
      call cstnml(jfpar, 'flxtrc', 'nmdifg', istat)
      write(jfpar, nmdifg)
 
+!---- 
+     call rewnml(ifpar, jfpar)
+     read(ifpar, nmcah, iostat=istat)
+     call cstnml(jfpar, 'flxtrc', 'nmcah', istat)
+     write(jfpar, nmcah)
+     call rewnml(ifpar, jfpar)
+     read(ifpar, nmsvgm, iostat=istat)
+     call cstnml(jfpar, 'flxtrc', 'nmsvgm', istat)
+     write(jfpar, nmsvgm)
+     call rewnml(ifpar, jfpar)
+     read(ifpar, nmdifn, iostat=istat)
+     call cstnml(jfpar, 'flxtrc', 'nmdifn', istat)
+     write(jfpar, nmdifn)
+     call rewnml(ifpar, jfpar)
+     read(ifpar, nmdifs, iostat=istat)
+     call cstnml(jfpar, 'flxtrc', 'nmdifs', istat)
+     write(jfpar, nmdifs)
+
+     if ( iah .eq. 0 ) then
+
+        write(jfpar, *) 'Background horizontal diffusion :', ahh
+        write(jfpar, *) 'Isopycnal diffusion             :', ahi
+        write(jfpar, *) 'G-M thickness diffusion         :', ahg
+
+        do k = 1, nzdim
+           do ij = 1, nxydim
+              ahi3d(ij, k) = ahi
+              ahg3d(ij, k) = ahg
+              ahh3d(ij, k) = ahh
+           end do
+        end do
+
+        if ( isvgm > 0 ) then
+           write(jfpar, *) 'latitudinally varying GM diffusivity is used.'
+           pi = atan( 1.d0 )*4.d0
+           omega = 2.d0 * pi / 86400.d0
+           do ij = ijstr, ijend
+              cort = (cor(ij) + cor(ij+lw) + cor(ij+lsw) + cor(ij+ls)) * 0.25d0
+              lat = asin( cort * 0.5d0 / omega ) * 180.d0 / pi
+              if (lat .ge. slatn .and. lat .le. nlats) then
+                 ahg3d(ij, :) = ahg
+              else if (lat .ge. slats .and. lat .lt. slatn) then
+                 ahg3d(ij, :) = (ahgso * (slatn - lat) + &
+                      &            ahg * (lat - slats)) / (slatn - slats)
+              else if (lat .gt. nlats .and. lat .le. nlatn) then
+                 ahg3d(ij, :) = (ahgno * (lat - nlats) + &
+                      &            ahg * (nlatn - lat)) / (nlatn - nlats)
+              else if (lat .le. slats) then
+                 ahg3d(ij, :) = ahgso
+              else
+                 ahg3d(ij, :) = ahgno
+              endif
+           end do
+        end if
+
+     else
+
+        do k = 1, nzdim
+           do ij = 1, nxydim
+              ahh3d(ij, k) = ahh
+           end do
+        end do
+
+        write(jfpar, *) '  file name of ahi: ', cfahi
+        write(jfpar, *) '  file name of ahg: ', cfahg
+
+!       ---- reading diffusion coefficient
+#ifdef OPT_IO_COCOMPI
+!---- ahi                                                                                                                                        
+        call mpi_filopn(mpi_fh, cfahi, 'READ')
+        disp=0
+        call mpi_read_chead(chead, mpi_fh, disp, icread)
+        call mpi_read_3d(ahi3d, mpi_fh  , disp)
+        call mpi_filcls(mpi_fh)
+
+!---- ahg                                                                                                                                        
+        call mpi_filopn(mpi_fh, cfahg, 'READ')
+        disp=0
+        call mpi_read_chead(chead, mpi_fh, disp, icread)
+        call mpi_read_3d(ahg3d, mpi_fh  , disp)
+        call mpi_filcls(mpi_fh)
+#else
+!       ---- ahi
+        if ( myrank .eq. iroot ) then
+
+           call filopn( nfahi, cfahi, 'READ' )
+           rewind( nfahi )
+           read( nfahi ) chead
+           read( nfahi ) buf3
+
+           do k = 1, nz
+              do j = 1, nyg
+                 do i = 1, nxg
+
+                    g3d(igstr+i-1, jgstr+j-1, kstr+k-1) = buf3(i, j, k )
+
+                 end do
+              end do
+           end do
+           call filcls( nfahi )
+
+        end if
+        call scatter_3d( ahi3d, g3d )
+
+!       ---- ahg
+        if ( myrank .eq. iroot ) then
+
+           call filopn( nfahg, cfahg, 'READ' )
+           rewind( nfahg )
+           read( nfahg ) chead
+           read( nfahg ) buf3
+
+           do k = 1, nz
+              do j = 1, nyg
+                 do i = 1, nxg
+
+                    g3d(igstr+i-1, jgstr+j-1, kstr+k-1) = buf3(i, j, k )
+
+                 end do
+              end do
+           end do
+           call filcls( nfahg )
+
+        end if
+        call scatter_3d( ahg3d, g3d )
+#endif
+     end if
+
+#ifdef OPT_TRIPOLE
+     call shift2( ahi3d,  ahg3d, &
+          &       nxdim,  nydim,  nzdim, &
+          &        1.d0,      0,      0 )
+#else
+     call shift2( &
+          &       ahi3d,  ahg3d, &
+          &       nxdim,  nydim,  nzdim )
+#endif
+
      do ij = ijstr-nxdim, ijend+nxdim
         rymlls(ij) = 1.d0 / dym(ij) / dym(ij-nxdim)
         rymrym(ij) = rymlls(ij) / (dym(ij) + dym(ij-nxdim))
@@ -153,6 +345,9 @@ subroutine flxtrc( &
      rx2 = 1.d0 / dx2
   end if
 
+#ifdef OPT_OFFLINE
+  ty = tx
+#endif  
   call dnsgrd( &
      &  xdzdx,  ydzdy,  zdzdx,  zdzdy, &
      &  xdtdz,  ydtdz,  zdtdx,  zdtdy, &
@@ -177,7 +372,11 @@ subroutine flxtrc( &
      end do
   end do
 
+#ifdef OPT_OFFLINE  
+  do n = 3, ntdim
+#else
   do n = 1, ntdim
+#endif
      do k = kstr, kend
         do ij = ijtstr-nxdim, ijtend+nxdim+nxdim
            ijlw = ij + lw
@@ -231,7 +430,11 @@ subroutine flxtrc( &
      &     'ocean vertical velocity on sigma coordinate', 'cm/s', &
      & nx, ny, nz, nxyzdm, 'OCLVMT')
 
+#ifdef OPT_OFFLINE  
+  do n = 3, ntdim
+#else
   do n = 1, ntdim
+#endif
      do k = kstr+1, kend
         kuu = k - 2
         ku  = k - 1
@@ -239,7 +442,7 @@ subroutine flxtrc( &
         do ij = ijtstr, ijtend
            diffz(ij, k) = &
               &   (  ahv(ij, k) &
-              &    + ahi * (  zdzdx(ij, k) * zdzdx(ij, k) &
+              &    + ahi3d(ij, k) * (  zdzdx(ij, k) * zdzdx(ij, k) &
               &             + zdzdy(ij, k) * zdzdy(ij, k))) * &
               &   rzm(ij, k) * amftz(ij, k)
            wut = wzc(ij, k) * ts
@@ -283,16 +486,20 @@ subroutine flxtrc( &
 
            ftz(ij, k, n) =  &
              & (  diffz(ij, k) * (tx(ij, ku, n) - tx(ij, k, n)) &
-             &  - ( ( ahi + ahg ) * &
+             &  - ( ( ahi3d(ij,k) + ahg3d(ij,k) ) * &
              &     zdzdx(ij, k) - zpsiy(ij, k) ) * zdtdx(ij, k, n) &
-             &  - ( ( ahi + ahg ) * &
+             &  - ( ( ahi3d(ij,k) + ahg3d(ij,k) ) * &
              &     zdzdy(ij, k) + zpsix(ij, k) ) * zdtdy(ij, k, n) &
              &  - wzc(ij, k) * tadv ) * amftz(ij, k)
         end do
      end do
   end do
 
+#ifdef OPT_OFFLINE  
+  do n = 3, ntdim
+#else
   do n = 1, ntdim
+#endif
      do k = kstr, kend
         do ij = ijtstr, ijtend+nxdim
            ts2(ij) = tx(ij+lss, k, n) * amskt(ij+lss, k) &
@@ -394,10 +601,10 @@ subroutine flxtrc( &
            end if
 
            fty(ij, k, n) = fty(ij, k, n) + &
-             &     (  ( ahh + ahi ) * rym(ijls) &
+             &     (  ( ahh3d(ij,k) + ahi3d(ij,k) ) * rym(ijls) &
              &      / ( hyt(ij) + hyt(ijls) ) * &
              &        ( tx(ij, k, n) - tx(ijls, k, n) ) * 2.d0 &
-             &      - ( ( ahi - ahg ) &
+             &      - ( ( ahi3d(ij,k) - ahg3d(ij,k) ) &
              &        * ydzdy(ij, k) - ypsix(ij, k) ) * ydtdz(ij, k, n) ) &
              &      * ( hxu(ijls) + hxu(ij+lsw) ) * 0.5d0 * amfty(ij, k) &
              &   - v * tadvy(ij, n)
@@ -405,7 +612,11 @@ subroutine flxtrc( &
      end do
   end do
 
+#ifdef OPT_OFFLINE  
+  do n = 3, ntdim
+#else
   do n = 1, ntdim
+#endif
      do k = kstr, kend
         do ij = ijtstr, ijtend+1
            tww(ij) = tx(ij+lww, k, n) * amskt(ij+lww, k) &
@@ -505,10 +716,10 @@ subroutine flxtrc( &
            end if
                
            ftx(ij, k, n) = ftx(ij, k, n) + &
-             &     (  ( ahh + ahi ) * rx &
+             &     (  ( ahh3d(ij,k) + ahi3d(ij,k) ) * rx &
              &      / ( hxt(ij) + hxt(ijlw) ) &
              &      * ( tx(ij, k, n) - tx(ijlw, k, n) ) * 2.d0 &
-             &      - ( ( ahi - ahg ) &
+             &      - ( ( ahi3d(ij,k) - ahg3d(ij,k) ) &
              &      * xdzdx(ij, k) + xpsiy(ij, k) ) * xdtdz(ij, k, n) ) &
              &      * ( hyu(ijlw) + hyu(ij+lsw) ) * 0.5d0 * amftx(ij, k) &
              &   - u * tadvx(ij, n)
@@ -519,14 +730,18 @@ subroutine flxtrc( &
 
   do k = kstr, kend
      do ij=1, nxydim
-        igsx(ij, k) = ( ahi - ahg ) * xdzdx(ij, k)
-        igsy(ij, k) = ( ahi - ahg ) * ydzdy(ij, k)
+        igsx(ij, k) = ( ahi3d(ij, k) - ahg3d(ij, k) ) * xdzdx(ij, k)
+        igsy(ij, k) = ( ahi3d(ij, k) - ahg3d(ij, k) ) * ydzdy(ij, k)
      end do
   end do
 !  call chekin(igsx, 'IGSX', nx, ny, nz, nxyzdm, 'OCN')
 !  call chekin(igsy, 'IGSY', nx, ny, nz, nxyzdm, 'OCN')
 
+#ifdef OPT_OFFLINE  
+  do n = 3, ntdim
+#else
   do n = 1, ntdim
+#endif
      do k = kstr, kend
         do ij = ijtstr, ijtend
            adt(ij, k, n) = &
@@ -547,8 +762,8 @@ subroutine flxtrc( &
 
   do k = kstr, kend
      do ij = ijtstr, ijtend+nxdim
-        psigmx(ij, k) = ahg * ydzdy(ij, k)
-        psigmy(ij, k) = - ahg * xdzdx(ij, k)
+        psigmx(ij, k) =   ahg3d(ij, k) * ydzdy(ij, k)
+        psigmy(ij, k) = - ahg3d(ij, k) * xdzdx(ij, k)
      end do
   end do
 
@@ -665,8 +880,8 @@ subroutine dnsgrd( &
   do n = 1, ntdim
      do k = 1, nzdim
         do ij = 1, nxydim
-           dtdx(ij, k, n) = 0.d0
-           dtdy(ij, k, n) = 0.d0
+           dtdx (ij, k, n) = 0.d0
+           dtdy (ij, k, n) = 0.d0
            dtfdz(ij, k, n) = 0.d0
         end do
      end do
@@ -778,14 +993,18 @@ subroutine dnsgrd( &
   do n = 1, ntdim
      do k = 1, nzdim
         do ij = 1, nxydim
-           dtdx(ij, k, n) = 0.d0
-           dtdy(ij, k, n) = 0.d0
+           dtdx (ij, k, n) = 0.d0
+           dtdy (ij, k, n) = 0.d0
            dtfdz(ij, k, n) = 0.d0
         end do
      end do
   end do
 
+#ifdef OPT_OFFLINE  
+  do n = 3, ntdim
+#else
   do n = 1, ntdim
+#endif
      do k = kstr, kend
         do ij = ijtstr, ijtend+nxdim
            dtdx(ij, k, n) = (tx(ij, k, n) - tx(ij+lw, k, n)) * rx * &
@@ -799,7 +1018,11 @@ subroutine dnsgrd( &
      end do
   end do
 
+#ifdef OPT_OFFLINE  
+  do n = 3, ntdim
+#else
   do n = 1, ntdim
+#endif
      do k = kstr+1, kend
         do ij = ijtstr-nxdim, ijtend+nxdim
            dtfdz(ij, k, n) = (tx(ij, k-1, n) - tx(ij, k, n)) &
@@ -808,7 +1031,11 @@ subroutine dnsgrd( &
      end do
   end do
 
+#ifdef OPT_OFFLINE  
+  do n = 3, ntdim
+#else
   do n = 1, ntdim
+#endif
      do k = kstr, kend
         do ij = ijtstr, ijtend+nxdim
            xdtdz(ij, k, n) = &
@@ -824,7 +1051,11 @@ subroutine dnsgrd( &
      end do
   end do
 
+#ifdef OPT_OFFLINE  
+  do n = 3, ntdim
+#else
   do n = 1, ntdim
+#endif
      do k = kstr+1, kend
         do ij = ijtstr, ijtend
            zdtdx(ij, k, n) = &
@@ -1324,17 +1555,23 @@ end subroutine dnsgrd
 #ifdef OPT_BBL
 ! *********************************************************************
 
-subroutine flxtrb( &
+subroutine flxtrb(  &
   &    adt,  diffz, &
-  &     tx,     ty,     uy,     vy, &
-  &      w,    ahv )
+  &     tx,         &
+#ifndef OPT_OFFLINE
+  &     ty,         &
+#endif
+  &     uy,     vy,      w,    ahv )
 
+  
   use ufile
 
   real(8), intent(out) ::    adt(nxydim, nzdim, ntdim)
   real(8), intent(out) ::  diffz(nxydim, nzdim)
   real(8), intent(in)  ::     tx(nxydim, nzdim, ntdim)
+#ifndef OPT_OFFLINE  
   real(8), intent(in)  ::     ty(nxydim, nzdim, ntdim)
+#endif  
   real(8), intent(in)  ::     uy(nxydim, nzdim),     vy(nxydim, nzdim)
   real(8), intent(in)  ::      w(nxydim, nzdim),    ahv(nxydim, nzdim)
 
@@ -1366,7 +1603,11 @@ subroutine flxtrb( &
      end do
   end do
 
+#ifdef OPT_OFFLINE  
+  do n = 3, ntdim
+#else
   do n = 1, ntdim
+#endif
      do ij = ijtstr, ijtend+nxdim
         ijls = ij + ls
         v = 0.5d0 * &
@@ -1407,6 +1648,7 @@ end subroutine flxtrb
 ! *********************************************************************
 
 subroutine chkftx
+
   use qckot
 
   if (oinit .or. ofinal) then

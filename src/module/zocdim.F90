@@ -7,8 +7,8 @@ module zocdim
   integer, parameter :: nxg    =    360, nyg    =    256, nz     =     63
   integer, parameter :: kz     =     10
   integer, parameter :: nic    =      5
-  integer, parameter :: inodes =     36, jnodes =     32
- 
+!  integer, parameter :: inodes =     36, jnodes =     32 !OECO2
+  integer, parameter :: inodes =      4, jnodes =     4 !offline
   integer, parameter :: igstr  =      3, jgstr  =      3, kstr   =      2
   integer, parameter :: nxgdim = nxg + 2*(igstr-1)
   integer, parameter :: nygdim = nyg + 2*(jgstr-1)
@@ -35,7 +35,14 @@ module zocdim
  
 ! *** Write here the number of tracer.
 ! *** The minimum number is 2, for temperature and salinity.
+! *** 17, for OECO2 2.2.1
+#ifdef OPT_OECO2
+  integer, parameter :: ntdim =     17
+#elif OPT_OFFLINE
+  integer, parameter :: ntdim =      3
+#else
   integer, parameter :: ntdim =      2
+#endif
  
 ! ***
   integer, parameter :: nxy = nx*ny, nxyz = nxy*nz

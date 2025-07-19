@@ -68,7 +68,12 @@ contains
 
 subroutine flxtrc( &
   &    adt,  diffz, &
-  &     tx,     hx,     ty,     hz, &
+  &     tx,     hx, &
+#ifndef OPT_OFFLINE
+  &     ty,     hz, &
+#else
+  &     hz,     hc, &
+#endif
   &     uy,     vy,      w,    ahv )
 
   use bstbc
@@ -85,7 +90,12 @@ subroutine flxtrc( &
   real(8), intent(out)    ::    adt(nxydim, nzdim, ntdim)    
   real(8), intent(out)    ::  diffz(nxydim, nzdim)
   real(8), intent(inout)  ::     tx(nxydim, nzdim, ntdim)
+#ifdef OPT_OFFLINE
+  real(8)                 ::     ty(nxydim, nzdim, ntdim)
+  real(8), intent(in)     ::     hc(nxydim)
+#else
   real(8), intent(in)     ::     ty(nxydim, nzdim, ntdim)
+#endif
   real(8), intent(in)     ::     hx(nxydim),     hz(nxydim)
   real(8), intent(in)     ::     uy(nxydim, nzdim),     vy(nxydim, nzdim)
   real(8), intent(in)     ::      w(nxydim, nzdim),    ahv(nxydim, nzdim)
@@ -213,7 +223,11 @@ subroutine flxtrc( &
 #endif
 
   if (oinit) then
+#ifdef OPT_OFFLINE
+     do n = 3, ntdim
+#else
      do n = 1, ntdim
+#endif
 #ifdef OPT_TRIPOLE
         call rstadd(sx(1, 1, n), oeof, &
           &         nxdim, nydim, nzdim, 'SX', 'OCN', &
@@ -267,7 +281,11 @@ subroutine flxtrc( &
   end if
 
   if (ofinal) then
+#ifdef OPT_OFFLINE
+     do n = 3, ntdim
+#else
      do n = 1, ntdim
+#endif
         call finadd( sx(1, 1, n), nxdim, nydim, nzdim, 'SX',  'OCN')
         call finadd( sy(1, 1, n), nxdim, nydim, nzdim, 'SY',  'OCN')
         call finadd( sz(1, 1, n), nxdim, nydim, nzdim, 'SZ',  'OCN')
@@ -602,7 +620,11 @@ subroutine flxtrc( &
 !$omp end parallel
 !$acc end kernels
 
+#ifdef OPT_OFFLINE
+  do n = 3, ntdim
+#else
   do n = 1, ntdim
+#endif
 !$acc kernels default(present)
 !$omp parallel private( &
 !$omp k, ij, ijls, ijlw, &
@@ -682,7 +704,11 @@ subroutine flxtrc( &
 !$acc kernels default(present)
 !$omp parallel private(k, n, ij, kuu, ku, kd, ijls, ijlw, ijlsw)
 !$omp do
+#ifdef OPT_OFFLINE
+  do n = 3, ntdim
+#else
   do n = 1, ntdim
+#endif
      do k = kstr+1, kend
         kuu = k - 2
         ku  = k - 1
@@ -724,7 +750,11 @@ subroutine flxtrc( &
 
 ! ---- y diffusion flux of GM
 !$omp do
+#ifdef OPT_OFFLINE
+  do n = 3, ntdim
+#else
   do n = 1, ntdim
+#endif
 
      do k = kstr, kend
         do ij = ijtstr, ijtend+nxdim
@@ -763,7 +793,11 @@ subroutine flxtrc( &
 
 ! ---- x diffusion flux of GM
 !$omp do
+#ifdef OPT_OFFLINE
+  do n = 3, ntdim
+#else
   do n = 1, ntdim
+#endif
 
      do k = kstr, kend
         do ij = ijtstr, ijtend+1
@@ -854,7 +888,11 @@ subroutine flxtrc( &
 #ifdef OPT_BBL
 
 !$omp do
+#ifdef OPT_OFFLINE
+  do n = 3, ntdim
+#else
   do n = 1, ntdim
+#endif
      do ij = ijtstr, ijtend
         k = nbot(ij)
         ftz(ij, kend, n) = ftz(ij, k, n)
@@ -863,7 +901,11 @@ subroutine flxtrc( &
 !$omp end do
 
 !$omp do
+#ifdef OPT_OFFLINE
+  do n = 3, ntdim
+#else
   do n = 1, ntdim
+#endif
 
      do ij = ijtstr, ijtend+nxdim
         ijls = ij + ls
@@ -930,7 +972,11 @@ subroutine flxtrc( &
 
 !$acc kernels default(present)
 !$omp do
+#ifdef OPT_OFFLINE
+  do n = 3, ntdim
+#else
   do n = 1, ntdim
+#endif
 
      do k = kstr, kstr+kz-1
         do ij = 1, nxydim
@@ -985,7 +1031,11 @@ subroutine flxtrc( &
 !$omp end parallel
 !$acc end kernels
   
+#ifdef OPT_OFFLINE
+  do n = 3, ntdim
+#else
   do n = 1, ntdim
+#endif
 
 ! ---- undershoot limiter (Method B) of Morales Maqueda and Holloway (2006)
 !$acc kernels default(present)
@@ -1343,7 +1393,11 @@ subroutine flxtrc( &
   end do
 !$omp end parallel do
 !$acc end kernels
+#ifdef OPT_OFFLINE
+  do n = 3, ntdim
+#else
   do n = 1, ntdim
+#endif
 
 !    ---- undershoot limiter (Method B) of Morales Maqueda and Holloway (2006)
 !$acc kernels default(present)
@@ -1758,7 +1812,11 @@ subroutine flxtrc( &
 !$omp end parallel do
 #endif
 
+#ifdef OPT_OFFLINE
+  do n = 3, ntdim
+#else
   do n = 1, ntdim
+#endif
 
 !    ---- undershoot limiter (Method B) of Morales Maqueda and Holloway (2006)
 !$acc kernels default(present)
@@ -2091,7 +2149,11 @@ subroutine flxtrc( &
 !$acc end kernels
   end do
 
+#ifdef OPT_OFFLINE
+  do n = 3, ntdim
+#else
   do n = 1, ntdim
+#endif
 !$acc kernels default(present)
 !$omp parallel
 !$omp do
@@ -2139,7 +2201,11 @@ subroutine flxtrc( &
   end do
 
 #ifdef OPT_BBL
+#ifdef OPT_OFFLINE
+  do n = 3, ntdim
+#else
   do n = 1, ntdim
+#endif
      do ij = ijtstr, ijtend
         k = nbot(ij)
         ftz(ij, kend, n) = ftz(ij, k, n)
@@ -2150,7 +2216,11 @@ subroutine flxtrc( &
      end do
   end do
 
+#ifdef OPT_OFFLINE
+  do n = 3, ntdim
+#else
   do n = 1, ntdim
+#endif
      do ij = ijtstr, ijtend
         adt(ij, kend, n) = &
              & ( ( (ftx(ij+le, kend, n) - ftx(ij, kend, n)) * rx &
@@ -2297,9 +2367,17 @@ subroutine flxtrc( &
 
   !$acc kernels default(present)
   do ij = ijtstr, ijtend
+#ifndef OPT_OFFLINE
      dh(ij) = hx(ij) - hz(ij)
+#else
+     dh(ij) = hx(ij) - hc(ij)
+#endif
   end do
+#ifdef OPT_OFFLINE
+  do n = 3, ntdim
+#else
   do n = 1, ntdim
+#endif
      do k = kstr, kstr+kz-1
         do ij = ijtstr, ijtend
            adt2(ij, k, n) = adt2(ij, k, n) &
@@ -2583,7 +2661,11 @@ subroutine dnsgrd( &
   end do
 
 !$omp do
+#ifdef OPT_OFFLINE
+  do n = 3, ntdim
+#else
   do n = 1, ntdim
+#endif
      do k = kstr, kend
         do ij = ijtstr, ijtend+nxdim
            dtdx(ij, k, n) = (tx(ij, k, n) - tx(ij+lw, k, n)) * rx * &
@@ -2599,7 +2681,11 @@ subroutine dnsgrd( &
 !$omp end do nowait
 
 !$omp do
+#ifdef OPT_OFFLINE
+  do n = 3, ntdim
+#else
   do n = 1, ntdim
+#endif
      do k = kstr+1, kend
         do ij = ijtstr-nxdim, ijtend+nxdim
            dtfdz(ij, k, n) = (tx(ij, k-1, n) - tx(ij, k, n)) &
@@ -2609,7 +2695,11 @@ subroutine dnsgrd( &
   end do
 
 !$omp do
+#ifdef OPT_OFFLINE
+  do n = 3, ntdim
+#else
   do n = 1, ntdim
+#endif
      do k = kstr, kend
         do ij = ijtstr, ijtend+nxdim
            xdtdz(ij, k, n) = &
@@ -2627,7 +2717,11 @@ subroutine dnsgrd( &
 !$omp end do nowait
 
 !$omp do
+#ifdef OPT_OFFLINE
+  do n = 3, ntdim
+#else
   do n = 1, ntdim
+#endif
      do k = kstr+1, kend
         do ij = ijtstr, ijtend
            zdtdx(ij, k, n) = &
@@ -3157,15 +3251,20 @@ end subroutine dnsgrd
 #ifdef OPT_BBL
 ! *********************************************************************
 
-subroutine flxtrb( &
+subroutine flxtrb(  &
   &    adt,  diffz, &
-  &     tx,     ty,     uy,     vy, &
-  &      w,    ahv )
+  &     tx,         &
+#ifndef OPT_OFFLINE
+  &     ty,         &
+#endif
+  &     uy,     vy,      w,    ahv )
       
   real(8), intent(out) ::    adt(nxydim, nzdim, ntdim)
   real(8), intent(out) ::  diffz(nxydim, nzdim)
   real(8), intent(in)  ::     tx(nxydim, nzdim, ntdim)
+#ifndef OPT_OFFLINE
   real(8), intent(in)  ::     ty(nxydim, nzdim, ntdim)
+#endif
   real(8), intent(in)  ::     uy(nxydim, nzdim),     vy(nxydim, nzdim)
   real(8), intent(in)  ::      w(nxydim, nzdim),    ahv(nxydim, nzdim)
 

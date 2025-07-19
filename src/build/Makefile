@@ -67,6 +67,37 @@ SRCS_icedcoco = \
 	tslvt.F90 \
 	utint$(MPI).F90
 
+SRCS_offline = \
+	aocea.F90 \
+	aprdc.F90 \
+	brstt$(MPI).F90 \
+	bstbc.F90 \
+	sfcng.F90 \
+	ifhea.F90 \
+	tslvt.F90 \
+	utint$(MPI).F90 \
+	dwdns.F90 \
+	bgs3d.F90
+
+SRCS_oeco2 =            \
+	zoceco.F90      \
+	dms_temp.F90    \
+	n2osato.F90     \
+	o2sato.F90      \
+	uchem.F90       \
+	tchem.F90       \
+	utint$(MPI).F90 \
+	sfcng.oeco.F90  \
+	ecosys.F90      \
+	brstt$(MPI).F90 \
+	bstbc.F90       \
+	ifhea.F90       \
+	tslvt.F90       \
+	aprdc.F90       \
+	aocea.F90       \
+	dwdns.F90       \
+	bgs3d.F90
+
 ## Options
 SRCS_OPTION	= $(SRCOPT:%=%.F90)
 SRCS_ENSTR	= $(SRCENS:%=%.F90)
