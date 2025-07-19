@@ -73,7 +73,6 @@ SRCS_offline = \
 	brstt$(MPI).F90 \
 	bstbc.F90 \
 	sfcng.F90 \
-	ifhea.F90 \
 	tslvt.F90 \
 	utint$(MPI).F90 \
 	dwdns.F90 \
@@ -91,7 +90,6 @@ SRCS_oeco2 =            \
 	ecosys.F90      \
 	brstt$(MPI).F90 \
 	bstbc.F90       \
-	ifhea.F90       \
 	tslvt.F90       \
 	aprdc.F90       \
 	aocea.F90       \

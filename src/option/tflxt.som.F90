@@ -569,6 +569,9 @@ subroutine flxtrc( &
 
   tsiv = 1.d0 / ts
 
+#ifdef OPT_OFFLINE
+  ty = tx
+#endif  
   call dnsgrd( &
      &  xdzdx,  ydzdy,  zdzdx,  zdzdy, &
      &  xdtdz,  ydtdz,  zdtdx,  zdtdy, &
@@ -671,7 +674,11 @@ subroutine flxtrc( &
 !$omp parallel
 !$omp do
   do ij = 1, nxydim
+#ifdef OPT_OFFLINE     
+     hzbot(ij) = hx(ij) + zbot
+#else
      hzbot(ij) = hz(ij) + zbot
+#endif
   end do
 !$omp end do
 
@@ -2370,7 +2377,7 @@ subroutine flxtrc( &
 #ifndef OPT_OFFLINE
      dh(ij) = hx(ij) - hz(ij)
 #else
-     dh(ij) = hx(ij) - hc(ij)
+     dh(ij) = hc(ij) - hx(ij)
 #endif
   end do
 #ifdef OPT_OFFLINE

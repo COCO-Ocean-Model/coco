@@ -33,7 +33,9 @@ contains
    use tflxt
    use tslvt
    use ucloc
-
+   use zocdim, only : nx, ny
+   use qckot
+   
     implicit none
 
     real(8), intent(inout) ::       t(nxyzdm, ntdim)
@@ -51,10 +53,6 @@ contains
     real(8) ::      tq(nxyzdm, ntdim)
 #endif
 
-!---- dummy for tslvt (slvtrc)
-    real(8) ::   swabs(nxyzdm)=0.d0,  fs(nxyzdm)=0.d0
-    real(8) ::    ssfc(nxyzdm)=0.d0,  ax(nxyzdm,0:nic)=0.d0
-    
     integer(4) ::    ijk,      n
 
     if (myrank >= ijnode) return
@@ -64,9 +62,7 @@ contains
       call rmmskt
       call admktb
 #endif
-      call wdenst( &
-        &              w,     hc,                                       &
-        &              u,      v,     ha)
+      call wdenst(     w,    hc,     u,     v,    ha )
       call clcend('HDIAG')
 
       call clcstr('TRACE')
@@ -84,7 +80,7 @@ contains
         &            ahv)
       call rmmskt
       call admkt1
-      call stbbgt(                                                      &
+      call stbbgt(                            &
         &            adt,  diffz)
 #endif
 #ifdef OPT_BODY
@@ -94,40 +90,39 @@ contains
          end do
       end do
 #endif
-      call slvtrc(                                                      &
-          &            t,     hc,                                       &
-          &          adt,  diffz,                                       &
-          &           ft,  swabs,     fs,     ha,   ssfc,               &
-          &           ax)
-!      call slvtrc(                                                      &
-!          &            t,                                               &
-!          &          adt,  diffz,                                       &
-!          &           ha,     hb,     hc,     ft)
+      call slvtrc(     t,   adt, diffz,    ha,    hb,    hc,    ft )
+      call tundif(     t,    hc )
 #ifdef OPT_BBL
-      call stbbtr(                                                      &
+      call stbbtr(                                         &
         &              t)
       call rmmskt
       call admktb
-      call stbbt2(                                                      &
+      call stbbt2(                                         &
         &              t)
       call rmmskt
       call admkt1
 #endif
 
 #ifdef OPT_TRIPOLE
-      call shift1(                                                      &
-        &              t,                                               &
-        &          nxdim,   nydim, nztdim,                              &
+      call shift1(                            &
+        &              t,                     &
+        &          nxdim,   nydim, nztdim,    &
         &           1.D0,       0,      0 )
 #else
-      call shift1(                                                      &
-        &              t,                                               &
+      call shift1(                            &
+        &              t,                     &
         &          nxdim,   nydim, nztdim)
 #endif
       call stbctr( &
         &              t,       r)
     call clcend('TRACE')
 
+!---- for debug (tracer convervation)
+!    call chekin(    hc,   'SH', &
+!         &        'sea surface height',   'cm', &
+!         &          nx,     ny,      1, nxydim, 'OCSFCT' )
+!-----
+    
   end subroutine predco
 
 end module aprdc
