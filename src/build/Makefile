@@ -75,7 +75,7 @@ SRCS_offline = \
 	sfcng.F90 \
 	tslvt.F90 \
 	utint$(MPI).F90 \
-	dwdns.F90 
+	dwdns.F90
 
 SRCS_oeco2 =            \
 	zoceco.F90      \
@@ -127,7 +127,7 @@ OBJLIST: FORCE
 		-f `cat OBJLIST | $(DIRETC)/srclist.sh` > /dev/null
 
 clean:
-	$(RM) *~ *.F90 *.F *.o *.mod *.trace *.cpp core OBJLIST $(DEPENDENCY)
+	$(RM) *~ *.F90 *.F *.o *.mod *.trace *.L *.cpp core OBJLIST $(DEPENDENCY)
 
 ##
 -include $(DEPENDENCY)

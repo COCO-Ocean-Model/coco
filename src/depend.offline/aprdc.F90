@@ -93,12 +93,10 @@ contains
       call slvtrc(     t,   adt, diffz,    ha,    hb,    hc,    ft )
       call tundif(     t,    hc )
 #ifdef OPT_BBL
-      call stbbtr(                                         &
-        &              t)
+      call stbbtr(     t )
       call rmmskt
       call admktb
-      call stbbt2(                                         &
-        &              t)
+      call stbbt2(     t )
       call rmmskt
       call admkt1
 #endif
@@ -113,8 +111,7 @@ contains
         &              t,                     &
         &          nxdim,   nydim, nztdim)
 #endif
-      call stbctr( &
-        &              t,       r)
+      call stbctr(     t,     r )
     call clcend('TRACE')
 
 !---- for debug (tracer convervation)

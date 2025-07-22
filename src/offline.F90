@@ -64,7 +64,7 @@ program offline
    call cstnml(jfpar, 'offline', 'nmstdo', istat)
 
    lenstd = index(cstdo, ' ')
-   write(cstdo(lenstd:lenstd+2), '(A1,I2.2)') '.', myrank
+   write(cstdo(lenstd:lenstd+5), '(a1,i5.5)') '.', myrank
    call rewnml(ifpar, jfpar)
    open(unit=jfpar, file=cstdo, &
      &  access='sequential', form='formatted')
@@ -78,16 +78,12 @@ program offline
      wrk(ijk) = 0.d0
    end do
 
-   call tmstup( &
-      &          tstrt,   tend,     dt)
-   call restrt( &
-      &          tstrt, &
-      &              t,     ft) ! passive tracers' initial condition
+   call tmstup( tstrt,  tend,    dt )
+   call restrt( tstrt,     t,    ft ) ! passive tracers' initial condition
    tt = tstrt
    nt = 0
-   call ocstup( &
-   &                t,      u,      v,     hb,    ahv, &
-   &               tt,     dt)
+   call ocstup(     t,     u,     v,    hb,   ahv,  &
+   &               tt,    dt )
    call clcend('SETUP')
 
 ! *** main loop ***
@@ -301,6 +297,7 @@ subroutine parset
   call gs3dst
 !!call gsidst
   return
+
 end subroutine parset
 
 ! *********************************************************************

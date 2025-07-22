@@ -32,9 +32,8 @@ module aocea
 
 contains
 
-subroutine ocstup( &
-     &                t,      u,      v,     hb,    ahv, &
-     &              tt1,    dt1)
+subroutine ocstup(     t,      u,     v,    hb,   ahv,  &
+     &               tt1,    dt1 )
 
    use brdge
    use bshft
@@ -88,8 +87,7 @@ subroutine ocstup( &
    call svtset
    call chkset
 
-   call ocnvar( &
-   &                 t,      u,      v,     hb,    ahv)
+   call ocnvar(     t,     u,     v,    hb,   ahv )
 #ifdef OPT_TRIPOLE
    call shift1(     hb, &
    &             nxdim,  nydim,      1, &
@@ -142,14 +140,12 @@ subroutine ocean ( &
    ntss  = ntss1
    tss   = tss1
 
-   call chkstk( &
-   &            oflstk)
+   call chkstk( oflstk )
 
    do ij = 1, nxydim
       ha(ij) = hb(ij)
    end do
-   call ocnvar( &
-   &                 t,      u,      v,     hb,    ahv)
+   call ocnvar(     t,     u,     v,    hb,   ahv )
 #ifdef OPT_TRIPOLE
    call shift1(    hb, &
    &             nxdim,  nydim,      1, &
@@ -174,14 +170,10 @@ subroutine ocean ( &
    &                 u,      v,    ahv, &
    &             nxdim,  nydim,  nzdim)
 #endif
-   call stbctr(t,  r)
-   call sfcflx( &
-   &               ft, & ! only for passive tracer fluxes
-   &                t)
+   call stbctr(     t,     r )
+   call sfcflx(    ft,     t )
 #ifdef OPT_BODY
-   call bdyflx( &
-   &                tq, &
-   &                 t)
+   call bdyflx(    tq,     t )
 #endif
    call predco( &
    &                    t, &
@@ -203,10 +195,10 @@ subroutine ocean ( &
      &               nx,     ny,      1, nxydim, 'OCSFCT')
    end do
 
-   call chkout( &
-   &            oflout)
+   call chkout( oflout )
 
    return
-end subroutine ocean
+
+ end subroutine ocean
 
 end module aocea
