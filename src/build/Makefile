@@ -7,7 +7,7 @@ SRCS_SHARED = \
 	atmct.F90 \
 	bchmk.F90 \
 	bgs2d.F90 \
-	bgs3d$(MPI).F90 \
+	bgs3d.F90 \
 	brdge$(MPI).F90 \
 	bshfi.F90 \
 	bshft.F90 \
@@ -75,8 +75,7 @@ SRCS_offline = \
 	sfcng.F90 \
 	tslvt.F90 \
 	utint$(MPI).F90 \
-	dwdns.F90 \
-	bgs3d.F90
+	dwdns.F90 
 
 SRCS_oeco2 =            \
 	zoceco.F90      \
@@ -93,8 +92,7 @@ SRCS_oeco2 =            \
 	tslvt.F90       \
 	aprdc.F90       \
 	aocea.F90       \
-	dwdns.F90       \
-	bgs3d.F90
+	dwdns.F90
 
 ## Options
 SRCS_OPTION	= $(SRCOPT:%=%.F90)
