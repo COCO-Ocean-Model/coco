@@ -74,8 +74,7 @@ SRCS_offline = \
 	bstbc.F90 \
 	sfcng.F90 \
 	tslvt.F90 \
-	utint$(MPI).F90 \
-	dwdns.F90
+	utint$(MPI).F90
 
 SRCS_oeco2 =            \
 	zoceco.F90      \
@@ -91,8 +90,7 @@ SRCS_oeco2 =            \
 	bstbc.F90       \
 	tslvt.F90       \
 	aprdc.F90       \
-	aocea.F90       \
-	dwdns.F90
+	aocea.F90
 
 ## Options
 SRCS_OPTION	= $(SRCOPT:%=%.F90)

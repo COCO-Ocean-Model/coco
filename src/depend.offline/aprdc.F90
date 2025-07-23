@@ -62,7 +62,7 @@ contains
       call rmmskt
       call admktb
 #endif
-      call wdenst(     w,    hc,     u,     v,    ha )
+      call wdenst(     w,     u,     v,    hc,    ha )
       call clcend('HDIAG')
 
       call clcstr('TRACE')
@@ -115,9 +115,9 @@ contains
     call clcend('TRACE')
 
 !---- for debug (tracer convervation)
-!    call chekin(    hc,   'SH', &
-!         &        'sea surface height',   'cm', &
-!         &          nx,     ny,      1, nxydim, 'OCSFCT' )
+    call chekin(    hc,   'SH', &
+         &        'sea surface height',   'cm', &
+         &          nx,     ny,      1, nxydim, 'OCSFCT' )
 !-----
     
   end subroutine predco
