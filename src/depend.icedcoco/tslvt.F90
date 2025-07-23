@@ -87,9 +87,8 @@ module tslvt
   namelist /nmsrst/  sdmp, osrstr, osrsti, osrnml, dsmax, &
     &              ofsdmp, cfsdmp
 
-  namelist /nmmixsss/smin, mixsss
+  namelist /nmmixsss/ smin, mixsss
 
-!  data gamma / nz*1.d0 /
   data rrr, zeta1, zeta2 / 5.8d-1, 3.5d+1, 2.3d+3 /
   data sdmp, dsmax / 0.d0, 999.d0 /
   data osrstr, osrsti, osrnml / .false., .false., .false. /
@@ -118,8 +117,9 @@ contains
          &   amskt,   nbot
     use zocphy,  only :                                &
          &     cpo,    rhoo
-
+#ifndef OPT_OFFLINE
     use ifhea
+#endif
     use bshft
     use qckag
     use ufile
@@ -244,7 +244,7 @@ contains
        radup = 1.d0
        do k = kstr, kend
           depth = depth + dz0(k)
-          raddn = rrr * exp(- depth / zeta1)                               &
+          raddn = rrr * exp(- depth / zeta1)          &
        &        + (1.d0 - rrr) * exp(- depth / zeta2)
           swcnv1(k) = radup - raddn
           radup = raddn
@@ -269,8 +269,10 @@ contains
        !$acc end kernels
        !$acc end data
 
+#ifndef OPT_OFFLINE       
        call putswc( swconv(1, kstr) )
        call copswc( swconv(1, kstr) )
+#endif       
 
        !$acc kernels default(present)
        do ij = 1, nxydim
@@ -285,12 +287,6 @@ contains
        !$acc end kernels
 !----- for tunnel diffusion
        call ttsset
-
-       do l = 3, ntdim
-          write(ctxnam(l), '(a5,i2.2)') 'ftrcx', l
-          write(ctynam(l), '(a5,i2.2)') 'ftrcy', l
-          write(ctznam(l), '(a5,i2.2)') 'ftrcz', l
-       end do
 
 !---- for geothermal heating
        call rewnml(ifpar, jfpar)
@@ -326,12 +322,18 @@ contains
           !$acc enter data copyin(gthm)
 #endif
        end if
-!----
+
        call rewnml(ifpar, jfpar)
        read(ifpar, nmmixsss, iostat = istat )
        call cstnml(jfpar, 'svtset', 'nmmixsss', istat )
        write(jfpar, nmmixsss)
        
+       do l = 3, ntdim
+          write(ctxnam(l), '(a5,i2.2)') 'ftrcx', l
+          write(ctynam(l), '(a5,i2.2)') 'ftrcy', l
+          write(ctznam(l), '(a5,i2.2)') 'ftrcz', l
+       end do
+
     end if
 
   end subroutine svtset
@@ -339,10 +341,16 @@ contains
 ! **********************************************************************
 
   subroutine slvtrc(                                   &
+#ifndef OPT_OFFLINE       
          &      tx,     hx,                            &
          &     adt,  diffz,                            &
          &      ft,  swabs,     fs,     hz,   ssfc,    &
          &      ax  )
+#else
+         &      tx,                                    &
+         &     adt,  diffz,     hz,     hy,     hx,    &
+         &      ft  )
+#endif
 
     use zocdim,  only :                                &
          &      nx,     ny, nxydim,  nzdim,  ntdim,    &
@@ -376,11 +384,15 @@ contains
     real(8),   intent(inout)  ::    adt(nxydim, nzdim, ntdim)
     real(8),   intent(in)     ::  diffz(nxydim, nzdim)
     real(8),   intent(in)     ::     ft(nxydim, ntdim)
+    real(8),   intent(in)     ::     hz(nxydim)
+#ifndef OPT_OFFLINE    
     real(8),   intent(in)     ::  swabs(nxydim)
     real(8),   intent(in)     ::     fs(nxydim)
-    real(8),   intent(in)     ::     hz(nxydim)
     real(8),   intent(in)     ::   ssfc(nxydim)
     real(8),   intent(in)     ::     ax(nxydim, 0:nic)
+#else
+    real(8),   intent(in)     ::     hy(nxydim)
+#endif
 
     real(8)                   ::  fsrst(nxydim)
     real(8)                   :: vwteqg(inodes*jnodes)
@@ -395,7 +407,11 @@ contains
     end if
     !$acc kernels default(present)
     do ij = ijtstr, ijtend
+#ifndef OPT_OFFLINE
        hxbot(ij) = hx(ij) + zbot
+#else       
+       hxbot(ij) = hy(ij) + zbot
+#endif       
     end do
 
     do k = 1, nzdim
@@ -406,11 +422,9 @@ contains
        end do
     end do
 
-!---- when SOM is used, the lines below should be commented.
     do ij = 1, nxydim
        dh(ij) = hx(ij) - hz(ij)
     end do
-!----
     
     do k = kstr, kstr+kz-1
        do ij = ijtstr, ijtend
@@ -419,17 +433,19 @@ contains
           ab(ij, k) = (hx(ij) + zbot) / zbot - aa(ij, k) - ac(ij, k)
        end do
     end do
-    
-!---- when SOM is used, the lines below should be commented.
+
+#ifndef OPT_OFFLINE    
     do n = 1, ntdim
+#else
+    do n = 3, ntdim
+#endif
        do k = kstr, kstr+kz-1
           do ij = ijtstr, ijtend
-             adt(ij, k, n) = adt(ij, k, n)                            &
+             adt(ij, k, n) = adt(ij, k, n)                     &
     &                      - dh(ij) / zbot / ts * tx(ij, k, n)
           end do
        end do
     end do
-!----
 
     do k = kstr+kz, kend
        do ij = ijtstr, ijtend
@@ -438,24 +454,28 @@ contains
           ab(ij, k) = 1.d0 - aa(ij, k) - ac(ij, k)
        end do
     end do
-    
+
+#ifndef OPT_OFFLINE    
     do ij = ijstr, ijend
-!       adt(ij, kstr, 1) = adt(ij, kstr, 1)                            &
-!    &                   + tx(ij, kstr, 1) * ft(ij, 2) / zbot          &
-!    &                    * amskt(ij, kstr)
-       adt(ij, kstr, 1) = adt(ij, kstr, 1)                            &
-    &                   - tx(ij, kstr, 1) *ft(ij, 2)                  &
+       adt(ij, kstr, 1) = adt(ij, kstr, 1)                 &
+    &                   - tx(ij, kstr, 1) *ft(ij, 2)       &
     &                     /dz(ij, kstr) * amskt(ij, kstr)         
-       adt(ij, kstr, 2) = adt(ij, kstr, 2)                            &
-    &                    - fs(ij)                                     &
+       adt(ij, kstr, 2) = adt(ij, kstr, 2)                 &
+    &                    - fs(ij)                          &
     &                     /dz(ij, kstr) * amskt(ij, kstr) 
     end do
+#endif
     !$acc end kernels
 
     call thomas( adt, ac, aa, ab )
 
     !$acc kernels default(present)
+
+#ifndef OPT_OFFLINE    
     do n = 1, ntdim
+#else
+    do n = 3, ntdim
+#endif
        do k = kstr, kend
           do ij = ijtstr, ijtend
              adt(ij, k, n) = adt(ij, k, n) * rgamma(k) * amskt(ij, k)
@@ -463,7 +483,11 @@ contains
        end do
     end do
 #ifdef OPT_BBL
+#ifndef OPT_OFFLINE    
     do n = 1, ntdim
+#else
+    do n = 3, ntdim
+#endif
        do ij = ijtstr, ijtend
           k = max(nbot(ij), kstr)
           adt(ij, k, n) = adt(ij, k, n) *                                  &
@@ -474,89 +498,40 @@ contains
     end do
 #endif
 
+#ifndef OPT_OFFLINE    
     do n = 1, ntdim
+#else
+    do n = 3, ntdim
+#endif
        do k = kstr, kend
           do ij = ijtstr, ijtend
              tx(ij, k, n) = tx(ij, k, n) + ts * adt(ij, k, n)
           end do
        end do
     end do
+
+#ifdef OPT_OFFLINE    
+!---- tracer redistribution among sigma-layers (T. Suzuki) 
+    do n = 3, ntdim
+       do k = kstr, kstr+kz-1
+          do ij = ijtstr, ijtend
+             tx(ij, k, n) = tx(ij, k, n )                 &
+    &                     * ( ( hx(ij) + zbot ) * ds(k) ) &
+    &                     / ( ( hy(ij) + zbot ) * ds(k) )
+          end do
+       end do
+    end do
+#endif    
     !$acc end kernels
 
-!     '12.01.30: removed 
-!      DO IJ = IJTSTR, IJTEND
-!         HZBOT(IJ) = HX(IJ) + ZBOT
-!         DH(IJ) = - TS * FT(IJ, 2) * AMSKT(IJ, KSTR)
-!         HX(IJ) = HX(IJ) + DH(IJ)
-!         HXBOT(IJ) = HX(IJ) + ZBOT
-!         IF (DH(IJ) .GE. 0.D0) THEN
-!            DZB = 0.D0
-!            DZT = DH(IJ) * DS(KSTR+KZ-1)
-!            DO K = KSTR+KZ-1, KSTR+1, -1
-!               DO N = 1, NTDIM
-!                  TX(IJ, K, N) = (  TX(IJ, K  , N) * DS(K) * HZBOT(IJ)
-!     &                            - TX(IJ, K  , N) * DZB
-!     &                            + TX(IJ, K-1, N) * DZT)
-!     &                           / HXBOT(IJ) / DS(K)
-!               END DO
-!               DZB = DZT
-!               DZT = DZB + DH(IJ) * DS(K-1)
-!            END DO
-!            TX(IJ, KSTR, 2) = (  TX(IJ, KSTR, 2) * DS(KSTR) * HZBOT(IJ)
-!     &                         - TX(IJ, KSTR, 2) * DZB)
-!     &                        / HXBOT(IJ) / DS(KSTR)
-!            TX(IJ, KSTR, 1) = (  TX(IJ, KSTR, 1) * DS(KSTR) * HZBOT(IJ)
-!     &                         - TX(IJ, KSTR, 1) * DZB
-!     &                         + TX(IJ, KSTR, 1) * DZT
-!     &                         + TS * FT(IJ, 1))
-!     &                        / HXBOT(IJ) / DS(KSTR)
-!            DO N = 3, NTDIM
-!               TX(IJ, KSTR, N) = (  TX(IJ, KSTR, N)*DS(KSTR)*HZBOT(IJ)
-!     &                            - TX(IJ, KSTR, N) * DZB
-!     &                            + TX(IJ, KSTR, N) * DZT
-!     &                            + TS * FT(IJ, N))
-!     &                           / HXBOT(IJ) / DS(KSTR)
-!            END DO
-!         ELSE
-!            DZT = - DH(IJ)
-!            DZB = DZT + DH(IJ) * DS(KSTR)
-!            TX(IJ, KSTR, 2) = (  TX(IJ, KSTR, 2) * DS(KSTR) * HZBOT(IJ)
-!     &                         + TX(IJ, KSTR+1, 2) * DZB)
-!     &                        / HXBOT(IJ) / DS(KSTR)
-!            TX(IJ, KSTR, 1) = (  TX(IJ, KSTR, 1) * DS(KSTR) * HZBOT(IJ)
-!     &                         + TX(IJ, KSTR+1, 1) * DZB
-!     &                         - TX(IJ, KSTR, 1) * DZT
-!     &                         + TS * FT(IJ, 1))
-!     &                        / HXBOT(IJ) / DS(KSTR)
-!            DO N = 3, NTDIM
-!               TX(IJ, KSTR, N) = (  TX(IJ, KSTR, N)*DS(KSTR)*HZBOT(IJ)
-!     &                            + TX(IJ, KSTR+1, N) * DZB
-!     &                            - TX(IJ, KSTR  , N) * DZT
-!     &                            + TS * FT(IJ, N))
-!     &                           / HXBOT(IJ) / DS(KSTR)  
-!            END DO            
-!            DO K = KSTR+1, KSTR+KZ-2
-!               DZT = DZB
-!               DZB = DZT + DH(IJ) * DS(K)
-!               DO N = 1, NTDIM
-!                  TX(IJ, K, N) = (  TX(IJ, K, N) * DS(K) * HZBOT(IJ)
-!     &                            + TX(IJ, K+1, N) * DZB
-!     &                            - TX(IJ, K  , N) * DZT)
-!     &                           / HXBOT(IJ) / DS(K)
-!               END DO
-!            END DO
-!         END IF
-!      END DO
-
-    call cofpsf( &
-      &             tx,     ft,     fs,  swabs)
+#ifndef OPT_OFFLINE
+    call cofpsf(    tx,    ft,    fs, swabs )
 
     !$acc kernels default(present)
     do ij = ijtstr, ijtend
        tx(ij, kstr, 1) = tx(ij, kstr, 1)                              &
     &                  + ts * ft(ij, 1) / hxbot(ij) / ds(kstr) 
     end do
-
 
     do k = kstr, kstr+kz-1
        do ij = ijtstr, ijtend
@@ -572,21 +547,18 @@ contains
        end do
     end do
     !$acc end kernels
-
-!    do ij = ijtstr, ijtend
-!       tx(ij, kstr, 2) = tx(ij, kstr, 2)                             &
-!    &                  - ts * fs(ij) / hxbot(ij) / ds(kstr)
-!    end do
-
+#endif
+    
     !$acc kernels default(present)
     do n = 3, ntdim
        do ij = ijtstr, ijtend
           tx(ij, kstr, n) = tx(ij, kstr, n)                          &
-    &                     + ts * ft(ij, n) / hxbot(ij) / ds(kstr)
+    &                     - ts * ft(ij, n) / hxbot(ij) / ds(kstr)
        end do
     end do
     !$acc end kernels
 
+#ifndef OPT_OFFLINE    
 #ifdef OPT_SRST
     !$acc kernels default(present)
     do ij = 1, nxydim
@@ -709,6 +681,7 @@ contains
     if ( mixsss > 0 ) then
        call tmixss( tx(1, 1, 2) )
     end if
+#endif    
 
   end subroutine slvtrc
 

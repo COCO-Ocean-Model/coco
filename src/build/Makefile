@@ -11,6 +11,7 @@ SRCS_SHARED = \
 	brdge$(MPI).F90 \
 	bshfi.F90 \
 	bshft.F90 \
+	bstbc.F90 \
 	cadvc.F90 \
 	csrvl.F90 \
 	ctnuv.F90 \
@@ -41,7 +42,6 @@ SRCS_coco = \
 	bfrch.F90 \
 	binst.F90 \
 	brstt.F90 \
-	bstbc.F90 \
 	sfcng.F90 \
 	tslvt.F90 \
 	utint.F90
@@ -53,7 +53,6 @@ SRCS_icedcoco = \
 	bgsid$(MPI).F90 \
 	binst.F90 \
 	brstt$(MPI).F90 \
-	bstbc.F90 \
 	ictrn.F90 \
 	ifhea.F90 \
 	ifwtr.F90 \
@@ -71,7 +70,6 @@ SRCS_offline = \
 	aocea.F90 \
 	aprdc.F90 \
 	brstt$(MPI).F90 \
-	bstbc.F90 \
 	sfcng.F90 \
 	tslvt.F90 \
 	utint$(MPI).F90
@@ -87,7 +85,6 @@ SRCS_oeco2 =            \
 	sfcng.oeco.F90  \
 	ecosys.F90      \
 	brstt$(MPI).F90 \
-	bstbc.F90       \
 	tslvt.F90       \
 	aprdc.F90       \
 	aocea.F90
