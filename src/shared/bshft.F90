@@ -199,27 +199,16 @@ contains
     !$acc kernels default(present) async if(shift_gpu)
     if (is_tri_edge) then
        do n = 1, num_packed
-          if (ioffs(n) .eq. -1) then
-             do k = koffset(n) + 1, koffset(n + 1)
-                do j = 1, jcomm - joffs(n)
-                   do i = 1, icomm - 1
-                      tri_send(i,j+joffs(n),k) = facts(n) * east_recv(icomm - i, ny + 1 - j, k)
-                   end do
-                   do i = iend, nxdim - 1
-                      tri_send(i,j+joffs(n),k) = facts(n) * west_recv(nxdim - i, ny + 1 - j, k)
-                   end do
+          do k = koffset(n) + 1, koffset(n + 1)
+             do j = 1, jcomm - joffs(n)
+                do i = max(1, 1-ioffs(n)), icomm
+                   tri_send(     i+ioffs(n), j+joffs(n),k) = facts(n) * east_recv(icomm+1-i, ny+1-j, k)
+                end do
+                do i = 1, min(icomm, icomm-ioffs(n))
+                   tri_send(iend+i+ioffs(n), j+joffs(n),k) = facts(n) * west_recv(icomm+1-i, ny+1-j, k)
                 end do
              end do
-          else
-             do k = koffset(n) + 1, koffset(n + 1)
-                do j = 1, jcomm - joffs(n)
-                   do i = 1, icomm
-                      tri_send(i     ,j+joffs(n),k) = facts(n) * east_recv(icomm + 1 - i, ny + 1 - j, k)
-                      tri_send(iend+i,j+joffs(n),k) = facts(n) * west_recv(icomm + 1 - i, ny + 1 - j, k)
-                   end do
-                end do
-             end do
-          end if
+          end do
        end do
     end if
     !$acc end kernels
@@ -316,7 +305,7 @@ contains
        !$acc end kernels
        !$acc kernels default(present) async if(shift_gpu)
        do k = 1, kpacked
-          do j = 1, jcomm
+          do j = 1+max(0,joff), jcomm
              do i = 1, nxdim
                 q1(i, jend+j, k) = tri_recv(i, j, k0+k)
              end do
@@ -324,7 +313,7 @@ contains
        end do
        !$acc end kernels
        !$acc wait
-       if (ioff .eq. -1) then
+       if (ioff .ne. 0) then
           if (kpacked .gt. max_ksize0) then
              call rewnml(ifpar, jfpar)
              write(jfpar,*)' ### packed_shift: exceed the limit of max_ksize0.'
@@ -533,19 +522,19 @@ contains
     integer(4)  ::  istmpi(mpi_status_size)
 
     !$acc host_data use_device(sbf1) if(shift_gpu)
-    call mpi_isend(sbf1, nbfdim0, mpi_real8, n_down, 1, mpi_comm_world, is1, ierr)
+    call mpi_isend(sbf1, nbfdim0, mpi_real8, n_down, 1, mpi_comm_ogcm, is1, ierr)
     !$acc end host_data
     
     !$acc host_data use_device(sbf2) if(shift_gpu)
-    call mpi_isend(sbf2, nbfdim,  mpi_real8,   n_up, 2, mpi_comm_world, is2, ierr) 
+    call mpi_isend(sbf2, nbfdim,  mpi_real8,   n_up, 2, mpi_comm_ogcm, is2, ierr) 
     !$acc end host_data
     
     !$acc host_data use_device(rbf2) if(shift_gpu)
-    call mpi_irecv(rbf2, nbfdim0, mpi_real8,   n_up, 1, mpi_comm_world, ir1, ierr)
+    call mpi_irecv(rbf2, nbfdim0, mpi_real8,   n_up, 1, mpi_comm_ogcm, ir1, ierr)
     !$acc end host_data
     
     !$acc host_data use_device(rbf1) if(shift_gpu)
-    call mpi_irecv(rbf1, nbfdim,  mpi_real8, n_down, 2, mpi_comm_world, ir2, ierr)
+    call mpi_irecv(rbf1, nbfdim,  mpi_real8, n_down, 2, mpi_comm_ogcm, ir2, ierr)
     !$acc end host_data
     
     call mpi_wait( is1, istmpi, ierr )
@@ -615,11 +604,11 @@ contains
 
   call mpi_isend( &
     &               sdbffy, nbfdim, mpi_real8, &
-    &                jupfy,      5, mpi_comm_world, &
+    &                jupfy,      5, mpi_comm_ogcm, &
     &              isrqfy1,   ierr)
   call mpi_irecv( &
     &               rvbffy, nbfdim, mpi_real8, &
-    &              jdownfy,      5, mpi_comm_world, &
+    &              jdownfy,      5, mpi_comm_ogcm, &
     &              irrqfy1,   ierr)
 
   call mpi_wait(isrqfy1, istmpi,   ierr)
