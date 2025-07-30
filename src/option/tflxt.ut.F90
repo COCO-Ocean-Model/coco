@@ -729,7 +729,7 @@ subroutine flxtrc(  &
   end do
 
   do k = kstr, kend
-     do ij=1, nxydim
+     do ij = ijtstr, ijtend+nxdim
         igsx(ij, k) = ( ahi3d(ij, k) - ahg3d(ij, k) ) * xdzdx(ij, k)
         igsy(ij, k) = ( ahi3d(ij, k) - ahg3d(ij, k) ) * ydzdy(ij, k)
      end do
