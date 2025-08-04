@@ -411,7 +411,11 @@ subroutine flxtrc(  &
   end do
   
   do ij = 1, nxydim
+#ifdef OPT_OFFLINE     
+     hzbot(ij) = hx(ij) + zbot
+#else
      hzbot(ij) = hz(ij) + zbot
+#endif
   end do
   do k = kstr, kstr+kz-1
      do ij = 1, nxydim
@@ -1596,7 +1600,11 @@ subroutine flxtrb(  &
      write(jfpar, nmbbdh)
   end if
 
-  do n = 1, ntdim
+#ifdef OPT_OFFLINE  
+  do n = 3, ntdim
+#else
+  do n = 1, ntdim     
+#endif     
      do ij = ijtstr, ijtend
         k = nbot(ij)
         ftz(ij, kend, n) = ftz(ij, k, n)

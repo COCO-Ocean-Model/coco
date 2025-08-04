@@ -51,6 +51,10 @@ contains
  use bshfi
  use bshft
  use mpiio
+#ifdef OPT_OFFLINE 
+ use bchmk
+#endif
+
  implicit none
 #include "mpif.h"
 
@@ -381,6 +385,12 @@ contains
      rsm(k) = 1.d0 / dsm(k)
   end do
 
+#ifdef OPT_OFFLINE  
+#ifdef OPT_BBL
+  call rmmskv
+  call admkvb
+#endif
+#endif
 
 !$acc enter data copyin(amskt, amftx, amfty, amftz,  amskv,  amfvx,  amfvy,  amfvz,  amskb,  nbot)
 !$acc enter data copyin(dy, dym, dz, dzm, dzv, dz0, ds, dsm, hic, cor, dept, rdepv)

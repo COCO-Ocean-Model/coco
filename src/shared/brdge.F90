@@ -52,7 +52,9 @@ contains
  use bgs3d
  use bshfi
  use bshft
-
+#ifdef OPT_OFFLINE 
+ use bchmk
+#endif
  implicit none
 #include "mpif.h"
 
@@ -723,6 +725,13 @@ contains
      rsm(k) = 1.d0 / dsm(k)
   end do
 
-  return
-  end subroutine rdgeo
+#ifdef OPT_OFFLINE  
+#ifdef OPT_BBL
+  call rmmskv
+  call admkvb
+#endif
+#endif
+
+end subroutine rdgeo
+
 end module brdge
