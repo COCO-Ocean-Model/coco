@@ -25,9 +25,9 @@ contains
 
   subroutine tmintp(  ditem, iitem  )
 
-    use zocdim,  only  :                                              &
-         nxdim,  nydim, ntdim,                                        &
-           nxg,    nyg,    nx,    ny,                                 &
+    use zocdim,  only  :                      &
+         nxdim,  nydim, ntdim,                &
+           nxg,    nyg,    nx,    ny,         &
           istr,   jstr
     use zocgrd,  only  :     tt
     use zocfil,  only  :    ncf
@@ -35,6 +35,7 @@ contains
     use ufile
     use ucaln
     use mpiio
+
     implicit none
 
 #include "mpif.h"
@@ -42,8 +43,7 @@ contains
     real(8),    intent(inout)  ::  ditem(nxdim, nydim)
     integer(4), intent(in)     ::  iitem
 
-!---- local variables
-!   integer(4), parameter      ::  nitem = ( ntdim - 2 ) * 2 + 10
+!---- local
     integer(4), parameter      ::  nitem = 1
     integer(4), save           ::  idate1(6,nitem), idate2(6,nitem)
     real(8),    save           ::   time1(nitem),    time2(nitem)
@@ -66,23 +66,6 @@ contains
     namelist /nmskip/ iyskip
 
     integer(4), save    ::  nfitem(nitem)
-!    character(len=ncf)  ::  cftaux,   cftauy,   cfusfc
-!    character(len=ncf)  ::  cftsfc,   cfqsfc,   cfwflx
-!    character(len=ncf)  ::  cfswnt,   cfdwlw,   cfpsfc,   cfssfc
-!    character(len=ncf)  ::  cftref(ntdim), cftdmp(ntdim)
-
-!    namelist /nmsfbc/ cftaux, cftauy, cfusfc, cftsfc, cfqsfc,         &
-!    &                 cfwflx, cfswnt, cfdwlw, cfpsfc, cfssfc,         &
-!    &                 cftref, cftdmp
-
-!    data cftaux, cftauy / 'not-specified', 'not-specified' /
-!    data cfusfc, cftsfc / 'not-specified', 'not-specified' /
-!    data cfqsfc, cfwflx / 'not-specified', 'not-specified' /
-!    data cfswnt, cfdwlw / 'not-specified', 'not-specified' /
-!    data cfpsfc, cfssfc / 'not-specified', 'not-specified' /
-!    data cftref / ntdim*'not-specified' /
-!    data cftdmp / ntdim*'not-specified' /
-
     character(len=ncf) :: cfsh
     namelist /nmsfbc/ cfsh
     data cfsh / 'not-specified' /
@@ -105,35 +88,9 @@ contains
 
     if (iitem == 1) then
        cfitem = cfsh
-!       cfitem = cftaux
-!    else if (iitem == 2) then
-!       cfitem = cftauy
-!    else if (iitem == 3) then
-!       cfitem = cfusfc
-!    else if (iitem == 4) then
-!       cfitem = cftsfc
-!    else if (iitem == 5) then
-!       cfitem = cfqsfc
-!    else if (iitem == 6) then
-!       cfitem = cfwflx
-!    else if (iitem == 7) then
-!       cfitem = cfswnt
-!    else if (iitem == 8) then
-!       cfitem = cfdwlw
-!    else if (iitem == 9) then
-!       cfitem = cfpsfc
-!    else if (iitem == 10) then
-!       cfitem = cfssfc
-!    else if (iitem > nitem ) then
     else
        write(jfpar, *) '*** TMINTP: NO SUCH ITEM ***'
        call mpi_abort(mpi_comm_ogcm, 1, ierr)
-!    else if ( mod(iitem, 2) == 1 ) then
-!       i = (iitem - 10) / 2 + 1
-!       cfitem = cftref(i)
-!    else
-!       i = (iitem - 10) / 2
-!       cfitem = cftdmp(i)
     end if
 
     if ( ofirst(iitem) ) then
@@ -368,16 +325,12 @@ contains
     namelist /nmskib/ iyskib
 
     integer(4), save    ::  nfitem(nitem)
-!    character(len=ncf)  ::  cftbdy(ntdim), cftdmb(ntdim)
-!    namelist /nmbody/ cftbdy, cftdmb
-!    data cftbdy / ntdim*'not-specified' /
-!    data cftdmb / ntdim*'not-specified' /
     character(len=ncf) :: cft, cfs, cfu, cfv, cfahv
     namelist /nmbody/ cft, cfs, cfu, cfv, cfahv
-    data cft / 'not-specified' /
-    data cfs / 'not-specified' /
-    data cfu / 'not-specified' /
-    data cfv / 'not-specified' /
+    data cft   / 'not-specified' /
+    data cfs   / 'not-specified' /
+    data cfu   / 'not-specified' /
+    data cfv   / 'not-specified' /
     data cfahv / 'not-specified' /
 
     data osngld / nitem*.false. /
@@ -397,16 +350,12 @@ contains
     end if
 
     if (iitem == 1) then
-!       cfitem = cftbdy(1)
        cfitem = cft
     else if (iitem == 2) then
-!       cfitem = cftbdy(2)
        cfitem = cfs
     else if (iitem == 3) then
-!       cfitem = cftdmb(1)
        cfitem = cfu
     else if (iitem == 4) then
-!       cfitem = cftdmb(2)
        cfitem = cfv
     else if (iitem == 5) then
        cfitem = cfahv
@@ -429,7 +378,6 @@ contains
        end if
        call css2yh(  idatet,  tt  )
        iytt = idatet(1)
-
 
 !------------------------
        disp(iitem)=0
@@ -591,7 +539,6 @@ contains
     end if
 
   end subroutine tmintb
-
 #endif
 
 end module utint

@@ -1,107 +1,82 @@
 module sfcng
-
-! --- information -----------------------------------------------------
-!
-!  Dummy
-!
-!  HISTORY
-!     '04.10.14  H.Hasumi
-!     '07.04.23  H.Hasumi
-!
-! ---------------------------------------------------------------------
-
-   implicit none
-   private
+  
+  implicit none
+  private
    
-   public  ::  sfcflx,   ocnvar
+  public  ::  sfcflx,   ocnvar
 #ifdef OPT_BODY
-   public  ::  bdyflx
+  public  ::  bdyflx
 #endif
 
 contains
+  
+  subroutine sfcflx(    ft,     t )
 
-   subroutine sfcflx(                                                  &
-      &          ft, & ! only for passive tracer fluxes
-      &           t  )
-      use zocdim
-      use zocgrd
-      use zocmsk
-      use zocphy
+    use zocdim
+    use zocgrd
+    use zocmsk
+    use zocphy
+    
+    implicit none
+    
+    real(8),    intent(in)   ::  t(nxydim, nzdim, ntdim)
+    real(8),    intent(out)  :: ft(nxydim, ntdim)
 
-      implicit none
-   
-      real(8),    intent(in)   ::  t(nxydim, nzdim, ntdim)
-      real(8),    intent(out)  :: ft(nxydim, ntdim)
-
-!---- local variables
-      integer(4)  ::    ij,   l
-      
-      do l = 3, ntdim
-         do ij = ijstr, ijend
-            ft(ij, l) = 0.d0
-         end do
-      end do
-      
-      return
-   end subroutine sfcflx
+!---- local
+    integer(4)  ::    ij,     l      
+    
+! only for passive tracer fluxes
+    do l = 3, ntdim
+       do ij = ijstr, ijend
+          ft(ij, l) = 0.d0
+       end do
+    end do
+    
+  end subroutine sfcflx
 
 ! ---------------------------------------------------------------------  
+  subroutine ocnvar(     t,     u,     v,    hb,   ahv )
+    
+    use zocdim
+    use zocgrd
+    use utint
+    
+    implicit none
 
-   subroutine ocnvar(                                                  &
-      &           t,   u,   v,   hb,   ahv  )  
+    real(8),    intent(out)  ::    t(nxydim, nzdim, ntdim)
+    real(8),    intent(out)  ::    u(nxydim, nzdim)
+    real(8),    intent(out)  ::    v(nxydim, nzdim)
+    real(8),    intent(out)  ::   hb(nxydim)
+    real(8),    intent(out)  ::  ahv(nxydim, nzdim)
       
-      use zocdim
-      use zocgrd
-      use utint
+    call tmintb( t(1, 1, 1), 1 )
+    call tmintb( t(1, 1, 2), 2 )
+    call tmintb(   u, 3 )
+    call tmintb(   v, 4 )
+    call tmintb( ahv, 5 )
       
-      implicit none
-
-      real(8),    intent(out)  ::    t(nxydim, nzdim, ntdim)
-      real(8),    intent(out)  ::    u(nxydim, nzdim),    v(nxydim, nzdim)
-      real(8),    intent(out)  ::   hb(nxydim)
-      real(8),    intent(out)  ::  ahv(nxydim, nzdim)
-      
-      call tmintb(t(1, 1, 1), 1)
-      call tmintb(t(1, 1, 2), 2)
-      call tmintb(u, 3)
-      call tmintb(v, 4)
-      call tmintb(ahv, 5)
-      
-      tt = tt + ts
-      call tmintp(hb, 1) ! one-time-step advanced
-      tt = tt - ts
-      
-      return
-   end subroutine ocnvar
+    tt = tt + ts
+    call tmintp(hb, 1) ! one-time-step advanced
+    tt = tt - ts
+    
+  end subroutine ocnvar
 
 #ifdef OPT_BODY
 ! ---------------------------------------------------------------------  
-
-   subroutine bdyflx(                                                  &
-      &         tq,                                                     &
-      &          t   )
-
-! --- information -----------------------------------------------------
-!
-!  Dummy
-!
-!  HISTORY
-!     '04.10.14  H.Hasumi
-!
-! ---------------------------------------------------------------------
+  subroutine bdyflx(    tq,     t )
      
-     use zocdim
-     use zocgrd
-     use zocmsk
+    use zocdim
+    use zocgrd
+    use zocmsk
      
-     implicit none
+    implicit none
      
-     real(8),    intent(in)  ::   t(nxdim,  nzdim,  ntdim)
-     real(8),    intent(inout) ::  tq(nxdim,  nzdim,  ntdim)      
+    real(8),    intent(in)    ::   t(nxdim,  nzdim,  ntdim)
+    real(8),    intent(inout) ::  tq(nxdim,  nzdim,  ntdim)      
      
-     return
-   end subroutine bdyflx
-
+  end subroutine bdyflx
 #endif
-
+   
 end module sfcng
+
+ 
