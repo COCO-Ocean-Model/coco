@@ -12,39 +12,18 @@ SRCS_SHARED = \
 	bshfi.F90 \
 	bshft.F90 \
 	bstbc.F90 \
-	cadvc.F90 \
-	csrvl.F90 \
-	ctnuv.F90 \
-	cvisc.F90 \
-	cvlrd.F90 \
-	dvdif.F90 \
-	dvlta.F90 \
-	dvlva.F90 \
 	dwdns.F90 \
-	fbtav.F90 \
-	fshdf.F90 \
-	fshlw.F90 \
 	mpiio.F90 \
 	packgt3.F \
 	qckag.F90 \
 	qckot$(MPI).F90 \
 	tflxt.F90 \
-	tovtr.F90 \
+	tslvt.F90 \
 	ucaln.F90 \
 	ucloc.F90 \
 	ufile.F90 \
 	utrdg.F90 \
 	xprst.F90
-
-SRCS_coco = \
-	aocea.F90 \
-	aprdc.F90 \
-	bfrch.F90 \
-	binst.F90 \
-	brstt.F90 \
-	sfcng.F90 \
-	tslvt.F90 \
-	utint.F90
 
 SRCS_icedcoco = \
 	aocea.F90 \
@@ -53,6 +32,17 @@ SRCS_icedcoco = \
 	bgsid$(MPI).F90 \
 	binst.F90 \
 	brstt$(MPI).F90 \
+	cadvc.F90 \
+	csrvl.F90 \
+	ctnuv.F90 \
+	cvisc.F90 \
+	cvlrd.F90 \
+	dvdif.F90 \
+	dvlta.F90 \
+	dvlva.F90 \
+	fbtav.F90 \
+	fshdf.F90 \
+	fshlw.F90 \
 	ictrn.F90 \
 	ifhea.F90 \
 	ifwtr.F90 \
@@ -63,7 +53,7 @@ SRCS_icedcoco = \
 	ipthm.F90 \
 	iptmp.F90 \
 	sfcng.F90 \
-	tslvt.F90 \
+	tovtr.F90 \
 	utint$(MPI).F90
 
 SRCS_offline = \
@@ -71,7 +61,6 @@ SRCS_offline = \
 	aprdc.F90 \
 	brstt$(MPI).F90 \
 	sfcng.F90 \
-	tslvt.F90 \
 	utint$(MPI).F90
 
 SRCS_oeco2 =            \
@@ -85,7 +74,6 @@ SRCS_oeco2 =            \
 	sfcng.oeco.F90  \
 	ecosys.F90      \
 	brstt$(MPI).F90 \
-	tslvt.F90       \
 	aprdc.F90       \
 	aocea.F90
 

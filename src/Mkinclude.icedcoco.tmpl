@@ -27,14 +27,14 @@ MPI=.mpi
 #SRCOPT = tflxt.ut dvdif.nk sfcng.CORE utint.CORE
 
 # JRA55-do global
-#SRCOPT = tflxt.som dvdif.gls sfcng.JRA.direct utint.JRA.direct aprdc.$(MODEL).filter
+SRCOPT = tflxt.som dvdif.gls sfcng.JRA.direct utint.JRA.direct aprdc.filter
 
 SRCENS  =
 
 ## high resolution (dx <= 1/4 deg)
 #SRCOPT += cvisc.smag
-##SRCENS = aocea.$(MODEL) aprdc.$(MODEL) binst.$(MODEL) bstbc.$(MODEL) cadvc ctnuv dvlva
-#SRCENS	= aocea.$(MODEL) aprdc.$(MODEL).filter binst.$(MODEL) bstbc.$(MODEL) cadvc ctnuv dvlva
+##SRCENS = aocea aprdc binst bstbc cadvc ctnuv dvlva
+#SRCENS	= aocea aprdc.filter binst bstbc cadvc ctnuv dvlva
 
 TARGET	= $(OGCMDIR)/bin/$(MODEL)
 LIBOGCM	= $(OGCMDIR)/lib/lib$(MODEL).a
