@@ -119,12 +119,13 @@ program icedcoco
   gpuid = mod(myrank, ngpus)
   call acc_set_device_num(gpuid, acc_device_nvidia)
   write(nfstdo, *) 'ngpus, gpuid', ngpus, gpuid
-  !$acc enter data create(ta, tb, ua, ub, va, vb, ha, hb, ubta, ubtb, vbta, vbtb)
-  !$acc enter data create(w, r, amv, ahv)
-  !$acc enter data create(aa, ab, hia, hib, uia, uib, via, vib, tia, tib, hsa, hsb)
-  !$acc enter data create(tsi, ft, swabs, fs, taux, tauy, ptop)
 #endif
 
+  !$acc data create(ta, tb, ua, ub, va, vb, ha, hb, ubta, ubtb, vbta, vbtb, &
+  !$acc             w, r, amv, ahv, &
+  !$acc             aa, ab, hia, hib, uia, uib, via, vib, tia, tib, hsa, hsb, &
+  !$acc             tsi, ft, swabs, fs, taux, tauy, ptop)
+  
   call rewnml(ifpar, jfpar)
   read (ifpar, nmrun, iostat=istat)
   call cstnml(jfpar, 'icedcoco', 'nmrun', istat)
@@ -332,7 +333,7 @@ program icedcoco
   call clcend('FINOUT')
   call clcout
   call parfin
-
+  !$acc end data
 end program icedcoco
 
 ! *********************************************************************
