@@ -177,7 +177,7 @@ contains
     &              htmp_w,  ubtmp_w,  vbtmp_w,                  &
     &               gxx_w,    gyy_w,   ptop_w,  fw_w)
 
-       if (mod(itsplt, ncomm/2) == 0) then
+       if (mod(itsplt, ncomm) == 0) then
           call bt_shift_pack_begin
           call bt_shift2(ubt_w, vbt_w, nxdim_w, nydim_w, 1, -1.d0, -1, -1)
           call bt_shift1(  h_w,        nxdim_w, nydim_w, 1,  1.d0,  0,  0)
