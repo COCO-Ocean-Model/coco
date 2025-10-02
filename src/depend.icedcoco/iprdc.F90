@@ -499,11 +499,14 @@ subroutine predci( &
     &         improf, &
     &             ax,    hix,    hsx)
 
-  call shift_pack_begin
+#ifndef _OPENACC
+  call shift_pack_begin !(OpenACC) Packed shift here appears to cause a significant difference.
+#endif
   call shift3(  ax,   hix,   hsx, nxdim, nydim, nic+1, 1.0d0, 0, 0)
   call shift3(  eix,  tix,   asx, nxdim, nydim, nic+1, 1.0d0, 0, 0)
   call shift3(frlvx, vmpx, frmpx, nxdim, nydim, nic+1, 1.0d0, 0, 0)
   call shift2( dsdx, dsbx,        nxdim, nydim, nic+1, 1.0d0, 0, 0)
+#ifndef _OPENACC
   call shift_pack_end
   call shift_unpack(   ax,  1)
   call shift_unpack(  hix,  2)
@@ -516,7 +519,8 @@ subroutine predci( &
   call shift_unpack(frmpx,  9)
   call shift_unpack( dsdx, 10)
   call shift_unpack( dsbx, 11)
-
+#endif
+  
   call padvct( &
     &             ax,    hix,    eix,    hsx,    tix, &
     &            asx,  frlvx,   vmpx,  frmpx,   dsdx,   dsbx, &
@@ -546,11 +550,14 @@ subroutine predci( &
     &         improf, &
     &             ax,    hix,    hsx)
 
-  call shift_pack_begin
+#ifndef _OPENACC
+  call shift_pack_begin !(OpenACC) Packed shift here appears to cause a significant difference.
+#endif
   call shift3(  ax,   hix,   hsx, nxdim, nydim, nic+1, 1.0d0, 0, 0)
   call shift3(  eix,  tix,   asx, nxdim, nydim, nic+1, 1.0d0, 0, 0)
   call shift3(frlvx, vmpx, frmpx, nxdim, nydim, nic+1, 1.0d0, 0, 0)
   call shift2( dsdx, dsbx,        nxdim, nydim, nic+1, 1.0d0, 0, 0)
+#ifndef _OPENACC
   call shift_pack_end
   call shift_unpack(   ax,  1)
   call shift_unpack(  hix,  2)
@@ -563,6 +570,7 @@ subroutine predci( &
   call shift_unpack(frmpx,  9)
   call shift_unpack( dsdx, 10)
   call shift_unpack( dsbx, 11)
+#endif
   
   if (myrank .ge. ijnode) then
      return
