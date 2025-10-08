@@ -2426,7 +2426,8 @@ subroutine dnsgrd( &
   real(8), intent(out) ::  zdtdy(nxydim, nzdim, ntdim)
   real(8), intent(in)  ::     ty(nxydim, nzdim, ntdim)
   real(8), intent(in)  ::     tx(nxydim, nzdim, ntdim)
-
+  real(8), intent(in)  ::     hz(nxydim)
+  
   real(8), save :: c0(nzdim), c1(nzdim), c2(nzdim)
   real(8), save :: c3(nzdim), c4(nzdim), c5(nzdim), c6(nzdim)
   real(8), save :: d0(nzdim), d1(nzdim), d2(nzdim), d3(nzdim), d4(nzdim)
@@ -2457,7 +2458,6 @@ subroutine dnsgrd( &
 
   real(8) ::  xpsiy(nxydim, nzdim),  ypsix(nxydim, nzdim)
   real(8) ::  zpsix(nxydim, nzdim),  zpsiy(nxydim, nzdim)
-  real(8) ::     hz(nxydim)
 
   real(8) ::   dtdx(nxydim, nzdim, ntdim),   dtdy(nxydim, nzdim, ntdim)
   real(8) ::  dtfdz(nxydim, nzdim, ntdim)
@@ -2528,7 +2528,6 @@ subroutine dnsgrd( &
 
      !$acc enter data create(  xpsiy,  ypsix)
      !$acc enter data create(  zpsix,  zpsiy)
-     !$acc enter data create(     hz)
 
      !$acc enter data create(   dtdx,   dtdy)
      !$acc enter data create(  dtfdz)       
