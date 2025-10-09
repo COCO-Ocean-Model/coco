@@ -98,25 +98,25 @@ module tflxt
 
 !---- for second order moment
 !---- bug fix (save these variables)
-  real(8), save ::  s0 (nxydim, nzdim, ntdim)=0.d0
-  real(8), save ::  sm (nxydim, nzdim, ntdim)=0.d0
+  real(8), save ::  s0 (nxydim, nzdim, ntdim)
+  real(8), save ::  sm (nxydim, nzdim, ntdim)
   real(8), save ::  sx (nxydim, nzdim, ntdim), sxx(nxydim, nzdim, ntdim)
   real(8), save ::  sy (nxydim, nzdim, ntdim), syy(nxydim, nzdim, ntdim)
   real(8), save ::  sz (nxydim, nzdim, ntdim), szz(nxydim, nzdim, ntdim)
   real(8), save ::  sxy(nxydim, nzdim, ntdim), sxz(nxydim, nzdim, ntdim)
   real(8), save ::  syz(nxydim, nzdim, ntdim)   
 
-  real(8), save ::  f0 (nxydim, nzdim)=0.d0
-  real(8), save ::  fm (nxydim, nzdim)=0.d0
-  real(8), save ::  fx (nxydim, nzdim)=0.d0, fxx(nxydim, nzdim)=0.d0
-  real(8), save ::  fy (nxydim, nzdim)=0.d0, fyy(nxydim, nzdim)=0.d0
-  real(8), save ::  fz (nxydim, nzdim)=0.d0, fzz(nxydim, nzdim)=0.d0
-  real(8), save ::  fxy(nxydim, nzdim)=0.d0, fxz(nxydim, nzdim)=0.d0
-  real(8), save ::  fyz(nxydim, nzdim)=0.d0
+  real(8), save ::  f0 (nxydim, nzdim)
+  real(8), save ::  fm (nxydim, nzdim)
+  real(8), save ::  fx (nxydim, nzdim), fxx(nxydim, nzdim)
+  real(8), save ::  fy (nxydim, nzdim), fyy(nxydim, nzdim)
+  real(8), save ::  fz (nxydim, nzdim), fzz(nxydim, nzdim)
+  real(8), save ::  fxy(nxydim, nzdim), fxz(nxydim, nzdim)
+  real(8), save ::  fyz(nxydim, nzdim)
 
-  real(8), save ::  vlmx(nxydim, nzdim)=0.d0, vlmy(nxydim, nzdim)=0.d0
-  real(8), save ::  vlmz(nxydim)=0.d0
-  real(8), save ::  alf(nxydim, nzdim)=0.d0, uv(nxydim, nzdim)
+  real(8), save ::  vlmx(nxydim, nzdim), vlmy(nxydim, nzdim)
+  real(8), save ::  vlmz(nxydim)
+  real(8), save ::  alf(nxydim, nzdim), uv(nxydim, nzdim)
 
   real(8) :: psigmx(nxydim, nzdim), psigmy(nxydim, nzdim)
   real(8) ::  xpsiy(nxydim, nzdim),  ypsix(nxydim, nzdim)
@@ -159,7 +159,91 @@ module tflxt
 #endif
 
 contains 
+#if defined(_OPENACC) || defined(GPU_DEBUG)
+  subroutine gpu_create_arr
+    !$acc enter data create(ftx,fty,ftz, ftxd,ftyd,ftzd)
+    !$acc enter data create(wzc,    rzm)
+    !$acc enter data create(fharmx, fharmy,   harm)
+    !$acc enter data create(hzbot)
+    !$acc enter data create(dh)
 
+    !$acc enter data create(xdzdx,  ydzdy)
+    !$acc enter data create(zdzdx,  zdzdy)
+    !$acc enter data create(xdtdz,  ydtdz)
+    !$acc enter data create(zdtdx,  zdtdy)
+
+    !$acc enter data create(adt2)
+    !$acc enter data create(adtd)
+    !$acc enter data create(adtah)
+    !$acc enter data create(adtgm)
+    !$acc enter data create(adtis)
+    !$acc enter data create(ftx2)
+    !$acc enter data create(fty2)
+    !$acc enter data create(ftz2)
+    !$acc enter data create(ftxah)
+    !$acc enter data create(ftyah)
+    !$acc enter data create(ftxgm)
+    !$acc enter data create(ftygm)
+    !$acc enter data create(ftzgm)
+    !$acc enter data create(ftxis)
+    !$acc enter data create(ftyis)
+    !$acc enter data create(ftzis)
+    
+    !$acc enter data create(ahh3d, ahi3d, ahg3d)
+    
+    !$acc enter data create(ublsx, vblsy)
+    !$acc enter data create(ublsw, vblsw)
+    !$acc enter data create(s0)
+    !$acc enter data create(sm)
+
+    !$acc enter data create(sx,sy,sz, sxx,syy,szz, sxy,sxz,syz)
+
+    !$acc enter data create(f0)
+    !$acc enter data create(fm)
+    !$acc enter data create(fx , fxx)
+    !$acc enter data create(fy , fyy)
+    !$acc enter data create(fz , fzz)
+    !$acc enter data create(fxy, fxz)
+    !$acc enter data create(fyz)
+     
+    !$acc enter data create(vlmx, vlmy)
+    !$acc enter data create(vlmz)
+    !$acc enter data create(alf, uv)
+
+    !$acc enter data create(psigmx, psigmy)
+    !$acc enter data create(xpsiy,  ypsix)
+    !$acc enter data create(zpsix,  zpsiy)
+    !$acc enter data create( igsy,   igsx)
+
+    !---
+    !$acc enter data create(c0,c1,c2,c3,c4,c5,c6)
+    !$acc enter data create(d0,d1,d2,d3,d4,d5,d6,d7,d8,d9)
+
+    !$acc enter data create(cxpsy, cypsx)
+    !$acc enter data create(czpsx, czpsy)
+
+    !$acc enter data create(r)
+    !$acc enter data create(   hmld, hmld1)
+    !$acc enter data create( rmavez, rmav1)
+    !$acc enter data create(  dzsig, dzmsig)
+    !$acc enter data create(     zt,    ztm)
+    !$acc enter data create( rsigth)
+    !$acc enter data create(    nbv,     lf)
+    !$acc enter data create( xpsiy1, ypsix1)
+    !$acc enter data create( zpsix1, zpsiy1)
+    !$acc enter data create(  zmld0,  zhmld)
+    !$acc enter data create(  hmldx,  hmldy)
+    !$acc enter data create( xpsiyz, ypsixz)
+    !$acc enter data create(  kmld)
+
+    !$acc enter data create( rmavdx, rmavdy)
+    !$acc enter data create(   muzx,   muzy)
+
+    !$acc enter data create(   dtdx,   dtdy)
+    !$acc enter data create(  dtfdz)
+    return
+  end subroutine gpu_create_arr
+#endif
 subroutine flxtrc( &
   &    adt,  diffz, &
   &     tx,     hx, &
@@ -320,6 +404,10 @@ subroutine flxtrc( &
 #endif
 
   if (oinit) then
+#if defined(_OPENACC) || defined(GPU_DEBUG)
+     call gpu_create_arr
+#endif
+
 #ifdef OPT_OFFLINE
      do n = 3, ntdim
 #else
@@ -374,6 +462,7 @@ subroutine flxtrc( &
           &         nxdim, nydim, nzdim, 'SYZ', 'OCN')
 #endif
      end do
+     !$acc update device(sx,sy,sz, sxx,syy,szz, sxy,sxz,syz)
      return
   end if
 
@@ -421,8 +510,28 @@ subroutine flxtrc( &
      ci3 = 1.d0 / 3.d0
 
 !----- initialization
+     !$acc kernels default(present)
+     s0(:,:,:)=0.d0
+     sm(:,:,:)=0.d0
+     f0( :,:) =0.d0
+     fm( :,:) =0.d0
+     fx( :,:) =0.d0
+     fy( :,:) =0.d0
+     fz( :,:) =0.d0
+     fxx(:,:) =0.d0
+     fyy(:,:) =0.d0
+     fzz(:,:) =0.d0
+     fxy(:,:) =0.d0
+     fxz(:,:) =0.d0
+     fyz(:,:) =0.d0
+     vlmx(:,:)=0.d0
+     vlmy(:,:)=0.d0
+     vlmz(:)  =0.d0
+     alf( :,:)=0.d0
+     !$acc end kernels
 
      if (oeof) then
+        !$acc kernels default(present)
         do n = 1, ntdim
            do k = 1, nzdim
               do ij = 1, nxydim
@@ -438,9 +547,11 @@ subroutine flxtrc( &
               end do
            end do
         end do
+        !$acc end kernels
      end if
      
 !    ---- area normal to u defined on UV-grid
+     !$acc kernels default(present)
      do k = kstr, kstr+kz-1
         do ij = 1, nxydim
 
@@ -471,6 +582,7 @@ subroutine flxtrc( &
         vlmz(ij) = hxt(ij) * dx * hyt(ij) * dy(ij)
         
      end do
+     !$acc end kernels
 !---- 
      call rewnml(ifpar, jfpar)
      read(ifpar, nmcah, iostat=istat)
@@ -488,7 +600,6 @@ subroutine flxtrc( &
      read(ifpar, nmdifs, iostat=istat)
      call cstnml(jfpar, 'flxtrc', 'nmdifs', istat)
      write(jfpar, nmdifs)
-     !$acc enter data create(ahi3d, ahg3d, ahh3d)
      if ( iah .eq. 0 ) then
 
         write(jfpar, *) 'Background horizontal diffusion :', ahh
@@ -606,61 +717,6 @@ subroutine flxtrc( &
      call cstnml(jfpar, 'flxtrc', 'nmbbdh', istat)
      write(jfpar, nmbbdh)
 #endif
-     
-     !$acc enter data create(ftx,fty,ftz, ftxd,ftyd,ftzd)
-     !$acc enter data create(wzc,    rzm)
-     !$acc enter data create(fharmx, fharmy,   harm)
-     !$acc enter data create(hzbot)
-     !$acc enter data create(dh)
-
-     !$acc enter data create(xdzdx,  ydzdy)
-     !$acc enter data create(zdzdx,  zdzdy)
-     !$acc enter data create(xdtdz,  ydtdz)
-     !$acc enter data create(zdtdx,  zdtdy)
-
-     !$acc enter data create(adt2)
-     !$acc enter data create(adtd)
-     !$acc enter data create(adtah)
-     !$acc enter data create(adtgm)
-     !$acc enter data create(adtis)
-     !$acc enter data create(ftx2)
-     !$acc enter data create(fty2)
-     !$acc enter data create(ftz2)
-     !$acc enter data create(ftxah)
-     !$acc enter data create(ftyah)
-     !$acc enter data create(ftxgm)
-     !$acc enter data create(ftygm)
-     !$acc enter data create(ftzgm)
-     !$acc enter data create(ftxis)
-     !$acc enter data create(ftyis)
-     !$acc enter data create(ftzis)
-
-     !$acc enter data create(ublsx, vblsy)
-     !$acc enter data create(ublsw, vblsw)
-
-     !$acc enter data copyin(s0)
-     !$acc enter data copyin(sm)
-
-     !$acc enter data copyin(sx,sy,sz, sxx,syy,szz, sxy,sxz,syz)
-
-     !$acc enter data copyin(f0)
-     !$acc enter data copyin(fm)
-     !$acc enter data copyin(fx , fxx)
-     !$acc enter data copyin(fy , fyy)
-     !$acc enter data copyin(fz , fzz)
-     !$acc enter data copyin(fxy, fxz)
-     !$acc enter data copyin(fyz)
-     
-     !$acc enter data copyin(vlmx, vlmy)
-     !$acc enter data copyin(vlmz)     
-
-     !$acc enter data copyin(alf)
-     !$acc enter data create(uv)
-
-     !$acc enter data create(psigmx, psigmy)
-     !$acc enter data create(xpsiy,  ypsix)
-     !$acc enter data create(zpsix,  zpsiy)
-     !$acc enter data create( igsy,   igsx)  
   end if
 
   tsiv = 1.d0 / ts
@@ -2608,31 +2664,8 @@ subroutine dnsgrd( &
         &   c4(kstr), c5(kstr), c6(kstr), &
         &   d0(kstr), d1(kstr), d2(kstr), d3(kstr),  d4(kstr), &
         &   d5(kstr), d6(kstr), d7(kstr), d8(kstr),  d9(kstr))
-     !$acc enter data copyin(c0,c1,c2,c3,c4,c5,c6)
-     !$acc enter data copyin(d0,d1,d2,d3,d4,d5,d6,d7,d8,d9)
-
-     !$acc enter data create(cxpsy, cypsx)
-     !$acc enter data create(czpsx, czpsy)
-
-     !$acc enter data create(r)
-     !$acc enter data create(   hmld, hmld1)
-     !$acc enter data create( rmavez, rmav1)
-     !$acc enter data create(  dzsig, dzmsig)
-     !$acc enter data create(     zt,    ztm)
-     !$acc enter data create( rsigth)
-     !$acc enter data create(    nbv,     lf)
-     !$acc enter data create( xpsiy1, ypsix1)
-     !$acc enter data create( zpsix1, zpsiy1)
-     !$acc enter data create(  zmld0,  zhmld)
-     !$acc enter data create(  hmldx,  hmldy)
-     !$acc enter data create( xpsiyz, ypsixz)
-     !$acc enter data create(  kmld)
-
-     !$acc enter data create( rmavdx, rmavdy)
-     !$acc enter data create(   muzx,   muzy)
-
-     !$acc enter data create(   dtdx,   dtdy)
-     !$acc enter data create(  dtfdz)       
+     !$acc update device(c0,c1,c2,c3,c4,c5,c6)
+     !$acc update device(d0,d1,d2,d3,d4,d5,d6,d7,d8,d9)
   end if
 
 !$acc kernels default(present)
