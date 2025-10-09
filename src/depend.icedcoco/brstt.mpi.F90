@@ -410,6 +410,8 @@ contains
     integer(4)   ::     i,     j,     k
     integer(4)   ::  ierr
 
+    shift_gpu=.false.
+    
     if ( clas(1:3) == 'OCN' ) then
        oeof = .false.
        call mpi_read_chead(chead, mpi_fh_r, disp, icread)
@@ -436,11 +438,9 @@ contains
           call mpi_read_id(additm, mpi_fh_r,disp)
 
 #ifdef OPT_TRIPOLE
-          shift_gpu=.false.
           call shift1(additm, nxdim, nydim, nic+1,                    &
     &                          fact,  ioff,  joff  )
 #else
-          shift_gpu=.false.
           call shift1(additm, nxdim, nydim, nic+1)
 #endif
        end if
@@ -453,11 +453,9 @@ contains
        if(.not. oeof) then
           call mpi_read_2d(additm, mpi_fh_r,disp)
 #ifdef OPT_TRIPOLE
-          shift_gpu=.false.
           call shift1(additm, nxdim, nydim,     1,                    &
     &                          fact,  ioff,  joff)
 #else
-          shift_gpu=.false.
           call shift1(additm, nxdim, nydim, 1)
 #endif
        end if

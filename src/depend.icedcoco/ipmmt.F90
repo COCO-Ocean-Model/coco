@@ -120,6 +120,9 @@ subroutine pmomnt( &
 
 
   if (oinit) then
+     sgmxx(:)=0.d0
+     sgmyy(:)=0.d0
+     sgmxy(:)=0.d0
 #ifdef OPT_TRIPOLE
      call rstadd(sgmxx, oeof, nxdim, nydim, 1, 'SGMXX', 'SFC', &
        &                                        1.d0,  0,  0 )
