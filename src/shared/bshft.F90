@@ -171,6 +171,11 @@ contains
     
     if (.not. pack_mode) return
 
+    if (oinit) shift_gpu=.false.
+    if (shift_rdgeo) then
+       shift_gpu=.false.
+    end if
+
     koff=koffset(num_packed + 1)
     !$acc update device(koffset) async if(shift_gpu)
     nelems = icomm * ny * koff
@@ -349,6 +354,7 @@ contains
        end if
     end if
 #endif
+    if(id == num_packed) shift_gpu=.true.
   end subroutine shift_unpack
 
 !=======================================================================
