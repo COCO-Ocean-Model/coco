@@ -592,6 +592,7 @@ contains
 
   subroutine mpi_read_2d_dimx(buf, fh, disp)
   use zocdim
+  use zocfil, only : nfstdo
   implicit none
 #include "mpif.h"
 
@@ -601,6 +602,7 @@ contains
   integer (kind = mpi_offset_kind):: disp
   integer :: i, j, k
   integer :: ifile
+  integer (kind = mpi_offset_kind):: need, filesize
   integer :: istart(2), igsize(2), isize(2)
 
 #ifdef OPT_IO_SEQUENTIAL
@@ -617,6 +619,17 @@ contains
        &    mpi_order_fortran,        &
        &    mpi_real8, ifile, ierr)
   call mpi_type_commit(ifile, ierr)
+
+#ifdef OPT_EXMASK
+  call mpi_file_get_size(fh, filesize, ierr)
+  need = disp+nxgdim*nygdim*8 ! 8-byte real
+  if (need > filesize) then
+     write(nfstdo, *) '*** Error in reading MASK file ***'
+     write(nfstdo, *) 'Possible cause: geographic information missing in MASK file'
+     call flush(nfstdo)
+     call mpi_abort(mpi_comm_ogcm, 1, ierr)
+  end if
+#endif
 
   call mpi_file_set_view(fh, disp,    &
        &    mpi_real8,ifile,"native", &
