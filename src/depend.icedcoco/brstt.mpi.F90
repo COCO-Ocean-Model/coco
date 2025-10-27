@@ -419,6 +419,8 @@ contains
           oeof = .true.
        end if
        if(.not. oeof) then
+          additm(:,:,:kstr-1)=0.d0
+          additm(:,:,kstr+nz:)=0.d0
           call mpi_read_3d(additm, mpi_fh_r,disp)
 
 #ifdef OPT_TRIPOLE
