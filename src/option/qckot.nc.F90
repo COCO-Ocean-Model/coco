@@ -434,6 +434,7 @@ contains
     integer :: iodint =1, iudint=1, iodavr=0, iodsng=1, iodsvi=0
     integer :: iohstr(6), iohend(6), iohint, iuhint, iohavr, iohsng
     integer :: ioxstr, ioxend, ioystr, ioyend, iozstr, iozend, iosvin
+    integer, save :: iodl6d = 0, iohl6d = 0
     character ::  cohfil*(ncf), cohitm*16, cohvco*16
     character(len=ncf) ::  crun = '(RUN NAME WAS NOT SET)'
     character(16) :: ddfmt = 'not-specified'
@@ -441,11 +442,11 @@ contains
 
     namelist /nmtime/ itstrt, itend, tmstp, iutstp, ntsplt
     namelist /nmdout/ iodstr, iodend, iodint, iudint, iodavr, iodsng, iodsvi, &
-         &             ddfmt
+         &             ddfmt, iodl6d
     namelist /nmhist/ cohitm, cohfil, cohvco,                                 &
          &            iohstr, iohend, iohint, iuhint, iohavr, iohsng,         &
          &            ioxstr, ioxend, ioystr, ioyend, iozstr, iozend, iosvin, &
-         &              dfmt
+         &              dfmt, iohl6d
     namelist /nmrun/ crun
     
     integer :: i, j, k, n, ij

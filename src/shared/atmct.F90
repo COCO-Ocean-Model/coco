@@ -29,7 +29,7 @@ module atmct
  integer, save :: iointv(nfomax), iuintv(nfomax)
  integer, save :: ntsplt=0
  integer, save :: nohitm
-
+ logical, save :: leap_6day_out(nfomax) = .false.
 
 contains
   subroutine tmstup(                                                           &
@@ -62,6 +62,7 @@ contains
 
   integer :: iohstr(6), iohend(6), iohint, iuhint, iohavr, iohsng
   integer :: ioxstr, ioxend, ioystr, ioyend, iozstr, iozend, iosvin
+  integer, save :: iodl6d = 0, iohl6d = 0
   character(ncf) :: cohfil
   character(16) :: cohitm='   not-specified'
   character(16) :: cohvco='   not-specified'
@@ -73,11 +74,11 @@ contains
   namelist /nmtime/ itstrt, itend, tmstp, iutstp, ntsplt
   namelist /nmcaln/ icaln
   namelist /nmrstr/ irintv, iurint, irsrwd
-  namelist /nmdout/ iodstr, iodend, iodint, iudint, iodavr, iodsng, iodsvi, ddfmt
+  namelist /nmdout/ iodstr, iodend, iodint, iudint, iodavr, iodsng, iodsvi, ddfmt, iodl6d
   namelist /nmhist/ cohitm, cohfil, cohvco,                                    &
    &                  iohstr, iohend, iohint, iuhint, iohavr, iohsng,          &
    &                  ioxstr, ioxend, ioystr, ioyend, iozstr, iozend, iosvin,  &
-   &                    dfmt
+   &                    dfmt, iohl6d
 
   call rewnml(ifpar, jfpar)
   read(ifpar, nmtime, iostat=istat)
@@ -100,9 +101,17 @@ contains
         iostrt(i, iitem) = iodstr(i)
         ioend (i, iitem) = iodend(i)
      end do
-        iointv(iitem) = iodint
-        iuintv(iitem) = iudint
+     iointv(iitem) = iodint
+     iuintv(iitem) = iudint
   end do
+
+  if (iodl6d == 1 .and. iodint == 5 .and. iudint == 3 .and. icaln == 2) then
+     do iitem = 1, nfomax
+        leap_6day_out(iitem) = .true.
+     end do
+  endif
+  
+     
 
   call rewnml(ifpar, jfpar)
   nohitm = 0
@@ -113,6 +122,7 @@ contains
       iohend(1) = -1
       iohint = -1
       iuhint = -1
+      iohl6d = -1
       read(ifpar, nmhist, iostat=istat)
       if(istat < 0) exit
 
@@ -136,6 +146,15 @@ contains
          end if
          if (iuhint > 0) then
             iuintv(iohitm) = iuhint
+         end if
+         if (iohl6d == 0) then
+            leap_6day_out(iohitm) = .false.
+         end if
+         if (iohl6d == 1) then
+            leap_6day_out(iohitm) = .true.
+         end if
+         if (iointv(iohitm) /= 5 .or. iuintv(iohitm) /= 3 .or. icaln /= 2) then
+            leap_6day_out(iohitm) = .false.
          end if
       end if
   end do
@@ -241,6 +260,9 @@ contains
    &                     (ioend(i, iitem), i = 1, 6)        
         write(jfpar, *) 'output interval  :', iointv(iitem),                   &
    &                     ' ', cunit(iuintv(iitem))
+        if (leap_6day_out(iitem)) then
+           write(jfpar, *) '6-day output interval only if period includes the leap day'
+        end if
      end if
   end do
 
@@ -270,6 +292,8 @@ contains
   integer, intent (in) :: nt
   real(8), intent (in) :: tt
   integer :: iitem
+  integer :: idate(6)
+  logical :: leap
 
   itst = 2
   ts  = dt
@@ -277,6 +301,10 @@ contains
   ntss = ntsplt 
   tss  = ts / dble(ntss)
 
+  call css2yh(idate, tt)
+  leap = (mod(idate(1),4) .eq. 0 .and. (mod(idate(1), 100) .ne. 0 .or. mod(idate(1), 400) .eq. 0))
+  leap = (leap .and. idate(2) == 2 .and. idate(3) == 25)
+  
   do iitem = 1, nohitm
      if (iflout(iitem) == 1) then
         if (      (tt > tostrt(iitem))                                         &
@@ -286,6 +314,10 @@ contains
               oflout(iitem) = .true.
               ionext(iuintv(iitem), iitem)                                     &
    &        = ionext(iuintv(iitem), iitem) + iointv(iitem)
+              if (leap .and. leap_6day_out(iitem)) then
+                 ionext(iuintv(iitem), iitem)                                  &
+   &           = ionext(iuintv(iitem), iitem) + 1
+              end if
               call cyh2ss(                                                     &
    &                tonext(iitem),                                             &
    &                ionext(1, iitem))
