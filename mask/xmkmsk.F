@@ -21,9 +21,6 @@ c ---------------------------------------------------------------------
       INTEGER     NX,     NY,     NZ,     KZ,    NIC
       INTEGER    NY1,    NY2
 
-      INTEGER   NTDIM
-      PARAMETER(NTDIM = 2)
-
       INTEGER   ISTR, JSTR, KSTR
       PARAMETER(ISTR = 3, JSTR = 3, KSTR = 2)
       INTEGER   IEND, JEND, KEND
@@ -117,8 +114,15 @@ c ---------------------------------------------------------------------
       ALLOCATE( GLONT(NXDIM,NYDIM),        GLATT(NXDIM,NYDIM))
       ALLOCATE( RANGT(NXDIM,NYDIM))
 #endif
+
+#ifndef OPT_ZOCDIM
+#if defined(OPT_IO_COCOMPI) && !defined(OPT_IO_SEQUENTIAL)
+      OPEN(JFILE, FILE='MASK', FORM='UNFORMATTED', ACCESS = 'STREAM')
+#else
       OPEN(JFILE, FILE='MASK', FORM='UNFORMATTED')
+#endif
       REWIND(JFILE)
+#endif
       
       CALL GETGEO(
      O               ALD,    BLD,   DGEO,   NBOT,
@@ -145,7 +149,7 @@ c ---------------------------------------------------------------------
      I            INODES, JNODES,
      D                NX,     NY,     NZ,     KZ,    NIC,
      D               NY1,    NY2,
-     D             NXDIM,  NYDIM,  NZDIM,  NTDIM,
+     D             NXDIM,  NYDIM,  NZDIM,
      C              ISTR,   JSTR,   KSTR,   IEND,   JEND,   KEND,
      C             ISSTR,  JSSTR,
      W            MSK1D1, MSK1D2, MSK1D3, MSK1D4,
@@ -158,6 +162,10 @@ c ---------------------------------------------------------------------
      W            MSK3D1, GLONT, GLATT, RANGT)
 #endif
 
+#ifdef OPT_ZOCDIM
+      STOP ! no further processing for zocdim.F90 beyond this point
+#endif
+      
       CALL TMASK (
      I               ALD,    BLD,    DZZ,   NBOT,   IBBL,
      D             NXDIM,  NYDIM,  NZDIM,     KZ,
@@ -178,18 +186,19 @@ c ---------------------------------------------------------------------
      C              ISTR,   JSTR,   KSTR,   IEND,   JEND,   KEND,
      W            MSK3D1)
 
-      WRITE(*, *)
-      WRITE(*, '(2X,A)')
-     & 'logical, save :: oinit, ofinal'
-
-      WRITE(*, *)
-      WRITE(*, '(A)') 'end module zocdim'
+!      WRITE(*, *)
+!      WRITE(*, '(2X,A)')
+!     & 'logical, save :: oinit, ofinal'
+!
+!      WRITE(*, *)
+!      WRITE(*, '(A)') 'end module zocdim'
 #ifdef OPT_EXMASK
       WRITE(JFILE) GLONT
       WRITE(JFILE) GLATT
       WRITE(JFILE) RANGT
 #endif
       CLOSE(JFILE)
+
       CONTAINS
 
 c =====================================================================
@@ -422,12 +431,12 @@ c=====================================================================
          END DO
       END IF
 
-#ifndef OPT_TRIPOLE
-      WRITE(*, '(2X,A,A8,I7,A,A8,I7)')
-     & 'integer, parameter :: ',
-     & 'ijvgst =', IJVSTR, ', ',
-     & 'ijvged =', IJVEND
-#endif
+!#ifndef OPT_TRIPOLE
+!      WRITE(*, '(2X,A,A8,I7,A,A8,I7)')
+!     & 'integer, parameter :: ',
+!     & 'ijvgst =', IJVSTR, ', ',
+!     & 'ijvged =', IJVEND
+!#endif
 
 c      WRITE(JFILE) AMSKV, AMFVX, AMFVY, AMFVZ
       WRITE(JFILE) AMSKV
@@ -567,12 +576,12 @@ c =====================================================================
          END DO
       END IF
 
-#ifndef OPT_TRIPOLE
-      WRITE(*, '(2X,A,A8,I7,A,A8,I7)')
-     & 'integer, parameter :: ',
-     & 'ijtgst =', IJTSTR, ', ',
-     & 'ijtged =', IJTEND
-#endif
+!#ifndef OPT_TRIPOLE
+!      WRITE(*, '(2X,A,A8,I7,A,A8,I7)')
+!     & 'integer, parameter :: ',
+!     & 'ijtgst =', IJTSTR, ', ',
+!     & 'ijtged =', IJTEND
+!#endif
 
       WRITE(JFILE) AMSKT
       WRITE(JFILE) AMFTX
@@ -600,7 +609,7 @@ c =====================================================================
      I            INODES, JNODES,
      D                NX,     NY,     NZ,     KZ,    NIC,
      D               NY1,    NY2,
-     D             NXDIM,  NYDIM,  NZDIM,  NTDIM,
+     D             NXDIM,  NYDIM,  NZDIM,
      C              ISTR,   JSTR,   KSTR,   IEND,   JEND,   KEND,
      C             ISSTR,  JSSTR,
      W               DZM,  DEPTH,     DS,    DSM,
@@ -619,7 +628,7 @@ c =====================================================================
 
       INTEGER     NX,     NY,     NZ,     KZ,    NIC
       INTEGER    NY1,    NY2
-      INTEGER  NXDIM,  NYDIM,  NZDIM,  NTDIM
+      INTEGER  NXDIM,  NYDIM,  NZDIM
       INTEGER   ISTR,   JSTR,   KSTR
       INTEGER   IEND,   JEND,   KEND
       INTEGER  ISSTR,  JSSTR
@@ -978,13 +987,21 @@ c     &     / ABS(DCONF(ZQ, ZA, ZB, ZC, WC))
       WRITE(*, *)
 
       WRITE(*, '(A)') '! *** Write here the number of tracer.'
+      WRITE(*, '(A)') '#ifdef OPT_OECO2'
+      WRITE(*, '(A)') '! *** 17, for OECO2 2.2.1'
+      WRITE(*, '(2X,A)') 'integer, parameter :: ntdim =     17'
+      WRITE(*, '(A)') '#elif OPT_OFFLINE'
+      WRITE(*, '(A)')
+     & '! *** The minimum number is 3, for T, S and some tracers.'
+      WRITE(*, '(2X,A)') 'integer, parameter :: ntdim =      3'
+      WRITE(*, '(A)') '#else'
       WRITE(*, '(A)')
      & '! *** The minimum number is 2, for temperature and salinity.'
-
       WRITE(*, '(2X,A,I7)')
-     & 'integer, parameter :: ntdim =', NTDIM
-      WRITE(*, *)
+     & 'integer, parameter :: ntdim = 2'
+      WRITE(*, '(A)') '#endif'
       WRITE(*, '(A)') '! ***'
+      WRITE(*, *)
 
       WRITE(*, '(2X,A)')
      & 'integer, parameter :: nxy = nx*ny, nxyz = nxy*nz'
@@ -1023,6 +1040,15 @@ c     &     / ABS(DCONF(ZQ, ZA, ZB, ZC, WC))
       WRITE(*, '(2X,A)')
      & 'integer, parameter :: icomm = istr-1, jcomm = jstr-1'
       WRITE(*, *)
+      
+      WRITE(*, '(2X,A)')
+     & 'logical, save :: oinit, ofinal'
+      WRITE(*, *)
+      WRITE(*, '(A)') 'end module zocdim'
+
+#ifdef OPT_ZOCDIM
+      RETURN
+#endif
 
 #ifdef OPT_TRIPOLE
       ALONW = -90.0D0
