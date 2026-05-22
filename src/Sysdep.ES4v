@@ -6,6 +6,10 @@ FFLAGS	= -O3 -fpp -finline-functions -finline-max-function-size=20 -finline-max-
 
 FOPTION = $(FFLAGS) -I$(OGCMDIR)/src/include -I$(OGCMDIR)/src/module -I$(OGCMDIR)/src/build $(OPTBDY) $(OPTSRST) $(OPTBBL) $(OPTTRIPOLE) $(OPTIO) $(OPTEXMASK) $(OFFLINE) $(OPTOECO)
 
+ifneq ($(filter -DOPT_IO_NCF,$(OPTIO)),)
+	FFLAGS += -lnetcdff -lnetcdf -lpnetcdf -lhdf5_hl -lhdf5 -lsz -lz -lmpi
+endif
+
 AR	= ar r
 RANLIB	= ranlib
 #RANLIB	= touch

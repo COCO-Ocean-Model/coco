@@ -53,8 +53,10 @@ module qckot
 
   real(8), allocatable, save ::  dmskt (:,:,:), dmsktl(:,:)
   real(8), allocatable, save ::  dmskv (:,:,:), dmskvl(:,:) 
+  real(8), allocatable, save ::  dmskxl(:,:), dmskyl(:,:)
   real(8), allocatable, save ::    buf3(:,:,:)
   real(8), allocatable, save ::    buf2(:,:)
+  real(8), allocatable, save ::  dmskl (:,:)
   
   real*8, allocatable, save :: sigma(:,:,:,:)
   integer, allocatable, save :: korg(:,:,:,:), ksdst(:,:,:,:)
@@ -88,11 +90,12 @@ contains
                        igstr, jgstr, kstr,    &
                        istr,  jstr,  kend
     use zocfil, only : nfomax
-    use zocmsk, only : amskt, amskv, &
+    use zocmsk, only : amskt, amskv, amftx, amfty, &
 #ifdef OPT_BBL
          & amsktb, amskt1, &
 #endif
          & nbot
+    use zocout, only : dbleou, dbloug, sngoug, wrkout
     use bgs3d
     use bshft
     use ufile
@@ -130,6 +133,7 @@ contains
     
     integer :: i, j, k, n, ij
     integer :: istat
+    logical :: lopen
 
     nsig(0) = nz
     nsig(1:nncmax) = 0
@@ -242,10 +246,7 @@ contains
           if (nvcord(iohitm) > 0) then        !! sigma output
              kzend(iohitm) = nsig(nvcord(iohitm))
           end if
- 
-          if (myrank == iroot) then
-             call filopn(nfunit(iohitm), cohfil, 'WRITE')
-          end if
+
           if (iohstr(1) >= 0) then
              do i = 1, 6
                 iostrt(i, iohitm) = iohstr(i)
@@ -273,6 +274,15 @@ contains
           if ( dfmt(1:13) /= 'not-specified' ) then
              cdfmt(iohitm) = dfmt
           end if
+
+          lopen = (myrank == iroot)
+#ifdef OPT_IO_NCF
+          lopen = lopen .and. (cdfmt(iohitm)(1:2) /= 'NC')
+#endif
+          if (lopen) then
+             call filopn(nfunit(iohitm), cohfil, 'WRITE')
+          end if
+
           if (iosvin >= 0) then
              isvint(iohitm) = iosvin
           end if
@@ -323,6 +333,9 @@ contains
 !---- setting local mask
     allocate(dmsktl(nxydim, nzdim))
     allocate(dmskvl(nxydim, nzdim))
+    allocate(dmskxl(nxydim, nzdim))
+    allocate(dmskyl(nxydim, nzdim))
+    allocate(dmskl (nxydim, nzdim))
     dmsktl(:,:) = amskt(:,:)
 #ifdef OPT_BBL
     do ij = 1, nxydim
@@ -353,7 +366,19 @@ contains
 #else
     call shift1( dmskvl, nxdim, nydim, nzdim )
 #endif
-
+    dmskxl = 0.d0
+    dmskyl = 0.d0
+    do k = 1, nzdim
+       do ij = 1, nxydim
+          if (amftx(ij, k) /= 0) then
+             dmskxl(ij,k) = 1.d0
+          end if
+          if (amfty(ij, k) /= 0) then
+             dmskyl(ij,k) = 1.d0
+          end if
+       end do
+    end do
+    
 !---- setting global mask
     allocate(dmskt(1, 1, 1))
     allocate(dmskv(1, 1, 1))
@@ -386,7 +411,7 @@ contains
           end do
        end do
     end if
-    deallocate ( buf3, dmsktl, dmskvl )
+    deallocate ( buf3 )
 
     do i = 1, nwork
        wrkout(i) = 0.d0
@@ -447,12 +472,13 @@ contains
        &             oflout)
     use zocdim, only : nx, ny, nxy, nxg, nyg, nxdim, nxydim, nxgdim, &
          &  istr, jstr, myrank, ijnode, iroot, &
-         &  nic, nz
+         &  nic, nz, kstr
     use zocfil, only : nfomax
     use zocgrd, only : tt, nt
     use zocout, only : dbleou, dbloug, sngoug, wrkout
     use bgs3d
     use ucaln
+    use ufile
     implicit none
 
     logical, intent(in) :: oflout(nfomax)
@@ -470,6 +496,7 @@ contains
     character(len=10) :: htime
     character(len=5)  :: hzone
     integer :: ivalues(1:8)
+    integer :: ij
 
     do iitem = 1, nohitm
        if (oflout(iitem)) then
@@ -497,6 +524,7 @@ contains
              write(chead(28), '(i16)') nint(tdur / 3.6d3)
              write(chead(27), '(i4.4,2i2.2,1x,3i2.2,1x)') idate(1:6)
              write(chead(50), '(i6.6,5i2.2)') idate(1:6)
+             
 #ifdef OPT_TRIPOLE
              if (clas(iitem)(6:6) == 'V') then
                 write(chead(29), '(a,i0)') 'OCLONTPV', nxitm(iitem)
@@ -541,18 +569,14 @@ contains
              write(chead(47), '(e16.7)') 0.d0
              
              if (ioavrg(iitem) == 1) then
-                tout = ttold(iitem)
-                call css2yh( idate, tout )
+                call css2yh( idate, ttold(iitem) )
                 write(chead(48), '(i4.4,2i2.2,1x,3i2.2,1x)') idate(1:6)
-                tout = tt
-                call css2yh( idate, tout )
-                write(chead(49), '(i4.4,2i2.2,1x,3i2.2,1x)') idate(1:6)
-                tout = (tt + ttold(iitem)) * 0.5d0
-                call css2yh( idate, tout )
              else
+                call css2yh( idate, tt )
                 write(chead(48), '(i4.4,2i2.2,1x,3i2.2,1x)') idate(1:6)
-                write(chead(49), '(i4.4,2i2.2,1x,3i2.2,1x)') idate(1:6)
              end if
+             call css2yh( idate, tt )
+             write(chead(49), '(i4.4,2i2.2,1x,3i2.2,1x)') idate(1:6)
              
              chead(61) = 'COCO'
              chead(63) = 'COCO'
@@ -593,6 +617,7 @@ contains
                    end do
                 end do
              end if
+             if ( cdfmt(iitem)(1:2) /= 'NC' ) then
              call gather_chk_sig(dbloug, dbleou, nsnzmx)
              if (myrank == iroot) then
                 if ( cdfmt(iitem)(1:3) == 'UR8' ) then
@@ -686,6 +711,57 @@ contains
                                 nsiz, dundef )
                 end if
              end if
+             else ! NetCDF
+#ifdef OPT_IO_NCF
+                if ( nvcord(iitem) == 0 ) then
+                   select case (clas(iitem)(6:6))
+                   case ('T')
+                      dmskl = dmsktl
+                   case ('V')
+                      dmskl = dmskvl
+                   case ('X')
+                      dmskl = dmskxl
+                   case ('Y')
+                      dmskl = dmskyl
+                   end select
+                   if (clas(iitem)(3:5) == 'ICE') then
+                      do k = kzstr(iitem), kzend(iitem)
+                         dmskl(:, k) = dmskl(:, kstr)
+                      end do
+                   end if
+                   do k = kzstr(iitem), kzend(iitem)
+                   do j = 1, ny
+                   do i = 1, nx
+                      ijk = (k - kzstr(iitem)) * nxy + (j - 1) * nx + i
+                      ij = i+istr-1+(j+jstr-2)*nxdim
+                      if ( dmskl(ij,k+kstr-1) == 0.d0 ) then
+                         dbleou(ijk) = dundef
+                      end if
+                   end do
+                   end do
+                   end do
+                end if
+                if (osingl(iitem)) then
+                   do k = kzstr(iitem), kzend(iitem)
+                   do j = 1, ny
+                   do i = 1, nx
+                      ijk = (k - kzstr(iitem)) * nxy + (j - 1) * nx + i
+                      snglou(ijk) = dbleou(ijk)
+                   end do
+                   end do
+                   end do
+                   call write_ncfile(iitem, chead, nx, ny, kzdim, snglou)
+                else
+                   call rewnml(ifpar, jfpar)
+                   write(jfpar,*)'Err. Only for REAL4'
+                   stop
+                end if
+#else
+                call rewnml(ifpar, jfpar)
+                write(jfpar,*)'Err. OPT_IO_NCF should be specified'
+                stop
+#endif
+             end if
              
              if (myrank < ijnode) then
                 do i = 1, nszitm(iitem)
@@ -702,7 +778,6 @@ contains
                    end do
                 end if
              end if
-
 
           end if
           cntavr(iitem) = 0.d0
@@ -782,7 +857,9 @@ contains
           nszitm(item) = nxydim * (kzend(item) - kzstr(item) + 1)
           ctitl(item) = htitl
           cunit(item) = hunit
-
+          if ( isvint(item) > 0 .and. nvcord(item) > 0 .and. citem(item)(1:5) /= 'DZSIG') then
+             cunit(item) = TRIM(hunit)//'*cm'
+          end if
 !         Horizontal position: 1:T, 2:V, 3:X(flux), 4:Y(flux)
           if (cclas(6:6) == 'T') then
              nhcord(item) = 1
@@ -948,7 +1025,6 @@ contains
     use zocfil, only: &
       &     ncf
     use ufile
-    use bshfi
     implicit none
 
 #include "mpif.h"
@@ -1522,4 +1598,361 @@ contains
 
     return
   end subroutine secofx
+
+#ifdef OPT_IO_NCF
+  subroutine write_ncfile(iitem, chead, nx, ny, kzdim, dat)
+    use zocdim, only : nxg, nyg, nz, myrank, iroot, irank, jrank, ierr, mpi_comm_ogcm, &
+         & kstr, nic
+    use ncfio
+    use ucaln
+
+    implicit none
+#include "mpif.h"
+    integer,            intent(in) :: iitem
+    character (len=16), intent(in) :: chead(1:64)
+    integer,            intent(in) :: nx, ny, kzdim
+    real(4),            intent(in) :: dat(nx*ny*kzdim)
+    character (len=4)  :: cyr
+    character (len=2)  :: cmon, cday, chr, cmin, csec
+    character (len=5)  :: cz_unit
+    character (len=64) :: cz_long_name
+    logical, save :: of = .true.
+#ifdef OPT_EXMASK
+    real(8), save :: xt(nxg,nyg), yt(nxg,nyg)
+    real(8), save :: xv(nxg,nyg), yv(nxg,nyg)
+    real(8), save :: xx(nxg,nyg), yx(nxg,nyg)
+    real(8), save :: xy(nxg,nyg), yy(nxg,nyg)
+    real(8) :: x(nxg,nyg), y(nxg,nyg)
+    real(8) :: lon0
+    integer, parameter :: nvert = 4
+    real(8), save :: xt_vert(nvert,nxg,nyg), yt_vert(nvert,nxg,nyg)
+    real(8), save :: xv_vert(nvert,nxg,nyg), yv_vert(nvert,nxg,nyg)
+    real(8), save :: xx_vert(nvert,nxg,nyg), yx_vert(nvert,nxg,nyg)
+    real(8), save :: xy_vert(nvert,nxg,nyg), yy_vert(nvert,nxg,nyg)
+    real(8) :: x_vert(nvert,nxg,nyg), y_vert(nvert,nxg,nyg)
+#else
+    real(8), save :: xt(nxg), yt(nyg)
+    real(8), save :: xv(nxg), yv(nyg)
+    real(8), save :: xx(nxg), yx(nyg)
+    real(8), save :: xy(nxg), yy(nyg)
+    real(8) :: x(nxg), y(nyg)
+#endif
+    integer, parameter :: nbnd = 2
+    real(8), save :: zt(nz), zw(nz), zi(nic)
+    real(8), save :: zt_bnd(nbnd,nz), zw_bnd(nbnd,nz), zi_bnd(nbnd,nic)
+    real(8), allocatable :: z(:), z_bnd(:,:)
+    real(8) :: tout, time1
+    integer :: idate(6)
+
+    if (of) then
+       call def_coord
+       of=.false.
+    end if
+
+    select case (clas(iitem)(6:6))
+    case ('V')
+       x=xv
+       y=yv
+#ifdef OPT_EXMASK
+       x_vert=xv_vert
+       y_vert=yv_vert
+#endif
+    case ('X')
+       x=xx
+       y=yx
+#ifdef OPT_EXMASK
+       x_vert=xx_vert
+       y_vert=yx_vert
+#endif
+    case ('Y')
+       x=xy
+       y=yy
+#ifdef OPT_EXMASK
+       x_vert=xy_vert
+       y_vert=yy_vert
+#endif
+    case default
+       x=xt
+       y=yt
+#ifdef OPT_EXMASK
+       x_vert=xt_vert
+       y_vert=yt_vert
+#endif
+    end select
+
+    allocate(z(1:kzdim))
+    allocate(z_bnd(1:nbnd,1:kzdim))
+    z(1:kzdim)=zt(1:kzdim)
+    z_bnd(1:nbnd,1:kzdim)=zt_bnd(1:nbnd,1:kzdim)
+    cz_unit = 'm'
+    cz_long_name = 'depth'
+    if (nvcord(iitem) > 0) then
+       z(1:kzdim)=lsig(1:kzdim,nvcord(iitem))
+       z_bnd(1,1:kzdim)=lsigp(1:kzdim,nvcord(iitem))
+       z_bnd(2,1:kzdim)=lsigp(2:kzdim+1,nvcord(iitem))
+       cz_unit = 'kg/m3'
+       write(cz_long_name,'("sigma density (reference depth: "i0" m)")') nint(zref(nvcord(iitem))*1.d-2)
+    else
+       select case (clas(iitem)(3:5))
+       case ('LVM')
+          z(1:kzdim)=zw(1:kzdim)
+          z_bnd(1:nbnd,1:kzdim)=zw_bnd(1:nbnd,1:kzdim)
+       case ('ICE')
+          z(1:kzdim)=zi(1:kzdim)
+          z_bnd(1:nbnd,1:kzdim)=zi_bnd(1:nbnd,1:kzdim)
+          cz_unit = ''
+          cz_long_name = 'ice thickness category'
+       end select
+    end if
+
+    cyr =chead(48)( 1:4)
+    cmon=chead(48)( 5:6)
+    cday=chead(48)( 7:8)
+    chr =chead(48)(10:11)
+    cmin=chead(48)(12:13)
+    csec=chead(48)(14:15)
+    read(chead(48),'(i4.4,2i2.2,1x,3i2.2,1x)') idate
+    call cyh2ss(time1, idate)
+    read(chead(50),'(i6.6,5i2.2)') idate
+    call cyh2ss(tout, idate)
+
+    if (clas(iitem)(3:5) == 'SFC') then
+       call nc_write(cf=trim(adjustl(cfitem(iitem)))//'.nc', fid=iitem, time=tout, &
+            & nxg=nxg,nyg=nyg, nx=nx,ny=ny,nz=kzdim, irank=irank, jrank=jrank, &
+            & shuffle=.true., deflate_level=1, &
+            & buf4=dat, cvar=adjustl(citem(iitem)), v_unit=adjustl(cunit(iitem)), v_long_name=adjustl(ctitl(iitem)), &
+            & fill_value=-1.e20, &
+            & x=x, x_unit='degrees_east',  x_long_name='longitude', &
+            & y=y, y_unit='degrees_north', y_long_name='latitude', &
+#ifdef OPT_EXMASK
+            & x_vert=x_vert, y_vert=y_vert, &
+#endif
+            & t_unit='hours since '//cyr//'-'//cmon//'-'//cday//' '//chr//':'//cmin//':'//csec, time1=time1)
+    else
+       call nc_write(cf=trim(adjustl(cfitem(iitem)))//'.nc', fid=iitem, time=tout, &
+            & nxg=nxg,nyg=nyg, nx=nx,ny=ny,nz=kzdim, irank=irank, jrank=jrank, &
+            & shuffle=.true., deflate_level=1, &
+            & buf4=dat, cvar=adjustl(citem(iitem)), v_unit=adjustl(cunit(iitem)), v_long_name=adjustl(ctitl(iitem)), &
+            & fill_value=-1.e20, &
+            & x=x, x_unit='degrees_east',  x_long_name='longitude', &
+            & y=y, y_unit='degrees_north', y_long_name='latitude', &
+            & z=z, z_unit=trim(cz_unit),   z_long_name=cz_long_name, &
+#ifdef OPT_EXMASK
+            & x_vert=x_vert, y_vert=y_vert, &
+#endif
+            & z_bnd = z_bnd, &
+            & t_unit='hours since '//cyr//'-'//cmon//'-'//cday//' '//chr//':'//cmin//':'//csec, time1=time1)
+    end if
+    deallocate(z)
+    deallocate(z_bnd)
+
+  contains
+
+#ifdef OPT_EXMASK
+    subroutine mod_lon(a,b)
+      implicit none
+      real(8), intent(inout) :: a, b
+      do while(b - lon0 >= 360.d0)
+         b=b-360.d0
+      end do
+      do while(b - lon0 < 0.d0)
+         b=b+360.d0
+      end do
+      do while(a-b > 180.d0)
+         a=a-360.d0
+      end do
+      do while(a-b < -180.d0)
+         a=a+360.d0
+      end do
+      return
+    end subroutine mod_lon
+#endif
+    
+    subroutine def_coord
+
+#ifdef OPT_EXMASK
+      use zocdim, only : nxyg, igstr, jgstr, nxgdim, igend, jgend, nxygdm
+      use bgs2d
+#endif
+      use zocgrd, only : &
+#ifdef OPT_EXMASK
+           & glont, glatt, &
+#endif
+           & dz0
+      use ufile
+      implicit none
+
+#ifdef OPT_EXMASK
+      real(8) :: glon(nxygdm), glat(nxygdm)
+      real(8) :: drad2deg
+      real(8) :: glon_ij, glon_ije, glon_ijn, glon_ijw, glon_ijs, glon_ijne, glon_ijse, glon_ijnw, glon_ijsw
+      integer :: ij, ijn, ije, ijs, ijw, ijne, ijnw, ijse, ijsw
+#endif
+      integer :: i, j, k
+
+      integer :: istat 
+      integer :: nf_ncg
+      character(len=ncf) :: c_ncg
+      namelist /nm_ncg/ c_ncg
+      data c_ncg /'not-specified'/
+
+#ifdef OPT_EXMASK
+      call gather_2d( glon, glont)
+      call gather_2d( glat, glatt)
+#endif
+      if (irank + jrank == 0) then ! coordinate info is defined and written only root node
+         call rewnml(ifpar, jfpar)
+         read(ifpar, nm_ncg, iostat=istat)
+         if (trim(c_ncg) /= 'not-specified') then
+            call filopn(nf_ncg, c_ncg, 'READ')
+            read(nf_ncg) xt
+            read(nf_ncg) yt
+            read(nf_ncg) xv
+            read(nf_ncg) yv
+            read(nf_ncg) zt
+            read(nf_ncg) zw
+            xx = xt
+            yx = yt
+            xy = xt
+            yy = yt
+         else
+#ifdef OPT_EXMASK
+            drad2deg = 45.d0 / atan(1.d0)
+            glon = glon * drad2deg
+            glat = glat * drad2deg
+            lon0 = (3*glon(igstr+(jgstr-1)*nxgdim)-glon(igstr+1+(jgstr-1)*nxgdim))*0.5d0
+            do j = jgstr, jgend
+               glon(igstr-1+(j-1)*nxgdim) = glon(igend+(j-1)*nxgdim)
+               glon(igend+1+(j-1)*nxgdim) = glon(igstr+(j-1)*nxgdim)
+               glat(igstr-1+(j-1)*nxgdim) = glat(igend+(j-1)*nxgdim)
+               glat(igend+1+(j-1)*nxgdim) = glat(igstr+(j-1)*nxgdim)
+            end do
+            do i = igstr-1, igend+1
+               glon(i+(jgstr-2)*nxgdim) = 2*glon(i+(jgstr-1)*nxgdim)-glon(i+jgstr*nxgdim)
+               glat(i+(jgstr-2)*nxgdim) = 2*glat(i+(jgstr-1)*nxgdim)-glat(i+jgstr*nxgdim)
+#ifdef OPT_TRIPOLE
+               glon(i+jgend*nxgdim) = glon(nxgdim-i+1+(jgend-1)*nxgdim)
+               glat(i+jgend*nxgdim) = glat(nxgdim-i+1+(jgend-1)*nxgdim)
+#else
+               glon(i+jgend*nxgdim) = 2*glon(i+(jgend-1)*nxgdim)-glon(i+(jgend-2)*nxgdim)
+               glat(i+jgend*nxgdim) = 2*glat(i+(jgend-1)*nxgdim)-glat(i+(jgend-2)*nxgdim)
+#endif
+            end do
+            do j = 1, nyg
+               do i = 1, nxg
+                  ij   = i+igstr-1 + (j+jgstr-2)*nxgdim
+                  ijn  = i+igstr-1 + (j+jgstr-1)*nxgdim
+                  ijs  = i+igstr-1 + (j+jgstr-3)*nxgdim
+                  ije  = i+igstr   + (j+jgstr-2)*nxgdim
+                  ijw  = i+igstr-2 + (j+jgstr-2)*nxgdim
+                  ijne = i+igstr   + (j+jgstr-1)*nxgdim
+                  ijse = i+igstr   + (j+jgstr-3)*nxgdim
+                  ijnw = i+igstr-2 + (j+jgstr-1)*nxgdim
+                  ijsw = i+igstr-2 + (j+jgstr-3)*nxgdim
+                  glon_ij = glon(ij)
+                  glon_ijn = glon(ijn)
+                  glon_ijs = glon(ijs)
+                  glon_ije = glon(ije)
+                  glon_ijw = glon(ijw)
+                  glon_ijne = glon(ijne)
+                  glon_ijse = glon(ijse)
+                  glon_ijnw = glon(ijnw)
+                  glon_ijsw = glon(ijsw)
+                  call mod_lon(glon_ijw, glon_ij)
+                  call mod_lon(glon_ijs, glon_ij)
+                  call mod_lon(glon_ije, glon_ij)
+                  call mod_lon(glon_ijn, glon_ij)
+                  call mod_lon(glon_ijne, glon_ij)
+                  call mod_lon(glon_ijnw, glon_ij)
+                  call mod_lon(glon_ijse, glon_ij)
+                  call mod_lon(glon_ijsw, glon_ij)
+                  xt(i,j) = glon_ij
+                  yt(i,j) = glat(ij)
+                  xv(i,j) = (glon_ij  + glon_ije  + glon_ijn  + glon_ijne ) * 0.25d0
+                  yv(i,j) = (glat(ij) + glat(ije) + glat(ijn) + glat(ijne)) * 0.25d0
+                  yx(i,j) = glat(ij)
+                  xy(i,j) = glon_ij
+                  xx(i,j) = (glon_ij  + glon_ijw ) * 0.5d0
+                  yy(i,j) = (glat(ij) + glat(ijs)) * 0.5d0
+                  
+                  xt_vert(1,i,j) = (glon_ij  + glon_ijw  + glon_ijs  + glon_ijsw ) * 0.25d0
+                  xt_vert(2,i,j) = (glon_ij  + glon_ije  + glon_ijs  + glon_ijse ) * 0.25d0
+                  xt_vert(3,i,j) = (glon_ij  + glon_ije  + glon_ijn  + glon_ijne ) * 0.25d0
+                  xt_vert(4,i,j) = (glon_ij  + glon_ijw  + glon_ijn  + glon_ijnw ) * 0.25d0
+                  yt_vert(1,i,j) = (glat(ij) + glat(ijw) + glat(ijs) + glat(ijsw)) * 0.25d0
+                  yt_vert(2,i,j) = (glat(ij) + glat(ije) + glat(ijs) + glat(ijse)) * 0.25d0
+                  yt_vert(3,i,j) = (glat(ij) + glat(ije) + glat(ijn) + glat(ijne)) * 0.25d0
+                  yt_vert(4,i,j) = (glat(ij) + glat(ijw) + glat(ijn) + glat(ijnw)) * 0.25d0
+                  
+                  xv_vert(1,i,j) = glon_ij
+                  xv_vert(2,i,j) = glon_ije
+                  xv_vert(3,i,j) = glon_ijne
+                  xv_vert(4,i,j) = glon_ijn
+                  yv_vert(1,i,j) = glat(ij)
+                  yv_vert(2,i,j) = glat(ije)
+                  yv_vert(3,i,j) = glat(ijne)
+                  yv_vert(4,i,j) = glat(ijn)
+
+                  xx_vert(1,i,j) = (glon_ijw  + glon_ijsw ) * 0.5d0
+                  xx_vert(2,i,j) = (glon_ij   + glon_ijs  ) * 0.5d0
+                  xx_vert(3,i,j) = (glon_ij   + glon_ijn  ) * 0.5d0
+                  xx_vert(4,i,j) = (glon_ijw  + glon_ijnw ) * 0.5d0
+                  yx_vert(1,i,j) = (glat(ijw) + glat(ijsw)) * 0.5d0
+                  yx_vert(2,i,j) = (glat(ij)  + glat(ijs) ) * 0.5d0
+                  yx_vert(3,i,j) = (glat(ij)  + glat(ijn) ) * 0.5d0
+                  yx_vert(4,i,j) = (glat(ijw) + glat(ijnw)) * 0.5d0
+
+                  xy_vert(1,i,j) = (glon_ijs  + glon_ijsw ) * 0.5d0
+                  xy_vert(2,i,j) = (glon_ijs  + glon_ijse ) * 0.5d0
+                  xy_vert(3,i,j) = (glon_ij   + glon_ije  ) * 0.5d0
+                  xy_vert(4,i,j) = (glon_ij   + glon_ijw  ) * 0.5d0
+                  yy_vert(1,i,j) = (glat(ijs) + glat(ijsw)) * 0.5d0
+                  yy_vert(2,i,j) = (glat(ijs) + glat(ijse)) * 0.5d0
+                  yy_vert(3,i,j) = (glat(ij)  + glat(ije) ) * 0.5d0
+                  yy_vert(4,i,j) = (glat(ij)  + glat(ijw) ) * 0.5d0
+
+               end do
+            end do
+#else
+            do i = 1, nxg
+               xt(i) = dble(i) - 0.5d0
+               xv(i) = dble(i)
+               xx(i) = dble(i) - 1.d0
+               xy(i) = dble(i) - 0.5d0
+            end do
+            do j = 1, nyg
+               yt(j) = dble(j) - 0.5d0
+               yv(j) = dble(j)
+               yx(j) = dble(j) - 1.d0
+               yy(j) = dble(j) - 0.5d0
+            end do
+#endif
+            zt(1) = dz0(kstr) * 0.5d-2
+            zw(1) = 0.d0
+            zt_bnd(1,1) = zw(1)
+            zt_bnd(2,1) = dz0(kstr) * 1.d-2
+            zw_bnd(1,1) = - dz0(kstr) * 0.5d-2
+            zw_bnd(2,1) = zt(1)
+            do k = 2, nz
+               zt(k) = zt(k-1) + (dz0(k+kstr-1) + dz0(k+kstr-2)) * 0.5d-2
+               zw(k) = zw(k-1) + dz0(k+kstr-2) * 1.d-2
+               zt_bnd(1,k) = zt_bnd(2,k-1)
+               zt_bnd(2,k) = zt_bnd(1,k) + dz0(k+kstr-1) * 1.d-2
+               zw_bnd(1,k) = zw_bnd(2,k-1)
+               zw_bnd(2,k) = zt(k)
+            end do
+         end if
+         do k = 1, nic
+            zi(k) = dble(k)
+            zi_bnd(1,k) = dble(k) - 0.5d0
+            zi_bnd(2,k) = dble(k) + 0.5d0
+         end do
+      end if
+
+    end subroutine def_coord
+
+  end subroutine write_ncfile
+#endif
+  
 end module qckot
+

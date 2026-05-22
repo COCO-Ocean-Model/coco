@@ -361,8 +361,10 @@ subroutine parset
     &  igrank, mpi_comm_ogcm
 
   use bgs2d
-#ifndef OPT_IO_COCOMPI
+#if defined(OPT_IO_NCF) || !defined(OPT_IO_COCOMPI)
   use bgs3d
+#endif
+#ifndef OPT_IO_COCOMPI
   use bgsid
 #endif
   use ufile
@@ -507,8 +509,10 @@ subroutine parset
   end if
 
   call gs2dst
-#ifndef OPT_IO_COCOMPI
+#if defined(OPT_IO_NCF) || !defined(OPT_IO_COCOMPI)
   call gs3dst
+#endif
+#ifndef OPT_IO_COCOMPI
   call gsidst
 #endif
   return

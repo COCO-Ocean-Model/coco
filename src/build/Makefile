@@ -14,6 +14,7 @@ SRCS_SHARED = \
 	bstbc.F90 \
 	dwdns.F90 \
 	mpiio.F90 \
+	ncfio.F90 \
 	packgt3.F \
 	qckag.F90 \
 	qckot$(MPI).F90 \
@@ -103,8 +104,8 @@ OBJLIST: FORCE
 	-@$(RM) *.F90
 	@sh $(DIRETC)/fetch.sh ../shared $(SRCS_SHARED)
 	@sh $(DIRETC)/fetch.sh ../depend.$(MODEL) $(SRCS_$(MODEL))
-	@sh $(DIRETC)/fetch.sh ../enstr $(SRCS_ENSTR)
 	@sh $(DIRETC)/fetch.sh ../option $(SRCS_OPTION)
+	@sh $(DIRETC)/fetch.sh ../enstr $(SRCS_ENSTR)
 	@python3 $(DIRETC)/print_uniq_objs.py $(SRCS) > OBJLIST
 	@python3 $(DIRETC)/fort_depend.py -w -o $(DEPENDENCY) \
 		-f `cat OBJLIST | $(DIRETC)/srclist.sh` > /dev/null
