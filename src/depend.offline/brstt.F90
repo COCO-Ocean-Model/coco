@@ -1,7 +1,7 @@
 module brstt
 
   use zocfil,   only  :   ncf
-  use zocdim,   only  :   nxg, nyg, nz, nxgdim, nygdim, nzdim
+  use zocdim,   only  :   nxg, nyg, nz, nxgdim, nygdim, nzdim, ntdim
 
   implicit none
 
@@ -34,9 +34,23 @@ module brstt
   data irstrt / 0 /
   public :: restrt, finout, rstadd, finadd
 
+  character(len=16) :: ctrnam(ntdim), cftnam(ntdim)
+  data ctrnam(1:2) / 'TO', 'SO' /
+  data cftnam(1:2) / 'FT', 'FW' / 
+#ifdef OPT_OECO2
+  data ctrnam(3:ntdim) /                                &
+       &         'NO3',  'PHY',  'ZOO',  'DET',  'CA',  &
+       &       'CACO3', 'TCO2',  'ALK',   'O2', 'FED',  &
+       &       'DETFE', 'DIAZ',  'PO4',  'N2O', 'AGE' /
+#endif  
+
 contains
   
-  subroutine restrt( tstrt,     t,    ft )
+  subroutine restrt(          &
+#ifdef OPT_NPZD
+    &   pco2o,     ff,        &
+#endif /* OPT_NPZD */
+    &   tstrt,     t,    ft )
 
     use zocdim,   only  :                                             &
     &      nxdim,  nydim,  nzdim,  ntdim,  nztdim,    nic,            &
@@ -58,9 +72,12 @@ contains
 
     implicit none
    
-    real(8),intent(inout) ::     t(nxdim, nydim, nzdim, ntdim)
-    real(8),intent(inout) ::    ft(nxdim, nydim, ntdim)
-    real(8),intent(in)    ::   tstrt
+#ifdef OPT_NPZD
+    real(8), intent(inout) :: pco2o(nxdim,nydim), ff(nxdim,nydim)
+#endif
+    real(8), intent(inout) ::     t(nxdim, nydim, nzdim, ntdim)
+    real(8), intent(inout) ::    ft(nxdim, nydim, ntdim)
+    real(8), intent(in)    :: tstrt
     real(8)    ::    tt,    ttt
     integer(4) ::     i,      j,      k,      l
     integer(4), save :: istat
@@ -106,6 +123,31 @@ contains
        call scatter_2d(ft(1, 1, l), g2d)
     end do
 
+#ifdef OPT_NPZD
+    if (myrank == iroot) then
+       read(nfinit, end=229) chead
+       read(nfinit) buf2
+       do j = 1, nyg
+          do i = 1, nxg
+             g2d(igstr+i-1, jgstr+j-1) = buf2(i, j)
+          end do
+       end do
+229    continue
+    end if
+    call scatter_2d(pco2o, g2d)
+    if (myrank == iroot) then
+       read(nfinit, end=239) chead
+       read(nfinit) buf2
+       do j = 1, nyg
+          do i = 1, nxg
+             g2d(igstr+i-1, jgstr+j-1) = buf2(i, j)
+          end do
+       end do
+239    continue
+    end if
+    call scatter_2d(ff, g2d)
+#endif /* OPT_NPZD */
+
 #ifdef OPT_TRIPOLE
     call shift1(     t,                     &
                  nxdim,   nydim, nztdim,    &
@@ -113,11 +155,22 @@ contains
     call shift1(    ft,                     &
     &            nxdim,   nydim,  ntdim,    &
     &             1.d0,       0,      0 )
+#ifdef OPT_NPZD
+    call shift2( pco2o,      ff,            &
+    &            nxdim,   nydim,      1,    &
+    &             1.d0,       0,      0 )
+#endif
 #else
     call shift1(      t,                    &
      &            nxdim,  nydim, nztdim)
     call shift1(     ft,                    &
      &            nxdim,  nydim,      1)
+#ifdef OPT_NPZD
+    call shift1( pco2o,                     &
+    &            nxdim,   nydim,      1 )
+    call shift1(    ff,                     &
+    &            nxdim,   nydim,      1 )
+#endif
 #endif
 
     if (myrank == iroot) then
@@ -139,10 +192,14 @@ contains
    
 ! =====================================================================
 
-  subroutine finout(                          &
-   &                  tt, ntstep,             &
-   &                  t,     ft,     hb,      &
-   &             orsout, orsrwd)
+  subroutine finout(                &
+#ifdef OPT_NPZD
+   &         pco2o,     ff,         &
+#endif /* OPT_NPZD */
+   &            tt, ntstep,         &
+   &             t,     ft,     hb, &
+   &        orsout, orsrwd)
+
     use zocdim,   only  :                          &
    &      nxdim,  nydim,  nzdim,  ntdim,     nic,  &
    &     nxgdim, nygdim,  igstr,  jgstr,    kstr,  &
@@ -157,6 +214,9 @@ contains
     
     implicit none
 
+#ifdef OPT_NPZD
+    real(8),   intent(in) ::   pco2o(nxdim, nydim), ff(nxdim, nydim)
+#endif 
     real(8),   intent(in) ::       t(nxdim, nydim, nzdim, ntdim)
     real(8),   intent(in) ::      ft(nxdim, nydim, ntdim)
     real(8),   intent(in) ::      hb(nxdim, nydim)
@@ -212,7 +272,7 @@ contains
                 end do
              end do
           end do
-          write(chead(3) , '(a6,i2.2)') 'TRACER', l
+          write(chead(3) , '(a) '     ) trim(ctrnam(l))
           write(chead(35), '(a6,i2)'  ) 'OCDEPT', nz
           write(chead(37), '(i16)'    ) nz
           write(chead(64), '(i16)'    ) nxyzg
@@ -238,20 +298,36 @@ contains
        end if
     end do
 
-    call gather_2d(g2d, hb)
+#ifdef OPT_NPZD
+    call gather_2d(g2d, pco2o)
     if (myrank == iroot) then
        do j = 1, nyg
           do i = 1, nxg
              buf2(i, j) = g2d(igstr+i-1, jgstr+j-1)
           end do
        end do
-       chead(3) = 'SHO'
+       write(chead(3) , '(a4)' ) 'pCO2'
        write(chead(35), '(a4)' ) 'SFC1'
        write(chead(37), '(i16)') 1
        write(chead(64), '(i16)') nxyg
        write(nfrest) chead
        write(nfrest) buf2
     end if
+    call gather_2d(g2d, ff)
+    if (myrank == iroot) then
+       do j = 1, nyg
+          do i = 1, nxg
+             buf2(i, j) = g2d(igstr+i-1, jgstr+j-1)
+          end do
+       end do
+       write(chead(3) , '(a2)' ) 'FF'
+       write(chead(35), '(a4)' ) 'SFC1'
+       write(chead(37), '(i16)') 1
+       write(chead(64), '(i16)') nxyg
+       write(nfrest) chead
+       write(nfrest) buf2
+    end if
+#endif
 
     if (myrank == iroot) then
        write(jfpar, *) '*** Write restart file ***'
