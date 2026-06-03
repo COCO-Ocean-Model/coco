@@ -22,9 +22,8 @@ module brstt
   use zocfil,   only  :   ncf
 
   implicit none
-
 #include "mpif.h"
-
+#include "coco.h"
   private
 
   integer(4),               save  ::  nfinit,      nfrest
@@ -118,15 +117,8 @@ contains
     data     si / 5.d0 /
     data irstrt / 0 /
 
-    call rewnml(ifpar, jfpar)
-    read(ifpar, nmfini, iostat=istat)
-    call cstnml( jfpar, 'restrt', 'nfini', istat )
-    write(jfpar, nmfini)
-    
-    call rewnml(ifpar, jfpar)
-    read(ifpar, nmislt, iostat=istat)
-    call cstnml( jfpar, 'restrt', 'nmislt', istat )
-    write(jfpar, nmislt)
+    READ_NAMELIST( nmfini)
+    READ_NAMELIST( nmislt)
 
     call mpi_filopn(mpi_fh_r, cfinit, 'READ')
     disp=0
@@ -533,13 +525,8 @@ contains
     namelist /nmrun/ crun
 
     if ( ofirst ) then
-       call rewnml(ifpar, jfpar)
-       read(ifpar, nmfrst, iostat=istat)
-       call cstnml( jfpar, 'finout', 'nmfrst', istat )
-       write(jfpar, nmfrst)
-       call rewnml(ifpar, jfpar)
-       read(ifpar, nmrun, iostat=istat)
-       call cstnml( jfpar, 'finout', 'nmrun', istat )
+       READ_NAMELIST( nmfrst )
+       READ_NAMELIST( nmrun  )
        call mpi_filopn(mpi_fh_w, cfrest, 'WRITE')
        call cstnml( jfpar, 'finout', 'nmrun', istat )
        ofirst = .false.
