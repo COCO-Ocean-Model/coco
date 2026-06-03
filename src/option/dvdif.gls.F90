@@ -44,7 +44,8 @@ module dvdif
   implicit none
   private
 #include "mpif.h"
-
+#include "coco.h"
+  
   real(8), save :: tauaox(nxydim), tauaoy(nxydim)
 
   public ::  vdiff, puttao
@@ -291,34 +292,13 @@ subroutine vdiff( &
      !$acc end kernels
 
 !     ofirst = .false.
-     call rewnml(ifpar, jfpar)
-     read (ifpar, nmvisv, iostat=istat)
-     call cstnml(jfpar, 'vdiff', 'nmvisv', istat)
-     write(jfpar, nmvisv)
-     call rewnml(ifpar, jfpar)
-     read (ifpar, nmdifv, iostat=istat)
-     call cstnml(jfpar, 'vdiff', 'nmdifv', istat)
-     write(jfpar, nmdifv)
-     call rewnml(ifpar, jfpar)
-     read (ifpar, nmbtmf, iostat=istat)
-     call cstnml(jfpar, 'vdiff', 'nmbtmf', istat)
-     write(jfpar, nmbtmf)
-     call rewnml(ifpar, jfpar)
-     read (ifpar, nmdvgl, iostat=istat)
-     call cstnml(jfpar, 'vdiff', 'nmdvgl', istat)
-     write(jfpar, nmdvgl)
-     call rewnml(ifpar, jfpar)
-     read (ifpar, nmdfre, iostat=istat)
-     call cstnml(jfpar, 'vdiff', 'nmdfre', istat)
-     write(jfpar, nmdfre)
-     call rewnml(ifpar, jfpar)
-     read (ifpar, nmdifvao, iostat=istat)
-     call cstnml(jfpar, 'vdiff', 'nmdifvao', istat)
-     write(jfpar, nmdifvao)
-     call rewnml(ifpar, jfpar)
-     read (ifpar, nmdved, iostat=istat)
-     call cstnml(jfpar, 'vdiff', 'nmdved', istat)
-     write(jfpar, nmdved)
+     READ_NAMELIST( nmvisv   )
+     READ_NAMELIST( nmdifv   )
+     READ_NAMELIST( nmbtmf   )
+     READ_NAMELIST( nmdvgl   )
+     READ_NAMELIST( nmdfre   )
+     READ_NAMELIST( nmdifvao )
+     READ_NAMELIST( nmdved   )
      !$acc update device(amv0, ahv0)
      
      if (oeof) then
@@ -1465,10 +1445,7 @@ subroutine vdiffb( &
 
   if (ofirst) then
      ofirst = .false.
-     call rewnml(ifpar, jfpar)
-     read (ifpar, nmbbdv, iostat=istat)
-     call cstnml(jfpar, 'vdiffb', 'nmbbdv', istat)
-     write(jfpar, nmbbdv)
+     READ_NAMELIST( nmbbdv )
   end if
 
   do ij = ijstr, ijend
