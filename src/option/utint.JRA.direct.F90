@@ -1,7 +1,8 @@
 module utint
     use zocdim,  only  : nxy, mpi_comm_ogcm
   implicit none
-
+#include "coco.h"
+  
   private
 
   public  ::  tmintp, tmintp_direct
@@ -113,12 +114,8 @@ contains
     integer, save :: mask(nx0,ny0)=1
 
     if ( of ) then
-       call rewnml( ifpar, jfpar )
-       read(ifpar, nmsfbc, iostat = istat )
-       call cstnml( jfpar, 'tmintp', 'nmsfbc', istat )
-       call rewnml( ifpar, jfpar )
-       read(ifpar, nmsfyr, iostat = istat )
-       call cstnml( jfpar, 'tmintp', 'nmsfyr', istat )
+       READ_NAMELIST( nmsfbc )
+       READ_NAMELIST( nmsfyr )
        of = .false.
 
 #ifdef OPT_IO_COCOMPI
@@ -989,9 +986,7 @@ end subroutine intpsfc
     data iyskip / nitem*1 /
 
     if ( of ) then
-       call rewnml( ifpar, jfpar )
-       read(ifpar, nmsfbc, iostat = istat )
-       call cstnml( jfpar, 'tmintp', 'nmsfbc', istat )
+       READ_NAMELIST( nmsfbc )
        of = .false.
     end if
 
@@ -1032,9 +1027,7 @@ end subroutine intpsfc
        if ( myrank == iroot ) then
           call filopn(nfitem(iitem), cfitem, 'READ')
        end if
-       call rewnml(ifpar, jfpar)
-       read(ifpar, nmskip, iostat = istat )
-       call cstnml( jfpar, 'tmintp', 'nmskip', istat )
+       READ_NAMELIST( nmskip )
 
        if ( iyskip(iitem) < 1 ) then
           iyskiq(iitem) = 1
@@ -1304,9 +1297,7 @@ end subroutine intpsfc
     data iyskib / nitem*1 /
 
     if ( of ) then
-       call rewnml( ifpar, jfpar )
-       read(ifpar, nmbody, iostat = istat )
-       call cstnml( jfpar, 'tmintb', 'nmbody', istat )
+       READ_NAMELIST( nmbody )
        of = .false.
     end if
 
@@ -1327,9 +1318,8 @@ end subroutine intpsfc
        if ( myrank == iroot ) then
           call filopn(nfitem(iitem), cfitem, 'READ')
        end if
-       call rewnml(ifpar, jfpar)
-       read(ifpar, nmskib, iostat = istat )
-       call cstnml( jfpar, 'tmintb', 'nmskib', istat )
+       READ_NAMELIST( nmskib )
+
        if (iyskib(iitem) < 1) then
           iyskiq(iitem) = 1
        else
@@ -1617,9 +1607,7 @@ end subroutine intpsfc
     integer :: icread
 
     if ( of ) then
-       call rewnml( ifpar, jfpar )
-       read(ifpar, nmsfbc, iostat = istat )
-       call cstnml( jfpar, 'tmintp', 'nmsfbc', istat )
+       READ_NAMELIST( nmsfbc )
        of = .false.
     end if
 
@@ -1659,10 +1647,7 @@ end subroutine intpsfc
     if ( ofirst(iitem) ) then
        call mpi_filopn(mpi_fh(iitem), cfitem, 'READ')
        disp(iitem)=0
-
-       call rewnml(ifpar, jfpar)
-       read(ifpar, nmskip, iostat = istat )
-       call cstnml( jfpar, 'tmintp', 'nmskip', istat )
+       READ_NAMELIST( nmskip )
 
        if ( iyskip(iitem) < 1 ) then
           iyskiq(iitem) = 1
@@ -1903,9 +1888,7 @@ end subroutine intpsfc
     integer :: icread
 
     if ( of ) then
-       call rewnml( ifpar, jfpar )
-       read(ifpar, nmbody, iostat = istat )
-       call cstnml( jfpar, 'tmintb', 'nmbody', istat )
+       READ_NAMELIST( nmbody )
        of = .false.
     end if
 
@@ -1926,9 +1909,8 @@ end subroutine intpsfc
        call mpi_filopn(mpi_fh(iitem), cfitem, 'READ')
        disp(iitem)=0
 
-       call rewnml(ifpar, jfpar)
-       read(ifpar, nmskib, iostat = istat )
-       call cstnml( jfpar, 'tmintb', 'nmskib', istat )
+       READ_NAMELIST( nmskib )
+
        if (iyskib(iitem) < 1) then
           iyskiq(iitem) = 1
        else
