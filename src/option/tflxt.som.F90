@@ -2593,6 +2593,8 @@ subroutine dnsgrd( &
   real(8) :: rmavdx(nxydim), rmavdy(nxydim)
   real(8) ::   muzx(nxydim, nzdim),   muzy(nxydim, nzdim)
 
+  real(8), save :: r2taum
+
   real(8) ::   dtdx(nxydim, nzdim, ntdim),   dtdy(nxydim, nzdim, ntdim)
   real(8) ::  dtfdz(nxydim, nzdim, ntdim)
 #endif
@@ -2605,7 +2607,7 @@ subroutine dnsgrd( &
 
   real(8) ::   muzh,  in2dz, n2min, n2l, hmldt
   real(8) :: rsigdf, rsigbt,  dhmld, cpsi
-  real(8) ::     pi,  omega, cormin
+  real(8) ::     pi,  omega
 
   real(8), save :: slpmax = 1.d-2
   real(8), save ::  cm = 8.0d0,  ce = 0.06d0,  fminlt = 10.0d0
@@ -2866,61 +2868,34 @@ subroutine dnsgrd( &
 !        and is cancelled out by the row just before it. *** 
      pi = atan( 1.d0 )*4.d0
      omega = 2.d0 * pi / 86400.d0
-     cormin = 2.d0 * omega * sin( pi*abs(fminlt)/180.d0 )
+     r2taum = 1.0d0 / (8.64d4 * taumle)**2.0d0
      kzmin = mzmin + kstr - 1
 
      !$acc kernels default(present)
      do ij = nxdim+2, nxydim
+        cxpsy(ij) = ce &
+          &       / sqrt( (0.5d0*(cor(ij+lsw)+cor(ij+lw)))**2.0d0 &
+          &               + r2taum )
+        cypsx(ij) = ce &
+          &       / sqrt( (0.5d0*(cor(ij+lsw)+cor(ij+ls)))**2.0d0 &
+          &               + r2taum )
+        czpsy(ij) = ce &
+          &       / sqrt( ( 0.25d0* &
+          &                 ( cor(ij    ) + cor(ij+lw ) &
+          &                 + cor(ij+ls ) + cor(ij+lsw)))**2.0d0 &
+          &               + r2taum )
+        czpsx(ij) = ce &
+          &       / sqrt( ( 0.25d0* &
+          &                 ( cor(ij    ) + cor(ij+lw ) &
+          &                 + cor(ij+ls ) + cor(ij+lsw)))**2.0d0 &
+          &               + r2taum )
         if (ocoamp) then
-           cxpsy(ij) = ce &
-             &       / sqrt( &
-             &         max( abs(0.5d0*(cor(ij+lsw) + cor(ij+lw))), &
-             &              cormin )**2.0d0 &
-             &         + 1.0d0 / (8.64d4 * taumle)**2.0d0 ) &
-             &       * dx * 0.5d0 * (hxt(ij) + hxt(ij+lw))
-           cypsx(ij) = ce &
-             &       / sqrt( &
-             &         max( abs(0.5d0*(cor(ij+lsw) + cor(ij+ls))), &
-             &              cormin )**2.0d0 &
-             &         + 1.0d0 / (8.64d4 * taumle)**2.0d0 ) &
-             &       * dym(ij+ls) * 0.5d0 * (hyt(ij) + hyt(ij+ls))        
-           czpsy(ij) = ce &
-             &       / sqrt( &
-             &         max( abs(0.25d0* &
-             &              ( cor(ij    ) + cor(ij+lw ) &
-             &              + cor(ij+ls ) + cor(ij+lsw))), cormin ) &
-             &                                              **2.0d0 &
-             &         + 1.0d0 / (8.64d4 * taumle)**2.0d0 ) &
-             &         * dx * hxt(ij)
-           czpsx(ij) = ce &
-             &       / sqrt( &
-             &         max( abs(0.25d0* &
-             &              ( cor(ij    ) + cor(ij+lw ) &
-             &              + cor(ij+ls ) + cor(ij+lsw))), cormin ) &
-             &                                              **2.0d0 &
-             &         + 1.0d0 / (8.64d4 * taumle)**2.0d0 ) &
-             &         * dy(ij) * hyt(ij)
-        else
-           cxpsy(ij) = ce &
-             &       / sqrt( &
-             &         max( abs(0.5d0*(cor(ij+lsw) + cor(ij+lw))), &
-             &              cormin )**2.0d0 )
-           cypsx(ij) = ce &
-             &       / sqrt( &
-             &         max( abs(0.5d0*(cor(ij+lsw) + cor(ij+ls))), &
-             &              cormin )**2.0d0 )
-           czpsy(ij) = ce &
-             &       / sqrt( &
-             &         max( abs(0.25d0* &
-             &              ( cor(ij    ) + cor(ij+lw ) &
-             &              + cor(ij+ls ) + cor(ij+lsw))), cormin ) &
-             &                                              **2.0d0 )
-           czpsx(ij) = ce &
-             &       / sqrt( &
-             &         max( abs(0.25d0* &
-             &              ( cor(ij    ) + cor(ij+lw ) &
-             &              + cor(ij+ls ) + cor(ij+lsw))), cormin ) &
-             &                                              **2.0d0 )
+           cxpsy(ij) = cxpsy(ij) &
+          &          * dx * 0.5d0 * (hxt(ij) + hxt(ij+lw))
+           cypsx(ij) = cypsx(ij) &
+          &          * dym(ij+ls) * 0.5d0 * (hyt(ij) + hyt(ij+ls))        
+           czpsy(ij) = czpsy(ij) * dx * hxt(ij)
+           czpsx(ij) = czpsx(ij) * dy(ij) * hyt(ij)        
         end if
      end do
      !$acc end kernels
