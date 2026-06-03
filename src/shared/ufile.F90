@@ -29,6 +29,12 @@ module ufile
  logical, save :: mpiopn(mpfmax)=.false.
  integer, save :: mpifh(mpfmax) 
  integer, save :: mpf=0
+
+ interface cstnml
+    module procedure cstnml
+    module procedure cstnml_line
+ end interface cstnml
+ 
 contains
 ! =====================================================================
  subroutine filopn(                                                            &
@@ -199,6 +205,21 @@ contains
 
  return
  end subroutine cstnml
+
+ subroutine cstnml_line(                                                       &
+  &                        jfile,  fname,  line,  istat)
+ implicit none
+ integer,      intent(in) ::  jfile, istat, line 
+ character(*), intent(in) ::  fname
+
+ if (istat > 0) then ! an error occured while reading
+    write(jfile, '(a,i5,a)') '*** ERROR OCCURS while reading namelist. Line:',  &
+         line,' of '//fname
+    stop
+ end if
+
+ return
+end subroutine cstnml_line
 
  subroutine stop_msg(cmsg, cfil, line)
    implicit none
