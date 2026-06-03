@@ -18,7 +18,7 @@ module cvisc
   use zocdim,  only :  nxydim,  nzdim
 
   implicit none
-
+#include "coco.h"
   private
 
   real(8),     save  ::    sxx(nxydim),          syy(nxydim)
@@ -119,20 +119,10 @@ contains
     end if
 
     if ( ofirst ) then
-
        ofirst = .false.
-       call rewnml( ifpar, jfpar )
-       read( ifpar, nmvish, iostat = istat )
-       call cstnml( jfpar, 'vscvel', 'nmvish', istat )
-       write( jfpar, nmvish )
-       call rewnml( ifpar, jfpar )
-       read( ifpar, nmcvis, iostat = istat )
-       call cstnml( jfpar, 'vscvel', 'nmcvis', istat )
-       write( jfpar, nmcvis )
-       call rewnml( ifpar, jfpar )
-       read( ifpar, nmpslv, iostat = istat )
-       call cstnml( jfpar, 'vscvel', 'nmpslv', istat )
-       write( jfpar, nmpslv )
+       READ_NAMELIST( nmvish )
+       READ_NAMELIST( nmcvis )
+       READ_NAMELIST( nmpslv )
 
        if ( iam < 0 ) then
 !---- spatially constant
@@ -605,10 +595,7 @@ contains
     if ( ofirst_bbl ) then
 
        ofirst_bbl = .false.
-       call rewnml( ifpar, jfpar )
-       read( ifpar, nmbbvh, iostat = istat )
-       call cstnml( jfpar, 'vscvlb', 'nmbbvh', istat )
-       write( jfpar, nmbbvh )
+       READ_NAMELIST( nmbbvh )
 
        do ij = 1, nxydim
           rz   (ij) = 1.d0 / dzv(ij, kend)
