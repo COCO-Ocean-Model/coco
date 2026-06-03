@@ -57,7 +57,7 @@ contains
 #endif
  implicit none
 #include "mpif.h"
-
+#include "coco.h"
 
   integer,allocatable :: g2di(:)
   real(8),allocatable :: g2d(:), g3d(:)
@@ -74,8 +74,7 @@ contains
 
   call rewnml(ifpar, jfpar)
   write(jfpar, *) '*** rdgeo ***'
-  read(ifpar, nmmask, iostat=istat)
-  call cstnml(jfpar, 'rdgeo', 'nmmask', istat)
+  READ_NAMELIST( nmmask )
 
   if (myrank .eq. iroot) then
     call filopn(nfmask, cfmask, 'read')
