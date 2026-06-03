@@ -16,7 +16,8 @@ module atmct
 
  use zocfil, only : nfomax, ncf
  implicit none
-
+#include "coco.h"
+ 
  private
  public :: tmstup, tmstpc
  real(8), save :: dt
@@ -80,21 +81,10 @@ contains
    &                  ioxstr, ioxend, ioystr, ioyend, iozstr, iozend, iosvin,  &
    &                    dfmt, iohl6d
 
-  call rewnml(ifpar, jfpar)
-  read(ifpar, nmtime, iostat=istat)
-  call cstnml(jfpar, 'tmstup', 'nmtime', istat)
-
-  call rewnml(ifpar, jfpar)
-  read(ifpar, nmcaln, iostat=istat)
-  call cstnml(jfpar, 'tmstup', 'nmcaln', istat)
-
-  call rewnml(ifpar, jfpar)
-  read(ifpar, nmrstr, iostat=istat)
-  call cstnml(jfpar, 'tmstup', 'nmrstr', istat)
-
-  call rewnml(ifpar, jfpar)
-  read(ifpar, nmdout, iostat=istat)
-  call cstnml(jfpar, 'tmstup', 'nmdout', istat)
+  READ_NAMELIST( nmtime )
+  READ_NAMELIST( nmcaln )
+  READ_NAMELIST( nmrstr )
+  READ_NAMELIST( nmdout )
 
   do iitem = 1, nfomax
      do i = 1, 6
