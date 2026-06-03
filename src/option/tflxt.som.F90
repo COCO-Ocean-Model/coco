@@ -49,6 +49,7 @@ module tflxt
     & gravit,   rhoo
 
   implicit none
+#include "coco.h"
   private
 
   real(8), save :: ftx(nxydim, nzdim, ntdim)
@@ -488,22 +489,10 @@ subroutine flxtrc( &
 
   if (ofirst) then
      ofirst = .false.
-     call rewnml(ifpar, jfpar)
-     read(ifpar, nmdifb, iostat=istat)
-     call cstnml(jfpar, 'flxtrc', 'nmdifb', istat)
-     write(jfpar, nmdifb)
-     call rewnml(ifpar, jfpar)
-     read(ifpar, nmdifh, iostat=istat)
-     call cstnml(jfpar, 'flxtrc', 'nmdifh', istat)
-     write(jfpar, nmdifh)
-     call rewnml(ifpar, jfpar)
-     read(ifpar, nmdifi, iostat=istat)
-     call cstnml(jfpar, 'flxtrc', 'nmdifi', istat)
-     write(jfpar, nmdifi)
-     call rewnml(ifpar, jfpar)
-     read(ifpar, nmdifg, iostat=istat)
-     call cstnml(jfpar, 'flxtrc', 'nmdifg', istat)
-     write(jfpar, nmdifg)
+     READ_NAMELIST( nmdifb )
+     READ_NAMELIST( nmdifh )
+     READ_NAMELIST( nmdifi )
+     READ_NAMELIST( nmdifg )
 
      eps = 1.d-20
      sq3 = sqrt( 3.d0 )
@@ -584,22 +573,10 @@ subroutine flxtrc( &
      end do
      !$acc end kernels
 !---- 
-     call rewnml(ifpar, jfpar)
-     read(ifpar, nmcah, iostat=istat)
-     call cstnml(jfpar, 'flxtrc', 'nmcah', istat)
-     write(jfpar, nmcah)
-     call rewnml(ifpar, jfpar)
-     read(ifpar, nmsvgm, iostat=istat)
-     call cstnml(jfpar, 'flxtrc', 'nmsvgm', istat)
-     write(jfpar, nmsvgm)
-     call rewnml(ifpar, jfpar)
-     read(ifpar, nmdifn, iostat=istat)
-     call cstnml(jfpar, 'flxtrc', 'nmdifn', istat)
-     write(jfpar, nmdifn)
-     call rewnml(ifpar, jfpar)
-     read(ifpar, nmdifs, iostat=istat)
-     call cstnml(jfpar, 'flxtrc', 'nmdifs', istat)
-     write(jfpar, nmdifs)
+     READ_NAMELIST( nmcah  )
+     READ_NAMELIST( nmsvgm )
+     READ_NAMELIST( nmdifn )
+     READ_NAMELIST( nmdifs )
      if ( iah .eq. 0 ) then
 
         write(jfpar, *) 'Background horizontal diffusion :', ahh
@@ -712,10 +689,7 @@ subroutine flxtrc( &
      call shift2(ahi3d, ahg3d, nxdim, nydim, nzdim,  1.d0,  0,  0)
 
 #ifdef OPT_BBL
-     call rewnml(ifpar, jfpar)
-     read(ifpar, nmbbdh, iostat=istat)
-     call cstnml(jfpar, 'flxtrc', 'nmbbdh', istat)
-     write(jfpar, nmbbdh)
+     READ_NAMELIST( nmbbdh )
 #endif
   end if
 
@@ -2650,14 +2624,8 @@ subroutine dnsgrd( &
 
   if (ofirst) then
      ofirst = .false.
-     call rewnml(ifpar, jfpar)
-     read(ifpar, nmslpm, iostat=istat)
-     call cstnml(jfpar, 'dnsgrd', 'nmslpm', istat)
-     write(jfpar, nmslpm)
-     call rewnml(ifpar, jfpar)
-     read(ifpar, nmmlep, iostat=istat)
-     call cstnml(jfpar, 'dnsgrd', 'nmmlep', istat)
-     write(jfpar, nmmlep)
+     READ_NAMELIST( nmslpm )
+     READ_NAMELIST( nmmlep )
 
      call secoef( &
         &   c0(kstr), c1(kstr), c2(kstr), c3(kstr), &
