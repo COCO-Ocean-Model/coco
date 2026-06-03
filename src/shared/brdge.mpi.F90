@@ -57,7 +57,8 @@ contains
 
  implicit none
 #include "mpif.h"
-
+#include "coco.h"
+ 
   integer ::  n
   integer :: ij,      k
   integer ::  i,      j,    ijs,   ije,   ijn,  ijw
@@ -72,8 +73,7 @@ contains
 
   call rewnml(ifpar, jfpar)
   write(jfpar, *) '*** rdgeo ***'
-  read(ifpar, nmmask, iostat=istat)
-  call cstnml(jfpar, 'rdgeo', 'nmmask', istat)
+  READ_NAMELIST( nmmask )
 
   call mpi_filopn(mpi_fh, cfmask, 'READ')
 
