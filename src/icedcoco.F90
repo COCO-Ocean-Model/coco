@@ -104,7 +104,7 @@ program icedcoco
   call parset
   call rewnml(ifpar, jfpar)
   read (ifpar, nmstdo, iostat=istat)
-  call cstnml(jfpar, 'icedcoco', 'nmstdo', istat)
+  call cstnml(jfpar, __FILE__, __LINE__ -1, istat)
 !  write(jfpar, nmstdo)
 
   lenstd = index(cstdo, ' ')
@@ -128,12 +128,13 @@ program icedcoco
   
   call rewnml(ifpar, jfpar)
   read (ifpar, nmrun, iostat=istat)
-  call cstnml(jfpar, 'icedcoco', 'nmrun', istat)
+  call cstnml(jfpar, __FILE__, __LINE__ -1, istat)
 !  write(jfpar, nmrun)
   write(nfstdo, *) 'Run name :'//crun
 
   call rewnml(ifpar, jfpar)
   read (ifpar, nmlog, iostat=istat)
+  call cstnml(jfpar, __FILE__, __LINE__ -1, istat)
   write(nfstdo, '(a,i2)') ' log level : ', loglev
 
   ofinal = .false.
@@ -389,7 +390,7 @@ subroutine parset
   
   call rewnml(ifpar, jfpar)
   read (ifpar, nmroot, iostat=istat)
-  call cstnml(jfpar, 'parset', 'nmroot', istat)
+  call cstnml(jfpar, __FILE__, __LINE__ -1, istat)
 !  write(jfpar, nmroot)
   
   ijnode = inodes * jnodes
