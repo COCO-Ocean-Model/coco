@@ -21,6 +21,7 @@ module tslvt
        &      ncf
 
   implicit none
+#include "coco.h"
   private
 
   real(8),        save  ::  rgamma(nzdim)
@@ -159,23 +160,17 @@ contains
 
        ofirst = .false.
        gamma(1:nz) = 1.d0
+
        call rewnml( ifpar, jfpar )
        write(jfpar, *) '*** svtset ***'
-       read(ifpar, nmacct, iostat = istat )
-       call cstnml( jfpar, 'svtset', 'nmacct', istat )
-       write(jfpar, nmacct)
+       READ_NAMELIST( nmacct )
+       
        write(jfpar, *) ' level     gamma'
        do k = 1, nz
           write(jfpar, '(i6,f10.4)') k, gamma(k)
        end do
-       call rewnml(ifpar, jfpar)
-       read(ifpar, nmswab, iostat = istat )
-       call cstnml(jfpar, 'svtset', 'nmswab', istat )
-       write(jfpar, nmswab)
-       call rewnml(ifpar, jfpar)
-       read(ifpar, nmsrst, iostat = istat )
-       call cstnml(jfpar, 'svtset', 'nmsrst', istat )
-       write(jfpar, nmsrst)
+       READ_NAMELIST( nmswab )
+       READ_NAMELIST( nmsrst )
 
        if ( osrstr ) then
 !----- extended SSS restoring
@@ -289,10 +284,7 @@ contains
        call ttsset
 
 !---- for geothermal heating
-       call rewnml(ifpar, jfpar)
-       read(ifpar, nmgthm, iostat=istat)
-       call cstnml(jfpar, 'svtset', 'nmgthm', istat)
-       write(jfpar, nmgthm)
+       READ_NAMELIST( nmgthm )
        write(jfpar, *) '  file name of gthm: ', cfgthm
 
        if ( ogthm ) then
@@ -323,10 +315,7 @@ contains
 #endif
        end if
 
-       call rewnml(ifpar, jfpar)
-       read(ifpar, nmmixsss, iostat = istat )
-       call cstnml(jfpar, 'svtset', 'nmmixsss', istat )
-       write(jfpar, nmmixsss)
+       READ_NAMELIST( nmmixsss )
        
        do l = 3, ntdim
           write(ctxnam(l), '(a5,i2.2)') 'ftrcx', l
@@ -843,9 +832,7 @@ contains
     call gather_2d(botg, buf2d)
 
 !     --TUN DIF--
-    call rewnml(ifpar, jfpar)
-    read(ifpar, nmtunl, iostat = istat )
-    call cstnml( jfpar, 'ttsset', 'nmtunl', istat )
+    READ_NAMELIST( nmtunl )
     write(jfpar,*) '*** ttsset (tunnel diffusion) ***'
 
     if ( myrank == iroot ) then
