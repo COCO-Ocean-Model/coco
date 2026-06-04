@@ -39,6 +39,7 @@ module ipmmt
     &   rhoo,   rhoi, gravit
 
   implicit none
+#include "coco.h"
   private
 
   public :: pmomnt
@@ -148,18 +149,9 @@ subroutine pmomnt( &
 
   if (ofirst) then
 !     ofirst = .false.
-     call rewnml(ifpar, jfpar)
-     read (ifpar, nmiprm, iostat=istat)
-     call cstnml(jfpar, 'pmomnt', 'nmiprm', istat)
-     write(jfpar, nmiprm)
-     call rewnml(ifpar, jfpar)
-     read (ifpar, nmitsp, iostat=istat)
-     call cstnml(jfpar, 'pmomnt', 'nmitsp', istat)
-     write(jfpar, nmitsp)
-     call rewnml(ifpar, jfpar)
-     read (ifpar, nmidyn, iostat=istat)
-     call cstnml(jfpar, 'pmomnt', 'nmidyn', istat)
-     write(jfpar, nmidyn)
+     READ_NAMELIST( nmiprm )
+     READ_NAMELIST( nmitsp )
+     READ_NAMELIST( nmidyn )
 
      cemz = (1.d0 / ecc / ecc - 1.d0) * 0.5d0
      cepz = (1.d0 / ecc / ecc + 1.d0) * 0.5d0
@@ -511,10 +503,7 @@ subroutine rheolo( &
 
   if (ofirst) then
      ofirst = .false.
-     call rewnml(ifpar, jfpar)
-     read (ifpar, nmidyn, iostat=istat)
-     call cstnml(jfpar, 'rheolo', 'nmidyn', istat)
-     write(jfpar, nmidyn)
+     READ_NAMELIST( nmidyn )
 
      c1 = 1.d0 + 1.d0 / ecc / ecc
      c2 = 4.d0 / ecc / ecc
@@ -570,14 +559,8 @@ subroutine rheolo_pice( &
 
   if (ofirst) then
      ofirst = .false.
-     call rewnml(ifpar, jfpar)
-     read (ifpar, nmidyn, iostat=istat)
-     call cstnml(jfpar, 'rheolo', 'nmidyn', istat)
-     write(jfpar, nmidyn)
-     call rewnml(ifpar, jfpar)
-     read (ifpar, nmpice, iostat=istat)
-     call cstnml(jfpar, 'rheolo', 'nmpice', istat)
-     write(jfpar, nmpice)
+     READ_NAMELIST( nmidyn )
+     READ_NAMELIST( nmpice )
 
      c1 = 1.d0 + 1.d0 / ecc / ecc
      c2 = 4.d0 / ecc / ecc
