@@ -36,7 +36,7 @@ module ipthm
     &  tmelt, kelvin, gravit
 
   implicit none
-
+#include "coco.h"
   integer, parameter :: nrbnd = 3
 
 ! [namelist parameters] 
@@ -244,22 +244,10 @@ subroutine ptherm( &
 
   if (ofirst) then
      ofirst = .false.
-     call rewnml(ifpar, jfpar)
-     read (ifpar, nmamin, iostat=istat)
-     call cstnml(jfpar, 'ptherm', 'nmamin', istat)
-     write(jfpar, nmamin)
-     call rewnml(ifpar, jfpar)
-     read (ifpar, nmislt, iostat=istat)
-     call cstnml(jfpar, 'ptherm', 'nmislt', istat)
-     write(jfpar, nmislt)
-     call rewnml(ifpar, jfpar)
-     read (ifpar, nmmpnd, iostat=istat)
-     call cstnml(jfpar, 'ptherm', 'nmmpnd', istat)
-     write(jfpar, nmmpnd)
-     call rewnml(ifpar, jfpar)
-     read (ifpar, nmsage, iostat=istat)
-     call cstnml(jfpar, 'ptherm', 'nmsage', istat)
-     write(jfpar, nmsage)
+     READ_NAMELIST( nmamin )
+     READ_NAMELIST( nmislt )
+     READ_NAMELIST( nmmpnd )
+     READ_NAMELIST( nmsage )
 
      tmi = dtds * si
      rri    = rhoo / rhoi
@@ -1456,14 +1444,8 @@ subroutine ipsage( &
 
   if (ofirst) then
      ofirst = .false.
-     call rewnml(ifpar, jfpar)
-     read (ifpar, nmsage, iostat=istat)
-     call cstnml(jfpar, 'ptherm', 'nmsage', istat)
-     write(jfpar, nmsage)
-     call rewnml(ifpar, jfpar)
-     read (ifpar, nmsaab, iostat=istat)
-     call cstnml(jfpar, 'ptherm', 'nmsaab', istat)
-     write(jfpar, nmsaab)
+     READ_NAMELIST( nmsage )
+     READ_NAMELIST( nmsaab )
 
      do ij = 1, nxydim
         ildir(ij) = 0.0d0
@@ -1584,18 +1566,9 @@ subroutine idfrmp( &
 
   if (ofirst) then
      ofirst = .false.
-     call rewnml(ifpar, jfpar)
-     read (ifpar, nmsfrc, iostat=istat)
-     call cstnml(jfpar, 'ptherm', 'nmsfrc', istat)
-     write(jfpar, nmsfrc)
-     call rewnml(ifpar, jfpar)
-     read (ifpar, nmsage, iostat=istat)
-     call cstnml(jfpar, 'ptherm', 'nmsage', istat)
-     write(jfpar, nmsage)
-     call rewnml(ifpar, jfpar)
-     read (ifpar, nmmpnd, iostat=istat)
-     call cstnml(jfpar, 'ptherm', 'nmmpnd', istat)
-     write(jfpar, nmmpnd)
+     READ_NAMELIST( nmsfrc )
+     READ_NAMELIST( nmsage )
+     READ_NAMELIST( nmmpnd )
       
      if (oasfrc) then
         csfrc = 1.0d0
