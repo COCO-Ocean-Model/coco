@@ -38,6 +38,7 @@ module tovtr
     & gravit,   rhoo
 
   implicit none
+#include "coco.h"
   private
 
   real(8), save :: c0(nzdim), c1(nzdim), c2(nzdim)
@@ -79,13 +80,8 @@ subroutine ovtset( &
 
   call rewnml(ifpar, jfpar)
   write(jfpar, *) '*** OVTSET ***'
-  read(ifpar, nmacct, iostat=istat)
-  call cstnml(jfpar, 'ovtset', 'nmacct', istat)
-  write(jfpar, nmacct)
-  call rewnml(ifpar, jfpar)
-  read(ifpar, nmmldt, iostat=istat)
-  call cstnml(jfpar, 'ovtset', 'nmmldt', istat)
-  write(jfpar, nmmldt)
+  READ_NAMELIST( nmacct )
+  READ_NAMELIST( nmmldt )
 
   call secoef( &
      & c0(kstr), c1(kstr), c2(kstr), c3(kstr), &
