@@ -33,7 +33,7 @@ module tflxt
     &   nbot
 
   implicit none
-
+#include "coco.h"
   private
 
   real(8) ::    ftx(nxydim, nzdim, ntdim)
@@ -83,14 +83,8 @@ subroutine flxtrc( &
 
   if (ofirst) then
      ofirst = .false.
-     call rewnml(ifpar, jfpar)
-     read(ifpar, nmdifh, iostat=istat)
-     call cstnml(jfpar, 'flxtrc', 'nmdifh', istat)
-     write(jfpar, nmdifh)
-     call rewnml(ifpar, jfpar)
-     read(ifpar, nmwupc, iostat=istat)
-     call cstnml(jfpar, 'flxtrc', 'nmwupc', istat)
-     write(jfpar, nmwupc)
+     READ_NAMELIST( nmdifh )
+     READ_NAMELIST( nmwupc )
 
      alp  = (alpha - 0.5d+0) * 0.5d+0
      alpv = alphav - 0.5d+0
@@ -243,14 +237,8 @@ subroutine flxtrb( &
 
   if (ofirst) then
      ofirst = .false.
-     call rewnml(ifpar, jfpar)
-     read(ifpar, nmbbdh, iostat=istat)
-     call cstnml(jfpar, 'flxtrb', 'nmbbdh', istat)
-     write(jfpar, nmbbdh)
-     call rewnml(ifpar, jfpar)
-     read(ifpar, nmwupc, iostat=istat)
-     call cstnml(jfpar, 'flxtrb', 'nmwupc', istat)
-     write(jfpar, nmwupc)
+     READ_NAMELIST( nmbbdh)
+     READ_NAMELIST( nmwupc)
 
      alp  = (alpha - 0.5d0) * 0.5d0
      alpv = alphav - 0.5d0
