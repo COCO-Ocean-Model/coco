@@ -35,7 +35,7 @@ module aocea
     & nfomax
       
   implicit none
-
+#include "coco.h"
   character(len=16), save :: ctrnam(ntdim), cftnam(ntdim)
   character(len=32), save :: ctrtit(ntdim), cfttit(ntdim)
   character(len=16), save :: ctruni(ntdim), cftuni(ntdim)
@@ -858,10 +858,7 @@ subroutine nmlper( &
   namelist /nmnper/ onmper
 
   if (ofirst) then
-     call rewnml(ifpar, jfpar)
-     read(ifpar, nmnper, iostat=istat)
-     call cstnml(jfpar, 'nmlper', 'nmnper', istat)
-     write(jfpar, nmnper)
+     READ_NAMELIST( nmnper )
      do ij = 1, nxydim
         garea(ij) = 0.0d0
         fwnmd(ij) = 0.0d0
