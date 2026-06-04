@@ -13,7 +13,7 @@ module fshdf
   use zocdim,  only  :  nxydim,  nzdim,  ntdim
 
   implicit none
-
+#include "coco.h"
   private
   public  ::  shdiff  !  used in aprdc.F
 
@@ -54,20 +54,15 @@ contains
 !---- local
     integer(4)         ::     ij,      k,      n
     integer(4)         ::  ifpar,  jfpar,  istat
-
     namelist /nmdfsh/ ash
 
-    
     if ( oinit .or. ofinal ) then
        return
     end if
 
     if (ofirst) then
        ofirst = .false.
-       call rewnml( ifpar, jfpar )
-       read(ifpar, nmdfsh, iostat = istat )
-       call cstnml( jfpar, 'shdiff', 'nmdfsh', istat )
-       write( jfpar, nmdfsh )
+       READ_NAMELIST( nmdfsh )
        !$acc enter data create(tsh, fhx,fhy, ftx,fty, rhxbot, hx,tx)
     end if
 
