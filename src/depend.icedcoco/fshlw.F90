@@ -18,7 +18,7 @@ module fshlw
   use bt_shft, only :  nxydim_w
 #endif
   implicit none
-
+#include "coco.h"
   private
   public  ::  modgxy,  shalow,  bvfreq,  ttsp,  ubtwof,  vbtwof, lnovis, otide, brtro_filt
 
@@ -244,22 +244,10 @@ contains
     
     if ( ofirst ) then
        ofirst = .false.
-       call rewnml( ifpar, jfpar )
-       read( ifpar, nmaccb, iostat = istat ) 
-       call cstnml( jfpar, 'modgxy_w', 'nmaccb', istat )
-       write( jfpar, nmaccb )
-       call rewnml( ifpar, jfpar )
-       read( ifpar, nmaccv, iostat = istat ) 
-       call cstnml( jfpar, 'modgxy_w', 'nmaccv', istat )
-       write( jfpar, nmaccv )
-       call rewnml( ifpar, jfpar )
-       read( ifpar, nmnovis, iostat = istat )
-       call cstnml( jfpar, 'modgxy_w', 'nmnovis', istat )
-       write( jfpar, nmnovis )
-       call rewnml( ifpar, jfpar )
-       read( ifpar, nmtide, iostat = istat )
-       call cstnml( jfpar, 'modgxy_w', 'nmtide', istat )
-       write( jfpar, nmtide )
+       READ_NAMELIST( nmaccb  )
+       READ_NAMELIST( nmaccv  )
+       READ_NAMELIST( nmnovis )
+       READ_NAMELIST( nmtide  )
 
        if (ncomm > min(nx,ny)) then
           write(jfpar,*) 'Error. ncomm should be <= min(nx,ny)'
@@ -597,43 +585,16 @@ contains
     if ( ofirst ) then
 
        ofirst = .false.
-       call rewnml( ifpar, jfpar )
-       read( ifpar, nmaccb, iostat = istat ) 
-       call cstnml( jfpar, 'modgxy', 'nmaccb', istat )
-       write( jfpar, nmaccb )
-       call rewnml( ifpar, jfpar )
-       read( ifpar, nmaccv, iostat = istat ) 
-       call cstnml( jfpar, 'modgxy', 'nmaccv', istat )
-       write( jfpar, nmaccv )
-       call rewnml( ifpar, jfpar )
-       read( ifpar, nmvish, iostat = istat ) 
-       call cstnml( jfpar, 'modgxy', 'nmvish', istat )
-       write( jfpar, nmvish )
-       call rewnml( ifpar, jfpar )
-       read( ifpar, nmcvis, iostat = istat ) 
-       call cstnml( jfpar, 'modgxy', 'nmcvis', istat )
-       write( jfpar, nmcvis )
-       call rewnml( ifpar, jfpar )
-       read( ifpar, nmnovis, iostat = istat ) 
-       call cstnml( jfpar, 'modgxy', 'nmnovis', istat )
-       write( jfpar, nmnovis )
-       call rewnml( ifpar, jfpar )
-       read( ifpar, nmtide, iostat = istat ) 
-       call cstnml( jfpar, 'modgxy', 'nmtide', istat )
-       write( jfpar, nmtide )
+       READ_NAMELIST( nmaccb  )
+       READ_NAMELIST( nmaccv  )
+       READ_NAMELIST( nmvish  )
+       READ_NAMELIST( nmcvis  )
+       READ_NAMELIST( nmnovis )
+       READ_NAMELIST( nmtide  )
        if ( otide ) then
-          call rewnml( ifpar, jfpar )
-          read( ifpar, nmtsal, iostat = istat ) 
-          call cstnml( jfpar, 'modgxy', 'nmtsal', istat )
-          write( jfpar, nmtsal )
-          call rewnml( ifpar, jfpar )
-          read( ifpar, nmtbdy, iostat = istat ) 
-          call cstnml( jfpar, 'modgxy', 'nmtbdy', istat )
-          write( jfpar, nmtbdy )
-          call rewnml( ifpar, jfpar )
-          read( ifpar, nmbfjl, iostat = istat ) 
-          call cstnml( jfpar, 'modgxy', 'nmbfjl', istat )
-          write( jfpar, nmbfjl )
+          READ_NAMELIST( nmtsal )
+          READ_NAMELIST( nmtbdy )
+          READ_NAMELIST( nmbfjl )
        end if
        
        if ( accb <= 0.d0 ) then
@@ -1162,7 +1123,7 @@ contains
       REAL*8   GLONT(NXYDIM),  GLATT(NXYDIM) ! dummy
 #endif
       
-      INTEGER  IFPAR,  JFPAR
+      INTEGER  IFPAR,  JFPAR, ISTAT
       INTEGER      I,     IJ
       REAL*8    ANGM,   ANGS
       REAL*8      JD,     JC
@@ -1208,9 +1169,8 @@ contains
 
       IF (OFIRST) THEN
          OFIRST = .FALSE.
-         CALL REWNML(IFPAR, JFPAR)
-         READ(IFPAR, NMJPLD, END=99)
- 99      WRITE(JFPAR, NMJPLD)
+         READ_NAMELIST( NMJPLD )
+         
          PI = ATAN(1.D0) * 4.D0
          PI2 = 2.D0 * PI
          RAD = PI / 180.D0
