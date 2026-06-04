@@ -28,7 +28,7 @@ module iprdg
     & gravit,   rhoo,   rhoi,   hfus,    cpi,   dtds
 
   implicit none
-
+#include "coco.h"
   private
 
   public :: pridge
@@ -140,22 +140,10 @@ subroutine pridge( &
   
   if (ofirst) then
      ofirst = .false.
-     call rewnml(ifpar, jfpar)
-     read (ifpar, nmidyn, iostat=istat)
-     call cstnml(jfpar, 'pridge', 'nmidyn', istat)
-     write(jfpar, nmidyn)
-     call rewnml(ifpar, jfpar)
-     read (ifpar, nmirdg, iostat=istat)
-     call cstnml(jfpar, 'pridge', 'nmirdg', istat)
-     write(jfpar, nmirdg)
-     call rewnml(ifpar, jfpar)
-     read (ifpar, nmislt, iostat=istat)
-     call cstnml(jfpar, 'pridge', 'nmislt', istat)
-     write(jfpar, nmislt)
-     call rewnml(ifpar, jfpar)
-     read (ifpar, nmmpnd, iostat=istat)
-     call cstnml(jfpar, 'pridge', 'nmmpnd', istat)
-     write(jfpar, nmmpnd)
+     READ_NAMELIST( nmidyn )
+     READ_NAMELIST( nmirdg )
+     READ_NAMELIST( nmislt )
+     READ_NAMELIST( nmmpnd )
 
      tmi = dtds * si
 
