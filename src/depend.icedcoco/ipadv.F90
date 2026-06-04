@@ -34,7 +34,7 @@ module ipadv
     &    cpi,   hfus,   dtds
 
   implicit none
-
+#include "coco.h"
   private
 
   public :: padvct
@@ -105,10 +105,7 @@ subroutine padvct( &
 
   if (ofirst) then
      ofirst = .false.
-     call rewnml(ifpar, jfpar)
-     read (ifpar, nmislt, iostat=istat)
-     call cstnml(jfpar, 'padvct', 'nmislt', istat)
-     write(jfpar, nmislt)
+     READ_NAMELIST( nmislt )
      tmi = dtds * si
 
      !$acc enter data create(     fax,    fay)
