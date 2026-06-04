@@ -33,7 +33,7 @@ module iprdc
     & gravit,   rhoi,   rhos
 
   implicit none
-
+#include "coco.h"
   integer, parameter :: nrbnd = 3  !! N. of radiation bands; VI, NIR, and IR
 
 ! namelist nmsage
@@ -214,22 +214,10 @@ subroutine predci( &
   end if
 
   if (oinit) then
-     call rewnml(ifpar, jfpar)
-     read (ifpar, nmsage, iostat=istat)
-     call cstnml(jfpar, 'predci', 'nmsage', istat)
-     write(jfpar, nmsage)
-     call rewnml(ifpar, jfpar)
-     read (ifpar, nmmpnd, iostat=istat)
-     call cstnml(jfpar, 'predci', 'nmmpnd', istat)
-     write(jfpar, nmmpnd)
-     call rewnml(ifpar, jfpar)
-     read (ifpar, nmislt, iostat=istat)
-     call cstnml(jfpar, 'predci', 'nmislt', istat)
-     write(jfpar, nmislt)
-     call rewnml(ifpar, jfpar)
-     read (ifpar, nmpice, iostat=istat)
-     call cstnml(jfpar, 'predci', 'nmpice', istat)
-     write(jfpar, nmpice)
+     READ_NAMELIST( nmsage )
+     READ_NAMELIST( nmmpnd )
+     READ_NAMELIST( nmislt )
+     READ_NAMELIST( nmpice)
 
      do l = 0, nic
         do ij = 1, nxydim
