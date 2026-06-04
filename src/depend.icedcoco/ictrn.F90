@@ -25,7 +25,7 @@ module ictrn
     &   rhoo,   rhoi,   rhos,   dtds,    cpi,    cpo,   hfus
 
   implicit none
-
+#include "coco.h"
   real(8), save ::    tmi
 
   real(8), save ::  amin = 1.0d-6,  amax = 1.d0,  si = 5.d0
@@ -83,18 +83,9 @@ subroutine ictrns( &
 
   if (ofirst) then
      ofirst = .false.
-     call rewnml(ifpar, jfpar)
-     read (ifpar, nmamin, iostat=istat)
-     call cstnml(jfpar, 'ictrns', 'nmamin', istat)
-     write(jfpar, nmamin)
-     call rewnml(ifpar, jfpar)
-     read (ifpar, nmislt, iostat=istat)
-     call cstnml(jfpar, 'ictrns', 'nmislt', istat)
-     write(jfpar, nmislt)
-     call rewnml(ifpar, jfpar)
-     read (ifpar, nmhflt, iostat=istat)
-     call cstnml(jfpar, 'ictrns', 'nmhflt', istat)
-     write(jfpar, nmhflt)
+     READ_NAMELIST( nmamin )
+     READ_NAMELIST( nmislt )
+     READ_NAMELIST( nmhflt )
 
      tmi = dtds * si
      rri = rhoo / rhoi
