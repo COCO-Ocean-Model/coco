@@ -54,7 +54,8 @@ module dvdif
   implicit none
   private
 #include "mpif.h"
-
+#include "coco.h"
+  
   public :: vdiff, puttao
 #ifdef OPT_BBL
   public :: vdiffb
@@ -213,30 +214,12 @@ subroutine vdiff( &
 
   if (ofirst) then
 !     ofirst = .false.
-     call rewnml(ifpar, jfpar)
-     read (ifpar, nmvisv, iostat=istat)
-     call cstnml(jfpar, 'vdiff', 'nmvisv', istat)
-     write(jfpar, nmvisv)
-     call rewnml(ifpar, jfpar)
-     read (ifpar, nmdifv, iostat=istat)
-     call cstnml(jfpar, 'vdiff', 'nmdifv', istat)
-     write(jfpar, nmdifv)
-     call rewnml(ifpar, jfpar)
-     read (ifpar, nmdvnk, iostat=istat)
-     call cstnml(jfpar, 'vdiff', 'nmdvnk', istat)
-     write(jfpar, nmdvnk)
-     call rewnml(ifpar, jfpar)
-     read (ifpar, nmdfre, iostat=istat)
-     call cstnml(jfpar, 'vdiff', 'nmdfre', istat)
-     write(jfpar, nmdfre)
-     call rewnml(ifpar, jfpar)
-     read (ifpar, nmdifvao, iostat=istat)
-     call cstnml(jfpar, 'vdiff', 'nmdifvao', istat)
-     write(jfpar, nmdifvao)
-     call rewnml(ifpar, jfpar)
-     read (ifpar, nmdved, iostat=istat)
-     call cstnml(jfpar, 'vdiff', 'nmdved', istat)
-     write(jfpar, nmdved)
+     READ_NAMELIST( nmvisv   )
+     READ_NAMELIST( nmdifv   )
+     READ_NAMELIST( nmdvnk   )
+     READ_NAMELIST( nmdfre   )
+     READ_NAMELIST( nmdifvao )
+     READ_NAMELIST( nmdved   )
 
      if (alphc < 0.0d0) then
         alphc = alph
@@ -996,10 +979,7 @@ subroutine vdiffb( &
 
   if (ofirst) then
      ofirst = .false.
-     call rewnml(ifpar, jfpar)
-     read (ifpar, nmbbdv, iostat=istat)
-     call cstnml(jfpar, 'vdiffb', 'nmbbdv', istat)
-     write(jfpar, nmbbdv)
+     READ_NAMELIST( nmbbdv )
   end if
 
   do ij = ijstr, ijend
