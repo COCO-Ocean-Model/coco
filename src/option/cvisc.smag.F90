@@ -18,7 +18,7 @@ module cvisc
   use zocdim,  only :  nxydim,  nzdim
 
   implicit none
-
+#include "coco.h"
   private
 
   real(8),     save  ::    sxx(nxydim),          syy(nxydim)
@@ -147,13 +147,8 @@ contains
        !$acc enter data create(  dbse,  dbne )
     
        call rewnml( ifpar, jfpar )
-       read( ifpar, nmsmag, iostat = istat )
-       call cstnml( jfpar, 'vscvel', 'nmsmag', istat )
-       write( jfpar, nmsmag )
-       call rewnml( ifpar, jfpar )
-       read( ifpar, nmpslv, iostat = istat )
-       call cstnml( jfpar, 'vscvel', 'nmpslv', istat )
-       write( jfpar, nmpslv )
+       READ_NAMELIST( nmsmag )
+       READ_NAMELIST( nmpslv )
 
        pi = 4.d0 * atan(1.d0)
        !$acc kernels default(present)
@@ -812,12 +807,8 @@ contains
     end if
     
     if ( ofirst_bbl ) then
-
        ofirst_bbl = .false.
-       call rewnml( ifpar, jfpar )
-       read( ifpar, nmsmgb, iostat = istat )
-       call cstnml( jfpar, 'vscvlb', 'nmsmgb', istat )
-       write( jfpar, nmsmgb )
+       READ_NAMELIST( nmsmgb )
 
        pi = 4.d0 * atan(1.d0)
        do ij = 1, nxydim
