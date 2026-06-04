@@ -22,7 +22,7 @@ module ifwtr
     &   rhoo,   rhoi,   rhos,   hfus,   dtds
 
   implicit none
-
+#include "coco.h"
   real(8), save :: si = 5.d0
 
   namelist /nmislt/ si
@@ -76,10 +76,7 @@ subroutine fwater( &
 
   if (ofirst) then
      ofirst = .false.
-     call rewnml(ifpar, jfpar)
-     read (ifpar, nmislt, iostat=istat)
-     call cstnml(jfpar, 'fwater', 'nmislt', istat)
-     write(jfpar, nmislt)
+     READ_NAMELIST( nmislt )
      rri = rhoo / rhoi
      rrs = rhoo / rhos
      tmi = dtds * si

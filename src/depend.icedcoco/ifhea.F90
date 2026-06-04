@@ -22,7 +22,7 @@ module ifhea
     &   rhoo,    cpo,   dtds 
 
   implicit none
-
+#include "coco.h"
   real(8), save :: swcnv1(nxydim)
 
   private
@@ -67,10 +67,7 @@ subroutine fiheat( &
 
   if (ofirst) then
      ofirst = .false.
-     call rewnml(ifpar, jfpar)
-     read (ifpar, nmbtab, iostat=istat)
-     call cstnml(jfpar, 'fiheat', 'nmbtab', istat)
-     write(jfpar, nmbtab)
+     READ_NAMELIST( nmbtab )
      !$acc enter data create(wfrz, wib, wilm)
   end if
   
