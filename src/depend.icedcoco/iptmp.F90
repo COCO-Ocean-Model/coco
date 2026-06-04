@@ -19,6 +19,7 @@ module iptmp
     &   rhoi,    cpi,   dtds,   hfus 
 
   implicit none
+#include "coco.h"
   private
 
   public :: icetmp
@@ -56,10 +57,7 @@ subroutine icetmp( &
 
   if (ofirst) then
      ofirst = .false.
-     call rewnml(ifpar, jfpar)
-     read (ifpar, nmislt, iostat=istat)
-     call cstnml(jfpar, 'icetmp', 'nmislt', istat)
-     write(jfpar, nmislt)
+     READ_NAMELIST( nmislt )
   end if
 
   !$acc kernels default(present)
