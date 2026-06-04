@@ -19,8 +19,8 @@ module aprdc
 ! ---------------------------------------------------------------------
 
   use zocdim,  only  :   nxyzdm,   nxydim,   ntdim
-
   implicit none
+#include "coco.h"
   private
 
   real(8)        ::    tmp(nxyzdm, ntdim)
@@ -122,20 +122,12 @@ contains
     &    .and. (.not. oinit) .and. (.not. ofinal)) return
 
     if (oinit) then
-       call rewnml(ifpar, jfpar)
-       read(ifpar, nmtide, iostat=istat)
-       call cstnml(jfpar, 'predco', 'nmtide', istat)
-       write(jfpar, nmtide)
-
+       READ_NAMELIST( nmtide )
+       
        if ( otide ) then
-          call rewnml(ifpar, jfpar)
-          read(ifpar, nmtime, iostat=istat)
-          call cstnml(jfpar, 'predco', 'nmtime', istat)
-          write(jfpar, nmtime)
-          call rewnml(ifpar, jfpar)
-          read(ifpar, nmbfav, iostat=istat)
-          call cstnml(jfpar, 'predco', 'nmbfav', istat)
-          write(jfpar, nmbfav)
+          READ_NAMELIST( nmtime )
+          READ_NAMELIST( nmbfav )
+          
           ibnext(1:6) = itstrt(1:6)
           ibnext(iubint) = ibnext(iubint) + iobint
           call cyh2ss( tbnext, ibnext )
