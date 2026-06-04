@@ -28,7 +28,7 @@ module csrvl
     &  amskb
 
   implicit none
-
+#include "coco.h"
   private
 
   public :: srcvel
@@ -65,9 +65,7 @@ subroutine srcvel( &
      ofirst = .false.
      call rewnml(ifpar, jfpar)
      write(jfpar, *) '*** svlset  ***'
-     read (ifpar, nmbtmf, iostat=istat)
-     call cstnml(jfpar, 'srcvel', 'nmbtmf', istat)
-     write(jfpar, nmbtmf)
+     READ_NAMELIST( nmbtmf )
   end if
   
   !$acc kernels default(present)
@@ -139,13 +137,8 @@ subroutine srcvlb( &
      ofirst = .false.
      call rewnml(ifpar, jfpar)
      write(jfpar, *) '*** svbset  ***'
-     read (ifpar, nmbtmf, iostat=istat)
-     call cstnml(jfpar, 'srcvlb', 'nmbtmf', istat)
-     write(jfpar, nmbtmf)
-     call rewnml(ifpar, jfpar)
-     read (ifpar, nmbbrf, iostat=istat)
-     call cstnml(jfpar, 'srcvlb', 'nmbbrf', istat)
-     write(jfpar, nmbbrf)
+     READ_NAMELIST( nmbtmf)
+     READ_NAMELIST( nmbbrf)
 
      do ij = 1, nxydim
         if (((cor(ij).ge.0.0d0).and.(nbotv(ij).le.mzn+kstr-1)) .or. &

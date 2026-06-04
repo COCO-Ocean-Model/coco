@@ -19,7 +19,7 @@ module cvlrd
   use zocdim,  only :  nxydim,  nzdim
 
   implicit none
-
+#include "coco.h"
   private
   public  ::  velrds
 
@@ -73,17 +73,9 @@ contains
     end if
 
     if ( ofirst ) then
-
        ofirst = .false.
-       call rewnml(ifpar, jfpar)
-       read(ifpar, nmaccv, iostat = istat )
-       call cstnml( jfpar, 'velrds', 'nmaccv', istat )
-       write( jfpar, nmaccv )
-
-       call rewnml(ifpar, jfpar)
-       read(ifpar, nmimpl, iostat = istat )
-       call cstnml( jfpar, 'velrds', 'nmimpl', istat )
-       write( jfpar, nmimpl )
+       READ_NAMELIST( nmaccv )
+       READ_NAMELIST( nmimpl )
 
        cf1 = aimp   / acc
        cf2 = 1.0d+0 / acc
