@@ -21,9 +21,8 @@ module brstt
   use zocfil,   only  :   ncf
 
   implicit none
-
 #include "mpif.h"
-
+#include "coco.h"
   private
 
   real(8),    allocatable,  save  ::    buf2(:,:),   buf3(:,:,:),   bufi(:,:,:)
@@ -109,15 +108,8 @@ contains
     data     si / 5.d0 /
     data irstrt / 0 /
 
-    call rewnml(ifpar, jfpar)
-    read(ifpar, nmfini, iostat=istat)
-    call cstnml( jfpar, 'restrt', 'nfini', istat )
-    write(jfpar, nmfini)
-    
-    call rewnml(ifpar, jfpar)
-    read(ifpar, nmislt, iostat=istat)
-    call cstnml( jfpar, 'restrt', 'nmislt', istat )
-    write(jfpar, nmislt)
+    READ_NAMELIST( nmfini )
+    READ_NAMELIST( nmislt )
 
     if ( myrank == iroot ) then
        call filopn(nfinit, cfinit, 'READ')
@@ -767,13 +759,8 @@ contains
     namelist /nmrun/ crun
 
     if ( ofirst ) then
-       call rewnml(ifpar, jfpar)
-       read(ifpar, nmfrst, iostat=istat)
-       call cstnml( jfpar, 'finout', 'nmfrst', istat )
-       write(jfpar, nmfrst)
-       call rewnml(ifpar, jfpar)
-       read(ifpar, nmrun, iostat=istat)
-       call cstnml( jfpar, 'finout', 'nmrun', istat )
+       READ_NAMELIST( nmfrst )
+       READ_NAMELIST( nmrun  )
        if ( myrank == iroot ) then
           call filopn(nfrest, cfrest, 'WRITE')
        end if
