@@ -22,6 +22,7 @@ module sfcng
 ! ---------------------------------------------------------------------
 
   implicit none
+#include "coco.h"
   private
 
   real(8),    parameter  ::  factm = 1.0d+1
@@ -153,16 +154,9 @@ contains
 
        call rewnml(ifpar, jfpar)
        write(jfpar, *) '*** SFCFLX ***'
-       read(ifpar, nmislt, iostat=istat )
-       call cstnml( jfpar, 'sfcflx', 'nmislt', istat )
-
-       call rewnml(ifpar, jfpar)
-       read(ifpar, nmsnow, iostat=istat )
-       call cstnml( jfpar, 'sfcflx', 'nmsnow', istat )
-
-       call rewnml(ifpar, jfpar)
-       read(ifpar, nmice, iostat=istat )
-       call cstnml( jfpar, 'sfcflx', 'nmice', istat )
+       READ_NAMELIST( nmislt )
+       READ_NAMELIST( nmsnow )
+       READ_NAMELIST( nmice  )
 
        tmi = dtds * si         
        dirdsn = dfice / dfsnow
@@ -360,10 +354,8 @@ contains
     data emis / 1.d0 /
 
     if ( ofirst ) then
+       READ_NAMELIST( nmlwem )
 
-       call rewnml(ifpar, jfpar)
-       read(ifpar, nmlwem, iostat=istat )
-       call cstnml( jfpar, 'ocnslv_omip', 'nmlwem', istat )
        ofirst = .false.
        write (jfpar, *) ' @@@ OCNSLV: OCEAN HEAT BALANCE 98/06/30'
        if (olwnet) then
@@ -510,21 +502,10 @@ contains
        call rewnml(ifpar, jfpar)
        write (jfpar, *) ' @@@ OCNBCS: OCEAN SURFACE BC 98/07/29'
        ofirst = .false.
-       read(ifpar, nmsnow, iostat = istat )
-       call cstnml( jfpar, 'ocnbcs_omip', 'nmsnow', istat )
-
-       call rewnml(ifpar, jfpar)
-       read(ifpar, nmice, iostat = istat )
-       call cstnml( jfpar, 'ocnbcs_omip', 'nmice', istat )
-
-       call rewnml(ifpar, jfpar)
-       read(ifpar, nmz0, iostat = istat )
-       call cstnml( jfpar, 'ocnbcs_omip', 'nmz0', istat )
-
-       call rewnml(ifpar, jfpar)
-       read(ifpar, nmocn,  iostat = istat )
-       call cstnml( jfpar, 'ocnbcs_omip', 'nmocn', istat )
-
+       READ_NAMELIST( nmsnow )
+       READ_NAMELIST( nmice  )
+       READ_NAMELIST( nmz0   )
+       READ_NAMELIST( nmocn  )
     endif
 
     do ij = ijstr, ijend
@@ -632,9 +613,7 @@ contains
        ofirst = .false.
        call rewnml(ifpar, jfpar)
        write(jfpar, *) ' SEA SURFACE Z0 (Miller et al.) 98/06/19'
-       read(ifpar, nmseaz, iostat = istat )
-       call cstnml( jfpar, 'seaz0f_omip', 'nmseaz', istat )
-
+       READ_NAMELIST( nmseaz )
     end if
 
     do ij = ijstr, ijend
@@ -696,14 +675,10 @@ contains
     namelist /nmsair/ za
 
     if ( ofirst ) then
-
-       call rewnml(ifpar, jfpar)
-       read(ifpar, nmsair, iostat=istat)
-       call cstnml( jfpar, 'sfcflx_omip', 'nmsair', istat )
+       READ_NAMELIST( nmsair )
        ofirst = .false.
        write(jfpar, *) ' @@@ PSFCM: SURFACE FLUX 98/06/19'
        akappa = rair/cp
-
     end if
 
     call blkcof_omip                                  &
@@ -792,18 +767,13 @@ contains
     data  ofirst / .true. /
       
     if ( ofirst ) then
-
        call rewnml(ifpar, jfpar)
        write(jfpar, *) ' @@@ PSFCL: SURFACE BULK COEF. Kara' 
-       read(ifpar, nmsair, iostat=istat)
-       call cstnml( jfpar, 'blkcof_omip', 'nmsair', istat )
+       READ_NAMELIST( nmsair )
        ofirst = .false.
 
-       call rewnml(ifpar, jfpar)
-       read(ifpar, nmsfcl, iostat=istat)
-       call cstnml( jfpar, 'blkcof_omip', 'nmsfcl', istat )
+       READ_NAMELIST( nmsfcl )
        akappa = rair / cp
-
     end if
 
     do ij = ijstr, ijend
