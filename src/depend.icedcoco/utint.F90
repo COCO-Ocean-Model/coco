@@ -1,6 +1,7 @@
 module utint
 
   implicit none
+#include "coco.h"
   private
 
   public  ::  tmintp
@@ -89,9 +90,7 @@ contains
     data iyskip / nitem*1 /
 
     if ( of ) then
-       call rewnml( ifpar, jfpar )
-       read(ifpar, nmsfbc, iostat = istat )
-       call cstnml( jfpar, 'tmintp', 'nmsfbc', istat )
+       READ_NAMELIST( nmsfbc )
        of = .false.
     end if
 
@@ -130,9 +129,7 @@ contains
        if ( myrank == iroot ) then
           call filopn(nfitem(iitem), cfitem, 'READ')
        end if
-       call rewnml(ifpar, jfpar)
-       read(ifpar, nmskip, iostat = istat )
-       call cstnml( jfpar, 'tmintp', 'nmskip', istat )
+       READ_NAMELIST( nmskip )
 
        if ( iyskip(iitem) < 1 ) then
           iyskiq(iitem) = 1
@@ -403,9 +400,7 @@ contains
     data iyskib / nitem*1 /
 
     if ( of ) then
-       call rewnml( ifpar, jfpar )
-       read(ifpar, nmbody, iostat = istat )
-       call cstnml( jfpar, 'tmintb', 'nmbody', istat )
+       READ_NAMELIST( nmbody )
        of = .false.
     end if
 
@@ -426,9 +421,7 @@ contains
        if ( myrank == iroot ) then
           call filopn(nfitem(iitem), cfitem, 'READ')
        end if
-       call rewnml(ifpar, jfpar)
-       read(ifpar, nmskib, iostat = istat )
-       call cstnml( jfpar, 'tmintb', 'nmskib', istat )
+       READ_NAMELIST( nmskib )
        if (iyskib(iitem) < 1) then
           iyskiq(iitem) = 1
        else
