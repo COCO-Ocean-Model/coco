@@ -22,6 +22,7 @@ module qckot
   use zocout
 
   implicit none
+#include "coco.h"
   private
   public chkset, chkstk, chkout, chekin, putsig
 
@@ -142,18 +143,10 @@ contains
     call gs3dst_sig( nsnzmx )
     nworks = max(cnwrks*maxval(nsig(1:nncmax))*nxydim, 1)
     allocate(owrksg(nworks))
-        
-    call rewnml(ifpar, jfpar)
-    read(ifpar, nmtime, iostat=istat)
-    call cstnml(jfpar, 'chkset', 'nmtime', istat)
-    
-    call rewnml(ifpar, jfpar)
-    read(ifpar, nmdout, iostat=istat)
-    call cstnml(jfpar, 'chkset', 'nmdout', istat)
 
-    call rewnml(ifpar, jfpar)
-    read (ifpar, nmrun, iostat=istat)
-    call cstnml(jfpar, 'chkset', 'nmrun', istat)
+    READ_NAMELIST( nmtime )
+    READ_NAMELIST( nmdout )
+    READ_NAMELIST( nmrun )
 
     if (crun(1:1) == '(') then
        chrnum = 'COCO stand-alone'
@@ -1037,10 +1030,7 @@ contains
 
     character :: cfsgco*(ncf) = 'not-specified'
     namelist /nmsgco/ cfsgco
-
-    call rewnml(ifpar, jfpar)
-    read(ifpar, nmsgco, iostat=istat)
-    call cstnml(jfpar, 'csgset', 'nmsgco', istat)
+    READ_NAMELIST( nmsgco )
 
     if ( myrank == iroot ) then
        inquire(file=trim(cfsgco), exist=oexist)
@@ -1802,8 +1792,7 @@ contains
       call gather_2d( glat, glatt)
 #endif
       if (irank + jrank == 0) then ! coordinate info is defined and written only root node
-         call rewnml(ifpar, jfpar)
-         read(ifpar, nm_ncg, iostat=istat)
+         READ_NAMELIST( nm_ncg )
          if (trim(c_ncg) /= 'not-specified') then
             call filopn(nf_ncg, c_ncg, 'READ')
             read(nf_ncg) xt
