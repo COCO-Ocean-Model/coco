@@ -30,7 +30,7 @@ module dvdif
     &   nbot
 
   implicit none
-
+#include "coco.h"
   private
 
   public :: vdiff, puttao
@@ -68,14 +68,8 @@ subroutine vdiff( &
 
   if (ofirst) then
      ofirst = .false.
-     call rewnml(ifpar, jfpar)
-     read (ifpar, nmvisv, iostat=istat)
-     call cstnml(jfpar, 'vdiff', 'nmvisv', istat)
-     write(jfpar, nmvisv)
-     call rewnml(ifpar, jfpar)
-     read (ifpar, nmdifv, iostat=istat)
-     call cstnml(jfpar, 'vdiff', 'nmdifv', istat)
-     write(jfpar, nmdifv)
+     READ_NAMELIST( nmvisv )
+     READ_NAMELIST( nmdifv )
   end if
 
   do k = kstr, kend
@@ -139,10 +133,7 @@ subroutine vdiffb( &
 
   if (ofirst) then
      ofirst = .false.
-     call rewnml(ifpar, jfpar)
-     read (ifpar, nmbbdv, iostat=istat)
-     call cstnml(jfpar, 'vdiffb', 'nmbbdv', istat)
-     write(jfpar, nmbbdv)
+     READ_NAMELIST( nmbbdv )
   end if
 
   do ij = ijstr, ijend
