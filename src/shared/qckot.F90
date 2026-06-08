@@ -1025,6 +1025,7 @@ contains
     use zocfil, only: &
       &     ncf
     use ufile
+    use bshfi
     implicit none
 
 #include "mpif.h"
