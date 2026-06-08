@@ -1,6 +1,7 @@
 module utint
 
   implicit none
+#include "coco.h"
   private
 
   public  ::  tmintp
@@ -39,7 +40,6 @@ contains
     use ucaln
     use mpiio
     implicit none
-
 #include "mpif.h"
 
     real(8),    intent(inout)  ::  ditem(nxdim, nydim)
@@ -96,9 +96,7 @@ contains
     integer :: icread
     
     if ( of ) then
-       call rewnml( ifpar, jfpar )
-       read(ifpar, nmsfbc, iostat = istat )
-       call cstnml( jfpar, 'tmintp', 'nmsfbc', istat )
+       READ_NAMELIST( nmsfbc )
        of = .false.
     end if
 
@@ -136,10 +134,7 @@ contains
     if ( ofirst(iitem) ) then
        call mpi_filopn(mpi_fh(iitem), cfitem, 'READ')
        disp(iitem)=0
-
-       call rewnml(ifpar, jfpar)
-       read(ifpar, nmskip, iostat = istat )
-       call cstnml( jfpar, 'tmintp', 'nmskip', istat )
+       READ_NAMELIST( nmskip )
 
        if ( iyskip(iitem) < 1 ) then
           iyskiq(iitem) = 1
@@ -381,9 +376,7 @@ contains
     integer :: icread
 
     if ( of ) then
-       call rewnml( ifpar, jfpar )
-       read(ifpar, nmbody, iostat = istat )
-       call cstnml( jfpar, 'tmintb', 'nmbody', istat )
+       READ_NAMELIST( nmbody )
        of = .false.
     end if
 
@@ -403,10 +396,8 @@ contains
     if ( ofirst(iitem) ) then
        call mpi_filopn(mpi_fh(iitem), cfitem, 'READ')
        disp(iitem)=0
+       READ_NAMELIST( nmskib )
 
-       call rewnml(ifpar, jfpar)
-       read(ifpar, nmskib, iostat = istat )
-       call cstnml( jfpar, 'tmintb', 'nmskib', istat )
        if (iyskib(iitem) < 1) then
           iyskiq(iitem) = 1
        else
