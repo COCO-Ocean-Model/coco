@@ -528,7 +528,6 @@ contains
        READ_NAMELIST( nmfrst )
        READ_NAMELIST( nmrun  )
        call mpi_filopn(mpi_fh_w, cfrest, 'WRITE')
-       call cstnml( jfpar, 'finout', 'nmrun', istat )
        ofirst = .false.
     end if
 
