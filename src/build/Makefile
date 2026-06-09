@@ -60,7 +60,7 @@ SRCS_icedcoco = \
 SRCS_offline = \
 	aocea.F90 \
 	aprdc.F90 \
-	brstt.F90 \
+	brstt$(MPI).F90 \
 	sfcng.F90 \
 	utint$(MPI).F90
 
@@ -74,7 +74,7 @@ SRCS_oeco2 =            \
 	utint$(MPI).F90 \
 	sfcng.oeco.F90  \
 	ecosys.F90      \
-	brstt.F90 \
+	brstt$(MPI).F90 \
 	aprdc.F90       \
 	aocea.F90
 
