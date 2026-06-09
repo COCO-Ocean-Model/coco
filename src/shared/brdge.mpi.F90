@@ -368,13 +368,6 @@ contains
      if (amskv(ij, kstr) .eq. 1.d0) exit
   end do
 
-#ifdef OPT_OFFLINE
-#ifdef OPT_BBL
-  call rmmskv
-  call admkvb
-#endif
-#endif
-
   call mpi_filcls(mpi_fh)
 
   rx = 1.d0 / dx

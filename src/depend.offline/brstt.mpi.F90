@@ -77,6 +77,7 @@ contains
     real(8), intent(inout) ::    ft(nxdim, nydim, ntdim)
     real(8), intent(in)    :: tstrt
     real(8)    ::    ttt
+    real(8)    ::    dmaxg
     integer(4) ::      l
     integer(4), save :: istat
     integer(4) :: ierr
@@ -104,9 +105,20 @@ contains
        if (icread == 1024) then
           call mpi_read_3d(t(1, 1, 1, l), mpi_fh_r, disp)
        end if
+#ifdef OPT_OECO2
+       if ( chead(3)(1:3) == 'NO3' .or. l == 3 ) then
+          call print_stats(t(:, :, :, l), chead(3), 'T', dmaxg)
+          if ( dmaxg < 1.d-5 ) then
+             write(jfpar,*) 'I.C. is abonormal: max. of NO3 < 1.d-5'
+             call flush(jfpar)
+             stop
+          end if
+       endif
+#else
        if (loglev > 0) then
           call print_stats(t(:, :, :, l), chead(3))
        end if
+#endif
     end do
     !$acc update device(t)
     
@@ -476,7 +488,7 @@ contains
     
   end subroutine print_stats_2d
 
-  subroutine print_stats_3d(data, cname, cpos)
+  subroutine print_stats_3d(data, cname, cpos, vmax )
 
     use ufile
     use zocdim,   only  :                                             &
@@ -489,9 +501,10 @@ contains
 !    use TOUZA_Std_log, only: msg
 !#endif
     
-    real(8),          intent(in)           :: data(:,:,:)
-    character(len=*), intent(in)           :: cname
-    character(1),     intent(in), optional :: cpos
+    real(8),          intent(in)              :: data(:,:,:)
+    character(len=*), intent(in)              :: cname
+    character(1),     intent(in),    optional :: cpos
+    real(8),          intent(inout), optional :: vmax
     
     logical, save              :: ofirst = .true.
     logical, save, allocatable :: omask(:,:,:)
@@ -583,6 +596,8 @@ contains
     write(jfpar,*) 'MAX, MIN, AVE, SD, NUM of '//trim(cname)//' : ', dmaxg, ',', dming, ',', daveg, ',', dstdg, ',', dnumg
 !#endif
     call flush(jfpar)
+
+    vmax = dmaxg
 
   end subroutine print_stats_3d
 
