@@ -2,78 +2,86 @@
 module ncfio
   use mpi
   use netcdf
-  use zocdim, only : mpi_comm_ogcm
+  use zocdim, only : mpi_comm_ogcm, nxg, nyg, nx, ny, nz
+  use zocnod, only : irank, jrank
   use zocfil, only : nfomax
   use ufile
   implicit none
 
   logical, save :: ofirst(nfomax) = .true.
   real(8), save :: time0(nfomax) = 0.d0
-  integer :: ifpar, jfpar
-  
+  logical, parameter :: shuffle = .true.
+  integer, parameter :: deflate_level = 1
+  integer, parameter :: nbnd = 2
+  integer, parameter :: nvert = 4
+
+  real(4), parameter :: fill_value_real4 = -1.E20
+  real(8), parameter :: fill_value_real8 = -1.D20
+
+  integer, parameter :: ntype_coord = NF90_FLOAT
+  integer, parameter :: ntype_index = NF90_INT
+
+  type :: xy_coord_type
+#ifdef OPT_EXMASK
+     real(8) :: x(nxg, nyg)
+     real(8) :: y(nxg, nyg)
+     real(8) :: x_vert(nvert, nxg, nyg), y_vert(nvert, nxg, nyg)
+#else
+     real(8) :: x(nxg)
+     real(8) :: y(nyg)
+#endif
+     character(len=256) :: x_unit, x_long_name
+     character(len=256) :: y_unit, y_long_name
+  end type xy_coord_type
+
+  type :: z_coord_type
+     real(8) :: z(nz) ! only 3-D variables
+     real(8) :: z_bnd(nbnd, nz)
+     character(len=256) :: z_unit, z_long_name
+  end type z_coord_type
+
+  type :: t_coord_type
+     real(8) :: time
+     real(8) :: time1
+     character(len=256) :: t_unit
+  end type t_coord_type
+
+  type :: v_info_type
+     character(len=256) :: cvar, v_unit, v_long_name
+  end type v_info_type
+
+  interface nc_write
+     module procedure nc_write_real4_2d
+     module procedure nc_write_real4_3d
+     module procedure nc_write_real8_2d
+     module procedure nc_write_real8_3d
+  end interface nc_write
+
   private
   public :: nc_write, nc_filopn, nc_read_chead, nc_read_sfc, nc_read_bdy
-contains
-  subroutine nc_write(cf, fid, time, &
-       & nxg, nyg, nx, ny, nz, irank, jrank, &
-       & shuffle, deflate_level, &
-       & buf4, cvar, v_unit, v_long_name, fill_value, &
-       & x, x_unit, x_long_name, &
-       & y, y_unit, y_long_name, &
-       & z, z_unit, z_long_name, &
-#ifdef OPT_EXMASK
-       & x_vert, y_vert, &
-#endif
-       & z_bnd, &
-       & t_unit, time1)
+  public :: xy_coord_type, z_coord_type, t_coord_type, v_info_type
 
-    implicit none
-    
-    integer, parameter :: nbnd = 2
-    integer, parameter :: nvert = 4
-    
+contains
+
+  subroutine nc_write_header(ncid, v_id, start_t, &
+       & cf, fid, cdtp, &
+       & v_info, xy_coord, t_coord, z_coord)
+
+    integer, intent(out) :: ncid, v_id
+    integer, intent(out) :: start_t(1)
+        
     character(len=*), intent(in) :: cf
     integer, intent(in) :: fid
-    real(8), intent(in) :: time
-    real(8), intent(in) :: time1
-
-    integer, intent(in) :: nxg, nyg, nx, ny, nz, irank, jrank
-
-    logical, intent(in) :: shuffle
-    integer, intent(in) :: deflate_level
-
-    character(len=*), intent(in) :: cvar, v_unit, v_long_name
-    real(4), intent(in) :: buf4(nx*ny*nz)
-    real(4), intent(in) :: fill_value
-
-#ifdef OPT_EXMASK
-    real(8), intent(in) :: x(nxg, nyg)
-#else
-    real(8), intent(in) :: x(nxg)
-#endif
-    character(len=*), intent(in) :: x_unit, x_long_name
-
-#ifdef OPT_EXMASK
-    real(8), intent(in) :: y(nxg, nyg)
-#else
-    real(8), intent(in) :: y(nyg)
-#endif
-    character(len=*), intent(in) :: y_unit, y_long_name
-
-    real(8), intent(in), optional :: z(nz) ! only 3-D variables
-    real(8), intent(in), optional :: z_bnd(nbnd, nz)
-    character(len=*), intent(in), optional :: z_unit, z_long_name
-
-    character(len=*), intent(in) :: t_unit
-
-#ifdef OPT_EXMASK
-    real(8),intent(in), optional :: x_vert(nvert, nxg, nyg), y_vert(nvert, nxg, nyg) ! only EXMASK
-#endif
+    character(len=2), intent(in) :: cdtp
+    type(xy_coord_type), intent(in) :: xy_coord
+    type(t_coord_type), intent(in) :: t_coord
+    type(v_info_type), intent(in) :: v_info
+    type(z_coord_type), intent(in), optional :: z_coord
 
     real(8) :: t(1), tbnd(nbnd)
-    integer :: ncid, ndims, v_id, x_id, y_id, z_id, t_id, tbnd_id, zbnd_id
+    integer :: ndims, x_id, y_id, z_id, t_id, tbnd_id, zbnd_id
     integer :: x_dimid, y_dimid, z_dimid, t_dimid, bnd_dimid
-    integer :: start_x(1), start_y(1), start_z(1), start_t(1)
+    integer :: start_x(1), start_y(1), start_z(1)
     integer :: count_x(1), count_y(1), count_z(1), count_t(1)
     
     integer, allocatable :: v_dimids(:), start_v(:), count_v(:)
@@ -82,19 +90,17 @@ contains
 #ifdef OPT_EXMASK
     integer ::  xy_dimids(2), start_xy(2),  count_xy(2)
     integer :: xyv_dimids(3), start_xyv(3), count_xyv(3)
-    integer, parameter :: ntype_index = NF90_INT
     integer :: ix_id, iy_id
     integer, allocatable :: ix(:), iy(:)
     integer :: vert_dimid, x_vert_id, y_vert_id
     integer :: i
 #endif
     integer :: nt
-    integer, parameter :: ntype_coord = NF90_FLOAT
-    integer, parameter :: ntype_out = NF90_FLOAT
+    integer :: ntype_out
 
     if (ofirst(fid)) then
        ! save initial time
-       time0(fid) = time1
+       time0(fid) = t_coord%time1
        start_t(1)=1
        
        ! create (open) file
@@ -104,27 +110,25 @@ contains
        ! define dimensions
        call check(nf90_def_dim(ncid, "bnds",      nbnd,         bnd_dimid))
 #ifdef OPT_EXMASK
-       if (present(x_vert)) &
-     & call check(nf90_def_dim(ncid, "vertices",  nvert,       vert_dimid))
+       call check(nf90_def_dim(ncid, "vertices",  nvert,       vert_dimid))
        call check(nf90_def_dim(ncid, "x",         nxg,            x_dimid))
        call check(nf90_def_dim(ncid, "y",         nyg,            y_dimid))
 #else
        call check(nf90_def_dim(ncid, "longitude", nxg,            x_dimid))
        call check(nf90_def_dim(ncid, "latitude",  nyg,            y_dimid))
 #endif
-       if (present(z)) &
+       if (present(z_coord)) &
      & call check(nf90_def_dim(ncid, "level",     nz,             z_dimid))
        call check(nf90_def_dim(ncid, "time",      NF90_UNLIMITED, t_dimid))
 
        ! dimension ID
 #ifdef OPT_EXMASK
        xy_dimids = (/ x_dimid, y_dimid /)
-       if (present(x_vert)) &
-     & xyv_dimids(1:3) = (/ vert_dimid, x_dimid, y_dimid /)
+       xyv_dimids(1:3) = (/ vert_dimid, x_dimid, y_dimid /)
 #endif
-       if (time /= time1) &
+       if (t_coord%time /= t_coord%time1) &
      & tb_dimids(1:2) = (/bnd_dimid, t_dimid/)
-       if (present(z)) then
+       if (present(z_coord)) then
           ndims=4
           allocate( v_dimids(ndims))
           v_dimids(1:ndims) = (/x_dimid, y_dimid, z_dimid, t_dimid/)
@@ -139,50 +143,51 @@ contains
 #ifdef OPT_EXMASK
        call check(nf90_def_var(ncid, 'longitude',          ntype_coord,  xy_dimids,      x_id ))
        call check(nf90_def_var(ncid, 'latitude',           ntype_coord,  xy_dimids,      y_id ))
-       if (present(x_vert)) then
        call check(nf90_def_var(ncid, 'longitude_vertices', ntype_coord, xyv_dimids, x_vert_id ))
        call check(nf90_def_var(ncid, 'latitude_vertices',  ntype_coord, xyv_dimids, y_vert_id ))
-       end if
        call check(nf90_def_var(ncid, "x",                  ntype_index,   x_dimid,      ix_id ))
        call check(nf90_def_var(ncid, "y",                  ntype_index,   y_dimid,      iy_id ))
 #else
        call check(nf90_def_var(ncid, 'longitude',          ntype_coord,   x_dimid,       x_id ))
        call check(nf90_def_var(ncid, 'latitude',           ntype_coord,   y_dimid,       y_id ))
 #endif
-       if (present(z)) then
+       if (present(z_coord)) then
        call check(nf90_def_var(ncid, 'level',              ntype_coord,   z_dimid,       z_id ))
        call check(nf90_def_var(ncid, 'level_bnds',         ntype_coord,  zb_dimids,   zbnd_id ))
        end if
        call check(nf90_def_var(ncid, 'time',               ntype_coord,   t_dimid,       t_id ))
-       if (time /= time1) & ! time-averaged output
+       if (t_coord%time /= t_coord%time1) & ! time-averaged output
      & call check(nf90_def_var(ncid, 'time_bnds',          ntype_coord,  tb_dimids,   tbnd_id ))
-       call check(nf90_def_var(ncid,  cvar,                ntype_out,     v_dimids,      v_id, &
+       if (cdtp(2:2) == "4") then
+          ntype_out = NF90_FLOAT
+       else
+          ntype_out = NF90_DOUBLE
+       end if
+       call check(nf90_def_var(ncid,  v_info%cvar,         ntype_out,     v_dimids,      v_id, &
             & shuffle=shuffle, deflate_level=deflate_level ))
 
        ! put attributes (unit, bounds)
-       call check(nf90_put_att(ncid,      x_id, 'units', x_unit))
-       call check(nf90_put_att(ncid,      y_id, 'units', y_unit))
+       call check(nf90_put_att(ncid,      x_id, 'units', xy_coord%x_unit))
+       call check(nf90_put_att(ncid,      y_id, 'units', xy_coord%y_unit))
 #ifdef OPT_EXMASK
-       if (present(x_vert)) then
-       call check(nf90_put_att(ncid, x_vert_id,  'units', x_unit))
-       call check(nf90_put_att(ncid, y_vert_id,  'units', y_unit))
+       call check(nf90_put_att(ncid, x_vert_id,  'units', xy_coord%x_unit))
+       call check(nf90_put_att(ncid, y_vert_id,  'units', xy_coord%y_unit))
        call check(nf90_put_att(ncid,      x_id, 'bounds', 'longitude_vertices'))
        call check(nf90_put_att(ncid,      y_id, 'bounds',  'latitude_vertices'))
-       end if
        call check(nf90_put_att(ncid,     ix_id,  'units', '1'))
        call check(nf90_put_att(ncid,     iy_id,  'units', '1'))
 #endif
-       if (present(z)) then
-       call check(nf90_put_att(ncid,      z_id,  'units', z_unit))
-       call check(nf90_put_att(ncid,   zbnd_id,  'units', z_unit))
+       if (present(z_coord)) then
+       call check(nf90_put_att(ncid,      z_id,  'units', z_coord%z_unit))
+       call check(nf90_put_att(ncid,   zbnd_id,  'units', z_coord%z_unit))
        call check(nf90_put_att(ncid,      z_id, 'bounds', 'level_bnds'))
        end if
-       call check(nf90_put_att(ncid,      t_id,  'units', t_unit))
-       if (time /= time1) then ! time-averaged output
-       call check(nf90_put_att(ncid,   tbnd_id,  'units', t_unit))
+       call check(nf90_put_att(ncid,      t_id,  'units', t_coord%t_unit))
+       if (t_coord%time /= t_coord%time1) then ! time-averaged output
+       call check(nf90_put_att(ncid,   tbnd_id,  'units', t_coord%t_unit))
        call check(nf90_put_att(ncid,      t_id, 'bounds', 'time_bnds'))
        end if
-       call check(nf90_put_att(ncid,      v_id,  'units', v_unit))
+       call check(nf90_put_att(ncid,      v_id,  'units', v_info%v_unit))
 
        ! put attributes (names, axis, etc ...)
 #ifdef OPT_EXMASK
@@ -191,23 +196,26 @@ contains
        call check(nf90_put_att(ncid, ix_id, 'axis', 'X' ))
        call check(nf90_put_att(ncid, iy_id, 'axis', 'Y' ))
 #endif
-       call check(nf90_put_att(ncid,  x_id, 'long_name', x_long_name ))
-       call check(nf90_put_att(ncid,  y_id, 'long_name', y_long_name ))
+       call check(nf90_put_att(ncid,  x_id, 'long_name', xy_coord%x_long_name ))
+       call check(nf90_put_att(ncid,  y_id, 'long_name', xy_coord%y_long_name ))
        call check(nf90_put_att(ncid,  x_id, 'standard_name', 'longitude'))
        call check(nf90_put_att(ncid,  y_id, 'standard_name', 'latitude' ))
        call check(nf90_put_att(ncid,  x_id, '_CoordinateAxisType', 'Lon'))
        call check(nf90_put_att(ncid,  y_id, '_CoordinateAxisType', 'Lat'))
-       if( present(z) ) &
-     & call check(nf90_put_att(ncid,  z_id, 'long_name', z_long_name ))
+       if( present(z_coord) ) &
+     & call check(nf90_put_att(ncid,  z_id, 'long_name', z_coord%z_long_name ))
        call check(nf90_put_att(ncid,  t_id, 'long_name', 'time'      ))
-       call check(nf90_put_att(ncid,  v_id, 'long_name', v_long_name ))
-       if( present(z) ) then
-          call check(nf90_put_att(ncid,  v_id, 'coordinates', 'time, level, latitude, longitude' )) ! for CDO remapping
+       call check(nf90_put_att(ncid,  v_id, 'long_name', v_info%v_long_name ))
+       if( present(z_coord) ) then
+          call check(nf90_put_att(ncid,  v_id, 'coordinates', 'time, level, latitude, longitude' ))
        else
-          call check(nf90_put_att(ncid,  v_id, 'coordinates', 'time, latitude, longitude' )) ! for CDO remapping
+          call check(nf90_put_att(ncid,  v_id, 'coordinates', 'time, latitude, longitude' ))
        end if
-       call check(nf90_put_att(ncid,  v_id, '_FillValue', fill_value ))
-       
+       if (cdtp(2:2) == "4") then
+          call check(nf90_put_att(ncid,  v_id, '_FillValue', fill_value_real4 ))
+       else
+          call check(nf90_put_att(ncid,  v_id, '_FillValue', fill_value_real8 ))
+       end if
        call check(nf90_enddef(ncid))
 
        ! put variables
@@ -231,22 +239,20 @@ contains
              iy(i) = i
           end do
           
-          call check(nf90_put_var(ncid,      x_id,  x,      start=start_xy,  count=count_xy ))
-          call check(nf90_put_var(ncid,      y_id,  y,      start=start_xy,  count=count_xy ))
+          call check(nf90_put_var(ncid,      x_id,  xy_coord%x,      start=start_xy,  count=count_xy ))
+          call check(nf90_put_var(ncid,      y_id,  xy_coord%y,      start=start_xy,  count=count_xy ))
           call check(nf90_put_var(ncid,     ix_id, ix,      start=start_x,   count=count_x  ))
           call check(nf90_put_var(ncid,     iy_id, iy,      start=start_y,   count=count_y  ))
-          if (present(x_vert)) then
-          call check(nf90_put_var(ncid, x_vert_id,  x_vert, start=start_xyv, count=count_xyv))
-          call check(nf90_put_var(ncid, y_vert_id,  y_vert, start=start_xyv, count=count_xyv))
-          end if
+          call check(nf90_put_var(ncid, x_vert_id,  xy_coord%x_vert, start=start_xyv, count=count_xyv))
+          call check(nf90_put_var(ncid, y_vert_id,  xy_coord%y_vert, start=start_xyv, count=count_xyv))
           deallocate(ix, iy)
 #else
-          call check(nf90_put_var(ncid,      x_id,  x,      start=start_x,   count=count_x  ))
-          call check(nf90_put_var(ncid,      y_id,  y,      start=start_y,   count=count_y  ))
+          call check(nf90_put_var(ncid,      x_id,  xy_coord%x,      start=start_x,   count=count_x  ))
+          call check(nf90_put_var(ncid,      y_id,  xy_coord%y,      start=start_y,   count=count_y  ))
 #endif
-          if( present(z) ) then
-          call check(nf90_put_var(ncid,      z_id,  z,      start=start_z,   count=count_z  ))
-          call check(nf90_put_var(ncid,   zbnd_id,  z_bnd,  start=start_zb,  count=count_zb ))
+          if( present(z_coord) ) then
+          call check(nf90_put_var(ncid,      z_id,  z_coord%z,      start=start_z,   count=count_z  ))
+          call check(nf90_put_var(ncid,   zbnd_id,  z_coord%z_bnd,  start=start_zb,  count=count_zb ))
           end if
        end if
        
@@ -254,7 +260,8 @@ contains
        ofirst(fid) = .false.
     else
        ! open file
-       call check(nf90_open_par(cf, nf90_write, comm = mpi_comm_ogcm, info = MPI_INFO_NULL, ncid = ncid))
+       !call check(nf90_open_par(cf, nf90_write, comm = mpi_comm_ogcm, info = MPI_INFO_NULL, ncid = ncid))
+       call nc_filopn(ncid, cf, 'w')
 
        ! get current record length
        call check(nf90_inq_dimid(ncid, 'time', t_dimid))
@@ -263,52 +270,149 @@ contains
 
        ! get veriable ID
        call check(nf90_inq_varid(ncid, 'time',         t_id))
-       if( time /= time1 ) &  ! time-averaged output
+       if( t_coord%time /= t_coord%time1 ) &  ! time-averaged output
     &  call check(nf90_inq_varid(ncid, 'time_bnds', tbnd_id))
-       call check(nf90_inq_varid(ncid,   cvar,         v_id))
+       call check(nf90_inq_varid(ncid,   v_info%cvar,         v_id))
     end if
 
     ! write time
     count_t(1) = 1
-    if (t_unit(1:1) == 'D' .or. t_unit(1:1) == 'd') then
-       t(1) = (time-time0(fid)) / 86400.d0 ! day
+    if (t_coord%t_unit(1:1) == 'D' .or. t_coord%t_unit(1:1) == 'd') then
+       t(1) = (t_coord%time-time0(fid)) / 86400.d0 ! day
     else
-       t(1) = (time-time0(fid)) / 3600.d0 ! hour
+       t(1) = (t_coord%time-time0(fid)) / 3600.d0 ! hour
     end if
     call check(nf90_var_par_access(ncid, t_id, nf90_collective))
     call check(nf90_put_var(ncid, t_id, t, start=start_t, count=count_t))
-    if( time /= time1 )then  ! time-averaged output
-       tbnd(1) = (time1-time0(fid))/3600.d0
-       tbnd(2) = (time*2-time1-time0(fid))/3600.d0
+    if( t_coord%time /= t_coord%time1 )then  ! time-averaged output
+       tbnd(1) = (t_coord%time1-time0(fid))/3600.d0
+       tbnd(2) = (t_coord%time*2-t_coord%time1-time0(fid))/3600.d0
        start_tb(1:2) = (/   1, start_t(1)/)
        count_tb(1:2) = (/nbnd, count_t(1)/)
        call check(nf90_var_par_access(ncid, tbnd_id, nf90_collective))
        call check(nf90_put_var(ncid, tbnd_id, tbnd, start=start_tb, count=count_tb))
     end if
-
-    ! write data body
-    if( present(z) ) then
-       ndims=4
-       allocate(start_v(ndims))
-       allocate(count_v(ndims))
-       start_v(1:ndims)= (/ irank*nx+1, jrank*ny+1, 1, start_t(1)/)
-       count_v(1:ndims)= (/nx, ny, nz, 1 /)
-    else
-       ndims=3
-       allocate(start_v(ndims))
-       allocate(count_v(ndims))
-       start_v(1:ndims)= (/ irank*nx+1, jrank*ny+1, start_t(1)/)
-       count_v(1:ndims)= (/nx, ny, 1 /)
-    end if
     call check(nf90_var_par_access(ncid, v_id, nf90_collective))
-    call check(nf90_put_var(ncid, v_id, buf4, start=start_v, count=count_v))
-    deallocate(start_v)
-    deallocate(count_v)
 
-    ! close file
-    call check(nf90_close(ncid))
+  end subroutine nc_write_header
+
+  subroutine nc_write_real4_3d(cf, fid, buf4, &
+       & v_info, xy_coord, t_coord, z_coord)
+
+    implicit none
+
+    character(len=*), intent(in) :: cf
+    integer, intent(in) :: fid
+    real(4), intent(in) :: buf4(nx*ny*nz)
+    type(xy_coord_type), intent(in) :: xy_coord
+    type(t_coord_type), intent(in) :: t_coord
+    type(v_info_type), intent(in) :: v_info
+
+    type(z_coord_type), intent(in) :: z_coord
+    character(len=2), parameter :: cdtp = 'r4'
     
-  end subroutine nc_write
+    integer :: ncid, v_id
+    integer :: start_t(1)
+    integer :: start_v(4), count_v(4)
+    
+    call nc_write_header(ncid, v_id, start_t, &
+       &  cf, fid, cdtp, &
+       & v_info, xy_coord, t_coord, z_coord)
+
+    start_v(1:4)= (/ irank*nx+1, jrank*ny+1, 1, start_t(1)/)
+    count_v(1:4)= (/nx, ny, nz, 1 /)
+    call check(nf90_put_var(ncid, v_id, buf4, start=start_v, count=count_v))
+    call check(nf90_close(ncid))
+
+  end subroutine nc_write_real4_3d
+
+  subroutine nc_write_real4_2d(cf, fid, buf4, &
+       & v_info, xy_coord, t_coord)
+
+    implicit none
+
+    character(len=*), intent(in) :: cf
+    integer, intent(in) :: fid
+    real(4), intent(in) :: buf4(nx*ny)
+    type(xy_coord_type), intent(in) :: xy_coord
+    type(t_coord_type), intent(in) :: t_coord
+    type(v_info_type), intent(in) :: v_info
+
+    character(len=2), parameter :: cdtp = 'r4'
+    
+    integer :: ncid, v_id
+    integer :: start_t(1)
+    integer :: start_v(3), count_v(3)
+    
+    call nc_write_header(ncid, v_id, start_t, &
+       &  cf, fid, cdtp, &
+       & v_info, xy_coord, t_coord)
+
+    start_v(1:3)= (/ irank*nx+1, jrank*ny+1, start_t(1)/)
+    count_v(1:3)= (/nx, ny, 1 /)
+    call check(nf90_put_var(ncid, v_id, buf4, start=start_v, count=count_v))
+    call check(nf90_close(ncid))
+
+  end subroutine nc_write_real4_2d
+
+  subroutine nc_write_real8_3d(cf, fid, buf8, &
+       & v_info, xy_coord, t_coord, z_coord)
+
+    implicit none
+
+    character(len=*), intent(in) :: cf
+    integer, intent(in) :: fid
+    real(8), intent(in) :: buf8(nx*ny*nz)
+    type(xy_coord_type), intent(in) :: xy_coord
+    type(t_coord_type), intent(in) :: t_coord
+    type(v_info_type), intent(in) :: v_info
+
+    type(z_coord_type), intent(in) :: z_coord
+    character(len=2), parameter :: cdtp = 'r8'
+    
+    integer :: ncid, v_id
+    integer :: start_t(1)
+    integer :: start_v(4), count_v(4)
+    
+    call nc_write_header(ncid, v_id, start_t, &
+       &  cf, fid, cdtp, &
+       & v_info, xy_coord, t_coord, z_coord)
+
+    start_v(1:4)= (/ irank*nx+1, jrank*ny+1, 1, start_t(1)/)
+    count_v(1:4)= (/nx, ny, nz, 1 /)
+    call check(nf90_put_var(ncid, v_id, buf8, start=start_v, count=count_v))
+    call check(nf90_close(ncid))
+
+  end subroutine nc_write_real8_3d
+
+  subroutine nc_write_real8_2d(cf, fid, buf8, &
+       & v_info, xy_coord, t_coord)
+
+    implicit none
+
+    character(len=*), intent(in) :: cf
+    integer, intent(in) :: fid
+    real(8), intent(in) :: buf8(nx*ny)
+    type(xy_coord_type), intent(in) :: xy_coord
+    type(t_coord_type), intent(in) :: t_coord
+    type(v_info_type), intent(in) :: v_info
+
+    character(len=2), parameter :: cdtp = 'r8'
+    
+    integer :: ncid, v_id
+    integer :: start_t(1)
+    integer :: start_v(3), count_v(3)
+    
+    call nc_write_header(ncid, v_id, start_t, &
+       &  cf, fid, cdtp, &
+       & v_info, xy_coord, t_coord)
+
+    start_v(1:3)= (/ irank*nx+1, jrank*ny+1, start_t(1)/)
+    count_v(1:3)= (/nx, ny, 1 /)
+    call check(nf90_put_var(ncid, v_id, buf8, start=start_v, count=count_v))
+    call check(nf90_close(ncid))
+
+  end subroutine nc_write_real8_2d
 
   subroutine check(status)
     implicit none
