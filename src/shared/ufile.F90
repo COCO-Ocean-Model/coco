@@ -31,8 +31,8 @@ module ufile
  integer, save :: mpf=0
 
  interface cstnml
-    module procedure cstnml
-    module procedure cstnml_line
+    module procedure cstnml_old
+    module procedure cstnml_new
  end interface cstnml
  
 contains
@@ -190,7 +190,7 @@ contains
 
 ! *********************************************************************
 
- subroutine cstnml(                                                            &
+ subroutine cstnml_old(                                                        &
   &                        jfile,  cnsbr,  cnnml,  istat)
  implicit none
  integer,      intent(in) ::  jfile, istat 
@@ -204,9 +204,9 @@ contains
  end if
 
  return
- end subroutine cstnml
+ end subroutine cstnml_old
 
- subroutine cstnml_line(                                                       &
+ subroutine cstnml_new(                                                       &
   &                        jfile,  fname,  line,  istat)
  implicit none
  integer,      intent(in) ::  jfile, istat, line 
@@ -219,7 +219,7 @@ contains
  end if
 
  return
-end subroutine cstnml_line
+ end subroutine cstnml_new
 
  subroutine stop_msg(cmsg, cfil, line)
    implicit none
