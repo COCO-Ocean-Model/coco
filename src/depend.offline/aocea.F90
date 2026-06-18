@@ -171,6 +171,9 @@ contains
 #endif
     &                u,     v,    ha,    hb,   ahv )
 
+!    call south_bound_radiation(t(:,3:ntdim),v,0.d0)
+!    call south_bound_fix(t(:,3:ntdim),0.d0)
+    
 ! *** Output to file ***
     do l = 3, ntdim
        call chekin(      t(1, l),      ctrnam(l),  &
@@ -186,5 +189,73 @@ contains
    call chkout( oflout )
 
  end subroutine ocean
+
+ subroutine south_bound_radiation(t_raw, v, t_bg)
+   
+   use zocnod, only: jrank
+   use zocdim, only: istr, iend, jstr, kstr, kend
+   use zocmsk, only: amskt, amskv
+   use zocgrd, only: dzv, rym, hyu
+   
+   real(8), target, intent(inout) :: t_raw(nxyzdm, ntdim-2)
+   real(8), intent(in)    :: t_bg
+   real(8), intent(in)    :: v(nxyzdm)
+   real(8), pointer :: t_ptr(:, :, :, :)
+   real(8) :: vv, r
+   integer :: i, j, k, n, ij, ijk
+
+   t_ptr(1:nxdim, 1:nydim, 1:nzdim, 1:ntdim-2) => t_raw
+   
+   if (jrank == 0) then
+      do n = 1, ntdim-2
+      do k = kstr, kend
+      do i = istr, iend
+         ij = i + (jstr-1) * nxdim
+         ijk = ij + (k-1) * nxydim
+         vv = (v(ijk) * dzv(ij, k) * amskv(ij, k) + v(ijk-1) * dzv(ij-1, k) * amskv(ij-1, k)) * amskt(ij, k) * amskt(ij+nxdim, k)
+         if (vv < 0.d0) then
+            r = abs(vv) / (dzv(ij, k) * amskv(ij, k) + dzv(ij-1, k) * amskv(ij-1, k)) * ts * rym(ij) / (hyu(ij) + hyu(ij-1)) * 2.d0
+            t_ptr(i, jstr+1, k, n) = (1.d0 - r) * t_ptr(i, jstr+1, k, n) + r * t_ptr(i, jstr+2, k, n)
+         else
+            t_ptr(i, jstr+1, k, n) = t_bg
+         end if
+         do j = 1, jstr
+            t_ptr(i, j, k, n) = t_ptr(i, jstr+1, k, n)
+         end do
+      end do
+      end do
+      end do
+   end if
+   
+ end subroutine south_bound_radiation
+
+ subroutine south_bound_fix(t_raw, t_bg)
+   
+   use zocnod, only: jrank
+   use zocdim, only: istr, iend, jstr, kstr, kend
+   use zocmsk, only: amskt, amskv
+   use zocgrd, only: dzv, rym, hyu
+   
+   real(8), target, intent(inout) :: t_raw(nxyzdm, ntdim-2)
+   real(8), intent(in)    :: t_bg
+   real(8), pointer :: t_ptr(:, :, :, :)
+   integer :: i, j, k, n, ij, ijk
+   integer :: ijstr_sbnd, ijend_sbnd
+
+   t_ptr(1:nxdim, 1:nydim, 1:nzdim, 1:ntdim-2) => t_raw
+   
+   if (jrank == 0) then
+      do n = 1, ntdim-2
+      do k = kstr, kend
+      do j = 1, jstr+1
+         ijstr_sbnd = istr + (j - 1) * nxdim
+         ijend_sbnd = iend + (j - 1) * nxdim
+         t_ptr(istr:iend, j, k, n) = t_bg * amskt(ijstr_sbnd:ijend_sbnd, k) + t_ptr(istr:iend, j, k, n) * (1.d0 - amskt(ijstr_sbnd:ijend_sbnd, k))
+      end do
+      end do
+      end do
+   end if
+   
+ end subroutine south_bound_fix
 
 end module aocea
