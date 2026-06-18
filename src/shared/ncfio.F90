@@ -500,7 +500,6 @@ contains
        end if
     end do
 
-
     call check(nf90_var_par_access(ncid, varid, NF90_COLLECTIVE))
     call check(nf90_get_var(ncid, varid, data3d, start = starts, count = counts))
     data(:,:) = data3d(:,:,1)
@@ -625,7 +624,38 @@ contains
   
 end module ncfio
 #else
-subroutine ncf_io
-  return
-end subroutine ncf_io
+! dummy routine
+module ncfio
+  use mpi
+  implicit none
+  public :: nc_filopn, nc_read_chead, nc_read_sfc, nc_read_bdy
+contains
+  subroutine nc_filopn( &
+    ncid, cf, cact)
+    character(*), intent(in) :: cf
+    character(*), intent(in) :: cact
+    integer, intent(out) :: ncid
+  end subroutine nc_filopn
+  subroutine nc_read_chead( &
+    chead, ncid, disp, icread)
+    character(16),                 intent(out)   :: chead(1:64)
+    integer,                       intent(out)   :: icread
+    integer(kind=mpi_offset_kind), intent(inout) :: disp
+    integer,                       intent(in)    :: ncid
+  end subroutine nc_read_chead
+  subroutine nc_read_sfc( &
+    data, ncid, disp)
+    use zocdim, only : nx, ny
+    real(8),                       intent(out) :: data(nx, ny)
+    integer,                       intent(in)  :: ncid
+    integer(kind=mpi_offset_kind), intent(in)  :: disp
+  end subroutine nc_read_sfc
+  subroutine nc_read_bdy( &
+    data, ncid, disp)
+    use zocdim, only : nx, ny, nz
+    real(8),                       intent(out) :: data(nx, ny, nz)
+    integer,                       intent(in)  :: ncid
+    integer(kind=mpi_offset_kind), intent(in)  :: disp
+  end subroutine nc_read_bdy
+end module ncfio
 #endif

@@ -17,7 +17,7 @@ module zocout
   real(8), allocatable :: dbleou(:)
   real(4), allocatable :: snglou(:)
   integer :: nworks
-#if defined(OPT_IO_NCF) || !defined(OPT_IO_COCOMPI)
+#ifndef OPT_IO_COCOMPI
   real(8), allocatable ::  dbloug(:, :, :)
   real(4), allocatable ::  sngoug(:, :, :)
 #endif

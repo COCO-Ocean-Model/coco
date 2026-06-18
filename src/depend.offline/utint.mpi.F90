@@ -35,10 +35,10 @@ contains
     use ufile
     use ucaln
     use mpiio
-
+    use ncfio
+    use mpi
+    
     implicit none
-
-#include "mpif.h"
 
     real(8),    intent(inout)  ::  ditem(nxdim, nydim)
     integer(4), intent(in)     ::  iitem
@@ -79,6 +79,13 @@ contains
     integer (kind=mpi_offset_kind), save :: disp(nitem)
     integer :: icread
 
+    logical, save :: is_ncf(nitem) = .false.
+    integer :: n
+
+    real(8) :: undef
+    real(8), parameter :: undef_rtol = 1.d-2
+    real(8), parameter :: undef_repl(nitem) = 0.d0
+
     if ( of ) then
        call rewnml( ifpar, jfpar )
        read(ifpar, nmsfbc, iostat = istat )
@@ -94,7 +101,16 @@ contains
     end if
 
     if ( ofirst(iitem) ) then
-       call mpi_filopn(mpi_fh(iitem), cfitem, 'READ')
+
+#ifdef OPT_IO_NCF
+       n = len_trim(cfitem)
+       is_ncf(iitem) = (n>=3 .and. cfitem(n-2:n) == '.nc')
+#endif
+       if (is_ncf(iitem)) then
+          call nc_filopn(mpi_fh(iitem), cfitem, 'READ')
+       else
+          call mpi_filopn(mpi_fh(iitem), cfitem, 'READ')
+       end if
        disp(iitem)=0
 
        call rewnml(ifpar, jfpar)
@@ -111,8 +127,19 @@ contains
 
 !------------------------
        disp(iitem)=0
-       call mpi_read_chead(chead, mpi_fh(iitem), disp(iitem), icread)
-       call mpi_read_sfc(data1(1,1,iitem), mpi_fh(iitem), disp(iitem))
+       if (is_ncf(iitem)) then
+          call nc_read_chead(chead, mpi_fh(iitem), disp(iitem), icread)
+          call nc_read_sfc(data1(1,1,iitem), mpi_fh(iitem), disp(iitem))
+       else
+          call mpi_read_chead(chead, mpi_fh(iitem), disp(iitem), icread)
+          call mpi_read_sfc(data1(1,1,iitem), mpi_fh(iitem), disp(iitem))
+       end if
+       read(chead(39), *, iostat = istat) undef
+       if (istat == 0) then
+          where (abs(data1(:,:,iitem) - undef) <= undef_rtol * abs(undef))
+             data1(:,:,iitem) = undef_repl(iitem)
+          end where
+       end if
 !------------------------
 
        cdate = chead(50)
@@ -130,9 +157,23 @@ contains
        call cyh2ss( time1(iitem), idates )
 
 !------------------------
-       call mpi_read_chead(chead, mpi_fh(iitem), disp(iitem), icread)
+       if (is_ncf(iitem)) then
+          call nc_read_chead(chead, mpi_fh(iitem), disp(iitem), icread)
+       else
+          call mpi_read_chead(chead, mpi_fh(iitem), disp(iitem), icread)
+       end if
        if (icread .ne. 1024) go to 98
-       call mpi_read_sfc(data2(1,1,iitem), mpi_fh(iitem), disp(iitem))
+       if (is_ncf(iitem)) then
+          call nc_read_sfc(data2(1,1,iitem), mpi_fh(iitem), disp(iitem))
+       else
+          call mpi_read_sfc(data2(1,1,iitem), mpi_fh(iitem), disp(iitem))
+       end if
+       read(chead(39), *, iostat = istat) undef
+       if (istat == 0) then
+          where (abs(data2(:,:,iitem) - undef) <= undef_rtol * abs(undef))
+             data2(:,:,iitem) = undef_repl(iitem)
+          end where
+       end if
 !------------------------
 
        cdate = chead(50)
@@ -149,9 +190,23 @@ contains
        data1(1:nx,1:ny,iitem) = data2(1:nx,1:ny,iitem)
 
 !------------------------
-       call mpi_read_chead(chead, mpi_fh(iitem), disp(iitem), icread)
+       if (is_ncf(iitem)) then
+          call nc_read_chead(chead, mpi_fh(iitem), disp(iitem), icread)
+       else
+          call mpi_read_chead(chead, mpi_fh(iitem), disp(iitem), icread)
+       end if
        if (icread .ne. 1024) go to 97
-       call mpi_read_sfc(data2(1,1,iitem), mpi_fh(iitem), disp(iitem))
+       if (is_ncf(iitem)) then
+          call nc_read_sfc(data2(1,1,iitem), mpi_fh(iitem), disp(iitem))
+       else
+          call mpi_read_sfc(data2(1,1,iitem), mpi_fh(iitem), disp(iitem))
+       end if
+       read(chead(39), *, iostat = istat) undef
+       if (istat == 0) then
+          where (abs(data2(:,:,iitem) - undef) <= undef_rtol * abs(undef))
+             data2(:,:,iitem) = undef_repl(iitem)
+          end where
+       end if
 !------------------------
 
        cdate = chead(50)
@@ -171,8 +226,19 @@ contains
 
 !------------------------
        disp(iitem)=0
-       call mpi_read_chead(chead, mpi_fh(iitem), disp(iitem), icread)
-       call mpi_read_sfc(data2(1,1,iitem), mpi_fh(iitem), disp(iitem))
+       if (is_ncf(iitem)) then
+          call nc_read_chead(chead, mpi_fh(iitem), disp(iitem), icread)
+          call nc_read_sfc(data2(1,1,iitem), mpi_fh(iitem), disp(iitem))
+       else
+          call mpi_read_chead(chead, mpi_fh(iitem), disp(iitem), icread)
+          call mpi_read_sfc(data2(1,1,iitem), mpi_fh(iitem), disp(iitem))
+       end if
+       read(chead(39), *, iostat = istat) undef
+       if (istat == 0) then
+          where (abs(data2(:,:,iitem) - undef) <= undef_rtol * abs(undef))
+             data2(:,:,iitem) = undef_repl(iitem)
+          end where
+       end if
 !------------------------
 
        cdate = chead(50)
@@ -213,9 +279,23 @@ contains
           data1(1:nx,1:ny,iitem) = data2(1:nx,1:ny,iitem)
 
 !------------------------
-       call mpi_read_chead(chead, mpi_fh(iitem), disp(iitem), icread)
+       if (is_ncf(iitem)) then
+          call nc_read_chead(chead, mpi_fh(iitem), disp(iitem), icread)
+       else
+          call mpi_read_chead(chead, mpi_fh(iitem), disp(iitem), icread)
+       end if
        if(icread .ne. 1024) go to 997
-       call mpi_read_sfc(data2(1,1,iitem), mpi_fh(iitem), disp(iitem))
+       if (is_ncf(iitem)) then
+          call nc_read_sfc(data2(1,1,iitem), mpi_fh(iitem), disp(iitem))
+       else
+          call mpi_read_sfc(data2(1,1,iitem), mpi_fh(iitem), disp(iitem))
+       end if
+       read(chead(39), *, iostat = istat) undef
+       if (istat == 0) then
+          where (abs(data2(:,:,iitem) - undef) <= undef_rtol * abs(undef))
+             data2(:,:,iitem) = undef_repl(iitem)
+          end where
+       end if
 !------------------------
 
           cdate = chead(50)
@@ -230,9 +310,23 @@ contains
 
 !------------------------
        disp(iitem)=0
-       call mpi_read_chead(chead, mpi_fh(iitem), disp(iitem), icread)
+       if (is_ncf(iitem)) then
+          call nc_read_chead(chead, mpi_fh(iitem), disp(iitem), icread)
+       else
+          call mpi_read_chead(chead, mpi_fh(iitem), disp(iitem), icread)
+       endif
        if(icread .ne. 1024) go to 997
-       call mpi_read_sfc(data2(1,1,iitem), mpi_fh(iitem), disp(iitem))
+       if (is_ncf(iitem)) then
+          call nc_read_sfc(data2(1,1,iitem), mpi_fh(iitem), disp(iitem))
+       else
+          call mpi_read_sfc(data2(1,1,iitem), mpi_fh(iitem), disp(iitem))
+       end if
+       read(chead(39), *, iostat = istat) undef
+       if (istat == 0) then
+          where (abs(data2(:,:,iitem) - undef) <= undef_rtol * abs(undef))
+             data2(:,:,iitem) = undef_repl(iitem)
+          end where
+       end if
 !------------------------
 
           cdate = chead(50)
@@ -295,9 +389,10 @@ contains
     use ufile
     use ucaln
     use mpiio
-    implicit none
+    use ncfio
+    use mpi
 
-#include "mpif.h"
+    implicit none
 
     real(8),    intent(inout)  ::  ditem(nxdim, nydim, nzdim)
     integer(4), intent(in)     ::  iitem
@@ -342,6 +437,13 @@ contains
     integer (kind=mpi_offset_kind), save :: disp(nitem)
     integer :: icread
 
+    integer, save :: is_ncf(nitem) = .false.
+    integer :: n
+    
+    real(8) :: undef
+    real(8), parameter :: undef_rtol = 1.d-2
+    real(8), parameter :: undef_repl(nitem) = (/10.d0, 30.d0, 0.d0, 0.d0, 0.d0/)
+    
     if ( of ) then
        call rewnml( ifpar, jfpar )
        read(ifpar, nmbody, iostat = istat )
@@ -365,7 +467,16 @@ contains
     end if
 
     if ( ofirst(iitem) ) then
-       call mpi_filopn(mpi_fh(iitem), cfitem, 'READ')
+
+#ifdef OPT_IO_NCF
+       n = len_trim(cfitem)
+       is_ncf(iitem) = (n>=3 .and. cfitem(n-2:n) == '.nc')
+#endif
+       if (is_ncf(iitem)) then
+          call nc_filopn(mpi_fh(iitem), cfitem, 'READ')
+       else
+          call mpi_filopn(mpi_fh(iitem), cfitem, 'READ')
+       end if
        disp(iitem)=0
 
        call rewnml(ifpar, jfpar)
@@ -381,8 +492,19 @@ contains
 
 !------------------------
        disp(iitem)=0
-       call mpi_read_chead(chead, mpi_fh(iitem), disp(iitem), icread)
-       call mpi_read_bdy(data1(1,1,1,iitem), mpi_fh(iitem), disp(iitem))
+       if (is_ncf(iitem)) then
+          call nc_read_chead(chead, mpi_fh(iitem), disp(iitem), icread)
+          call nc_read_bdy(data1(1,1,1,iitem), mpi_fh(iitem), disp(iitem))
+       else
+          call mpi_read_chead(chead, mpi_fh(iitem), disp(iitem), icread)
+          call mpi_read_bdy(data1(1,1,1,iitem), mpi_fh(iitem), disp(iitem))
+       end if
+       read(chead(39), *, iostat = istat) undef
+       if (istat == 0) then
+          where (abs(data1(:,:,:,iitem) - undef) <= undef_rtol * abs(undef))
+             data1(:,:,:,iitem) = undef_repl(iitem)
+          end where
+       end if
 !------------------------
 
        cdate = chead(50)
@@ -400,9 +522,23 @@ contains
        call cyh2ss(  time1(iitem),  idates  )
 
 !------------------------
-       call mpi_read_chead(chead, mpi_fh(iitem), disp(iitem), icread)
+       if (is_ncf(iitem)) then
+          call nc_read_chead(chead, mpi_fh(iitem), disp(iitem), icread)
+       else
+          call mpi_read_chead(chead, mpi_fh(iitem), disp(iitem), icread)
+       end if
        if(icread .ne. 1024) go to 98
-       call mpi_read_bdy(data2(1,1,1,iitem), mpi_fh(iitem), disp(iitem))
+       if (is_ncf(iitem)) then
+          call nc_read_bdy(data2(1,1,1,iitem), mpi_fh(iitem), disp(iitem))
+       else
+          call mpi_read_bdy(data2(1,1,1,iitem), mpi_fh(iitem), disp(iitem))
+       end if
+       read(chead(39), *, iostat = istat) undef
+       if (istat == 0) then
+          where (abs(data2(:,:,:,iitem) - undef) <= undef_rtol * abs(undef))
+             data2(:,:,:,iitem) = undef_repl(iitem)
+          end where
+       end if
 !------------------------
 
        cdate = chead(50)
@@ -419,9 +555,23 @@ contains
        data1(1:nx,1:ny,1:nz,iitem) = data2(1:nx,1:ny,1:nz,iitem)
 
 !------------------------
-       call mpi_read_chead(chead, mpi_fh(iitem), disp(iitem), icread)
+       if (is_ncf(iitem)) then
+          call nc_read_chead(chead, mpi_fh(iitem), disp(iitem), icread)
+       else
+          call mpi_read_chead(chead, mpi_fh(iitem), disp(iitem), icread)
+       end if
        if(icread .ne. 1024) go to 97
-       call mpi_read_bdy(data2(1,1,1,iitem), mpi_fh(iitem), disp(iitem))
+       if (is_ncf(iitem)) then
+          call nc_read_bdy(data2(1,1,1,iitem), mpi_fh(iitem), disp(iitem))
+       else
+          call mpi_read_bdy(data2(1,1,1,iitem), mpi_fh(iitem), disp(iitem))
+       end if
+       read(chead(39), *, iostat = istat) undef
+       if (istat == 0) then
+          where (abs(data2(:,:,:,iitem) - undef) <= undef_rtol * abs(undef))
+             data2(:,:,:,iitem) = undef_repl(iitem)
+          end where
+       end if
 !------------------------
 
        cdate = chead(50)
@@ -440,8 +590,19 @@ contains
 
 !------------------------
        disp(iitem)=0
-       call mpi_read_chead(chead, mpi_fh(iitem), disp(iitem), icread)
-       call mpi_read_bdy(data2(1,1,1,iitem), mpi_fh(iitem), disp(iitem))
+       if (is_ncf(iitem)) then
+          call nc_read_chead(chead, mpi_fh(iitem), disp(iitem), icread)
+          call nc_read_bdy(data2(1,1,1,iitem), mpi_fh(iitem), disp(iitem))
+       else
+          call mpi_read_chead(chead, mpi_fh(iitem), disp(iitem), icread)
+          call mpi_read_bdy(data2(1,1,1,iitem), mpi_fh(iitem), disp(iitem))
+       end if
+       read(chead(39), *, iostat = istat) undef
+       if (istat == 0) then
+          where (abs(data2(:,:,:,iitem) - undef) <= undef_rtol * abs(undef))
+             data2(:,:,:,iitem) = undef_repl(iitem)
+          end where
+       end if
 !------------------------
 
        cdate = chead(50)
@@ -484,9 +645,23 @@ contains
           data1(1:nx,1:ny,1:nz,iitem) = data2(1:nx,1:ny,1:nz,iitem)
 
 !------------------------
-       call mpi_read_chead(chead, mpi_fh(iitem), disp(iitem), icread)
+       if (is_ncf(iitem)) then
+          call nc_read_chead(chead, mpi_fh(iitem), disp(iitem), icread)
+       else
+          call mpi_read_chead(chead, mpi_fh(iitem), disp(iitem), icread)
+       end if
        if (icread .ne. 1024) goto 997
-       call mpi_read_bdy(data2(1,1,1,iitem), mpi_fh(iitem), disp(iitem))
+       if (is_ncf(iitem)) then
+          call nc_read_bdy(data2(1,1,1,iitem), mpi_fh(iitem), disp(iitem))
+       else
+          call mpi_read_bdy(data2(1,1,1,iitem), mpi_fh(iitem), disp(iitem))
+       end if
+       read(chead(39), *, iostat = istat) undef
+       if (istat == 0) then
+          where (abs(data2(:,:,:,iitem) - undef) <= undef_rtol * abs(undef))
+             data2(:,:,:,iitem) = undef_repl(iitem)
+          end where
+       end if
 !------------------------
 
           cdate = chead(50)
@@ -501,9 +676,23 @@ contains
 
 !------------------------
        disp(iitem)=0
-       call mpi_read_chead(chead, mpi_fh(iitem), disp(iitem), icread)
+       if (is_ncf(iitem)) then
+          call nc_read_chead(chead, mpi_fh(iitem), disp(iitem), icread)
+       else
+          call mpi_read_chead(chead, mpi_fh(iitem), disp(iitem), icread)
+       end if
        if (icread .ne. 1024) goto 997
-       call mpi_read_bdy(data2(1,1,1,iitem), mpi_fh(iitem), disp(iitem))
+       if (is_ncf(iitem)) then
+          call nc_read_bdy(data2(1,1,1,iitem), mpi_fh(iitem), disp(iitem))
+       else
+          call mpi_read_bdy(data2(1,1,1,iitem), mpi_fh(iitem), disp(iitem))
+       end if
+       read(chead(39), *, iostat = istat) undef
+       if (istat == 0) then
+          where (abs(data2(:,:,:,iitem) - undef) <= undef_rtol * abs(undef))
+             data2(:,:,:,iitem) = undef_repl(iitem)
+          end where
+       end if
 !------------------------
 
           cdate = chead(50)
