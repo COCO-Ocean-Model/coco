@@ -18,13 +18,16 @@ program offline
      & myrank,   ierr
    use zocfil, only: &
      & nfstdo, nfomax,    ncf
+   use zocout, only: &
+     & loglev
 
    use aocea
    use atmct
    use brstt
    use ucloc
    use ufile
-
+   use ucaln
+   
    implicit none
 
 #include "mpif.h"
@@ -44,15 +47,16 @@ program offline
    integer ::    ijk
    integer ::  ifpar,  jfpar,  istat
    integer :: lenstd
+   integer :: idate(6)
 
    character(len=ncf) :: crun = '(RUN NAME WAS NOT SET)'
    character(len=ncf) :: cstdo = 'STDOUT'
 
    namelist /nmrun/ crun
    namelist /nmstdo/ cstdo
+   namelist /nmlog/ loglev
 
 ! *** initial setup ***
-
    call mpi_init(ierr)
    call clcstr('SETUP')
    call rewnml(ifpar, jfpar)
@@ -61,7 +65,7 @@ program offline
    call parset
    call rewnml(ifpar, jfpar)
    read (ifpar, nmstdo, iostat=istat)
-   call cstnml(jfpar, 'offline', 'nmstdo', istat)
+   call cstnml(jfpar, __FILE__, __LINE__ -1, istat)
 
    lenstd = index(cstdo, ' ')
    write(cstdo(lenstd:lenstd+5), '(a1,i5.5)') '.', myrank
@@ -69,11 +73,14 @@ program offline
    open(unit=jfpar, file=cstdo, &
      &  access='sequential', form='formatted')
    write(jfpar, *) 'MESSAGE OUTPUT FOR RANK', myrank
-
    call rewnml(ifpar, jfpar)
    read (ifpar, nmrun, iostat=istat)
-   call cstnml(jfpar, 'offlinecoco', 'nmrun', istat)
+   call cstnml(jfpar, __FILE__, __LINE__ -1, istat)
    write(jfpar, *) 'Run name :'//crun
+   call rewnml(ifpar, jfpar)
+   read (ifpar, nmlog, iostat=istat)
+   call cstnml(jfpar, __FILE__, __LINE__ -1, istat)
+   write(nfstdo, '(a,i2)') ' log level : ', loglev
    do ijk = 1, nwrk
      wrk(ijk) = 0.d0
    end do
@@ -95,6 +102,12 @@ program offline
    do
       tt = tt + dt
       nt = nt + 1
+      if (loglev > 1) then
+         call css2yh(idate, tt)
+         call rewnml(ifpar,jfpar)
+         write(jfpar,'(A,I6,5(1X,I2.2))') ' *** time ***:', idate
+         call flush(jfpar)
+      end if
       call tmstpc( &
          &          itst,     ts,    its,         &
          &          ntss,    tss,                 &
@@ -294,7 +307,9 @@ subroutine parset
   end if
 
   call gs2dst
+#ifndef OPT_IO_COCOMPI
   call gs3dst
+#endif
 !!call gsidst
   return
 
