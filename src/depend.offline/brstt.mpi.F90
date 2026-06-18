@@ -116,7 +116,7 @@ contains
        endif
 #else
        if (loglev > 0) then
-          call print_stats(t(:, :, :, l), chead(3))
+          call print_stats(t(:, :, :, l), chead(3), 'T', dmaxg)
        end if
 #endif
     end do
