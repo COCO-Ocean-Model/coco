@@ -115,7 +115,15 @@ module sfcng
     &                 (/ 0.5d0, 20.0d0 /)
   real(8), save :: frmpmn = 1.0d-14  !! empirical limiter for frmpx [ND]
   real(8), save :: vmpmin = 1.0d-12  !! empirical limiter for vmpx [cm]
-    
+! namelist nmswpn
+  logical, save :: oswpen = .false. !! TRUE if SW rad. penetrates the ice.
+  real(8), save :: kappai( nrbnd ) = & !! bulk extinction coeff. for ice [cm-1]
+    &                 (/ 0.794d-2, 4.74d-2, 4.74d-2 /)
+  real(8), save :: kappas( nrbnd ) = & !! bulk extinction coeff. for snow [cm-1]
+    &                 (/ 19.6d-2, 196.0d-2, 196.0d-2 /)
+  real(8), save :: kappaw( nrbnd ) = & !! bulk extinction coeff. for water [cm-1]
+    &                 (/ 0.14d-2, 38.0d-2, 38.0d-2 /)
+
 ! namelist nmislt
   real(8), save ::     si = 5.0d0              !! sea-ice salinity (psu)
 ! namelist nmlwem
@@ -172,6 +180,7 @@ module sfcng
   namelist /nmmpnd/   impnd, hminmp, rtdpmp, rtmxmp,  dpscl, &
     &                rmpcmn, rmpcmx, cmpfrz, tmpfrz, albmpd, almpdp, &
     &                frmpmn, vmpmin
+  namelist /nmswpn/  oswpen, kappai, kappas, kappaw
   namelist /nmislt/      si
   namelist /nmlwem/  emislo, olwnet
   namelist /nmswem/  albswo, oswnet, oasold
@@ -249,8 +258,9 @@ subroutine sfcflx( &
   real(8) ::  wfluxs(nxydim, 2)
   real(8) ::  rflxlu(nxydim), sflxbl(nxydim)
   real(8) ::   dgfds(nxydim),  dtfdt(nxydim),  dtfds(nxydim)
-  real(8) ::   dqfds(nxydim),   swdn(nxydim)
+  real(8) ::   dqfds(nxydim),   swdn(nxydim), rfsdpn(nxydim)
   real(8) ::      fm(nxydim)
+  real(8) ::   swpni(nxydim),  swpnr(nxydim)
 
   real(8), save ::     tmi
 
@@ -287,6 +297,7 @@ subroutine sfcflx( &
      READ_NAMELIST( nmsfrc )
      READ_NAMELIST( nmsage )
      READ_NAMELIST( nmmpnd )
+     READ_NAMELIST( nmswpn )
      READ_NAMELIST( nmlwem )
      READ_NAMELIST( nmswem )
      READ_NAMELIST( nmz0   )
@@ -371,6 +382,9 @@ subroutine sfcflx( &
      snow(ij) = - sflx(ij) * factw
      soff(ij) = 0.0d0
      roff(ij) = 0.0d0
+     swabs(ij) = 0.0d0
+     swpni(ij) = 0.0d0
+     swpnr(ij) = 0.0d0
   end do
 
   do ij = ijstr, ijend
@@ -436,10 +450,10 @@ subroutine sfcflx( &
      end if
      call ocnslv_core( &
        &                 grts, gfluxs, tfluxs, qfluxs, &
-       &               wfluxs, rflxlu, sflxbl,   swdn, ralbsw, &
+       &               wfluxs, rflxlu, sflxbl,   swdn, ralbsw, rfsdpn, &
        &                dtfds,  dqfds,  dgfds, &
        &                 swnt,   dwlw, &
-       &                gricr,  grsnw,    tmi, &
+       &                gricr,  grice,  grsnw,    tmi, &
        &                grasn,  grvmp, grfrmp )     
 
 #ifdef OPT_TRIPOLE
@@ -471,6 +485,9 @@ subroutine sfcflx( &
            qii(ij, l) = gfluxs(ij) * facth
            qio(ij, l) = (t(ij, kstr, 1) - ti(ij, l)) * &
              &            cdi / hi(ij, l) * 2.0d0
+           swabs(ij) = swabs(ij) + rfsdpn(ij) * facth * a(ij, l)
+           swpni(ij) = swpni(ij) + rfsdpn(ij) * facth * a(ij, l)
+           swpnr(ij) = swpnr(ij) + swdn(ij) * facth * a(ij, l)
            soff(ij) = 0.0d0
            tsi(ij, l) = min(grts(ij), tmelt+tmi) - kelvin
            tisi(ij, l) = tsi(ij, l) + &
@@ -498,7 +515,7 @@ subroutine sfcflx( &
              &           + tauy(ij+ln) + tauy(ij+lne)) * &
              &          0.25d0 * factm
            qao(ij) = (gfluxs(ij) + swdn(ij)) * facth
-           swabs(ij) = swdn(ij) * facth * a(ij, 0)
+           swabs(ij) = swabs(ij) + swdn(ij) * facth * a(ij, 0)
            wev(ij) = qfluxs(ij) * a(ij, 0) / dwatr * factw
            albsw(ij, l) = ralbsw(ij)
 !           ftatm(ij) = ftatm(ij) + gfluxs(ij) * facth * a(ij, 0)
@@ -513,6 +530,9 @@ subroutine sfcflx( &
         tauaiy(ij) = tauaiy(ij) / (1.0d0 - a(ij, 0) )
         albswg(ij) = albswg(ij) / (1.0d0 - a(ij, 0) )
      endif
+     if ( swpnr(ij) .ne. 0.0d0 ) then
+        swpnr(ij) = swpni(ij) / swpnr(ij)
+     end if
   enddo
 
 #ifdef OPT_TRIPOLE
@@ -546,6 +566,12 @@ subroutine sfcflx( &
     &              nx,      ny,    nic, nxyidm, 'OCICET')
   call chekin( albswg, 'ALSWIG', &
     &           'sea-ice surface albedo', 'ND', &
+    &              nx,      ny,      1, nxydim, 'OCSFCT')
+  call chekin(  swpni,  'SWPNI', &
+    &           'SW penetration through ice', 'erg/cm^2s', &
+    &              nx,      ny,      1, nxydim, 'OCSFCT')
+  call chekin(  swpnr,  'SWPNR', &
+    &           'SW ice penetration rate', 'ND', &
     &              nx,      ny,      1, nxydim, 'OCSFCT')
 !  call chekin( tauaox,'tauaox', &
 !    &              nx,      ny,      1, nxydim, 'sfc')
@@ -601,10 +627,10 @@ end subroutine sfcflx
 
 subroutine ocnslv_core ( &
   &              gdts  , gfluxs, tfluxs, qfluxs, &
-  &              wfluxs, rflxlu, sflxbl, rflxsd, ralbsw, &
+  &              wfluxs, rflxlu, sflxbl, rflxsd, ralbsw, rfsdpn, &
   &              dtfds , dqfds , dgfds , &
   &              rflxs , rflxld, &
-  &              gricr , grsnw , tmi   , &
+  &              gricr , grice , grsnw , tmi   , &
   &              grasn , grvmp , grfrmp )
 
   use ufile
@@ -619,6 +645,7 @@ subroutine ocnslv_core ( &
   real(8), intent(out)   ::  sflxbl( nxydim )          !! flux balance
   real(8), intent(out)   ::  rflxsd( nxydim )          !! downward SW
   real(8), intent(out)   ::  ralbsw( nxydim )          !! SW albedo
+  real(8), intent(out)   ::  rfsdpn( nxydim )          !! dw sw penetrated
 
   real(8), intent(in)    ::  dtfds ( nxydim )          !! dH/dTg
   real(8), intent(in)    ::  dqfds ( nxydim )          !! dE/dTg
@@ -626,6 +653,7 @@ subroutine ocnslv_core ( &
   real(8), intent(in)    ::  rflxs ( nxydim )          !! SW rad. (net/down.)
   real(8), intent(in)    ::  rflxld( nxydim )          !! down. LW rad.
   real(8), intent(in)    ::  gricr ( nxydim )          !! snow/ice ratio
+  real(8), intent(in)    ::  grice ( nxydim )          !! sea ice thickness
   real(8), intent(in)    ::  grsnw ( nxydim )          !! snow thickness
   real(8), intent(in)    ::  tmi           !! sea ice melting temperature (C)
   real(8), intent(in)    ::  grasn ( nxydim )      !! snow age
@@ -647,16 +675,18 @@ subroutine ocnslv_core ( &
   real(8) ::     mpdalb, snwalb, brialb
   real(8) ::     fbarei, fmpnd, fsnow, fsnwmp, fsmpsn, fsmpsl
   real(8) ::     hsneff, grsref, hslash, slsalb
+  real(8) ::     rswpen
   real(8) ::     omega, sinij, cort
-  integer ::    ij, l
+  integer ::    ij, k, l
   integer ::  ifpar,  jfpar
 
   real(8), save :: aswo2d(nxydim) !! ocn. shortwave albedo distribution
   real(8), save :: tsdpt
-  real(8), save :: flwnet, fswalb, fusemp, aicet1, daicet
+  real(8), save :: flwnet, fswalb, fusemp, fswpen, aicet1, daicet
   real(8), save :: emisli, alcice, alcsnw(2), alcsif, alcsio, alcmpd
   real(8), save :: dalmdp, falmdp
   real(8), save :: rsrro, rorros
+  real(8), save :: rbnd(nrbnd)
 
   logical, save :: ofirst = .true.
 
@@ -685,18 +715,32 @@ subroutine ocnslv_core ( &
      else
        fusemp = 0.0d0
      end if
+     if (oswpen) then
+        fswpen = 1.0d0
+     else
+        fswpen = 0.0d0
+     end if
+     rbnd(1) = rvis
+     rbnd(2) = rnir
+     rbnd(3) = rir
      aicet1 = talsnw(1)
      daicet = talsnw(2) - talsnw(1)
      dalmdp = (almpdp(2) - almpdp(1)) * 1.0d-2
      falmdp = almpdp(1) * 1.0d-2
-     alcice = rvis * albice(1) + rnir * albice(2) + rir * albice(3)
-     do l = 1, 2
-       alcsnw(l) = rvis * albsnw(l,1) + rnir * albsnw(l,2) &
-         &       + rir * albsnw(l,3)
+     alcice = 0.0d0
+     alcsnw(:) = 0.0d0
+     alcsif = 0.0d0
+     alcsio = 0.0d0
+     alcmpd = 0.0d0
+     do k = 1, nrbnd
+        alcice = alcice + rbnd(k) * albice(k)
+        do l = 1, 2
+           alcsnw(l) = alcsnw(l) + rbnd(k) * albsnw(l,k)
+        end do
+        alcsif = alcsif + rbnd(k) * alssif(k)
+        alcsio = alcsio + rbnd(k) * alssio(k)
+        alcmpd = alcmpd + rbnd(k) * albmpd(k)
      end do
-     alcsif = rvis * alssif(1) + rnir * alssif(2) + rir * alssif(3)
-     alcsio = rvis * alssio(1) + rnir * alssio(2) + rir * alssio(3)
-     alcmpd = rvis * albmpd(1) + rnir * albmpd(2) + rir * albmpd(3)
      emisli = 1.0d0 - albice(3)
      rsrro = rhos/rhoo
      rorros = rhoo/(rhoo-rhos)
@@ -816,6 +860,20 @@ subroutine ocnslv_core ( &
      albsw = (aswo2d(ij) * (1.0d0 - gricr(ij)) + icealb * gricr(ij)) &
        &     * fswalb
      ralbsw(ij) = albsw
+     rswpen = 0.0d0
+     if ((fswpen == 1.0d0).and.(gricr(ij) == 1.0d0)) then
+        do k = 1, nrbnd
+           rswpen = rswpen + rbnd(k) * ( &
+             &      exp( -kappai(k) * grice(ij) * 1.0d2 &
+             &           -kappas(k) * hsnow(ij) * 1.0d2 ) * fsnow &
+             &    + exp( -kappai(k) * grice(ij) * 1.0d2 &
+             &           -kappaw(k) * hmp(ij) * 1.0d2 ) * fmpnd &
+             &    + exp( -kappai(k) * grice(ij) * 1.0d2 &
+             &           -kappaw(k) * hslash * 1.0d2 &
+             &           -kappas(k) * hsneff * 1.0d2 ) * fsnwmp &
+             &    + exp( -kappai(k) * grice(ij) * 1.0d2 ) * fbarei )
+        end do
+     end if
      stg            = emis*stb*gdts( ij )**4
      rflxlu( ij )   = (stg + ( 1.d0-emis )*rflxld( ij )) * flwnet
      drfds          = 4.d0*stg/gdts( ij ) * flwnet
@@ -823,10 +881,15 @@ subroutine ocnslv_core ( &
      rflxsd( ij )   = rflxs( ij ) * (1.0d0 - albsw)
      sflux          = tfluxs( ij ) &
        &            + rflxlu( ij ) - rflxld( ij ) &
-       &            - rflxsd( ij )
+       &            - rflxsd( ij ) * (1.0d0 - rswpen)
      gsflux         = gfluxs( ij ) - sflux
      dgsfds         = dgfds ( ij ) &
        &            + dtfds ( ij ) + drfds
+     if (gricr(ij) == 1.0d0) then  !!ice
+        rfsdpn(ij) = rflxsd(ij) * rswpen
+     else  !! water
+        rfsdpn(ij) = rflxsd(ij)
+     end if
 
 !    < ice free ocean surface >
      gfluxf         = sflux + qfluxs( ij )*el
