@@ -597,7 +597,9 @@ contains
 !#endif
     call flush(jfpar)
 
-    vmax = dmaxg
+    if ( present(vmax) ) then
+       vmax = dmaxg
+    endif
 
   end subroutine print_stats_3d
 
