@@ -269,7 +269,7 @@ subroutine pridge( &
            if (     (hic(l+1) .lt. hrmin) &
              & .or. (hic(l) .gt. hrmax) ) then
               gam(ij, k, l) = 0.d0
-           else if (hrmin .ge. hrmax) then
+           else if (hrdgef(ij) <= hix(ij, k)) then
               gam(ij, k, l) = 0.5d0
            else
               gam(ij, k, l) = (  min(hrmax, hic(l+1)) &
