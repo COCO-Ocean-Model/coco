@@ -2575,6 +2575,8 @@ subroutine dnsgrd( &
   logical, save :: ofirst = .true., ofirst2 = .true.
   integer, save ::  kzmin
 
+  real(8), save :: r2taum
+  
 #if !defined(_OPENACC) && !defined(GPU_DEBUG)
   real(8) ::      r(nxydim, nzdim)
   real(8) ::   hmld(nxydim), hmld1(nxydim)
@@ -2592,8 +2594,6 @@ subroutine dnsgrd( &
 
   real(8) :: rmavdx(nxydim), rmavdy(nxydim)
   real(8) ::   muzx(nxydim, nzdim),   muzy(nxydim, nzdim)
-
-  real(8), save :: r2taum
 
   real(8) ::   dtdx(nxydim, nzdim, ntdim),   dtdy(nxydim, nzdim, ntdim)
   real(8) ::  dtfdz(nxydim, nzdim, ntdim)
