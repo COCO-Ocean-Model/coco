@@ -2,27 +2,42 @@
 
 ## Repository Management
 
-This repository is managed and maintained by **[name of the managing organization or group]**.
+The official public repository of COCO is maintained by the COCO Maintainers.
 
-The managing organization is responsible for the administration and maintenance of this repository, including repository access, releases, documentation, issues, and pull requests.
+The Maintainers are responsible for:
 
-## Maintainers
+- maintaining the public repository;
+- preparing and publishing releases;
+- reviewing and handling Issues and Pull Requests; and
+- coordinating updates to the public version of COCO.
 
-The following individuals are responsible for the maintenance of this repository.
+Maintainers serve in their individual capacity as contributors to the maintenance of COCO and do not represent their affiliated institutions in this role.
+
+## Current Maintainers
+
+The following individuals currently serve as COCO Maintainers.
+Maintainers may step down from their role at any time, and the list of Maintainers may be updated as needed.
 
 | Name   | Affiliation   |
 | ------ | ------------- |
 | Takao Kawasaki | JAMSTEC |
 | Masao Kurogi | JAMSTEC |
 | Yoshiki Komuro | JAMSTEC |
-| Hiroaki Tatebe | JAMSTEC |
 
-Maintainers are responsible for the day-to-day technical and administrative maintenance of the repository, including reviewing contributions, maintaining branches, and preparing releases.
+Affiliations are provided for identification purposes only.
 
-## Copyright and Licensing
+## Maintenance and Support
 
-Repository management and maintenance do not, by themselves, imply copyright ownership.
+COCO is maintained by the COCO Maintainers as part of their broader research activities.
 
-Copyright in COCO remains with the respective copyright holders. See `COPYRIGHT.md` for information on copyright holders and representative contributions.
+The Maintainers make reasonable efforts to review Issues and Pull Requests and to maintain and release the software. However, maintenance is carried out alongside their primary research activities, and timely responses, continued maintenance, future releases, or support cannot be guaranteed.
 
-For the terms under which COCO may be used, modified, and redistributed, see `LICENSE`.
+Users are welcome to report bugs, suggest improvements, and submit Pull Requests through GitHub. Contributions from the community are appreciated.
+
+## Contact
+
+For general questions, bug reports, and feature requests, please use GitHub Issues when appropriate.
+
+For matters that are not suitable for public discussion, the COCO Maintainers can be contacted at:
+
+coco-maintainers@jamstec.go.jp

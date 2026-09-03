@@ -1,10 +1,10 @@
 # Copyright
 
-## Copyright Notice
+COCO has been developed over many years through contributions from multiple individuals and organizations. Copyright in the software remains with the respective copyright holders.
 
-Copyright (c) 2026 JAMSTEC, Hiroyasu Hasumi, and other copyright holders.
+COCO was first released as open-source software in 2026. The open-source release does not alter the ownership of copyright in contributions made before or after the release.
 
-See the copyright holders listed below for details.
+The copyright holders currently identified for COCO are listed below.
 
 ---
 
@@ -14,7 +14,7 @@ The following organization and individuals hold copyright in all or part of COCO
 
 ### Individual Copyright Holders
 
-| Name              | Affiliation at the Time Copyright Arose                           | Current Affiliation                                              | Representative Contribution                                                  |
+| Name              | Affiliation at the Time of Contribution                           | Current Affiliation                                              | Representative Contribution                                                  |
 | ----------------- | ----------------------------------------------------------------- | ---------------------------------------------------------------- | ---------------------------------------------------------------------------- |
 | Hiroyasu Hasumi   | Center for Climate System Research (CCSR), The University of Tokyo       | Atmosphere and Ocean Research Institute (AORI), The University of Tokyo | Overall architecture and core framework                                      |
 | Yasuhiro Yamanaka | Center for Climate System Research (CCSR), The University of Tokyo       | Hokkaido University                                              | Overall architecture and core framework inherited from the predecessor model |
