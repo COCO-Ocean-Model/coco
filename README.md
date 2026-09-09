@@ -72,7 +72,9 @@ Neither the names of the copyright holders, contributors, nor the names of their
 
 ## Copyright
 
-Copyright in COCO remains with the respective copyright holders.
+Copyright in COCO is held by the respective copyright holders.
+
+Copyright (c) 1997-2026 JAMSTEC, Hiroyasu Hasumi, and other copyright holders.
 
 See [`COPYRIGHT.md`](COPYRIGHT.md) for details.
 
