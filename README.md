@@ -10,7 +10,7 @@ The software is intended for scientific research, operational applications, educ
 
 ## Open-source Release
 
-**COCO v6.0 marks the first open-source release of COCO in 2026.** The major version number reflects substantial updates accumulated since the previous closed-source release (v5.0), including changes that are not fully backward compatible.
+**COCO v6.0.0 marks the first open-source release of COCO in 2026.** The major version number reflects substantial updates accumulated since the previous closed-source release (v5.0alpha1), including changes that are not fully backward compatible.
 
 ## Features
 
@@ -29,10 +29,26 @@ COCO is designed as a flexible and efficient ocean general circulation model sui
 
 ## How to get
 
+For general use, we recommend using an official release of COCO. The current release is **COCO v6.0.0**, available from the [GitHub Releases](https://github.com/coco-ocean-model/coco/releases) page.
+
+COCO is under active development, and released versions are not necessarily stable. Official releases are nevertheless recommended for general use because they provide identifiable and reproducible versions of the model.
+
+An official release can be downloaded from the [GitHub Releases](https://github.com/coco-ocean-model/coco/releases) page as `Source code (zip)` or `Source code (tar.gz)`. Alternatively, it can be obtained with Git by checking out the corresponding version tag:
+
 ```bash
-git clone https://github.com/coco-ocean-model/coco
+git clone https://github.com/coco-ocean-model/coco.git
+cd coco
+git checkout v6.0.0
+```
+
+The latest development version can be obtained directly from the main branch:
+
+```bash
+git clone https://github.com/coco-ocean-model/coco.git
 cd coco
 ```
+
+The development version may include changes made since the latest official release.
 
 ## Usage
 
@@ -84,3 +100,7 @@ COCO traces its origins to a prototype ocean model developed by Nobuo Suginohara
 Building upon this legacy, Yasuhiro Yamanaka developed a substantially renewed modeling framework, introducing the numerical discretization and coding strategy that later served as an important reference in the design of COCO.
 
 Based on these concepts, Hiroyasu Hasumi developed COCO (CCSR Ocean Component Model) as a full-fledged ocean general circulation model and authored its core architecture and implementation. Since then, COCO has been continuously developed and maintained through the contributions of members of the ocean modeling group at CCSR (now the Atmosphere and Ocean Research Institute, the University of Tokyo), together with collaborators at the Japan Agency for Marine-Earth Science and Technology (JAMSTEC). These collaborative efforts have expanded the model's physical capabilities, computational performance, and applicability to a wide range of oceanographic and climate research.
+
+## Acknowledgments
+
+COCO includes src/etc/fort_depend.py, originally developed by David Dickinson and Peter Hill and distributed under the MIT License. See the copyright and license information included in the source file for details.

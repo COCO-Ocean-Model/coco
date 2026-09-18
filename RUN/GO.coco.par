@@ -1,12 +1,12 @@
 #!/bin/csh -f
 #BSUB -J GO.coco.par
-#BSUB -u komuro
+#BSUB -u hoge
 #BSUB -n 4
 #BSUB -W 10
 #BSUB -a ICE
 #BSUB -R rusage[mem=128]
 
-setenv OGCMDIR /home/komuro/coco5.0
+setenv OGCMDIR /home/hoge/coco5.0
 setenv BINARY  $OGCMDIR/bin/coco.par
 setenv RUNDIR  $OGCMDIR/RUN
 setenv DATDIR  $RUNDIR
