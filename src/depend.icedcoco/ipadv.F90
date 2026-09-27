@@ -123,6 +123,7 @@ subroutine padvct( &
   end if
 
   !$acc kernels default(present)
+  !$acc loop gang vector collapse(2)
   do k = 0, nic
      do ij = 1, nxydim
         az (ij, k) = ax (ij, k)
@@ -147,6 +148,7 @@ subroutine padvct( &
      end do
   end do
 
+  !$acc loop gang vector collapse(2)
   do k = 1, nic
      do ij = 1, nxydim
         fax(ij, k) = 0.d0
@@ -165,85 +167,53 @@ subroutine padvct( &
         fdby(ij, k) = 0.d0
      end do
   end do
-  !$acc end kernels
 
-  !$acc kernels default(present)
+  !$acc loop gang vector collapse(2)
   do k = 1, nic
      do ij = ijtstr, ijtend+1
         ijlw = ij + lw
         u  = (  uiy(ijlw  ) * hyu(ijlw  ) &
           &   + uiy(ij+lsw) * hyu(ij+lsw)) * 0.25d0
-        up = u + abs(u)
-        um = u - abs(u)
-        fax(ij, k) = - (  up * ax(ijlw, k) &
-          &          + um * ax(ij, k)) * &
-          &         amskt(ij, kstr) * amskt(ijlw, kstr)
-        fix(ij, k) = - (  up * axhix(ijlw, k) &
-          &          + um * axhix(ij, k)) * &
-          &         amskt(ij, kstr) * amskt(ijlw, kstr)
-        fex(ij, k) = - (  up * axeix(ijlw, k) &
-          &          + um * axeix(ij, k)) * &
-          &         amskt(ij, kstr) * amskt(ijlw, kstr)
-        fsx(ij, k) = - (  up * axhsx(ijlw, k) &
-          &          + um * axhsx(ij, k)) * &
-          &         amskt(ij, kstr) * amskt(ijlw, kstr)
-        fasx(ij, k) = - (  up * axasx(ijlw, k) &
-          &          + um * axasx(ij, k)) * &
-          &         amskt(ij, kstr) * amskt(ijlw, kstr)
-        fflx(ij, k) = - (  up * axflv(ijlw, k) &
-          &          + um * axflv(ij, k)) * &
-          &         amskt(ij, kstr) * amskt(ijlw, kstr)
-        fvmx(ij, k) = - (  up * axvmp(ijlw, k) &
-          &          + um * axvmp(ij, k)) * &
-          &         amskt(ij, kstr) * amskt(ijlw, kstr)
-        ffmx(ij, k) = - (  up * axfmp(ijlw, k) &
-          &          + um * axfmp(ij, k)) * &
-          &         amskt(ij, kstr) * amskt(ijlw, kstr)
-        fddx(ij, k) = - (  up * axdsd(ijlw, k) &
-          &          + um * axdsd(ij, k)) * &
-          &         amskt(ij, kstr) * amskt(ijlw, kstr)
-        fdbx(ij, k) = - (  up * axdsb(ijlw, k) &
-          &          + um * axdsb(ij, k)) * &
-          &         amskt(ij, kstr) * amskt(ijlw, kstr)
+        up = (u + abs(u)) * amskt(ij, kstr) * amskt(ijlw, kstr)
+        um = (u - abs(u)) * amskt(ij, kstr) * amskt(ijlw, kstr)
+        fax( ij, k) = - (  up * ax(   ijlw, k) + um * ax(   ij, k))
+        fix( ij, k) = - (  up * axhix(ijlw, k) + um * axhix(ij, k))
+        fex( ij, k) = - (  up * axeix(ijlw, k) + um * axeix(ij, k))
+        fsx( ij, k) = - (  up * axhsx(ijlw, k) + um * axhsx(ij, k))
+        fasx(ij, k) = - (  up * axasx(ijlw, k) + um * axasx(ij, k))
+        fflx(ij, k) = - (  up * axflv(ijlw, k) + um * axflv(ij, k))
+        fvmx(ij, k) = - (  up * axvmp(ijlw, k) + um * axvmp(ij, k))
+        ffmx(ij, k) = - (  up * axfmp(ijlw, k) + um * axfmp(ij, k))
+        fddx(ij, k) = - (  up * axdsd(ijlw, k) + um * axdsd(ij, k))
+        fdbx(ij, k) = - (  up * axdsb(ijlw, k) + um * axdsb(ij, k))
      end do
-
+#if defined(_OPENACC) || defined(GPU_DEBUG)
+  end do
+  !$acc loop gang vector collapse(2)
+  do k = 1, nic
+#endif
      do ij = ijtstr, ijtend+nxdim
         ijls = ij + ls
         v  = (  viy(ijls  ) * hxu(ijls  ) &
           &   + viy(ij+lsw) * hxu(ij+lsw)) * 0.25d0
-        vp = v + abs(v)
-        vm = v - abs(v)
-        fay(ij, k) = - (  vp * ax(ijls, k) &
-          &          + vm * ax(ij, k)) * &
-          &         amskt(ij, kstr) * amskt(ijls, kstr)
-        fiy(ij, k) = - (  vp * axhix(ijls, k) &
-          &          + vm * axhix(ij, k)) * &
-          &         amskt(ij, kstr) * amskt(ijls, kstr)
-        fey(ij, k) = - (  vp * axeix(ijls, k) &
-          &          + vm * axeix(ij, k)) * &
-          &         amskt(ij, kstr) * amskt(ijls, kstr)
-        fsy(ij, k) = - (  vp * axhsx(ijls, k) &
-          &          + vm * axhsx(ij, k)) * &
-          &         amskt(ij, kstr) * amskt(ijls, kstr)
-        fasy(ij, k) = - (  vp * axasx(ijls, k) &
-          &          + vm * axasx(ij, k)) * &
-          &         amskt(ij, kstr) * amskt(ijls, kstr)
-        ffly(ij, k) = - (  vp * axflv(ijls, k) &
-          &          + vm * axflv(ij, k)) * &
-          &         amskt(ij, kstr) * amskt(ijls, kstr)
-        fvmy(ij, k) = - (  vp * axvmp(ijls, k) &
-          &          + vm * axvmp(ij, k)) * &
-          &         amskt(ij, kstr) * amskt(ijls, kstr)
-        ffmy(ij, k) = - (  vp * axfmp(ijls, k) &
-          &          + vm * axfmp(ij, k)) * &
-          &         amskt(ij, kstr) * amskt(ijls, kstr)
-        fddy(ij, k) = - (  vp * axdsd(ijls, k) &
-          &          + vm * axdsd(ij, k)) * &
-          &         amskt(ij, kstr) * amskt(ijls, kstr)
-        fdby(ij, k) = - (  vp * axdsb(ijls, k) &
-          &          + vm * axdsb(ij, k)) * &
-          &         amskt(ij, kstr) * amskt(ijls, kstr)
+        vp = (v + abs(v)) * amskt(ij, kstr) * amskt(ijls, kstr)
+        vm = (v - abs(v)) * amskt(ij, kstr) * amskt(ijls, kstr)
+        fay( ij, k) = - (  vp * ax(   ijls, k) + vm * ax(   ij, k))
+        fiy( ij, k) = - (  vp * axhix(ijls, k) + vm * axhix(ij, k))
+        fey( ij, k) = - (  vp * axeix(ijls, k) + vm * axeix(ij, k))
+        fsy( ij, k) = - (  vp * axhsx(ijls, k) + vm * axhsx(ij, k))
+        fasy(ij, k) = - (  vp * axasx(ijls, k) + vm * axasx(ij, k))
+        ffly(ij, k) = - (  vp * axflv(ijls, k) + vm * axflv(ij, k))
+        fvmy(ij, k) = - (  vp * axvmp(ijls, k) + vm * axvmp(ij, k))
+        ffmy(ij, k) = - (  vp * axfmp(ijls, k) + vm * axfmp(ij, k))
+        fddy(ij, k) = - (  vp * axdsd(ijls, k) + vm * axdsd(ij, k))
+        fdby(ij, k) = - (  vp * axdsb(ijls, k) + vm * axdsb(ij, k))
      end do
+#if defined(_OPENACC) || defined(GPU_DEBUG)
+  end do
+  !$acc loop gang vector collapse(2)
+  do k = 1, nic
+#endif
      do ij = ijtstr, ijtend
         ijle = ij + le
         ijln = ij + ln
@@ -289,9 +259,8 @@ subroutine padvct( &
           &            rxt(ij) * ryt(ij) * amskt(ij, kstr)
      end do
   end do
-  !$acc end kernels
-  
-  !$acc kernels default(present)
+
+  !$acc loop gang vector collapse(2)
   do k = 1, nic
      do ij = ijtstr, ijtend
         if (ax(ij, k) .gt. 0.d0) then
@@ -319,17 +288,23 @@ subroutine padvct( &
         end if
      end do
   end do
-  !$acc end kernels
   
 ! ax(ij, 0) can be negative
 
-  !$acc kernels default(present)
+  !$acc loop gang vector
   do ij = ijtstr, ijtend
      ax(ij, 0) = 1.d0
   end do
 
+#if defined(_OPENACC) || defined(GPU_DEBUG)
+  !$acc loop gang vector
+  do ij = ijtstr, ijtend
+     !$acc loop seq
+     do k = 1, nic
+#else
   do k = 1, nic
      do ij = ijtstr, ijtend
+#endif
         ax(ij, 0) = ax(ij, 0) - ax(ij, k)
      end do
   end do
