@@ -186,6 +186,7 @@ subroutine pridge( &
   end if
   
   !$acc kernels default(present)
+  !$acc loop gang vector collapse(2)
   do k = 0, nic
      do ij = 1, nxydim
         axhix(ij, k) = ax(ij, k) * hix(ij, k)
@@ -201,12 +202,14 @@ subroutine pridge( &
         wn(ij, k) = 0.d0
      end do
   end do
+  !$acc loop gang vector
   do ij = 1, nxydim
      pice(ij) = 0.d0
      g(ij, -1) = 0.d0
      hrdgef(ij) = hridge
   end do
 
+  !$acc loop gang vector
   do ij = ijtstr, ijtend
      ijlw = ij + lw
      ijls = ij + ls
@@ -234,23 +237,46 @@ subroutine pridge( &
        &      - min(divv(ij), 0.d0)
   end do
 
+  !$acc loop gang vector
   do ij = ijtstr, ijtend
      g(ij, 0) = max(ax(ij, 0), 0.0d0)
   end do
+
+#if defined(_OPENACC) || defined(GPU_DEBUG)
+  !$acc loop gang vector
+  do ij = ijtstr, ijtend
+     !$acc loop seq
+     do k = 1, nic
+#else
   do k = 1, nic
      do ij = ijtstr, ijtend
+#endif
         g(ij, k) = g(ij, k-1) + ax(ij, k)
      end do
   end do
 
+#if defined(_OPENACC) || defined(GPU_DEBUG)
+  !$acc loop gang vector
+  do ij = ijtstr, ijtend
+     !$acc loop seq
+     do k = -1, nic
+#else
   do k = -1, nic
      do ij = ijtstr, ijtend
+#endif
         y(ij, k) = max(0.d0, 1.d0 - g(ij, k) / gridge)**2
      end do
   end do
 
+#if defined(_OPENACC) || defined(GPU_DEBUG)
+  !$acc loop gang vector
+  do ij = ijtstr, ijtend
+     !$acc loop seq
+     do k = 0, nic
+#else
   do k = 0, nic
      do ij = ijtstr, ijtend
+#endif
         wa(ij, k) = y(ij, k-1) - y(ij, k)
         if (wa(ij, k) > 0.0d0) then
            hrdgef(ij) = max(hix(ij, k), hridge)
@@ -258,12 +284,21 @@ subroutine pridge( &
      end do
   end do
 
+#if defined(_OPENACC) || defined(GPU_DEBUG)
+  !$acc loop gang vector
+  do ij = ijtstr, ijtend
+     !$acc loop seq
+     do l = 1, nic
+        !$acc loop seq
+        do k = 1, l
+#else
   do l = 1, nic
 ! === '23.07.12: avoid loop interchange due to a bug
 !                 in ES4ve nfort compiler (version 5.0.0 or earlier)
 !NEC$ nointerchange
    do k = 1, l
         do ij = ijtstr, ijtend
+#endif
            hrmax = 2.d0 * sqrt(hrdgef(ij) * hix(ij, k))
            hrmin = 2.d0 * hix(ij, k)
            if (     (hic(l+1) .lt. hrmin) &
@@ -280,22 +315,42 @@ subroutine pridge( &
      end do
   end do
 
+#if defined(_OPENACC) || defined(GPU_DEBUG)
+  !$acc loop gang vector
+  do ij = ijtstr, ijtend
+     !$acc loop seq
+     do l = 1, nic
+        !$acc loop seq
+        do k = 1, l
+#else
   do l = 1, nic
      do k = 1, l
         do ij = ijtstr, ijtend
+#endif
            wn(ij, l) = wn(ij, l) + wa(ij, k) * gam(ij, k, l)
         end do
      end do
   end do
 
+  !$acc loop gang vector
   do ij = 1, nxydim
      ww(ij) = 0.d0
   end do
+
+#if defined(_OPENACC) || defined(GPU_DEBUG)
+  !$acc loop gang vector
+  do ij = ijtstr, ijtend
+     !$acc loop seq
+     do k = 0, nic
+#else
   do k = 0, nic
      do ij = ijtstr, ijtend
+#endif
         ww(ij) = ww(ij) + wa(ij, k) - wn(ij, k)
      end do
   end do
+
+  !$acc loop gang vector collapse(2)
   do k = 0, nic
      do ij = ijtstr, ijtend
         wa(ij, k) = wa(ij, k) / ww(ij)
@@ -303,9 +358,16 @@ subroutine pridge( &
      end do
   end do
 
+#if defined(_OPENACC) || defined(GPU_DEBUG)
+  !$acc loop gang vector
+  do ij = ijtstr, ijtend
+     !$acc loop seq
+     do k = 1, nic
+#else
   do k = 1, nic
      do ij = ijtstr, ijtend
-         if (edis(ij)*wa(ij, k)*ts > ax(ij, k)) then
+#endif
+        if (edis(ij)*wa(ij, k)*ts > ax(ij, k)) then
             cwan = ax(ij, k) / (edis(ij)*wa(ij, k)*ts)
             do l = k, nic
                wn(ij, l) = wn(ij, l) &
@@ -315,15 +377,23 @@ subroutine pridge( &
          end if
       end do
    end do
- 
+
+   !$acc loop gang vector collapse(2)
    do k = 1, nic
      do ij = ijtstr, ijtend
         da(ij, k) = edis(ij) * (wn(ij, k) - wa(ij, k))
      end do
   end do
 
+#if defined(_OPENACC) || defined(GPU_DEBUG)
+  !$acc loop gang vector
+  do ij = ijtstr, ijtend
+     !$acc loop seq
+     do l = 1, nic
+#else
   do l = 1, nic
      do ij = ijtstr, ijtend
+#endif
         dahi(ij, l) = - hix(ij, l) * wa(ij, l) * edis(ij)
         dahs(ij, l) = - hsx(ij, l) * wa(ij, l) * edis(ij)
         daei(ij, l) = - eix(ij, l) * wa(ij, l) * edis(ij)
@@ -391,6 +461,7 @@ subroutine pridge( &
      end do
   end do
 
+  !$acc loop gang vector collapse(2)
   do k = 1, nic
      do ij = ijtstr, ijtend
         ax(ij, k) = ax(ij, k) + ts * da(ij, k)
@@ -399,14 +470,26 @@ subroutine pridge( &
         ax(ij, k) = min(1.d0, max(0.d0, ax(ij, k)))
      end do
   end do
+
+  !$acc loop gang vector
   do ij = ijtstr, ijtend
      ax(ij, 0) = 1.d0
   end do
+
+#if defined(_OPENACC) || defined(GPU_DEBUG)
+  !$acc loop gang vector
+  do ij = ijtstr, ijtend
+     !$acc loop seq
+     do k = 1, nic
+#else
   do k = 1, nic
      do ij = ijtstr, ijtend
+#endif
         ax(ij, 0) = ax(ij, 0) - ax(ij, k)
      end do
   end do
+
+  !$acc loop gang vector
   do ij = ijtstr, ijtend
      if (ax(ij, 0) .lt. 0.d0) then
         do k = 1, nic
@@ -416,6 +499,7 @@ subroutine pridge( &
      end if
   end do
 
+  !$acc loop gang vector
   do ij = ijtstr, ijtend
      hix(ij, 0) = 0.d0
      hsx(ij, 0) = 0.d0
@@ -424,6 +508,7 @@ subroutine pridge( &
      dsdx(ij, 0) = 0.d0
      dsbx(ij, 0) = 0.d0
      if (ax(ij, 0) .eq. 1.d0) then
+        !$acc loop seq
         do k = 1, nic
            ax(ij, k) = 0.d0
            hix(ij, k) = hic(k)
@@ -454,6 +539,7 @@ subroutine pridge( &
      end if
   end do
 
+  !$acc loop gang vector collapse(2)
   do k = 1, nic
      do ij = ijtstr, ijtend
         axhix(ij, k) = axhix(ij, k) + ts * dahi(ij, k)
@@ -479,8 +565,16 @@ subroutine pridge( &
 !            the negative ax-value transport sometimes causes resultant
 !            negative value, which is invalid, in the thickest category,
 !            since positive counterpart has not been transported there.
+
+#if defined(_OPENACC) || defined(GPU_DEBUG)
+  !$acc loop gang vector
+  do ij = ijtstr, ijtend
+     !$acc loop seq
+     do k = 1, nic-1
+#else
   do k = 1, nic-1
      do ij = ijtstr, ijtend
+#endif
         if (ax(ij, k) .eq. 0.d0) then
            axhix(ij, k+1) = axhix(ij, k+1) + axhix(ij, k)
            axhsx(ij, k+1) = axhsx(ij, k+1) + axhsx(ij, k)
@@ -610,7 +704,7 @@ subroutine pridge( &
         end if
      end do
   end do
-
+  !$acc loop gang vector collapse(2)
   do k = 1, nic
      do ij = ijtstr, ijtend
         if (ax(ij, k) .gt. 0.d0) then
