@@ -61,14 +61,14 @@ subroutine icetmp( &
   end if
 
   !$acc kernels default(present)
+  !$acc loop gang vector collapse(2)
   do k = 0, nic ! zero-set for k = 0 (hi = 0 for k = 0)
      do ij = 1, nxydim
         eix(ij, k) = ei(tix(ij, k), si) * hix(ij, k)
      end do
   end do
-  !$acc end kernels
 
-  !$acc kernels default(present)
+  !$acc loop gang vector collapse(2)
   do k = 1, nic
      do ij = ijtstr, ijtend
         eix(ij, k) = eix(ij, k) &
@@ -76,12 +76,13 @@ subroutine icetmp( &
         tix(ij, k) = ti(eix(ij, k)/hix(ij, k), si)
      end do
   end do
-  !$acc end kernels
 
-  !$acc kernels default(present)
+  !$acc loop gang vector
   do ij = ijtstr, ijtend
      qao(ij) = qao(ij) * ax(ij, 0)
   end do
+  
+  !$acc loop gang vector collapse(2)
   do k = 1, nic
      do ij = ijtstr, ijtend
         qai(ij, k) = qai(ij, k) * ax(ij, k)
