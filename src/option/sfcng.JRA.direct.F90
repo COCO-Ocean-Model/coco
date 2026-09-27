@@ -325,7 +325,7 @@ subroutine sfcflx( &
      READ_NAMELIST( nmsnit )
      READ_NAMELIST( nmrwnd )
      READ_NAMELIST( nmtrdb )
-     
+     !$acc enter data copyin(kappai,kappas,kappaw)
      !$acc enter data create(tsfc, psfc)
      !$acc enter data create(u10,v10,qsfc,pplr,sflx,swnt,dwlw)
      tmi = dtds * si         
@@ -349,7 +349,7 @@ subroutine sfcflx( &
      !$acc enter data create(gfluxs,dgfds)
      !$acc enter data copyin(tfluxs,qfluxs,taux,tauy)
      !$acc enter data create(dtfdt,dtfds,dqfds,dufdu,dqfdq)
-     !$acc enter data create(wfluxs,sflxbl,swdn,ralbsw,albsw,rfsdpn)
+     !$acc enter data create(wfluxs,sflxbl,swdn,ralbsw,albsw,rfsdpn,swpni,swpnr)
      !$acc enter data copyin(rflxlu,swup)
      !$acc enter data create(swdnw, swupw, lwdnw, lwupw, senfx, latfx)
      !$acc enter data create(swdnwg,swupwg,lwdnwg,lwupwg,senfxg,latfxg,swnetg,lwnetg)
@@ -610,22 +610,26 @@ subroutine sfcflx( &
   !$acc end kernels
 
   !$acc kernels default(present)
-  swdnwg(:) = 0.d0
-  swupwg(:) = 0.d0
-  lwdnwg(:) = 0.d0
-  lwupwg(:) = 0.d0
-  senfxg(:) = 0.d0
-  latfxg(:) = 0.d0
-  do l = 0, nic
-     swdnwg(:) = swdnwg(:) + swdnw(:, l) * facth * a(:, l) * amskt(:, kstr)
-     swupwg(:) = swupwg(:) + swupw(:, l) * facth * a(:, l) * amskt(:, kstr)
-     lwdnwg(:) = lwdnwg(:) + lwdnw(:, l) * facth * a(:, l) * amskt(:, kstr)
-     lwupwg(:) = lwupwg(:) + lwupw(:, l) * facth * a(:, l) * amskt(:, kstr)
-     senfxg(:) = senfxg(:) + senfx(:, l) * facth * a(:, l) * amskt(:, kstr)
-     latfxg(:) = latfxg(:) + latfx(:, l) * facth * a(:, l) * amskt(:, kstr)
+  !$acc loop gang vector
+  do ij=1,nxydim
+     swdnwg(ij) = 0.d0
+     swupwg(ij) = 0.d0
+     lwdnwg(ij) = 0.d0
+     lwupwg(ij) = 0.d0
+     senfxg(ij) = 0.d0
+     latfxg(ij) = 0.d0
+     !$acc loop seq
+     do l = 0, nic
+        swdnwg(ij) = swdnwg(ij) + swdnw(ij, l) * facth * a(ij, l) * amskt(ij, kstr)
+        swupwg(ij) = swupwg(ij) + swupw(ij, l) * facth * a(ij, l) * amskt(ij, kstr)
+        lwdnwg(ij) = lwdnwg(ij) + lwdnw(ij, l) * facth * a(ij, l) * amskt(ij, kstr)
+        lwupwg(ij) = lwupwg(ij) + lwupw(ij, l) * facth * a(ij, l) * amskt(ij, kstr)
+        senfxg(ij) = senfxg(ij) + senfx(ij, l) * facth * a(ij, l) * amskt(ij, kstr)
+        latfxg(ij) = latfxg(ij) + latfx(ij, l) * facth * a(ij, l) * amskt(ij, kstr)
+     end do
+     swnetg(ij) = swupwg(ij) - swdnwg(ij)
+     lwnetg(ij) = lwupwg(ij) - lwdnwg(ij)
   end do
-  swnetg(:) = swupwg(:) - swdnwg(:)
-  lwnetg(:) = lwupwg(:) - lwdnwg(:)
   !$acc end kernels
   
   call chekin( swdnwg, 'SWDNWG', &
@@ -897,6 +901,7 @@ subroutine ocnslv_core ( &
         end do
      end if
      !$acc enter data copyin(aswo2d,alcsnw)
+     !$acc enter data copyin(rbnd)
      !$acc enter data create(grsnr,hsnow,hmp,rp)
   endif
 

@@ -315,6 +315,7 @@ contains
        dmsktl(ij, nbot(ij)) = amskt1(ij)
     end do
 #endif
+    shift_gpu=.false.
 #ifdef OPT_TRIPOLE
     call shift1( dmsktl, nxdim, nydim, nzdim, 1.d0, 0, 0 )
 #else
@@ -333,6 +334,7 @@ contains
           end do
        end do
     end do
+    shift_gpu=.false.
 #ifdef OPT_TRIPOLE
     call shift1( dmskvl, nxdim, nydim, nzdim, 1.d0, -1, -1 )
 #else
@@ -1186,6 +1188,7 @@ contains
     end if
 
     !$acc kernels default(present)
+    !$acc loop gang vector collapse(4)
     do nh = 1, nchmax
        do n = 0, nnc
           do k = 1, nzdim
@@ -1194,6 +1197,9 @@ contains
              end do
           end do
        end do
+    end do
+    !$acc loop gang vector collapse(4)
+    do nh = 1, nchmax
        do n = 1, nnc
           do nl = 1, nlist
              do ij = 1, nxydim
@@ -1204,6 +1210,8 @@ contains
              end do
           end do
        end do
+    end do
+    do nh = 1, nchmax
        oscvtb(nh) = .false.
     end do
     !$acc end kernels
