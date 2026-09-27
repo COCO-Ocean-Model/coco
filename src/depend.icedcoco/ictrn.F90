@@ -100,19 +100,26 @@ subroutine ictrns( &
   end if  
   
   !$acc kernels default(present)
+  !$acc loop gang vector
   do ij = ijtstr, ijtend
-     axhix(ij, 0) = ax(ij, 0) * hix(ij, 0)
-     axhsx(ij, 0) = ax(ij, 0) * hsx(ij, 0)
-     axeix(ij, 0) = ax(ij, 0) * eix(ij, 0)
+     axhix(ij, 0) = ax(ij, 0) *   hix(ij, 0)
+     axhsx(ij, 0) = ax(ij, 0) *   hsx(ij, 0)
+     axeix(ij, 0) = ax(ij, 0) *   eix(ij, 0)
      axflv(ij, 0) = ax(ij, 0) * frlvx(ij, 0)
-     axvmp(ij, 0) = ax(ij, 0) * vmpx(ij, 0)
+     axvmp(ij, 0) = ax(ij, 0) *  vmpx(ij, 0)
      axfmp(ij, 0) = ax(ij, 0) * frmpx(ij, 0)
-     axdsd(ij, 0) = ax(ij, 0) * dsdx(ij, 0)
-     axdsb(ij, 0) = ax(ij, 0) * dsbx(ij, 0)
+     axdsd(ij, 0) = ax(ij, 0) *  dsdx(ij, 0)
+     axdsb(ij, 0) = ax(ij, 0) *  dsbx(ij, 0)
   end do
-  
+#if defined(_OPENACC) || defined(GPU_DEBUG)
+  !$acc loop gang vector
+  do ij = ijtstr, ijtend
+     !$acc loop seq
+     do k = 1, nic-1
+#else
   do k = 1, nic-1
      do ij = ijtstr, ijtend
+#endif
         if (hix(ij, k) .ge. hic(k+1)) then
 !        if (      (ax(ij, k) .gt. 0.d0)
 !          & .and. (hix(ij, k) .ge. hic(k+1))) then
@@ -159,8 +166,15 @@ subroutine ictrns( &
         end if
      end do
   end do
+#if defined(_OPENACC) || defined(GPU_DEBUG)
+  !$acc loop gang vector
+  do ij = ijtstr, ijtend
+     !$acc loop seq
+     do k = nic-1, 1, -1
+#else
   do k = nic-1, 1, -1
      do ij = ijtstr, ijtend
+#endif
         if (hix(ij, k+1) .lt. hic(k+1)) then
 !        if (      (hix(ij, k+1) .lt. hic(k+1)) &
 !          & .and. (ax(ij, k+1) .gt. 0.d0)) then
@@ -207,7 +221,8 @@ subroutine ictrns( &
         end if
      end do
   end do
-  
+
+  !$acc loop gang vector
   do ij = ijtstr, ijtend
      if (hix(ij, 1) .lt. hic(1)) then
 !     if (      (ax(ij, 1) .gt. 0.d0) &
@@ -231,8 +246,15 @@ subroutine ictrns( &
       end if
   end do
 
+#if defined(_OPENACC) || defined(GPU_DEBUG)
+  !$acc loop gang vector
+  do ij = ijtstr, ijtend
+     !$acc loop seq
+     do k = 1, nic
+#else  
   do k = 1, nic
      do ij = ijtstr, ijtend
+#endif
         if ((ax(ij, k) .gt. 0.d0) .and. (ax(ij, k) .lt. amin)) then
            axhix(ij, 0) = axhix(ij, 0) &
              &             + ax(ij, k) * hix(ij, k)
@@ -246,21 +268,22 @@ subroutine ictrns( &
              &          + ax(ij, k) * dsdx(ij, k)
            axdsb(ij, 0) = axdsb(ij, 0) &
              &          + ax(ij, k) * dsbx(ij, k)
-           ax(ij, k) = 0.d0
-           hix(ij, k) = hic(k)
-           hsx(ij, k) = 0.d0
-           eix(ij, k) = 0.d0
-           tix(ij, k) = tmi
-           asx(ij, k) = 0.d0
+           ax(   ij, k) = 0.d0
+           hix(  ij, k) = hic(k)
+           hsx(  ij, k) = 0.d0
+           eix(  ij, k) = 0.d0
+           tix(  ij, k) = tmi
+           asx(  ij, k) = 0.d0
            frlvx(ij, k) = 1.d0
-           vmpx(ij, k) = 0.d0
+           vmpx( ij, k) = 0.d0
            frmpx(ij, k) = 0.d0
-           dsdx(ij, k) = 0.d0
-           dsbx(ij, k) = 0.d0
+           dsdx( ij, k) = 0.d0
+           dsbx( ij, k) = 0.d0
         end if
      end do
   end do
 
+  !$acc loop gang vector
   do ij = ijtstr, ijtend
 !     if (hix(ij, 0) .gt. 0.d0) then
      ft(ij, 2) = ft(ij, 2) &
@@ -287,6 +310,7 @@ subroutine ictrns( &
 
 ! *** initialize the category 0 ***
 
+  !$acc loop gang vector
   do ij = ijtstr, ijtend
      ax(ij, 0) = 1.d0
      hix(ij, 0) = 0.d0
@@ -300,14 +324,22 @@ subroutine ictrns( &
      dsbx(ij, 0) = 0.d0
   end do
   
+#if defined(_OPENACC) || defined(GPU_DEBUG)
+  !$acc loop gang vector
+  do ij = ijtstr, ijtend
+     !$acc loop seq
+     do k = 1, nic
+#else
   do k = 1, nic
      do ij = ijtstr, ijtend
+#endif
         ax(ij, 0) = ax(ij, 0) - ax(ij, k)
      end do
   end do
 
 ! *** because of the finit precision, ax(ij, 0) could be a small negative
 ! *** value, which causes some problems
+  !$acc loop gang vector
   do ij = ijtstr, ijtend
      ax(ij, 0) = max(0.d0, ax(ij ,0))
   end do
@@ -350,34 +382,45 @@ subroutine icadjs( &
      return
   end if
   !$acc kernels default(present)
+  !$acc loop gang vector collapse(2)
   do k = 1, mic
      do ij = ijtstr, ijtend
-        axhix(ij, k) = ax(ij, k) * hix(ij, k)
-        axhsx(ij, k) = ax(ij, k) * hsx(ij, k)
-        axeix(ij, k) = ax(ij, k) * eix(ij, k)
+        axhix(ij, k) = ax(ij, k) * hix( ij, k)
+        axhsx(ij, k) = ax(ij, k) * hsx( ij, k)
+        axeix(ij, k) = ax(ij, k) * eix( ij, k)
         axvmp(ij, k) = ax(ij, k) * vmpx(ij, k)
         axdsd(ij, k) = ax(ij, k) * dsdx(ij, k)
         axdsb(ij, k) = ax(ij, k) * dsbx(ij, k)
      end do
   end do
 
+  !$acc loop gang vector
   do ij = ijtstr, ijtend
      ci(ij) = 0.d0
      ax(ij, 0) = 1.d0
   end do
+  
+#if defined(_OPENACC) || defined(GPU_DEBUG)
+  !$acc loop gang vector
+  do ij = ijtstr, ijtend
+     !$acc loop seq
+     do k = 1, mic
+#else
   do k = 1, mic
      do ij = ijtstr, ijtend
+#endif
         ci(ij) = ci(ij) + ax(ij, k)
      end do
   end do
 
+  !$acc loop gang vector collapse(2)
   do k = 1, mic
      do ij = ijtstr, ijtend
         if ((ci(ij) .gt. amax) .and. (ax(ij, k) .gt. 0.d0)) then
-           ax(ij, k) = ax(ij, k) * amax / ci(ij)
-           hix(ij, k) = axhix(ij, k) / ax(ij, k)
-           hsx(ij, k) = axhsx(ij, k) / ax(ij, k)
-           eix(ij, k) = axeix(ij, k) / ax(ij, k)
+           ax(  ij, k) = ax(   ij, k) * amax / ci(ij)
+           hix( ij, k) = axhix(ij, k) / ax(ij, k)
+           hsx( ij, k) = axhsx(ij, k) / ax(ij, k)
+           eix( ij, k) = axeix(ij, k) / ax(ij, k)
            vmpx(ij, k) = axvmp(ij, k) / ax(ij, k)
            dsdx(ij, k) = axdsd(ij, k) / ax(ij, k)
            dsbx(ij, k) = axdsb(ij, k) / ax(ij, k)
@@ -385,8 +428,15 @@ subroutine icadjs( &
      end do
   end do
 
+#if defined(_OPENACC) || defined(GPU_DEBUG)
+  !$acc loop gang vector
+  do ij = ijtstr, ijtend
+     !$acc loop seq
+     do k = 1, nic
+#else
   do k = 1, nic
      do ij = ijtstr, ijtend
+#endif
         ax(ij, 0) = ax(ij, 0) - ax(ij, k)
      end do
   end do
@@ -446,21 +496,24 @@ subroutine ichflt( &
   if (.not.ohiflt) return
   
   !$acc kernels default(present)
+  !$acc loop gang vector collapse(2)
   do k = 1, nic
      do ij = ijtstr, ijtend
-        axhix(ij, k) = ax(ij, k) * hix(ij, k)
-        axhsx(ij, k) = ax(ij, k) * hsx(ij, k)
-        axeix(ij, k) = ax(ij, k) * eix(ij, k)
+        axhix(ij, k) = ax(ij, k) *  hix(ij, k)
+        axhsx(ij, k) = ax(ij, k) *  hsx(ij, k)
+        axeix(ij, k) = ax(ij, k) *  eix(ij, k)
         axvmp(ij, k) = ax(ij, k) * vmpx(ij, k)
         axdsd(ij, k) = ax(ij, k) * dsdx(ij, k)
         axdsb(ij, k) = ax(ij, k) * dsbx(ij, k)
      end do
   end do
 
+  !$acc loop gang vector
   do ij = 1, nxydim
      rdaxhi(ij) = 0.0d0
   end do
 
+  !$acc loop gang vector
   do ij = ijtstr, ijtend
      daxhix(ij) = ax(ij, nic) * max((hix(ij, nic) - hilmt), 0.0d0)
      rdaxhi(ij) = daxhix(ij)
@@ -472,16 +525,24 @@ subroutine ichflt( &
 
 ! The following variables change only with inter-category transfer:
 !  snow age, level ice fraction, and melt pond fraction
+  !$acc loop gang vector collapse(2)
   do k = 1, nic
      do ij = ijtstr, ijtend
-        axasx(ij, k) = ax(ij, k) * asx(ij, k)
+        axasx(ij, k) = ax(ij, k) *   asx(ij, k)
         axflv(ij, k) = ax(ij, k) * frlvx(ij, k)
         axfmp(ij, k) = ax(ij, k) * frmpx(ij, k)
      end do
   end do
 
+#if defined(_OPENACC) || defined(GPU_DEBUG)
+  !$acc loop gang vector
+  do ij = ijtstr, ijtend
+     !$acc loop seq
+     do k = nic-1, 1, -1
+#else
   do k = nic-1, 1, -1
      do ij = ijtstr, ijtend
+#endif
         if (ax(ij, k) > 0.0d0) then
            fax = min(ax(ij, k), daxhix(ij) / (hiref - hix(ij, k)))
            fdahi = fax * (hiref - hix(ij, k))
@@ -519,12 +580,20 @@ subroutine ichflt( &
      end do
   end do
 
+  !$acc loop gang vector
   do ij = ijtstr, ijtend
      ax(ij, 0) = 1.d0
   end do
-
+  
+#if defined(_OPENACC) || defined(GPU_DEBUG)
+  !$acc loop gang vector
+  do ij = ijtstr, ijtend
+     !$acc loop seq
+     do k = 1, nic
+#else
   do k = 1, nic
      do ij = ijtstr, ijtend
+#endif
         ax(ij, 0) = ax(ij, 0) - ax(ij, k)
         if (ax(ij, k) .le. 0.d0) then
            ax(ij, k) = 0.d0
@@ -554,6 +623,7 @@ subroutine ichflt( &
   end do
 
 ! Subtract the remaining daxhix from rdaxhi
+  !$acc loop gang vector
   do ij = ijtstr, ijtend
      rdaxhi(ij) = rdaxhi(ij) - daxhix(ij)
   end do
