@@ -271,6 +271,7 @@ subroutine ptherm( &
   end if
   
   !$acc kernels default(present)
+  !$acc loop gang vector
   do ij = 1, nxydim
      igrfra(ij) = 0.0d0
      igrcon(ij) = 0.0d0
@@ -285,6 +286,7 @@ subroutine ptherm( &
      wi(    ij) = 0.0d0
   end do
 
+  !$acc loop gang vector collapse(2)
   do k = 0, nic
      do ij = 1, nxydim
         az(ij, k) = ax(ij, k)
@@ -300,6 +302,7 @@ subroutine ptherm( &
      end do
   end do
 
+  !$acc loop gang vector collapse(2)
   do k = 0, nic
      do ij = 1, nxydim
         axhix(ij, k) = ax(ij, k) * hix(ij, k)
@@ -313,25 +316,36 @@ subroutine ptherm( &
      end do
   end do
 
+  !$acc loop gang vector
   do ij = 1, nxydim
      rmpcc(ij) = rmpcmn(impnd)
   end do
-  !$acc end kernels
-  
+
+#if defined(_OPENACC) || defined(GPU_DEBUG)
+  !$acc loop gang vector
+  do ij = 1, nxydim
+     !$acc loop seq
+     do k = 1, nic
+#else
   do k = 1, nic
-     !$acc kernels default(present)
      do ij = 1, nxydim
+#endif
         rmpcc(ij) = rmpcc(ij) + &
           &         (rmpcmx(impnd) - rmpcmn(impnd)) * ax(ij, k)
 !        impth2(ij) = impth2(ij) - ax(ij, k) * vmpx(ij, k)
      end do
-     !$acc end kernels
   end do
 
 ! *** snowfall ***
+#if defined(_OPENACC) || defined(GPU_DEBUG)
+  !$acc loop gang vector
+  do ij = ijtstr, ijtend
+     !$acc loop seq
+     do k = 1, nic
+#else
   do k = 1, nic
-     !$acc kernels default(present)
      do ij = ijtstr, ijtend
+#endif
         if (ax(ij, k) .gt. 0.d0) then
            hsx(ij, k) = axhsx(ij, k) / ax(ij, k) &
              &        + ts * rrs * snow(ij)
@@ -360,11 +374,10 @@ subroutine ptherm( &
            dsbrhs(ij, k) = min(dsbx(ij, k) / hsx(ij, k), drsmax)
         end if
      end do
-     !$acc end kernels
   end do
 
 ! *** catching rainfall ***
-  !$acc kernels default(present)
+  !$acc loop gang vector collapse(2)
   do k=1, nic
      do ij = ijtstr, ijtend
         impinc(ij, k) = impinc(ij, k) + &
@@ -372,18 +385,24 @@ subroutine ptherm( &
      end do
   end do
 
+  !$acc loop gang vector
   do ij = ijtstr, ijtend
      snow(ij) = ax(ij, 0) * snow(ij)
      prec(ij) = prec(ij) + snow(ij)
      fdd(ij) = fdd(ij) - ax(ij, 0) * dfdu(ij)
      fdb(ij) = fdb(ij) - ax(ij, 0) * dfbc(ij)
   end do
-  !$acc end kernels
   
 ! *** snow melting ***
+#if defined(_OPENACC) || defined(GPU_DEBUG)
+  !$acc loop gang vector
+  do ij = ijtstr, ijtend
+     !$acc loop seq
+     do k = 1, nic
+#else
   do k = 1, nic
-     !$acc kernels default(present)
      do ij = ijtstr, ijtend
+#endif
         wres = axhsx(ij, k) * rsfus / ts + was(ij, k)
         if (ax(ij, k) .gt. 0.d0) then
            if (wres .lt. 0.d0) then
@@ -407,11 +426,10 @@ subroutine ptherm( &
         impinc(ij, k) = impinc(ij, k) - rmpcc(ij) * rhos * &
           &          min((axhsxn(ij, k) - axhsx(ij, k)), 0.0d0)
      end do
-     !$acc end kernels
   end do
 
 ! *** ice top melting ***
-  !$acc kernels default(present)
+  !$acc loop gang vector collapse(2)
   do k = 1, nic
      do ij = ijtstr, ijtend
         wres = rhoi * axeix(ij, k) / ts + wai(ij, k)
@@ -433,10 +451,9 @@ subroutine ptherm( &
           &          - min((rmpcc(ij) * rhoi * daxhit(ij, k)), 0.0d0)
      end do
   end do
-  !$acc end kernels
   
 ! *** new ice formation on open water ***
-  !$acc kernels default(present)
+  !$acc loop gang vector
   do ij = ijtstr, ijtend
      axeixn(ij, 0) = wao(ij) * ts / rhoi * amskt(ij, kstr)
      axhsxn(ij, 0) = 0.d0
@@ -453,13 +470,12 @@ subroutine ptherm( &
         hix(ij, 0) = 0.d0
      end if
   end do
-  !$acc end kernels
   
 ! *** basal and lateral ice formation/melting processes are divided
 ! *** in order to apply linear-remapping method
 ! *** basal ice formation/melting
 
-  !$acc kernels default(present)
+  !$acc loop gang vector collapse(2)
   do k = 1, nic
      do ij = ijtstr, ijtend
         daxhib(ij, k) = axeixn(ij, k)
@@ -468,7 +484,8 @@ subroutine ptherm( &
           &           * amskt(ij, kstr)
      end do
   end do
-  
+
+  !$acc loop gang vector collapse(2)
   do k = 1, nic
      do ij = ijtstr, ijtend
         if (axeixn(ij, k) .le. 0.d0 .or. ax(ij, k) .le. 0.d0) then
@@ -499,11 +516,16 @@ subroutine ptherm( &
         end if
      end do
   end do
-  !$acc end kernels
-  
+
+#if defined(_OPENACC) || defined(GPU_DEBUG)
+  !$acc loop gang vector
+  do ij = ijtstr, ijtend
+     !$acc loop seq
+     do k = 1, nic
+#else
   do k = 1, nic
-     !$acc kernels default(present)
      do ij = ijtstr, ijtend
+#endif
         if (az(ij, k) .gt. 0.0d0) then
            imrisf(ij) = imrisf(ij) - rhoi * daxhit(ij, k)
            igrcon(ij) = igrcon(ij) &
@@ -514,14 +536,19 @@ subroutine ptherm( &
              &          rhos * (ax(ij, k) * hsx(ij, k) - axhsxn(ij, k))
         end if
      end do
-     !$acc end kernels
   end do
 
   
 ! *** snow-ice formation ***
+#if defined(_OPENACC) || defined(GPU_DEBUG)
+  !$acc loop gang vector
+  do ij = ijtstr, ijtend
+     !$acc loop seq
+     do k = 1, nic
+#else
   do k = 1, nic
-     !$acc kernels default(present)
      do ij = ijtstr, ijtend
+#endif
         hsxo = hsx(ij, k)
         hsx(ij, k) = min(hsx(ij, k), rorirs * hix(ij, k))
         dhs = hsxo - hsx(ij, k)
@@ -536,12 +563,10 @@ subroutine ptherm( &
            tix(ij, k) = tmi
         end if
      end do
-     !$acc end kernels
   end do
 
 ! *** melt pond freezing ***
-
-  !$acc kernels default(present)
+  !$acc loop gang vector collapse(2)
   do k = 1, nic
      do ij = ijstr, ijend
         if (ax(ij, k) .gt. 0.0d0) then
@@ -556,12 +581,11 @@ subroutine ptherm( &
          end if
      end do
   end do
-  !$acc end kernels
   
 ! *** negative freeboard consideration (virtual) ***
 ! Runoff here does not change frmpx, following the CICE implementation.
 
-  !$acc kernels default(present)
+  !$acc loop gang vector collapse(2)
   do k = 1, nic
      do ij = ijtstr, ijtend
         if (frmpx(ij, k) > 0.0d0) then
@@ -576,11 +600,10 @@ subroutine ptherm( &
         end if
      end do
   end do
-  !$acc end kernels
   
 ! *** permiability ***
   if (impnd == 2) then  !! Hunke MP param.
-     !$acc kernels default(present)
+     !$acc loop gang vector collapse(2)
      do k = 1, nic
         do ij = ijstr, ijend
            if (frmpx(ij, k) > 0.0d0) then
@@ -604,12 +627,11 @@ subroutine ptherm( &
            end if
         end do
      end do
-     !$acc end kernels
   end if
 
 ! *** update fraction of meltpond ***
   if (impnd == 2) then  !! Hunke MP param.
-     !$acc kernels default(present)
+     !$acc loop gang vector collapse(2)
      do k = 1, nic
         do ij = ijstr, ijend
            if (ax(ij, k) > 0.0d0) then
@@ -663,18 +685,18 @@ subroutine ptherm( &
            end if
         end do
      end do
-     !$acc end kernels
   end if
 
 ! ****** linear remapping of Lipscomb(2001)
 ! *** setting flags
 
-  !$acc kernels default(present)
+  !$acc loop gang vector
   do ij = ijtstr, ijtend
      aflrmc(ij) = amskt(ij, kstr)
      aflrm(ij, 0) = 1.0d0
   end do
- 
+
+  !$acc loop gang vector collapse(2)
   do k = 1, nic
      do ij = ijtstr, ijtend
         if ( ( ax(ij, k) .gt. 0.0d0 ) .and. &
@@ -683,20 +705,21 @@ subroutine ptherm( &
         end if
      end do
   end do
-  !$acc end kernels
   
 ! *** growth rate of each categories and category boundaries
 
-  !$acc kernels default(present)
+  !$acc loop gang vector
   do ij = ijtstr, ijtend
      fdtn(ij, 0) = hix(ij, 0)
   end do
+  !$acc loop gang vector collapse(2)
   do k = 1, nic
      do ij = ijtstr, ijtend
         fdtn(ij, k) = ( hix(ij, k) - hiz(ij, k) ) * aflrm(ij, k)
      end do
   end do
 
+  !$acc loop gang vector
   do ij = ijtstr, ijtend
      if ( fdtn(ij, 0) .gt. 0.0d0 ) then
         fdtcn(ij, 1) = fdtn(ij, 0)
@@ -706,6 +729,8 @@ subroutine ptherm( &
         fdtcn(ij, 1) = 0.0d0
      endif
   end do
+
+  !$acc loop gang vector collapse(2)
   do k = 2, nic
      do ij = ijtstr, ijtend
         if ( ( aflrm(ij, k-1) .eq. 1.0d0 ) &
@@ -723,7 +748,6 @@ subroutine ptherm( &
         endif
      end do
   end do
-  !$acc end kernels
   
 !  call chekin(  fdtn,  'FDTN', &
 !    &             nx,      ny,    nic, nxyidm, 'ICE')
@@ -736,20 +760,25 @@ subroutine ptherm( &
 
 ! *** temporally shift category boundaries
 
-  !$acc kernels default(present)
+  !$acc loop gang vector collapse(2)
   do k = 1, nic
      do ij = ijtstr, ijtend
         hicn(ij, k) = hic(k) + fdtcn(ij,k)
      end do
   end do
-  !$acc end kernels
 
 ! *** validation check: will not execute remapping when...
 ! ***  - hicn(ij,k) does not lie between hix(ij,k-1) and hix(ij,k)
 ! ***  - hicn(ij,k) does not lie between hic0(k-1) and hic0(k+1)
+#if defined(_OPENACC) || defined(GPU_DEBUG)
+  !$acc loop gang vector
+  do ij = ijtstr, ijtend
+     !$acc loop seq
+     do k = 1, nic
+#else
   do k = 1, nic
-     !$acc kernels default(present)
      do ij = ijtstr, ijtend
+#endif
         hicn(ij, k) = hic(k) + fdtcn(ij,k)
         if ( (aflrm(ij, k-1) .eq. 1.0d0) .and. &
           &  (hicn(ij, k) .le. hix(ij, k-1)) ) then
@@ -764,23 +793,21 @@ subroutine ptherm( &
            aflrmc(ij) = 0.0d0
         endif
      end do
-     !$acc end kernels
   end do
 
-  !$acc kernels default(present)
+  !$acc loop gang vector collapse(2)
   do k = 0, nic
      do ij = ijtstr, ijtend
         aflrm(ij, k) = aflrm(ij, k) * aflrmc(ij)
      end do
   end do
-  !$acc end kernels
   
 !  call chekin(   hicn,  'HICN', &
 !    &              nx,      ny,    nic, nxyidm, 'ICE')
 
 ! *** determine linear distribution function within each category
 
-  !$acc kernels default(present)
+  !$acc loop gang vector collapse(2)
   do k = 1, nic-1
      do ij = ijtstr, ijtend
         hil(ij, k) = max( hicn(ij, k), &
@@ -800,6 +827,7 @@ subroutine ptherm( &
      end do
   end do
 
+  !$acc loop gang vector
   do ij = ijtstr, ijtend
      hil(ij, nic) = hicn(ij, nic)
      hir(ij, nic) = 3.0d0*hix(ij, nic) - 2.0d0*hicn(ij, nic)
@@ -816,7 +844,6 @@ subroutine ptherm( &
        &           * ( 2.0d0 / 3.0d0 - etanrr) &
        &           * aflrm(ij, nic)
   end do
-  !$acc end kernels
   
 !  call chekin(    hil,  'HIL', &
 !    &              nx,     ny,    nic, nxyidm, 'ICE')
@@ -831,7 +858,7 @@ subroutine ptherm( &
 ! *** area and volume fluxes are calculated from the linear distribution
 ! *** snow and enthalpy fluxes are propotional to the volume flux
 
-  !$acc kernels default(present)
+  !$acc loop gang vector collapse(2)
   do k = 1, nic
      do ij = ijtstr, ijtend
         laxhix(ij, k) = ax(ij, k) * hix(ij, k)
@@ -856,6 +883,7 @@ subroutine ptherm( &
      end do
   end do
 
+  !$acc loop gang vector
   do ij = ijtstr, ijtend
      da(ij, 0) = 0.0d0
 !    for the flux across the lowest boundary,
@@ -891,11 +919,16 @@ subroutine ptherm( &
         dafm(ij, 1) = dafm(ij, 1) - fafm
      end if
   end do
-  !$acc end kernels
-  
+
+#if defined(_OPENACC) || defined(GPU_DEBUG)
+  !$acc loop gang vector
+  do ij = ijtstr, ijtend
+     !$acc loop seq
+     do k = 2, nic
+#else
   do k = 2, nic
-     !$acc kernels default(present)
      do ij = ijtstr, ijtend
+#endif
         if ( ( hicn(ij, k) .ge. hic(k) ) .and. &
           &  ( aflrm(ij, k-1) .eq. 1.0d0 ) ) then
 !           if ( hicn(ij, k) .ge. hic(k) ) then
@@ -1026,7 +1059,6 @@ subroutine ptherm( &
            dadb(ij, k) = dadb(ij, k) - fadb
         end if
      end do
-     !$acc end kernels
   end do
 
 !  call chekin(     da,   'DA', &
@@ -1040,7 +1072,7 @@ subroutine ptherm( &
 
 ! *** update prediction variables.
 
-  !$acc kernels default(present)
+  !$acc loop gang vector collapse(2)
   do k = 1, nic
      do ij = ijtstr, ijtend
         ax(ij, k) = ax(ij, k) + da(ij, k) * amskt(ij, kstr)
@@ -1108,7 +1140,6 @@ subroutine ptherm( &
         frmpx(ij, k) = max(0.0d0, min(1.0d0, frmpx(ij, k)))
      end do
   end do
-  !$acc end kernels
   
 ! *** check if variables are in valid range
 !  do k = 1, nic
@@ -1157,7 +1188,7 @@ subroutine ptherm( &
 
 ! *** lateral ice formation/melting
 
-  !$acc kernels default(present)
+  !$acc loop gang vector collapse(2)
   do k = 1, nic
      do ij = ijtstr, ijtend
         laxhix(ij, k) = ax(ij, k) * hix(ij, k)
@@ -1172,6 +1203,8 @@ subroutine ptherm( &
         laxfmp(ij, k) = ax(ij, k) * frmpx(ij, k)
      end do
   end do
+
+  !$acc loop gang vector collapse(2)
   do k = 1, nic
      do ij = ijtstr, ijtend
         if (ax(ij, k) .gt. 0.d0) then
@@ -1191,11 +1224,16 @@ subroutine ptherm( &
         end if
      end do
   end do
-  !$acc end kernels
-  
+
+#if defined(_OPENACC) || defined(GPU_DEBUG)
+  !$acc loop gang vector
+  do ij = ijtstr, ijtend
+     !$acc loop seq
+     do k = 1, nic
+#else
   do k = 1, nic
-     !$acc kernels default(present)
      do ij = ijtstr, ijtend
+#endif
         if (laxeix(ij, k) .le. 0.d0) then
            ax(ij, k) = 0.d0
            hix(ij, k) = hic(k)
@@ -1232,15 +1270,16 @@ subroutine ptherm( &
         imrsmi(ij) = imrsmi(ij) - rhos * &
           &          ( ax(ij, k)*hsx(ij, k) - laxhsx(ij, k) )
      end do
-     !$acc end kernels
   end do
 
 ! *** heat and freshwater budget ***
 
-  !$acc kernels default(present)
+  !$acc loop gang vector
   do ij = 1, nxydim
      ftitd(ij) = 0.d0
   end do
+
+  !$acc loop gang vector
   do ij = ijtstr, ijtend
      wi(ij) = (ax(ij, 0) * hix(ij, 0) - axhix(ij, 0)) / rri / ts
      ws(ij) = (ax(ij, 0) * hsx(ij, 0) - axhsx(ij, 0)) / rrs / ts
@@ -1248,11 +1287,16 @@ subroutine ptherm( &
      wen(ij) = (ax(ij, 0) * eix(ij, 0) - axeixn(ij, 0)) / rri / ts
      fs(ij) = 0.d0
   end do
-  !$acc end kernels
-  
+
+#if defined(_OPENACC) || defined(GPU_DEBUG)
+  !$acc loop gang vector
+  do ij = ijtstr, ijtend
+     !$acc loop seq
+     do k = 1, nic
+#else
   do k = 1, nic
-     !$acc kernels default(present)
      do ij = ijtstr, ijtend
+#endif
         wi(ij) = wi(ij) &
           &    + (ax(ij, k) * hix(ij, k) - axhix(ij, k)) &
           &      / rri / ts
@@ -1275,10 +1319,9 @@ subroutine ptherm( &
           &     + (ax(ij, k) * dsbx(ij, k) - axdsb(ij, k)) &
           &       / ts
      end do
-     !$acc end kernels
   end do
   
-  !$acc kernels default(present)
+  !$acc loop gang vector
   do ij = ijtstr, ijtend
      ft(ij, 2) = (  evap(ij) - prec(ij) - roff(ij) &
        &          + ws(ij) + wi(ij) + wiadjs(ij)) * amskt(ij, kstr)
@@ -1295,11 +1338,10 @@ subroutine ptherm( &
      fdd(ij) = fdd(ij) * amskt(ij, kstr)
      fdb(ij) = fdb(ij) * amskt(ij, kstr)
   end do
-  !$acc end kernels
   
 ! *** merging newly formed ice into the category 1 ***
 
-  !$acc kernels default(present)
+  !$acc loop gang vector
   do ij = ijtstr, ijtend
      axhix(ij, 1) = ax(ij, 1) * hix(ij, 1) &
        &          + ax(ij, 0) * hix(ij, 0)
@@ -1322,6 +1364,8 @@ subroutine ptherm( &
      dsdx(ij, 0) = 0.d0
      dsbx(ij, 0) = 0.d0
   end do
+
+  !$acc loop gang vector
   do ij = ijtstr, ijtend
      danew = ax(ij, 1)
      ax(ij, 1) = axhix(ij, 1) / hix(ij, 1)
@@ -1359,11 +1403,10 @@ subroutine ptherm( &
 !       asx does not change
      end if
   end do
-  !$acc end kernels
   
 ! for cmip5 output: unit conversion
 
-  !$acc kernels default(present)
+  !$acc loop gang vector
   do ij = ijtstr, ijtend
      igrfra(ij) = igrfra(ij) / ts
      igrcon(ij) = igrcon(ij) / ts
@@ -1375,7 +1418,6 @@ subroutine ptherm( &
      imrisf(ij) = imrisf(ij) / ts
      imribs(ij) = imribs(ij) / ts
   end do
-  !$acc end kernels
   
 !  do k = 1, nic
 !     do ij = 1, nxydim
@@ -1383,7 +1425,7 @@ subroutine ptherm( &
 !     end do
 !  end do
 
-  !$acc kernels default(present)
+  !$acc loop gang vector collapse(2)
   do k = 1, nic
      do ij = ijtstr, ijtend
         impinc(ij, k) = impinc(ij, k) / ts
@@ -1469,6 +1511,7 @@ subroutine ipsage( &
   end if
 
   !$acc kernels default(present)
+  !$acc loop gang vector collapse(2)
   do k = 1, nic
      do ij = ijstr, ijend
         dscb(ij, k) = wabdst*dsdx(ij, k) + wabblc*dsbx(ij, k)
@@ -1483,9 +1526,8 @@ subroutine ipsage( &
         end if
      end do
   end do
-  !$acc end kernels
 
-  !$acc kernels default(present)
+  !$acc loop gang vector collapse(2)
   do k = 1, nic
      do ij = ijstr, ijend
 !           Yang et al. (1997) snow aging
@@ -1581,6 +1623,7 @@ subroutine idfrmp( &
   
   if (impnd == 0) then
      !$acc kernels default(present) if(ipthm_gpu)
+     !$acc loop gang vector collapse(2)
      do k = 1, nic
         do ij = ijstr, ijend
            frmpx(ij, k) = 0.0d0
@@ -1592,15 +1635,15 @@ subroutine idfrmp( &
   end if
   
   !$acc kernels default(present) if(ipthm_gpu)
+  !$acc loop gang vector collapse(2)
   do k = 1, nic
      do ij = 1, nxydim
         axvmp(ij, k) = ax(ij, k) * vmpx(ij, k)
      end do
   end do
-  !$acc end kernels
-  
+    
   if (impnd == 1) then  !! Holland MP param.
-     !$acc kernels default(present) if(ipthm_gpu)
+     !$acc loop gang vector collapse(2)
      do k = 1, nic
         do ij = ijstr, ijend
            oromp = .false.
@@ -1626,9 +1669,9 @@ subroutine idfrmp( &
            end if
         end do
      end do
-     !$acc end kernels
+
   else if (impnd == 2) then   !! Hunke MP param.
-     !$acc kernels default(present) if(ipthm_gpu)
+     !$acc loop gang vector collapse(2)
      do k = 1, nic
         do ij = ijstr, ijend
            oromp = .false.
@@ -1641,12 +1684,11 @@ subroutine idfrmp( &
            end if
         end do
      end do
-     !$acc end kernels
   end if
 
 ! Applying a limiter to vmpx/frmpx
 
-  !$acc kernels default(present) if(ipthm_gpu)
+  !$acc loop gang vector collapse(2)
   do k = 1, nic
      do ij = ijstr, ijend
         if ((frmpx(ij, k) < frmpmn).or.(vmpx(ij, k) < vmpmin)) then
@@ -1662,6 +1704,7 @@ subroutine idfrmp( &
   end if
   
   !$acc kernels default(present) if(ipthm_gpu)
+  !$acc loop gang vector collapse(2)
   do k = 1, nic
      do ij = 1, nxydim
         improf(ij, k) = improf(ij, k) - &
