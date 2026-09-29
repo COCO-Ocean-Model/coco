@@ -186,6 +186,7 @@ subroutine ovturn( &
   end if
 
   !$acc kernels default(present)
+  !$acc loop gang vector collapse(2)
   do k = 1, nzdim
      do ij = 1, nxydim
         dptmsig(ij, k) = 0.d0
@@ -194,73 +195,108 @@ subroutine ovturn( &
         delb(ij, k) = 0.d0
      end do
   end do
+
+  !$acc loop gang vector
   do ij = 1, nxydim
      dzmsig(ij, kstr) = (h(ij) + zbot) * 0.5d0 * ds(kstr)
      dptmsig(ij, kstr) = dzmsig(ij, kstr)
      dptsig(ij, kstr) = (h(ij) + zbot) * ds(kstr)
   end do
+
+#if defined(_OPENACC) || defined(GPU_DEBUG)
+  !$acc loop gang vector
+  do ij = 1, nxydim
+     !$acc loop seq
+     do k = kstr+1, kstr+kz-1
+#else
   do k = kstr+1, kstr+kz-1
      do ij = 1, nxydim
+#endif
         dzmsig(ij, k) = (h(ij) + zbot) * 0.5d0 * (ds(k-1) + ds(k))
         dptmsig(ij, k) = dptmsig(ij, k-1) + dzmsig(ij, k)
         dptsig(ij, k) = dptsig(ij, k-1) + (h(ij) + zbot) * ds(k)
      end do
   end do
+
   k = kstr+kz
+  !$acc loop gang vector
   do ij = 1, nxydim
      dzmsig(ij, k) = (h(ij) + zbot) * 0.5d0 * ds(k-1) &
        &           + 0.5d0 * dz(ij, k)
      dptmsig(ij, k) = dptmsig(ij, k-1) + dzmsig(ij, k)
      dptsig(ij, k) = dptsig(ij, k-1) + dz(ij, k)
   end do
+
+#if defined(_OPENACC) || defined(GPU_DEBUG)
+  !$acc loop gang vector
+  do ij = 1, nxydim
+     !$acc loop seq
+     do k = kstr+kz+1, kend
+#else
   do k = kstr+kz+1, kend
      do ij = 1, nxydim
+#endif
         dzmsig(ij, k) = 0.5d0 * (dz(ij, k-1) + dz(ij, k))
         dptmsig(ij, k) = dptmsig(ij, k-1) + dzmsig(ij, k)
         dptsig(ij, k) = dptsig(ij, k-1) + dz(ij, k)
      end do
   end do
+
+  !$acc loop gang vector collapse(2)
   do k = 1, nzdim
      do ij = 1, nxydim
         conv(ij, k) = 0.d0
         n2(ij, k) = 0.d0
      end do
   end do
+  !$acc loop gang vector
   do ij = 1, nxydim
      mld(ij) = 0.d0
-  end do
-
-  do ij = 1, nxydim
      cnvdep(ij) = 0.d0
   end do
 
+  !$acc loop gang vector collapse(2)
   do k = kstr, kstr+kz-1
      do ij = 1, nxydim
 !        dzsig(ij, k) = ds(k) * (h(ij) + zbot) * gamma(k-kstr+1)
         dzsig(ij, k)=ds(k)*(h(ij)*amskt(ij,kstr)+zbot)*gamma(k-kstr+1)
      end do
   end do
+
+  !$acc loop gang vector collapse(2)
   do k = kstr+kz, kend
      do ij = 1, nxydim
         dzsig(ij, k) = dz(ij, k) * gamma(k-kstr+1)
      end do
   end do
+
 #ifdef OPT_BBL
+  !$acc loop gang vector
   do ij = ijtstr, ijtend
      k = nbot(ij)
      dzsig(ij, k) = dz(ij, k) * gamma(nz) * amsktb(ij) &
         &         + dzsig(ij, k) * (1.d0 - amsktb(ij))
   end do
 #endif
+  !$acc loop gang vector
   do ij = 1, nxydim
      zt(ij, kstr) = 0.d0
   end do
+
+#if defined(_OPENACC) || defined(GPU_DEBUG)
+  !$acc loop gang vector
+  do ij = 1, nxydim
+     !$acc loop seq
+     do k = kstr, kend
+#else
   do k = kstr, kend
      do ij = 1, nxydim
+#endif
         zt(ij, k+1) = zt(ij, k) + dzsig(ij, k)
      end do
   end do
 
+  !$acc loop gang vector collapse(2)
   do n = 1, ntdim
      do ij = ijtstr, ijtend
         ttl(ij, n) = t(ij, kstr, n) * dzsig(ij, kstr)
@@ -268,6 +304,7 @@ subroutine ovturn( &
      end do
   end do
 
+  !$acc loop gang vector collapse(3)
   do n = 1, 2
      do k = kstr, kend
         do ij = ijtstr, ijtend
@@ -275,11 +312,16 @@ subroutine ovturn( &
         end do
      end do
   end do
-  !$acc end kernels
 
+#if defined(_OPENACC) || defined(GPU_DEBUG)
+  !$acc loop gang vector
+  do ij = ijtstr, ijtend
+     !$acc loop seq
+     do k = kstr+1, kend
+#else
   do k = kstr+1, kend
-     !$acc kernels default(present)
      do ij = ijtstr, ijtend
+#endif
         tu = t(ij, k-1, 1) * amskt(ij, k-1)
         su = t(ij, k-1, 2) * amskt(ij, k-1)
         tl = t(ij, k, 1) * amskt(ij, k)
@@ -318,11 +360,9 @@ subroutine ovturn( &
            end do
         end if
         w2 (ij) = 1.d0 / (zt(ij, k+1) - zt(ij, lup(ij)))
-     end do
-     !$acc end kernels
-     !$acc kernels default(present)
-     do kk = kstr, k
-        do ij = ijtstr, ijtend
+#if defined(_OPENACC) || defined(GPU_DEBUG)
+        !$acc loop seq
+        do kk = kstr, k
            if ((kk .ge. lup(ij)) .and. lov(ij)) then
               !$acc loop seq
               do n = 1, ntdim
@@ -331,10 +371,21 @@ subroutine ovturn( &
            end if
         end do
      end do
-     !$acc end kernels
+#else
+     end do
+     do kk = kstr, k
+        do ij = ijtstr, ijtend
+           if ((kk .ge. lup(ij)) .and. lov(ij)) then
+              do n = 1, ntdim
+                 t(ij, kk, n) = ttl(ij, n) * w2(ij)
+              end do
+           end if
+        end do
+     end do
+#endif
   end do
 
-  !$acc kernels default(present)
+  !$acc loop gang vector collapse(2)
   do n = 1, ntdim
      do ij = ijtstr, ijtend
         do k = kstr+1, nbot(ij)
@@ -344,6 +395,7 @@ subroutine ovturn( &
   end do
 ! do k = kstr, kend
   k = kstr
+  !$acc loop gang vector
   do ij = ijtstr, ijtend
      tl = t(ij, k, 1) * amskt(ij, k)
      sl = t(ij, k, 2) * amskt(ij, k)
@@ -357,9 +409,8 @@ subroutine ovturn( &
      r(ij, k) = p1 / p2 - 1.d3
   enddo
 ! enddo
-  !$acc end kernels
 
-  !$acc kernels default(present)
+  !$acc loop gang vector collapse(2)
   do k = kstr+1, kend
      do ij = ijtstr, ijtend
         tl = t(ij, k, 1) * amskt(ij, k)
@@ -398,9 +449,8 @@ subroutine ovturn( &
         delb(ij, k) = - gravit * (rr - rl) / rl
      end do
   end do
-  !$acc end kernels
-  
-  !$acc kernels default(present)
+
+  !$acc loop gang vector
   do ij = ijtstr, ijtend
      obtmld = .true.
      do k = kref+kstr, nbot(ij)
@@ -454,6 +504,7 @@ subroutine ddenst( &
   real(8) ::     p1,     p2
 
   !$acc kernels default(present)
+  !$acc loop gang vector collapse(2)
   do k = kstr, kend
      do ij = ijtstr, ijtend
         tl = t(ij, k, 1) * amskt(ij, k)
