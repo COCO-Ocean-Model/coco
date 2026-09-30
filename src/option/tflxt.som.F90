@@ -1962,13 +1962,18 @@ subroutine flxtrc( &
 !$omp alfq, alf1, alf1q, tmp &
 !$omp )
 !$omp do
+#if defined(_OPENACC) || defined(GPU_DEBUG)
+     !$acc loop gang vector collapse(2)
      do k = kstr, kend
-
+        do ij = ijtstr, ijtend
+           ku = max( k - 1, kstr )
+           kd = min( k + 1, kend )
+#else
+     do k = kstr, kend
         ku = max( k - 1, kstr )
         kd = min( k + 1, kend )
-            
         do ij = ijtstr, ijtend
-
+#endif
            s0m = s0(ij, k, n) &
              & - min( s0(ij, ku, n) / sm(ij, ku, n), &
              &        s0(ij, k , n) / sm(ij, k , n), &
@@ -2193,12 +2198,17 @@ subroutine flxtrc( &
 
 !    ---- put the temporary moments (fi) into appropriate neighboring boxes
 !$omp do
+#if defined(_OPENACC) || defined(GPU_DEBUG)
+     !$acc loop gang vector
+     do ij = ijtstr, ijtend
+        !$acc loop seq
+        do k = kstr, kend
+#else
      do k = kstr, kend
-
-        ku = k - 1
-
         do ij = ijtstr, ijtend
-
+#endif
+           ku = k - 1
+           
            if ( uv(ij, k) .gt. 0.d0 ) then
               sm(ij, k, n) = sm(ij, k, n) + fm(ij, ku)
               alf(ij, k)   = fm(ij, ku) / sm(ij, k, n)
