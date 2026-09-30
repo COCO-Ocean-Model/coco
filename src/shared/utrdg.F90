@@ -40,7 +40,44 @@ contains
     real(8)                   ::    rr,     ri,      r,     sr,     si
     integer(4)                ::    ij,      k
   
+#if defined(_OPENACC) || defined(GPU_DEBUG)
     !$acc kernels default(present)
+    !$acc loop gang vector
+    do ij = ijvstr, ijvend
+       r1 = br(ij, kstr) * br(ij, kstr)                                 &
+    &     + bi(ij, kstr) * bi(ij, kstr)
+       pr1 =   c(ij, kstr) * br(ij, kstr) / r1
+       pi1 = - c(ij, kstr) * bi(ij, kstr) / r1
+       qr1 = (  dr(ij, kstr) * br(ij, kstr)                             &
+    &         + di(ij, kstr) * bi(ij, kstr)) / r1
+       qi1 = (  di(ij, kstr) * br(ij, kstr)                             &
+    &        - dr(ij, kstr) * bi(ij, kstr)) / r1
+       br(ij, kstr) = pr1
+       bi(ij, kstr) = pi1
+       dr(ij, kstr) = qr1
+       di(ij, kstr) = qi1
+       !$acc loop seq
+       do k = kstr+1, kend
+          rr = br(ij, k) - a(ij, k) * br(ij, k-1)
+          ri = bi(ij, k) - a(ij, k) * bi(ij, k-1)
+          sr = dr(ij, k) - a(ij, k) * dr(ij, k-1)
+          si = di(ij, k) - a(ij, k) * di(ij, k-1)
+          r = rr * rr + ri * ri
+          br(ij, k) =   c(ij, k) * rr / r
+          bi(ij, k) = - c(ij, k) * ri / r
+          dr(ij, k) = (sr * rr + si * ri) / r
+          di(ij, k) = (si * rr - sr * ri) / r
+       end do
+       !$acc loop seq
+       do k = kend-1, kstr, -1
+          dr(ij, k) = dr(ij, k) - br(ij, k) * dr(ij, k+1)               &
+    &                           + bi(ij, k) * di(ij, k+1)
+          di(ij, k) = di(ij, k) - bi(ij, k) * dr(ij, k+1)               &
+    &                           - br(ij, k) * di(ij, k+1)
+       end do
+    end do
+    !$acc end kernels
+#else
     do ij = ijvstr, ijvend
        r1 = br(ij, kstr) * br(ij, kstr)                                 &
     &     + bi(ij, kstr) * bi(ij, kstr)
@@ -78,7 +115,7 @@ contains
     &                           - br(ij, k) * di(ij, k+1)
        end do
     end do
-    !$acc end kernels
+#endif
   end subroutine thmasc
   
   ! *********************************************************************
@@ -101,7 +138,37 @@ contains
     real(8)                   ::    fc
     integer(4)                ::    ij,       k,       n
 
+#if defined(_OPENACC) || defined(GPU_DEBUG)
     !$acc kernels default(present)
+    !$acc loop gang vector
+    do ij = ijtstr, ijtend
+       ac(ij, kstr) = ac(ij, kstr) / ab(ij, kstr)
+       !$acc loop seq
+       do n = 1, ntdim
+          adt(ij, kstr, n) = adt(ij, kstr, n) / ab(ij, kstr)
+       end do
+
+       !$acc loop seq
+       do k = kstr+1, kend
+          fc = 1.d0 / ( ab(ij, k) - aa(ij, k) * ac(ij, k-1) )
+          ac(ij, k) = ac(ij, k) * fc
+          !$acc loop seq
+          do n = 1, ntdim
+             adt(ij, k, n) = ( adt(ij, k, n)                            &
+    &                      - aa(ij, k) * adt(ij, k-1, n) ) * fc
+          end do
+       end do
+
+       !$acc loop seq
+       do n = 1, ntdim
+          !$acc loop seq
+          do k = kend-1, kstr, -1
+             adt(ij, k, n) = adt(ij, k, n) - ac(ij, k) * adt(ij, k+1, n)
+          end do
+       end do
+    end do
+    !$acc end kernels
+#else
     do ij = ijtstr, ijtend
        ac(ij, kstr) = ac(ij, kstr) / ab(ij, kstr)
     end do
@@ -129,7 +196,7 @@ contains
           end do
        end do
     end do
-    !$acc end kernels
+#endif
   end subroutine thomas
   
 end module utrdg
