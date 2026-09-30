@@ -102,6 +102,7 @@ contains
     end if
     
     !$acc kernels default(present)
+    !$acc loop gang vector collapse(2)
     do j =1, nydim_w
        do i =1, nxdim_w
           gxx_w  (i,j)=0.d0
@@ -118,6 +119,7 @@ contains
     call modgxy_w(gxx, gyy, ubtx, vbtx)
 
     !$acc kernels default(present)
+    !$acc loop gang vector collapse(2)
     do j =1, ny
        do i =1, nx
           gxx_w (i+istr_w-1, j+jstr_w-1) = gxx (i+istr-1, j+jstr-1)
@@ -145,7 +147,8 @@ contains
     call bt_shift_unpack( vbt_w, 7)
     
     nb = ntss * 2
-    !$acc kernels default(present)
+    !$acc kernels default(present) async
+    !$acc loop gang vector collapse(2)
     do j = 1, nydim
        do i = 1, nxdim
           ubtav (i,j) = 0.d0
@@ -158,7 +161,8 @@ contains
     !$acc end kernels
           
     do itsplt = 1, nb
-       !$acc kernels default(present)
+       !$acc kernels default(present) async
+       !$acc loop gang vector collapse(2)
        do j = 1, nydim_w
           do i = 1, nxdim_w
              htmp_w (i,j) = h_w  (i,j)
@@ -178,6 +182,7 @@ contains
     &               gxx_w,    gyy_w,   ptop_w,  fw_w)
 
        if (mod(itsplt, ncomm) == 0) then
+          !$acc wait
           call bt_shift_pack_begin
           call bt_shift2(ubt_w, vbt_w, nxdim_w, nydim_w, 1, -1.d0, -1, -1)
           call bt_shift1(  h_w,        nxdim_w, nydim_w, 1,  1.d0,  0,  0)
@@ -186,8 +191,10 @@ contains
           call bt_shift_unpack(vbt_w, 2)
           call bt_shift_unpack(  h_w, 3)
        end if
+
        fact = 2.d0 * dble(nb-itsplt+1) / dble(nb * (nb+1))
-       !$acc kernels default(present)
+       !$acc kernels default(present) async
+       !$acc loop gang vector collapse(2)
        do j = 1, ny
           do i = 1, nx
              ubtav (i+istr-1, j+jstr-1) = ubtav (i+istr-1, j+jstr-1) + ubtmp_w(i+istr_w-1, j+jstr_w-1) * fact
@@ -199,7 +206,7 @@ contains
        end do
        !$acc end kernels
     end do
-
+    !$acc wait
     call shift_pack_begin
     call shift2( ubtav,  vbtav, nxdim,  nydim, 1, -1.d0, -1, -1)
     call shift2(ubtav2, vbtav2, nxdim,  nydim, 1, -1.d0, -1, -1)
@@ -212,6 +219,7 @@ contains
     call shift_unpack(   hav, 5)
 
     !$acc kernels default(present)
+    !$acc loop gang vector collapse(2)
     do j = 1, nydim
        do i = 1, nxdim
           hx  (i,j) = hav   (i,j)
@@ -271,6 +279,7 @@ contains
        !$acc enter data create(gu_w, gv_w)
        
        !$acc kernels default(present)
+       !$acc loop gang vector
        do ij = 1, nxydim_w
           amskt_w(ij) = 0.d0
           amskv_w(ij) = 0.d0
@@ -286,6 +295,7 @@ contains
           rdepv_w(ij) = 1.d0
           gh_w   (ij) = 0.d0
        end do
+       !$acc loop gang vector collapse(2)
        do j = 1, ny
           do i = 1, nx
              ij   = (i+ istr  -1)  + (j+jstr  -1 -1) *nxdim
@@ -337,21 +347,22 @@ contains
     integer(4)  ::     ij
 
     !$acc kernels default(present) async
+    !$acc loop gang vector
     do ij = 1, nxydim_w
        fhx_w(ij) = 0.d0
        fhy_w(ij) = 0.d0
     end do
 
+    !$acc loop gang vector
     do ij = nxdim_w+2, nxydim_w
        fhx_w(ij) = - (  ubty(ij+lw)  * hyu_w(ij+lw)                   &
     &                 + ubty(ij+lsw) * hyu_w(ij+lsw)) * 0.5d0
-    end do
 
-    do ij = nxdim_w+2, nxydim_w
        fhy_w(ij) = - (  vbty(ij+ls)  * hxu_w(ij+ls)                   &
     &                 + vbty(ij+lsw) * hxu_w(ij+lsw)) * 0.5d0
     end do
 
+    !$acc loop gang vector
     do ij = 1, nxydim_w - ln
        hx(ij) = hx(ij)                                                &
     &         + tss * (  (fhx_w(ij+le) - fhx_w(ij)) * rx              &
@@ -359,9 +370,8 @@ contains
     &           rxt_w(ij) * ryt_w(ij) * amskt_w(ij)                   &
     &         - tss * fw(ij) * amskt_w(ij)
     end do
-    !$acc end kernels
 
-    !$acc kernels default(present) async
+    !$acc loop gang vector
     do ij = 1, nxydim_w - lne
        gu_w(ij) = gxx(ij) + cor_w(ij) * vbtx(ij)                     &
     &         - (  ( (hy(ij+lne)+hy(ij+le))                          &
@@ -377,9 +387,7 @@ contains
     &               -(ptop(ij+le )+ptop(ij   )) )                    &
     &              / rdepv_w(ij) / rhoo                              &
     &           ) * 0.5d0 * rym_w(ij) * ryu_w(ij)
-    end do
 
-    do ij = 1, nxydim_w - lne
        cf = cor_w(ij) * tss / accb * 0.5d0
        ubtx(ij) = ubtx(ij)                                           &
     &           + tss / accb / (1.d0 + cf * cf) *                    &
@@ -389,7 +397,6 @@ contains
     &             (gv_w(ij) - cf * gu_w(ij)) * amskv_w(ij)
     end do
     !$acc end kernels
-    !$acc wait
   end subroutine shalow_w
 
 #else
