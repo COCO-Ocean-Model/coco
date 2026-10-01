@@ -389,12 +389,16 @@ contains
     real(8)                   :: vwteqt, vareat, tarea, dsss, fsnml
 
     integer(4)                ::     ij,    k,     n,      i,     j
-    
+#if defined(_OPENACC) || defined(GPU_DEBUG)
+    save fsrst, vwteqg, vareag
+#endif
     if ( oinit .or. ofinal ) then
        !$acc enter data create(aa,ab,ac, dh,hzbot,hxbot)
+       !$acc enter data create(fsrst, vwteqg, vareag)
        return
     end if
     !$acc kernels default(present)
+    !$acc loop gang vector
     do ij = ijtstr, ijtend
 #ifndef OPT_OFFLINE
        hxbot(ij) = hx(ij) + zbot
@@ -403,6 +407,7 @@ contains
 #endif       
     end do
 
+    !$acc loop gang vector collapse(2)
     do k = 1, nzdim
        do ij = 1, nxydim
           aa(ij, k) = 0.d0
@@ -411,10 +416,12 @@ contains
        end do
     end do
 
+    !$acc loop gang vector
     do ij = 1, nxydim
        dh(ij) = hx(ij) - hz(ij)
     end do
-    
+
+    !$acc loop gang vector collapse(2)
     do k = kstr, kstr+kz-1
        do ij = ijtstr, ijtend
           aa(ij, k) = - ts * diffz(ij, k)   / dz(ij, k)
@@ -423,6 +430,7 @@ contains
        end do
     end do
 
+    !$acc loop gang vector collapse(3)
 #ifndef OPT_OFFLINE    
     do n = 1, ntdim
 #else
@@ -436,6 +444,7 @@ contains
        end do
     end do
 
+    !$acc loop gang vector collapse(2)
     do k = kstr+kz, kend
        do ij = ijtstr, ijtend
           aa(ij, k) = - ts * diffz(ij, k) / dz(ij, k)
@@ -444,7 +453,8 @@ contains
        end do
     end do
 
-#ifndef OPT_OFFLINE    
+#ifndef OPT_OFFLINE
+    !$acc loop gang vector
     do ij = ijstr, ijend
        adt(ij, kstr, 1) = adt(ij, kstr, 1)                 &
     &                   - tx(ij, kstr, 1) *ft(ij, 2)       &
@@ -460,6 +470,7 @@ contains
 
     !$acc kernels default(present)
 
+    !$acc loop gang vector collapse(3)
 #ifndef OPT_OFFLINE    
     do n = 1, ntdim
 #else
@@ -472,6 +483,7 @@ contains
        end do
     end do
 #ifdef OPT_BBL
+    !$acc loop gang vector collapse(2)
 #ifndef OPT_OFFLINE    
     do n = 1, ntdim
 #else
@@ -487,6 +499,7 @@ contains
     end do
 #endif
 
+    !$acc loop gang vector collapse(3)
 #ifndef OPT_OFFLINE    
     do n = 1, ntdim
 #else
@@ -501,6 +514,7 @@ contains
 
 #ifdef OPT_OFFLINE    
 !---- tracer redistribution among sigma-layers (T. Suzuki) 
+    !$acc loop gang vector collapse(3)
     do n = 3, ntdim
        do k = kstr, kstr+kz-1
           do ij = ijtstr, ijtend
@@ -517,11 +531,13 @@ contains
     call cofpsf(    tx,    ft,    fs, swabs )
 
     !$acc kernels default(present)
+    !$acc loop gang vector
     do ij = ijtstr, ijtend
        tx(ij, kstr, 1) = tx(ij, kstr, 1)                              &
     &                  + ts * ft(ij, 1) / hxbot(ij) / ds(kstr) 
     end do
 
+    !$acc loop gang vector collapse(2)
     do k = kstr, kstr+kz-1
        do ij = ijtstr, ijtend
           tx(ij, k, 1) = tx(ij, k, 1)                                 &
@@ -529,6 +545,8 @@ contains
     &                  / hxbot(ij) / ds(k)
        end do
     end do
+
+    !$acc loop gang vector collapse(2)
     do k = kstr+kz, kend
        do ij = ijtstr, ijtend
           tx(ij, k, 1) = tx(ij, k, 1)                                &
@@ -537,8 +555,8 @@ contains
     end do
     !$acc end kernels
 #endif
-    
     !$acc kernels default(present)
+    !$acc loop gang vector collapse(2)
     do n = 3, ntdim
        do ij = ijtstr, ijtend
           tx(ij, kstr, n) = tx(ij, kstr, n)                          &
@@ -546,21 +564,21 @@ contains
        end do
     end do
     !$acc end kernels
-
+    
 #ifndef OPT_OFFLINE    
 #ifdef OPT_SRST
     !$acc kernels default(present)
+    !$acc loop gang vector
     do ij = 1, nxydim
        fsrst(ij) = 0.0d0
     end do
     !$acc end kernels
-
     if (osrstr) then
+       !$acc kernels default(present)
 !       call tmintp(ssfc, 10)
        vwteqt = 0.0d0
        vareat = 0.0d0
        if (osrsti) then
-          !$acc kernels default(present)
           do ij = ijtstr, ijtend
              dsss = (ssfc(ij) - tx(ij, kstr, 2)) * amskt(ij, kstr)
              fsrst(ij) = sdmp2d(ij) &
@@ -568,9 +586,7 @@ contains
              vwteqt = vwteqt + fsrst(ij) * garea(ij)
              vareat = vareat + garea(ij)
           end do
-          !$acc end kernels
        else
-          !$acc kernels default(present)
           do ij = ijtstr, ijtend
              if (ax(ij, 0) .eq. 1.d0) then
                 dsss = (ssfc(ij) - tx(ij, kstr, 2)) * amskt(ij, kstr)
@@ -580,19 +596,18 @@ contains
                 vareat = vareat + garea(ij)
              end if
           end do
-          !$acc end kernels
        end if
-
+       !$acc end kernels
        if (osrnml) then
+          !$acc kernels default(present)
           fsnml = 0.0d0
           tarea = 0.0d0
-          !$acc kernels default(present)
+          !$acc loop gang vector
           do i = 1, inodes*jnodes
              vwteqg(i) = 0.0d0
              vareag(i) = 0.0d0
           end do
           !$acc end kernels
-          
           !$acc host_data use_device(vwteqg)
           call mpi_gather( &
             &    vwteqt, 1, mpi_real8, vwteqg(1), 1, mpi_real8, &
@@ -620,28 +635,29 @@ contains
             &    tarea, 1, mpi_real8, &
             &    iroot, mpi_comm_ogcm, ierr)
           fsnml = fsnml / tarea
+          !$acc kernels default(present)
           if (osrsti) then
-             !$acc kernels default(present)
+             !$acc loop gang vector
              do ij = ijtstr, ijtend
                 fsrst(ij) = ( fsrst(ij) - fsnml ) * amskt(ij, kstr)
              end do
-             !$acc end kernels
           else
-             !$acc kernels default(present)
+             !$acc loop gang vector
              do ij = ijtstr, ijtend
                 if (ax(ij, 0) .eq. 1.d0) then
                    fsrst(ij) = ( fsrst(ij) - fsnml ) * amskt(ij, kstr)
                 end if
              end do
-             !$acc end kernels
           end if
+          !$acc end kernels
        end if
 
        !$acc kernels default(present)
+       !$acc loop gang vector
        do ij = ijtstr, ijtend
           tx(ij, kstr, 2) = tx(ij, kstr, 2) + ts * fsrst(ij)
        end do
-
+       !$acc loop gang vector
        do ij = ijtstr, ijtend
           fsrst(ij) = fsrst(ij) * hxbot(ij) * ds(kstr)
        end do
@@ -658,6 +674,7 @@ contains
 
     if (ogthm) then
        !$acc kernels default(present)
+       !$acc loop gang vector
        do ij = ijtstr, ijtend
           k = nbot(ij)
           tx(ij, k, 1) = tx(ij, k, 1) &
@@ -694,7 +711,9 @@ contains
     integer(4)                ::     ij,    k
 
     logical,   save   ::  ofirst = .true.
-
+#if defined(_OPENACC) || defined(GPU_DEBUG)
+    save smean, ssum, kmix
+#endif
     if ( ofirst ) then
        !$acc enter data create(smean, ssum, kmix)
        ofirst = .false.
@@ -702,15 +721,25 @@ contains
     
     depth = dz0(kstr)
     !$acc kernels default(present)
+    !$acc loop gang vector
     do ij = 1, nxydim
        ssum(ij) = tx(ij, kstr) * dz0(kstr)
        smean(ij) = tx(ij, kstr)
        kmix(ij) = kstr
     end do
 
+#if defined(_OPENACC) || defined(GPU_DEBUG)
+    !$acc loop gang vector
+    do ij = 1, nxydim
+       depth = dz0(kstr)
+       !$acc loop seq
+       do k = kstr+1, kstr+kz-1
+          depth = depth + dz0(k)
+#else
     do k = kstr+1, kstr+kz-1
        depth = depth + dz0(k)
        do ij = 1, nxydim
+#endif
           if ( smean(ij) <= smin ) then
              ssum(ij) = ssum(ij) + dz0(k) * tx(ij, k)
              smean(ij) = ssum(ij) / depth
@@ -719,6 +748,7 @@ contains
        end do
     end do
 
+    !$acc loop gang vector collapse(2)
     do k = kstr, kstr+kz-1
        do ij = 1, nxydim
           if ( k <= kmix(ij) ) then
