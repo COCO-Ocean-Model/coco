@@ -46,14 +46,11 @@ contains
 #endif
 
     implicit none
-
 #include "mpif.h"
-
     real(8),    intent(inout)  ::  ditem(nxdim, nydim)
     integer(4), intent(in)     ::  iitem
-
 !---- local variables
-    integer(4), parameter      ::  nitem = ( ntdim - 2 ) * 2 + 11 
+    integer(4), parameter      ::  nitem = ( ntdim - 2 ) * 2 + 11
     integer(4), save           ::  idate1(6,nitem), idate2(6,nitem)
     real(8),    save           ::   time1(nitem),    time2(nitem)
     real(8),    save           ::   data1(nx,ny,nitem), data2(nx,ny,nitem)
@@ -113,7 +110,12 @@ contains
     real(8), save :: alon(nx0), alat(ny0)
     integer, save :: mask(nx0,ny0)=1
 
+#ifdef _OPENACC
+    save data, direct
+#endif
+
     if ( of ) then
+       !$acc enter data create(data1, data2, data, direct)
        READ_NAMELIST( nmsfbc )
        READ_NAMELIST( nmsfyr )
        of = .false.
@@ -140,7 +142,7 @@ contains
        call mpi_bcast(alon,   nx0,     mpi_real8, iroot, mpi_comm_ogcm, ierr)
        call mpi_bcast(alat,   ny0,     mpi_real8, iroot, mpi_comm_ogcm, ierr)
        call mpi_bcast(mask, nx0*ny0, mpi_integer, iroot, mpi_comm_ogcm, ierr)
-
+       !$acc enter data copyin(alon, alat, mask)
 
        if ( trim(roff_map) /= 'not-specified') odirect=.true.
        call rewnml( ifpar, jfpar )
@@ -287,8 +289,10 @@ contains
          call read_dat(time, data)
       end if
       time2(    iitem)=time
+      !$acc kernels default(present)
       data2(:,:,iitem)=data(:,:)
-
+      !$acc end kernels
+      
       if (time >= tt ) then
          call rewnml( ifpar, jfpar )
          write(jfpar,*)'error: 1st time of data > initial date'
@@ -300,8 +304,9 @@ contains
    if (tt > time2(iitem) ) then
    do
           time1(          iitem) = time2(          iitem)
+          !$acc kernels default(present)
           data1(1:nx,1:ny,iitem) = data2(1:nx,1:ny,iitem)
-
+          !$acc end kernels
           if (iitem == 10) then
              call read_runoff(time, data)
           else
@@ -309,7 +314,9 @@ contains
           end if
 
           time2(    iitem)=time
+          !$acc kernels default(present)
           data2(:,:,iitem)=data(:,:)
+          !$acc end kernels
           if ( time2(iitem) >= tt ) exit
    end do
    end if
@@ -318,13 +325,15 @@ contains
        tintv = time2(iitem) - time1(iitem)
        tintp = (tt - time1(iitem)) / tintv
        tintq = (time2(iitem) - tt) / tintv
+       !$acc kernels default(present)
+       !$acc loop gang vector collapse(2)
        do j = 1, ny
           do i = 1, nx
              ditem(istr+i-1, jstr+j-1) = tintq * data1(i, j, iitem)   &
     &                                  + tintp * data2(i, j, iitem)
           end do
        end do
-
+       !$acc end kernels
     contains
       !=========================================================================
       subroutine read_dat(time, dout)
@@ -368,7 +377,7 @@ contains
            dyear(iitem) = getdyr(idatet)
         end if
 #endif
-
+        !$acc update device(direct)
         call intpsfc(iitem, direct, alon, alat, dout, mask)
 
         cdate = chead(50)
@@ -447,6 +456,7 @@ contains
        read(chead(50), '(i6.6,5i2.2)') (idatet(i), i = 1, 6)
        idatet(1) = idatet(1) + dyear(iitem)
        call cyh2ss( time, idatet )
+       !$acc update device(dout)
 
       end subroutine read_runoff
 
@@ -490,31 +500,31 @@ contains
   use zocmsk
   use ufile
   implicit none
-!#include "mpif.h"
-
-  integer :: iitem
   integer, parameter :: nitem = (ntdim-2)*2+10
-  real(8) ::  data1(nxy)
+  integer, intent(in ) :: iitem
+  real(4), intent(in ) :: direct(nx0, ny0)
+  real(8), intent(in ) :: alon(nx0), alat(ny0)
+  real(8), intent(out) :: data1(nxy)
+  integer, intent(in ) :: mask(nx0,ny0)
+
   integer,parameter :: nx0=640, ny0=320
-  real(4) ::  direct(nx0, ny0)
-  real(8) ::  direct0(0:nx0+1, 0:ny0+1)
-  real(8)  :: alon(nx0), alat(ny0)
-
   real(8), save ::  alon0(nitem,0:nx0+1), alat0(nitem,0:ny0+1)
-
-  integer :: ij, ij0,  i, j, i0, j0, ijd
+  real(8), save :: glont0(nitem,nxydim)
   integer, save ::  ilon0(nitem,nxy), jlat0(nitem,nxy)
-  integer :: ilon, jlat
-
+  real(8) ::  direct0(0:nx0+1, 0:ny0+1)
+#if defined(_OPENACC) || defined(GPU_DEBUG)
+  save direct0
+#endif
+  integer :: ij, ij0,  i, j, i0, j0, ijd, ilon, jlat
   real(8) :: d1, d2, d3, d4, d12, d34, pi
   integer ::  ifpar,  jfpar
-  logical, save :: oerr=.false.
+  logical, save :: ofirst(1:nitem)=.true., of=.true.
 
-  logical, save :: ofirst(1:nitem)=.true.
-  integer :: mask(nx0,ny0)
-
-  real(8), save :: glont0(nitem,nxydim)
-
+  if(of) then
+     !$acc enter data create(alon0, alat0, glont0, glatt, ilon0, jlat0, direct0)
+     of=.false.
+  endif
+  
   if(ofirst(iitem)) then
      pi = 4.d0 * atan(1.d0)
      do i=1,nx0
@@ -538,27 +548,7 @@ contains
      end do
      alat0(iitem,0)    = alat0(iitem,1  )-(alat0(iitem,2  )-alat0(iitem,1    ))
      alat0(iitem,ny0+1)= alat0(iitem,ny0)+(alat0(iitem,ny0)-alat0(iitem,ny0-1))
-  end if
 
-
-  do j=1,ny0
-     do i=1,nx0
-        direct0(i,j)=direct(i,j)
-     end do
-  end do
-
-  do j = 1, ny0
-     direct0(0, j)     = direct0(nx0, j)
-     direct0(nx0+1, j) = direct0(1, j)
-  end do
-
-  do i = 0, nx0+1
-     direct0(i, 0)     = direct0(i, 1)
-     direct0(i, ny0+1) = direct0(i, ny0)
-  end do
-
-
-  if(ofirst(iitem)) then 
      do ij0=1,nxy
         ijd = mod(ij0-1,nx)+istr + nxdim*(int((ij0-1)/nx)+jstr-1)
         do i = 1, nx0+1
@@ -576,9 +566,30 @@ contains
         end do
 102     continue
      end do
+     !$acc update device(alon0, alat0, glont0, glatt, ilon0, jlat0)
+     ofirst(iitem)=.false.
   end if
 
+  !$acc kernels default(present)
+  !$acc loop gang vector collapse(2)
+  do j=1,ny0
+     do i=1,nx0
+        direct0(i,j)=direct(i,j)
+     end do
+  end do
+  !$acc loop gang vector
+  do j = 1, ny0
+     direct0(0, j)     = direct0(nx0, j)
+     direct0(nx0+1, j) = direct0(1, j)
+  end do
 
+  !$acc loop gang vector
+  do i = 0, nx0+1
+     direct0(i, 0)     = direct0(i, 1)
+     direct0(i, ny0+1) = direct0(i, ny0)
+  end do
+
+  !$acc loop gang vector
   do ij0=1,nxy
      ijd = mod(ij0-1,nx)+istr + nxdim*(int((ij0-1)/nx)+jstr-1)
      ilon=ilon0(iitem,ij0)  
@@ -588,11 +599,6 @@ contains
      d2 = direct0(ilon, jlat-1)
      d3 = direct0(ilon-1, jlat)
      d4 = direct0(ilon, jlat)
-
-     if( max(d1,d2,d3,d4) .ge. 1.d19) then
-!         oerr=.true.
-        data1(ij0)=1.d20
-     else
 
         d12 = (  d1 * (alon0(iitem,ilon) - glont0(iitem,ijd))          &
              &       + d2 * (glont0(iitem,ijd) - alon0(iitem,ilon-1))) &
@@ -606,22 +612,18 @@ contains
              &      = (  d12 * (alat0(iitem,jlat) - glatt(ijd))    &
              &         + d34 * (glatt(ijd) - alat0(iitem,jlat-1))) &
              &        / (alat0(iitem,jlat) - alat0(iitem,jlat-1))
-     end if
+
+
+     if( max(d1,d2,d3,d4) .ge. 1.d19) data1(ij0)=1.d20
   end do
-
-
-!      if(oerr) then
-!         call rewnml(ifpar, jfpar)
-!         write(jfpar,*)'error: missing value in surface forcing data'
-!         call mpi_abort(mpi_comm_ogcm, 1, ierr)
-!      end if
-
-  ofirst(iitem)=.false.
+  !$acc end kernels
 
   if (olint_wind) return
   
   if(iitem .le. 2) then
+     !$acc update self(data1)
      call intp_spline(alon, alat, mask, direct, data1)
+     !$acc update device(data1)
   end if
 
 !  return
@@ -937,7 +939,7 @@ end subroutine intpsfc
     integer(4), intent(in)     ::  iitem
 
 !---- local variables
-    integer(4), parameter      ::  nitem = ( ntdim - 2 ) * 2 + 11 
+    integer(4), parameter      ::  nitem = ( ntdim - 2 ) * 2 + 11
     integer(4), save           ::  idate1(6,nitem), idate2(6,nitem)
     real(8),    save           ::   time1(nitem),    time2(nitem)
     real(8),    save           ::   data1(nx,ny,nitem)

@@ -392,7 +392,9 @@ subroutine sfcflx( &
      !$acc end kernels
   end do
 
+  !$acc kernels default(present)
   roff(:)=0.d0
+  !$acc end kernels
   call tmintp_direct(   u10,      1)
   call tmintp_direct(   v10,      2)
   call tmintp_direct(  tsfc,      3)
@@ -403,7 +405,6 @@ subroutine sfcflx( &
   call tmintp_direct(  dwlw,      8)
   call tmintp_direct(  psfc,      9)
   call tmintp_direct(  roff,     10)
-  !$acc update device(u10,v10,tsfc,qsfc,pplr,sflx,swnt,dwlw,psfc,roff)
   
   ssfc(:)=0.D0
 #ifdef OPT_SRST
