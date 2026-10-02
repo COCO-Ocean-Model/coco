@@ -181,7 +181,8 @@ subroutine pmomnt( &
   endif
   rdts = dble(nnsplt) / ts
 
-!$acc kernels default(present)
+  !$acc kernels default(present) async
+  !$acc loop gang vector
   do ij = 1, nxydim
      zeta  (ij) = 0.d0
      eta   (ij) = 0.d0
@@ -208,11 +209,15 @@ subroutine pmomnt( &
 !       &        + ay(ij) * (rhoi * hiy(ij) + rhos * hsy(ij)) / rhoo
      hh    (ij) = 0.d0
   end do
-!$acc end kernels
-
-!$acc kernels default(present)
+#if defined(_OPENACC) || defined(GPU_DEBUG)
+  !$acc loop gang vector
+  do ij = 1, nxydim
+     !$acc loop seq
+     do k = 1, nic
+#else
   do k = 1, nic
      do ij = 1, nxydim
+#endif
         mice(ij) = mice(ij) + ax(ij, k) * hix(ij, k)
      end do
   end do
@@ -236,10 +241,11 @@ subroutine pmomnt( &
           &             exx,    eyy,    exy,   pice)
   end if
 
+  !$acc kernels default(present) async
   if (ofirst) then
      ofirst = .false.
      if (oeof) then
-        !$acc kernels default(present)
+        !$acc loop gang vector
         do ij = 1, nxydim
            sgmxx(ij) = 2.d0 * eta(ij) * exx(ij) &
              &       - emz(ij) * (exx(ij) + eyy(ij)) &
@@ -249,11 +255,10 @@ subroutine pmomnt( &
              &       - 0.5d0 * pice(ij)
            sgmxy(ij) = 2.d0 * eta(ij) * exy(ij)
         end do
-        !$acc end kernels
      end if
   end if
 
-!$acc kernels default(present)
+  !$acc loop gang vector
   do ij = ijvstr, ijvend
      avrmsx(ij) = (  mice(ij) + mice(ij+le) &
        &           + mice(ij+ln) + mice(ij+lne)) * 0.25d0 * rhoi * &
@@ -278,7 +283,8 @@ subroutine pmomnt( &
 !  do isplit = 1, nsplit
   do isplit = 1, nnsplt
 
-     !$acc kernels default(present)
+     !$acc kernels default(present) async
+     !$acc loop gang vector
      do ij = ijtstr, ijtend
         if (aice(ij) .eq. 0.d0) then
            sgmxx(ij) = 0.d0
@@ -304,9 +310,11 @@ subroutine pmomnt( &
      end do
      !$acc end kernels
 
+     ! async regions on the default queue need no wait before shift* (see bshft:shift_pack)
      call shift3(sgmxx, sgmyy, sgmxy, nxdim, nydim, 1, 1.d0, 0, 0)
 
-     !$acc kernels default(present)
+     !$acc kernels default(present) async
+     !$acc loop gang vector
      do ij = ijvstr, ijvend
         if (avrmsx(ij) .eq. 0.d0) then
            uix(ij) = 0.d0
@@ -386,6 +394,7 @@ subroutine pmomnt( &
   end do
 
   !$acc kernels default(present)
+  !$acc loop gang vector
   do ij = ijvstr, ijvend
      tauiox(ij) =     ctau(ij) * &
        &           (  (uix(ij) &
@@ -448,7 +457,8 @@ subroutine strain( &
 
   integer ::     ij,   ijlw,   ijls,  ijlsw
 
-!$acc kernels default(present)
+  !$acc kernels default(present) async
+  !$acc loop gang vector
   do ij = ijtstr, ijtend+nxdim+1
      ijlw = ij + lw
      ijls = ij + ls
@@ -512,7 +522,8 @@ subroutine rheolo( &
      !$acc enter data create(delta)
   end if
 
-!$acc kernels default(present)
+  !$acc kernels default(present) async
+  !$acc loop gang vector
   do ij = ijtstr, ijtend+nxdim+1
      del = sqrt(  c1 * (exx(ij) * exx(ij) + eyy(ij) * eyy(ij)) &
        &        + c2 * exy(ij) * exy(ij) &
@@ -569,7 +580,8 @@ subroutine rheolo_pice( &
      !$acc enter data create(delta)
   end if
 
-!$acc kernels default(present)
+  !$acc kernels default(present) async
+  !$acc loop gang vector
   do ij = ijtstr, ijtend+nxdim+1
      pice(ij) = p0 * mice(ij) * exp(- cp * (1.d0 - aice(ij)))
      del = sqrt(  c1 * (exx(ij) * exx(ij) + eyy(ij) * eyy(ij)) &
@@ -581,7 +593,7 @@ subroutine rheolo_pice( &
      emz (ij) = eta(ij) - zeta(ij)
      epz (ij) = eta(ij) + zeta(ij)
   end do
-!$acc end kernels
+  !$acc end kernels
 
   return
 end subroutine rheolo_pice
