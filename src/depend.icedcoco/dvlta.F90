@@ -33,6 +33,10 @@ contains
   real(8) ::  ubar(nxydim),   vbar(nxydim)
   integer ::  ij,      k
 
+#if defined(_OPENACC) || defined(GPU_DEBUG)
+  save uavr,vavr, ubar,vbar
+#endif
+  
   if (oinit .or. ofinal) then
      !$acc enter data create(uavr,vavr, ubar,vbar)
      return

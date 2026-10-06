@@ -75,7 +75,9 @@ subroutine ictrns( &
 
   integer ::     ij,      k
   integer ::  ifpar,  jfpar,  istat
-
+#if defined(_OPENACC) || defined(GPU_DEBUG)
+    save axhix,axhsx, axeix, axasx,axvmp, axflv,axfmp, axdsd,axdsb, ci
+#endif
 
   if (oinit .or. ofinal) then
      return
@@ -369,6 +371,10 @@ subroutine icadjs( &
 
   integer ::     ij,      k
 
+#if defined(_OPENACC) || defined(GPU_DEBUG)
+  save axhix,axhsx, axeix, axvmp, axdsd,axdsb, ci
+#endif
+  
   if (oinit .or. ofinal) then
      !$acc enter data create(  axhix,  axhsx)
      !$acc enter data create(  axeix)
@@ -480,7 +486,10 @@ subroutine ichflt( &
   real(8) :: rdaxhi(nxydim)
   
   integer ::     ij,      k
-
+#if defined(_OPENACC) || defined(GPU_DEBUG)
+  save axhix,axhsx, axeix, axasx,axvmp, axflv,axfmp, axdsd,axdsb, &
+   &   ci, daxhix, rdaxhi
+#endif
   if (oinit .or. ofinal) then
      !$acc enter data create(  axhix,  axhsx)
      !$acc enter data create(  axeix)

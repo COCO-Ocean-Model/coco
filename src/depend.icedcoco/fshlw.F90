@@ -94,7 +94,10 @@ contains
     real(8) ::   fact
     integer ::   i, j, nb, itsplt
     logical,     save  ::  ofirst = .true.
-
+#if defined(_OPENACC) || defined(GPU_DEBUG)
+    save ubtav2,vbtav2,hav, gxx_w, gyy_w, fw_w, ptop_w, h_w, ubt_w, vbt_w, &
+     &   htmp_w, ubtmp_w, vbtmp_w
+#endif
     if (ofirst) then
        !$acc enter data create(ubtav2, vbtav2, hav)
        !$acc enter data create(gxx_w, gyy_w, fw_w, ptop_w, h_w, ubt_w, vbt_w)
@@ -415,7 +418,9 @@ contains
     real(8) ::   fact
     integer ::   ij, nb, itsplt
     logical     :: ofirst=.true.
-
+#if defined(_OPENACC) || defined(GPU_DEBUG)
+    save htmp,ubtmp,vbtmp, ubtav2,vbtav2,hav
+#endif
     if (ofirst) then
        !$acc enter data create(htmp, ubtmp, vbtmp)
        !$acc enter data create(ubtav2, vbtav2, hav)
@@ -578,6 +583,9 @@ contains
     character(len=ncf) :: cfrghn = 'not-specified'
     real(8) :: lscale = 1.d4, pi, rghmax = 1.d30
     real(8) :: rght(nxydim)
+#if defined(_OPENACC) || defined(GPU_DEBUG)
+    save rght
+#endif
     namelist /nmtide/  otide
     namelist /nmtsal/   beta
     namelist /nmtbdy/  alpha

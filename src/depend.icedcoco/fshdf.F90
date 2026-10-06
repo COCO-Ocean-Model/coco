@@ -63,7 +63,7 @@ contains
     if (ofirst) then
        ofirst = .false.
        READ_NAMELIST( nmdfsh )
-       !$acc enter data create(tsh, fhx,fhy, ftx,fty, rhxbot, hx,tx)
+       !$acc enter data create(tsh, fhx,fhy, ftx,fty, rhxbot)
     end if
 
     !$acc kernels default(present)

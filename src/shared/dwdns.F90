@@ -36,18 +36,21 @@ contains
 
     real(8) ::  ftx(nxydim, nzdim),    fty(nxydim, nzdim)
     real(8) :: dhdt(nxydim), rhzbot(nxydim)
+#if defined(_OPENACC) || defined(GPU_DEBUG)
+    save ftx,fty, dhdt,rhzbot
+#endif
 
     integer ::   ij,      k
     integer :: ijlw,   ijls,  ijlsw
-
+    
 #ifndef OPT_OFFLINE  
-    if (oinit .or. ofinal) then
-  !$acc enter data create(ftx,fty,dhdt,rhzbot)
-       return
+    if (oinit) then
+       !$acc enter data create(ftx,fty,dhdt,rhzbot)
     end if
+    if (oinit .or. ofinal) return
 #endif  
 
-  !$acc kernels default(present)
+    !$acc kernels default(present)
     do k = 1, nzdim
        do ij = 1, nxydim
           ftx(ij, k) = 0.d0
@@ -155,7 +158,7 @@ contains
        w(ij, kstr) = 0.d0
     end do
     
-  !$acc end kernels
+    !$acc end kernels
     return
 
   end subroutine wdenst

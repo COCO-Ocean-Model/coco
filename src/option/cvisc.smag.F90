@@ -113,6 +113,13 @@ contains
     logical,     save  ::    opslvis = .false.
     namelist /nmpslv/ opslvis
 
+#if defined(_OPENACC) || defined(GPU_DEBUG)
+    save fux,fvx, fuy,fvy, fuz,fvz, db, hu,hv, hux,hvx, huy,hvy, &
+     &   sxxne,sxxnw, sxxse,sxxsw, sxyne,sxynw, &
+     &   sxyse,sxysw, syyne,syynw, syyse,syysw, &
+     &   dbsw,dbnw, dbse,dbne
+#endif
+
     if ( oinit .or. ofinal ) then
        return
     end if

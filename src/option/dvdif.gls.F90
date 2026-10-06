@@ -210,7 +210,15 @@ subroutine vdiff( &
     &               obtkei, atfilt, amvmin, ahvmin
   namelist /nmdifvao/ ovdfao, ahv0ao, mzao
   namelist /nmdved/ iamn, iamf, cftedn, cftedf, cgamma, ahvemx, epst, zeta, ofvcnt, ofvpn
- 
+
+#if defined(_OPENACC) || defined(GPU_DEBUG)
+  save amvt, drdz,duvdz, dzsig,rzmsig, depth,depthm, epsil,tls, sh,sm,  &
+    &  fwall, fez, rit, aa,ab, ac,ade, adefwd,tke0, cdkdtl,diffz, cdmp, &
+    &  ufrc2s,ufrc2b, ufrc2o,ufrc2i, ufrc3s,ufrc3o, taubtm, gh,ghul,    &
+    &  z0sf2d,prepmx, dpsi0,scnp3d, ctkemn,ctfilt,                      &
+    &  dzmsig, gint, ahvted, tedr
+#endif
+  
   if (oinit) then
      !$acc enter data create(tke,  psi)
      !$acc enter data create( ahv03d)

@@ -119,6 +119,9 @@ subroutine pmomnt( &
   namelist /nmiprm/ thetaa, thetao, cwdrag, elast0, kglev
   namelist /nmitsp/ nsplit
 
+#if defined(_OPENACC) || defined(GPU_DEBUG)
+  save zeta,eta, emz,epz, ecof, exx,eyy,exy, aice,mice, avrmsx,avra, accelu,accelv, ctau,hh, tauiox,tauioy
+#endif
 
   if (oinit) then
      sgmxx(:)=0.d0
@@ -171,7 +174,7 @@ subroutine pmomnt( &
           &        amskt(ij, kstr)
      end do
 !$acc enter data copyin(elst)
-!$acc enter data create(zeta,eta,emz,epz,exx,eyy,exy,avrmsx,avra,accelu,accelv,ctau,ecof,aice,mice, tauiox,tauioy,hh,mice)     
+!$acc enter data create(zeta,eta, emz,epz, ecof, exx,eyy,exy, aice,mice, avrmsx,avra, accelu,accelv, ctau,hh, tauiox,tauioy)
   end if
       
   if (its .eq. 2) then
@@ -497,7 +500,7 @@ subroutine rheolo( &
   real(8), intent(in)  ::    exx(nxydim),    eyy(nxydim),    exy(nxydim)
   real(8), intent(in)  ::   pice(nxydim)
 
-  real(8) ::  delta(nxydim)
+  real(8) ::  delta
 
   real(8), save ::     c1,     c2,     c3,     c4
   logical, save :: ofirst = .true.
@@ -519,7 +522,6 @@ subroutine rheolo( &
      c2 = 4.d0 / ecc / ecc
      c3 = 2.d0 * (1.d0 - 1.d0 / ecc / ecc)
      c4 = 1.d0 / ecc / ecc
-     !$acc enter data create(delta)
   end if
 
   !$acc kernels default(present) async
@@ -528,8 +530,8 @@ subroutine rheolo( &
      del = sqrt(  c1 * (exx(ij) * exx(ij) + eyy(ij) * eyy(ij)) &
        &        + c2 * exy(ij) * exy(ij) &
        &        + c3 * exx(ij) * eyy(ij))
-     delta(ij) = max(del, dmin)
-     zeta(ij) = pice(ij) / delta(ij) * 0.5d0
+     delta = max(del, dmin)
+     zeta(ij) = pice(ij) / delta * 0.5d0
      eta (ij) = zeta(ij) * c4
      emz (ij) = eta(ij) - zeta(ij)
      epz (ij) = eta(ij) + zeta(ij)
@@ -552,7 +554,7 @@ subroutine rheolo_pice( &
   real(8), intent(in)  ::   aice(nxydim),   mice(nxydim)
   real(8), intent(in)  ::    exx(nxydim),    eyy(nxydim),    exy(nxydim)
 
-  real(8) ::  delta(nxydim)
+  real(8) ::  delta
 
   real(8), save ::     c1,     c2,     c3,     c4
   logical, save :: ofirst = .true.
@@ -577,7 +579,6 @@ subroutine rheolo_pice( &
      c2 = 4.d0 / ecc / ecc
      c3 = 2.d0 * (1.d0 - 1.d0 / ecc / ecc)
      c4 = 1.d0 / ecc / ecc
-     !$acc enter data create(delta)
   end if
 
   !$acc kernels default(present) async
@@ -587,8 +588,8 @@ subroutine rheolo_pice( &
      del = sqrt(  c1 * (exx(ij) * exx(ij) + eyy(ij) * eyy(ij)) &
        &        + c2 * exy(ij) * exy(ij) &
        &        + c3 * exx(ij) * eyy(ij))
-     delta(ij) = max(del, dmin)
-     zeta(ij) = pice(ij) / delta(ij) * 0.5d0
+     delta = max(del, dmin)
+     zeta(ij) = pice(ij) / delta * 0.5d0
      eta (ij) = zeta(ij) * c4
      emz (ij) = eta(ij) - zeta(ij)
      epz (ij) = eta(ij) + zeta(ij)

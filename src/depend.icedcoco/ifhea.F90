@@ -52,7 +52,9 @@ subroutine fiheat( &
   logical, save :: ofirst = .true.
 
   real(8) ::   wfrz(nxydim),    wib(nxydim),   wilm(nxydim)
-
+#if defined(_OPENACC) || defined(GPU_DEBUG)
+  save wfrz, wib, wilm
+#endif
   real(8) ::   tdev
   integer ::     ij,      k
   integer ::  ifpar,  jfpar,  istat

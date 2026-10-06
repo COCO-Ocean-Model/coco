@@ -342,7 +342,9 @@ contains
 
     real(8), intent(inout) ::    wadv(nxdim, nydim, nzdim, 9)
     real(8) ::  wadv2(nxdim, nydim, nzdim, 9)
-
+#if defined(_OPENACC) || defined(GPU_DEBUG)
+    save wadv2
+#endif
     integer i, j, k, n, istv, jstv
     logical, save :: ofirst = .true.
 

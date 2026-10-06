@@ -68,8 +68,12 @@ subroutine fwater( &
 
   real(8) ::     az(nxydim, 0:nic),    hiz(nxydim, 0:nic)
   real(8) ::    hsz(nxydim, 0:nic),    eiz(nxydim, 0:nic)
-!      common /work/ az, hiz, hsz
+#if defined(_OPENACC) || defined(GPU_DEBUG)
+  save az,hiz, hsz,eiz
+#endif
 
+  !      common /work/ az, hiz, hsz
+  
   if (oinit .or. ofinal) then
      return
   end if

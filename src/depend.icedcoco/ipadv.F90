@@ -98,6 +98,10 @@ subroutine padvct( &
 
   namelist /nmislt/ si
 
+#if defined(_OPENACC) || defined(GPU_DEBUG)
+  save fax,fay, fasx,fasy, fflx,ffly, fvmx,fvmy, ffmx,ffmy, fddx,fddy, fdbx,fdby, &
+   &   axhix,axhsx, axeix, axasx,axvmp, axflv,axfmp, axdsd, axdsb
+#endif
 
   if (oinit .or. ofinal) then
      return

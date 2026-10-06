@@ -82,6 +82,12 @@ subroutine pridge( &
   real(8) ::    dafl(nxydim, nic),   dafm(nxydim, nic)
   real(8) ::    dadd(nxydim, nic),   dadb(nxydim, nic)
   real(8) ::  hrdgef(nxydim)
+
+#if defined(_OPENACC) || defined(GPU_DEBUG)
+  save axhix,axhsx, axeix, axasx,axvmp, axflv,axfmp, axdsd,axdsb, axa, &
+   &   divv,edis, wa,wn, ww, g, y, da, dahi,dahs, daei, daas,davm,     &
+   &   dafl,dafm, dadd,dadb, hrdgef
+#endif
 !  common /work/ axhix, axhsx, &
 !    &           divv, edis, wa, wn, ww, &
 !    &           g, y, da, dahi, dahs, daei

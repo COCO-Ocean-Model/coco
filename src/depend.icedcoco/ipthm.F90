@@ -237,6 +237,14 @@ subroutine ptherm( &
   logical :: iscrmp
 
   real(8), save ::    eps = 1.0d-3,   epsl = 1.0d-6
+#if defined(_OPENACC) || defined(GPU_DEBUG)
+  save az, axhix, axhsx,axhsxn, axeix,axeixn, axvmp, axflv,axfmp, axdsd,axdsb, &
+   &   wai, wi,ws, wen,wsn, rmpcc, dvmp, dfcb, dsdrhs,dsbrhs,                  &
+   &   hiz,vmpz, aflrm,aflrmc, fdtn,fdtcn, hicn, g0,g1, hil,hir,               &
+   &   da,dahi, dahs,daei, daas,davm, dafl,dafm, dadd,dadb,                    &
+   &   laxhix,laxhsx, laxeix, daxhit,daxhib, laxasx,laxvmp, laxflv,laxfmp,     &
+   &   laxdsd,laxdsb
+#endif
 
   if (oinit .or. ofinal) then
      return
@@ -1479,7 +1487,10 @@ subroutine ipsage( &
   real(8) ::  agesn, agefr1, agefr2, agefr3, agefct, rfrfct, snwfal
   integer :: ij, k
   integer :: ifpar,  jfpar,  istat
-
+#if defined(_OPENACC) || defined(GPU_DEBUG)
+  save rafr3, dscppm,dsmppm, dscb,dstm
+#endif
+  
   if (oinit .or. ofinal) then
      return
   end if
@@ -1601,6 +1612,9 @@ subroutine idfrmp( &
   logical :: oromp
   integer :: ij, k
   integer :: ifpar,  jfpar,  istat
+#if defined(_OPENACC) || defined(GPU_DEBUG)
+  save axvmp
+#endif
 
   if (ofinal) then
      return
