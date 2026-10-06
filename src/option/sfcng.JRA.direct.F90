@@ -302,7 +302,14 @@ subroutine sfcflx( &
   integer ::     ij,      l,      n,     nn
   integer ::      i,      j
   integer ::  ifpar,  jfpar,  istat
-
+#if defined(_OPENACC) || defined(GPU_DEBUG)
+  save wsbg,albswg,tisi,                                        &
+   &   fm,grts,grtb,grice,grsnw,gricr,grasn,grvmp,grfrmp,       &
+   &   gfluxs,dgfds, dtfdt,dtfds,dqfds,dufdu,dqfdq,             &
+   &   wfluxs,sflxbl,swdn,ralbsw,albsw,rfsdpn,swpni,swpnr,      &
+   &   swdnw, swupw, lwdnw, lwupw, senfx, latfx,                &
+   &   swdnwg,swupwg,lwdnwg,lwupwg,senfxg,latfxg,swnetg,lwnetg
+#endif
   call clcstr('SFCFLX')
   
   if (ofirst) then
@@ -802,6 +809,9 @@ subroutine ocnslv_core ( &
   real(8) ::  hsnow ( nxydim )      !! snow depth [m]
   real(8) ::  hmp ( nxydim )        !! melt pond depth [m]
   real(8) ::  rp ( nxydim )         !! retaind melt water ratio [ND]
+#if defined(_OPENACC) || defined(GPU_DEBUG)
+  save grsnr,hsnow,hmp,rp
+#endif
 
   real(8) ::     esub, stg, drfds
   real(8) ::     sflux, gsflux, dgsfds
@@ -1087,7 +1097,9 @@ subroutine ocnbcs_core ( &
   real(8), intent(in)  :: gricr ( nxydim )      !! ice fraction
 
   real(8) :: grsnrf ( nxydim )      !! snow cover frac. for flux calc.
-
+#if defined(_OPENACC) || defined(GPU_DEBUG)
+  save grsnrf
+#endif
   integer ::     ij,     l,      m
   integer ::  ifpar,  jfpar
   integer ::    ifg
@@ -1417,9 +1429,10 @@ subroutine bdyflx( &
   real(8), save        ::    tbdy(nxydim, nzdim, ntdim) = 0.d0
   real(8), save        ::    tdmb(nxydim, nzdim, ntdim) = 0.d0
   logical, save ::  ofirst = .true.
+
   if (ofirst) then
      ofirst = .false.
-     !$acc enter data create(tbdy,tdmp)
+     !$acc enter data create(tbdy,tdmb)
   end if
   
 !  do l = 1, ntdim
@@ -1437,7 +1450,7 @@ subroutine bdyflx( &
        &            tdmb(1, 1, l), &
        &               n )
   end do
-  !$acc update device(tbdy,tdmp)
+  !$acc update device(tbdy,tdmb)
   
   !$acc kernels default(present)
 !  do l = 1, ntdim

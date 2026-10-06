@@ -52,7 +52,10 @@ subroutine chksfx
   real(8) :: ofvsfc(nxydim), ofsfdi(nxydim)
   integer ::     ij
   logical, save :: of=.true.
-
+#if defined(_OPENACC) || defined(GPU_DEBUG)
+  save ofithm, ofhfds, ofvsfc, ofsfdi
+#endif
+  
   call acc_enter_data
   if (of) then
      of=.false.

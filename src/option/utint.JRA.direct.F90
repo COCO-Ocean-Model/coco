@@ -110,7 +110,7 @@ contains
     real(8), save :: alon(nx0), alat(ny0)
     integer, save :: mask(nx0,ny0)=1
 
-#ifdef _OPENACC
+#if defined(_OPENACC) || defined(GPU_DEBUG)
     save data, direct
 #endif
 

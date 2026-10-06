@@ -141,8 +141,9 @@ subroutine ovtset( &
   end do
   !$acc enter data copyin(c0,c1,c2,c3,c4,c5,c6)
   !$acc enter data copyin(d0,d1,d2,d3,d4,d5,d6,d7,d8,d9)
-  !$acc enter data copyin(r,depth)
+  !$acc enter data copyin(depth)
   !$acc enter data copyin(gamma,ftzov)
+  !$acc update device(r)
   return
 
 end subroutine ovtset
@@ -175,7 +176,10 @@ subroutine ovturn( &
   real(8), save :: to(nxydim, nzdim, ntdim)
   logical, save :: ofirst = .true.
 ! common /work/ ttl, w2, conv, dzsig, lup, lov
-
+#if defined(_OPENACC) || defined(GPU_DEBUG)
+  save conv, cnvdep, dzsig, ttl,w2, n2,mld, dptmsig,dptsig, dzmsig,delb, lup,lov
+#endif
+  
   if (oinit .or. ofinal) then
      return
   end if

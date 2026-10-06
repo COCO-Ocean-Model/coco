@@ -1181,7 +1181,9 @@ contains
     character(len=7) :: cvnam
     character(len=32) :: cvmes
     logical, save :: of=.true.
-
+#if defined(_OPENACC) || defined(GPU_DEBUG)
+    save sigout
+#endif
     if(of) then
        !$acc enter data create(sigout, oscvtb)
        of=.false.
