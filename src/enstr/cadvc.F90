@@ -87,6 +87,10 @@ contains
 
     logical, save :: ofirst = .true.
 
+#if defined(_OPENACC) || defined(GPU_DEBUG)
+    save fuz,fvz, fuzu,fvzu, fuzd,fvzd, rz,rzm, div, hvbot,hvbotx
+#endif
+    
     if (oinit) then
        do k=1,nzdim
        do ij=1,nxydim

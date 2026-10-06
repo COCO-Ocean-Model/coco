@@ -103,6 +103,9 @@ contains
     real(8), save ::   h1(nxydim) 
     integer(4)  ::     ij,    ijk,      n
     logical     ::    oeof
+#if defined(_OPENACC) || defined(GPU_DEBUG)
+    save hxb
+#endif
 
     if (       ( myrank >= ijnode )                                   &
     &    .and. (.not. oinit) .and. (.not. ofinal)) return

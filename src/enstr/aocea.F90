@@ -207,7 +207,9 @@ subroutine ocean ( &
   real(8) ::     aig(nxydim),    hig(nxydim),    hsg(nxydim)
   real(8) ::     asg(nxydim),  frlvg(nxydim),   vmpg(nxydim)
   real(8) ::   frmpg(nxydim),   dsdg(nxydim),   dsbg(nxydim)
-
+#if defined(_OPENACC) || defined(GPU_DEBUG)
+  save ssfc, aig,hig,hsg,  asg,frlvg,vmpg, frmpg,dsdg,dsbg
+#endif
   integer ::     ij,      l
 
   if (oinit) then
@@ -850,6 +852,10 @@ subroutine nmlper( &
   real(8) :: vwteqg(inodes*jnodes)
   real(8) :: vwtreq, vwteqt, fwnml
 
+#if defined(_OPENACC) || defined(GPU_DEBUG)
+  save fwnmd, vwteqg
+#endif
+  
   integer ::    ij,      i,      j,      l
   integer :: ifpar,  jfpar,  istat
   logical, save :: ofirst = .true.

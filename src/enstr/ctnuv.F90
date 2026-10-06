@@ -73,7 +73,9 @@ subroutine tnduvd( &
   real(8) ::     vv(nxydim)
   real(8) ::  hvbot(nxydim)
   real(8) ::  dzsig(nxydim, nzdim)
-
+#if defined(_OPENACC) || defined(GPU_DEBUG)
+  save uu,uv,vv, hvbot, dzsig
+#endif
   integer ::     ij,      k
   integer ::  ifpar,  jfpar
   logical, save :: ofirst = .true.
