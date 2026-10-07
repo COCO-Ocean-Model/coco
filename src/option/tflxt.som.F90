@@ -60,7 +60,47 @@ module tflxt
   real(8), save :: ftyd(nxydim, nzdim, ntdim)
   real(8), save :: ftzd(nxydim, nzdim, ntdim)
 
-#if defined(_OPENACC) || defined(GPU_DEBUG)
+  public :: flxtrc, chkftx
+#ifdef OPT_BBL
+  public :: flxtrb
+#endif
+
+contains 
+subroutine flxtrc( &
+  &    adt,  diffz, &
+  &     tx,     hx, &
+#ifndef OPT_OFFLINE
+  &     ty,     hz, &
+#else
+  &     hz,     hc, &
+#endif
+  &     uy,     vy,      w,    ahv )
+
+  use bstbc
+  use ufile
+#ifdef OPT_IO_COCOMPI
+  use mpiio
+#else
+  use bgs3d
+#endif
+  use qckot
+  use bshft
+  implicit none
+#include "mpif.h"
+
+  real(8), intent(out)    ::    adt(nxydim, nzdim, ntdim)    
+  real(8), intent(out)    ::  diffz(nxydim, nzdim)
+  real(8), intent(inout)  ::     tx(nxydim, nzdim, ntdim)
+#ifdef OPT_OFFLINE
+  real(8)                 ::     ty(nxydim, nzdim, ntdim)
+  real(8), intent(in)     ::     hc(nxydim)
+#else
+  real(8), intent(in)     ::     ty(nxydim, nzdim, ntdim)
+#endif
+  real(8), intent(in)     ::     hx(nxydim),     hz(nxydim)
+  real(8), intent(in)     ::     uy(nxydim, nzdim),     vy(nxydim, nzdim)
+  real(8), intent(in)     ::      w(nxydim, nzdim),    ahv(nxydim, nzdim)
+
   real(8) ::    wzc(nxydim, nzdim),    rzm(nxydim, nzdim)
   real(8) :: fharmx(nxydim), fharmy(nxydim),   harm(nxydim)
   real(8) ::  hzbot(nxydim)
@@ -70,7 +110,10 @@ module tflxt
   real(8) ::  zdzdx(nxydim, nzdim),  zdzdy(nxydim, nzdim)
   real(8) ::  xdtdz(nxydim, nzdim, ntdim),  ydtdz(nxydim, nzdim, ntdim)
   real(8) ::  zdtdx(nxydim, nzdim, ntdim),  zdtdy(nxydim, nzdim, ntdim)
-
+#if defined(_OPENACC) || defined(GPU_DEBUG)
+  save wzc,rzm, fharmx,fharmy,harm, hzbot, dh,            &
+   &   xdzdx,ydzdy, zdzdx,zdzdy, xdtdz,ydtdz, zdtdx,zdtdy
+#endif
 ! --- for flux output
   real(8) ::   adt2(nxydim, nzdim, ntdim)    
   real(8) ::   adtd(nxydim, nzdim, ntdim)    
@@ -88,7 +131,11 @@ module tflxt
   real(8) ::  ftxis(nxydim, nzdim, ntdim)
   real(8) ::  ftyis(nxydim, nzdim, ntdim)
   real(8) ::  ftzis(nxydim, nzdim, ntdim)
-
+#if defined(_OPENACC) || defined(GPU_DEBUG)
+  save adt2, adtd, adtah, adtgm, adtis, ftx2, fty2, ftz2, ftxah, ftyah, &
+   &   ftxgm, ftygm, ftzgm, ftxis, ftyis, ftzis
+#endif
+  
 ! ---- spatially varying isopycnal diffusion coefficient
   real(8), save ::   ahh3d(nxydim, nzdim),  ahi3d(nxydim, nzdim)
   real(8), save ::   ahg3d(nxydim, nzdim) 
@@ -96,7 +143,9 @@ module tflxt
 !---- bolus velocity output (for CMIP6)
   real(8) :: ublsx(nxydim, nzdim), vblsy(nxydim, nzdim)
   real(8) :: ublsw(nxydim, nzdim), vblsw(nxydim, nzdim)
-
+#if defined(_OPENACC) || defined(GPU_DEBUG)
+  save ublsx, vblsy, ublsw, vblsw
+#endif
 !---- for second order moment
 !---- bug fix (save these variables)
   real(8), save ::  s0 (nxydim, nzdim, ntdim)
@@ -119,49 +168,73 @@ module tflxt
   real(8), save ::  vlmz(nxydim)
   real(8), save ::  alf(nxydim, nzdim), uv(nxydim, nzdim)
 
+  real(8) ::  s0m,    s1m,    s0p,    sxp
+  real(8) ::  alfq,   alf1,   alf1q
+  real(8) ::  u,      v,      tmp
+
+  real(8), save ::  eps,   sq3,   ci3,   tsiv
+
+  integer ::     ij,     k,      n,      i,     j
+  integer ::   ijlw,   ijlsw,  ijle
+  integer ::   ijln,   ijls
+  integer ::    kuu,     ku,     kd
+  integer ::  ifpar,  jfpar,  istat
+
+  logical, save :: ofirst = .true.,   oeof
+
+! for mixed layer eddy parameterization
   real(8) :: psigmx(nxydim, nzdim), psigmy(nxydim, nzdim)
   real(8) ::  xpsiy(nxydim, nzdim),  ypsix(nxydim, nzdim)
   real(8) ::  zpsix(nxydim, nzdim),  zpsiy(nxydim, nzdim)
   real(8) ::   igsy(nxydim, nzdim),   igsx(nxydim, nzdim)
-
-  !------ dnsgrd
-  real(8), save :: c0(nzdim), c1(nzdim), c2(nzdim)
-  real(8), save :: c3(nzdim), c4(nzdim), c5(nzdim), c6(nzdim)
-  real(8), save :: d0(nzdim), d1(nzdim), d2(nzdim), d3(nzdim), d4(nzdim)
-  real(8), save :: d5(nzdim), d6(nzdim), d7(nzdim), d8(nzdim), d9(nzdim)
-
-  real(8), save ::  cxpsy(nxydim), cypsx(nxydim) 
-  real(8), save ::  czpsx(nxydim), czpsy(nxydim)
-
-  real(8) ::      r(nxydim, nzdim)
-  real(8) ::   hmld(nxydim), hmld1(nxydim)
-  real(8) :: rmavez(nxydim), rmav1(nxydim)
-  real(8) ::  dzsig(nxydim, nzdim), dzmsig(nxydim, nzdim)
-  real(8) ::     zt(nxydim, nzdim),    ztm(nxydim, nzdim)
-  real(8) :: rsigth(nxydim, nzdim)
-  real(8) ::    nbv(nxydim),            lf(nxydim)
-  real(8) :: xpsiy1(nxydim, nzdim), ypsix1(nxydim, nzdim)
-  real(8) :: zpsix1(nxydim, nzdim), zpsiy1(nxydim, nzdim)
-  real(8) ::  zmld0(nxydim),         zhmld(nxydim, nzdim)
-  real(8) ::  hmldx(nxydim),         hmldy(nxydim)
-  real(8) :: xpsiyz(nxydim, nzdim), ypsixz(nxydim, nzdim)
-  integer ::   kmld(nxydim)
-
-  real(8) :: rmavdx(nxydim), rmavdy(nxydim)
-  real(8) ::   muzx(nxydim, nzdim),   muzy(nxydim, nzdim)
-
-  real(8) ::   dtdx(nxydim, nzdim, ntdim),   dtdy(nxydim, nzdim, ntdim)
-  real(8) ::  dtfdz(nxydim, nzdim, ntdim)
-#endif
-
-  public :: flxtrc, chkftx
-#ifdef OPT_BBL
-  public :: flxtrb
-#endif
-
-contains 
 #if defined(_OPENACC) || defined(GPU_DEBUG)
-  subroutine gpu_create_arr
+  save psigmx,psigmy, xpsiy,ypsix, zpsix,zpsiy, igsy,igsx
+#endif
+  real(8), save ::    ahb = 0.0d0
+  real(8), save ::    ahh = 0.0d0,    ahi = 0.0d0,    ahg = 0.0d0
+
+  namelist /nmdifb/ ahb
+  namelist /nmdifh/ ahh
+  namelist /nmdifi/ ahi
+  namelist /nmdifg/ ahg
+
+!---- 
+#ifdef OPT_IO_COCOMPI
+ integer :: mpi_fh
+ integer :: icread
+ integer (kind = mpi_offset_kind) :: disp
+#else
+  real(8) ::  buf3(nxg, nyg, nz)
+  real(8) ::  g3d(nxgdim, nygdim, nzdim)
+#endif
+
+!---- file name of isotropic diffusion and thickness diffusion
+  character(len=ncf) ::  cfahi = 'not-specified'
+  character(len=ncf) ::  cfahg = 'not-specified'
+  character(len= 16) ::  chead(64) 
+  integer :: iah = 0
+  integer :: nfahi, nfahg
+  namelist /nmcah/ cfahi, cfahg, iah
+
+!---- latitudinally varying GM diffusivity
+  integer, save ::  isvgm = -1
+  real(8), save ::  ahgno = 1.d7, nlats =  40.d0, nlatn =  50.d0
+  real(8), save ::  ahgso = 1.d7, slatn = -40.d0, slats = -50.d0
+  real(8) :: pi, lat
+  real(8) :: cort, omega
+
+  namelist /nmsvgm/ isvgm
+  namelist /nmdifn/ ahgno, nlats, nlatn
+  namelist /nmdifs/ ahgso, slatn, slats
+
+#ifdef OPT_BBL
+  real(8), save :: ahhbbl = 0.0d0
+
+  namelist /nmbbdh/ ahhbbl
+#endif
+
+  if (oinit) then
+#if defined(_OPENACC) || defined(GPU_DEBUG)
     !$acc enter data create(ftx,fty,ftz, ftxd,ftyd,ftzd)
     !$acc enter data create(wzc,    rzm)
     !$acc enter data create(fharmx, fharmy,   harm)
@@ -215,198 +288,6 @@ contains
     !$acc enter data create(xpsiy,  ypsix)
     !$acc enter data create(zpsix,  zpsiy)
     !$acc enter data create( igsy,   igsx)
-
-    !---
-    !$acc enter data create(c0,c1,c2,c3,c4,c5,c6)
-    !$acc enter data create(d0,d1,d2,d3,d4,d5,d6,d7,d8,d9)
-
-    !$acc enter data create(cxpsy, cypsx)
-    !$acc enter data create(czpsx, czpsy)
-
-    !$acc enter data create(r)
-    !$acc enter data create(   hmld, hmld1)
-    !$acc enter data create( rmavez, rmav1)
-    !$acc enter data create(  dzsig, dzmsig)
-    !$acc enter data create(     zt,    ztm)
-    !$acc enter data create( rsigth)
-    !$acc enter data create(    nbv,     lf)
-    !$acc enter data create( xpsiy1, ypsix1)
-    !$acc enter data create( zpsix1, zpsiy1)
-    !$acc enter data create(  zmld0,  zhmld)
-    !$acc enter data create(  hmldx,  hmldy)
-    !$acc enter data create( xpsiyz, ypsixz)
-    !$acc enter data create(  kmld)
-
-    !$acc enter data create( rmavdx, rmavdy)
-    !$acc enter data create(   muzx,   muzy)
-
-    !$acc enter data create(   dtdx,   dtdy)
-    !$acc enter data create(  dtfdz)
-    return
-  end subroutine gpu_create_arr
-#endif
-subroutine flxtrc( &
-  &    adt,  diffz, &
-  &     tx,     hx, &
-#ifndef OPT_OFFLINE
-  &     ty,     hz, &
-#else
-  &     hz,     hc, &
-#endif
-  &     uy,     vy,      w,    ahv )
-
-  use bstbc
-  use ufile
-#ifdef OPT_IO_COCOMPI
-  use mpiio
-#else
-  use bgs3d
-#endif
-  use qckot
-  use bshft
-  implicit none
-#include "mpif.h"
-
-  real(8), intent(out)    ::    adt(nxydim, nzdim, ntdim)    
-  real(8), intent(out)    ::  diffz(nxydim, nzdim)
-  real(8), intent(inout)  ::     tx(nxydim, nzdim, ntdim)
-#ifdef OPT_OFFLINE
-  real(8)                 ::     ty(nxydim, nzdim, ntdim)
-  real(8), intent(in)     ::     hc(nxydim)
-#else
-  real(8), intent(in)     ::     ty(nxydim, nzdim, ntdim)
-#endif
-  real(8), intent(in)     ::     hx(nxydim),     hz(nxydim)
-  real(8), intent(in)     ::     uy(nxydim, nzdim),     vy(nxydim, nzdim)
-  real(8), intent(in)     ::      w(nxydim, nzdim),    ahv(nxydim, nzdim)
-
-#if !defined(_OPENACC) && !defined(GPU_DEBUG)
-  real(8) ::    wzc(nxydim, nzdim),    rzm(nxydim, nzdim)
-  real(8) :: fharmx(nxydim), fharmy(nxydim),   harm(nxydim)
-  real(8) ::  hzbot(nxydim)
-  real(8) ::     dh(nxydim)
-
-  real(8) ::  xdzdx(nxydim, nzdim),  ydzdy(nxydim, nzdim)
-  real(8) ::  zdzdx(nxydim, nzdim),  zdzdy(nxydim, nzdim)
-  real(8) ::  xdtdz(nxydim, nzdim, ntdim),  ydtdz(nxydim, nzdim, ntdim)
-  real(8) ::  zdtdx(nxydim, nzdim, ntdim),  zdtdy(nxydim, nzdim, ntdim)
-
-! --- for flux output
-  real(8) ::   adt2(nxydim, nzdim, ntdim)    
-  real(8) ::   adtd(nxydim, nzdim, ntdim)    
-  real(8) ::  adtah(nxydim, nzdim, ntdim)    
-  real(8) ::  adtgm(nxydim, nzdim, ntdim)    
-  real(8) ::  adtis(nxydim, nzdim, ntdim)    
-  real(8) ::   ftx2(nxydim, nzdim, ntdim)
-  real(8) ::   fty2(nxydim, nzdim, ntdim)
-  real(8) ::   ftz2(nxydim, nzdim, ntdim)
-  real(8) ::  ftxah(nxydim, nzdim, ntdim)
-  real(8) ::  ftyah(nxydim, nzdim, ntdim)
-  real(8) ::  ftxgm(nxydim, nzdim, ntdim)
-  real(8) ::  ftygm(nxydim, nzdim, ntdim)
-  real(8) ::  ftzgm(nxydim, nzdim, ntdim)
-  real(8) ::  ftxis(nxydim, nzdim, ntdim)
-  real(8) ::  ftyis(nxydim, nzdim, ntdim)
-  real(8) ::  ftzis(nxydim, nzdim, ntdim)
-
-! ---- spatially varying isopycnal diffusion coefficient
-  real(8), save ::   ahh3d(nxydim, nzdim),  ahi3d(nxydim, nzdim)
-  real(8), save ::   ahg3d(nxydim, nzdim) 
-
-!---- bolus velocity output (for CMIP6)
-  real(8) :: ublsx(nxydim, nzdim), vblsy(nxydim, nzdim)
-  real(8) :: ublsw(nxydim, nzdim), vblsw(nxydim, nzdim)
-
-!---- for second order moment
-!---- bug fix (save these variables)
-  real(8), save ::  s0 (nxydim, nzdim, ntdim)=0.d0
-  real(8), save ::  sm (nxydim, nzdim, ntdim)=0.d0
-  real(8), save ::  sx (nxydim, nzdim, ntdim), sxx(nxydim, nzdim, ntdim)
-  real(8), save ::  sy (nxydim, nzdim, ntdim), syy(nxydim, nzdim, ntdim)
-  real(8), save ::  sz (nxydim, nzdim, ntdim), szz(nxydim, nzdim, ntdim)
-  real(8), save ::  sxy(nxydim, nzdim, ntdim), sxz(nxydim, nzdim, ntdim)
-  real(8), save ::  syz(nxydim, nzdim, ntdim)   
-
-  real(8), save ::  f0 (nxydim, nzdim)=0.d0
-  real(8), save ::  fm (nxydim, nzdim)=0.d0
-  real(8), save ::  fx (nxydim, nzdim)=0.d0, fxx(nxydim, nzdim)=0.d0
-  real(8), save ::  fy (nxydim, nzdim)=0.d0, fyy(nxydim, nzdim)=0.d0
-  real(8), save ::  fz (nxydim, nzdim)=0.d0, fzz(nxydim, nzdim)=0.d0
-  real(8), save ::  fxy(nxydim, nzdim)=0.d0, fxz(nxydim, nzdim)=0.d0
-  real(8), save ::  fyz(nxydim, nzdim)=0.d0
-
-  real(8), save ::  vlmx(nxydim, nzdim)=0.d0, vlmy(nxydim, nzdim)=0.d0
-  real(8), save ::  vlmz(nxydim)=0.d0
-  real(8), save ::  alf(nxydim, nzdim)=0.d0, uv(nxydim, nzdim)
-#endif
-  real(8) ::  s0m,    s1m,    s0p,    sxp
-  real(8) ::  alfq,   alf1,   alf1q
-  real(8) ::  u,      v,      tmp
-
-  real(8), save ::  eps,   sq3,   ci3,   tsiv
-
-  integer ::     ij,     k,      n,      i,     j
-  integer ::   ijlw,   ijlsw,  ijle
-  integer ::   ijln,   ijls
-  integer ::    kuu,     ku,     kd
-  integer ::  ifpar,  jfpar,  istat
-
-  logical, save :: ofirst = .true.,   oeof
-
-#if !defined(_OPENACC) && !defined(GPU_DEBUG)
-! for mixed layer eddy parameterization
-  real(8) :: psigmx(nxydim, nzdim), psigmy(nxydim, nzdim)
-  real(8) ::  xpsiy(nxydim, nzdim),  ypsix(nxydim, nzdim)
-  real(8) ::  zpsix(nxydim, nzdim),  zpsiy(nxydim, nzdim)
-  real(8) ::   igsy(nxydim, nzdim),   igsx(nxydim, nzdim)
-#endif
-
-  real(8), save ::    ahb = 0.0d0
-  real(8), save ::    ahh = 0.0d0,    ahi = 0.0d0,    ahg = 0.0d0
-
-  namelist /nmdifb/ ahb
-  namelist /nmdifh/ ahh
-  namelist /nmdifi/ ahi
-  namelist /nmdifg/ ahg
-
-!---- 
-#ifdef OPT_IO_COCOMPI
- integer :: mpi_fh
- integer :: icread
- integer (kind = mpi_offset_kind) :: disp
-#else
-  real(8) ::  buf3(nxg, nyg, nz)
-  real(8) ::  g3d(nxgdim, nygdim, nzdim)
-#endif
-
-!---- file name of isotropic diffusion and thickness diffusion
-  character(len=ncf) ::  cfahi = 'not-specified'
-  character(len=ncf) ::  cfahg = 'not-specified'
-  character(len= 16) ::  chead(64) 
-  integer :: iah = 0
-  integer :: nfahi, nfahg
-  namelist /nmcah/ cfahi, cfahg, iah
-
-!---- latitudinally varying GM diffusivity
-  integer, save ::  isvgm = -1
-  real(8), save ::  ahgno = 1.d7, nlats =  40.d0, nlatn =  50.d0
-  real(8), save ::  ahgso = 1.d7, slatn = -40.d0, slats = -50.d0
-  real(8) :: pi, lat
-  real(8) :: cort, omega
-
-  namelist /nmsvgm/ isvgm
-  namelist /nmdifn/ ahgno, nlats, nlatn
-  namelist /nmdifs/ ahgso, slatn, slats
-
-#ifdef OPT_BBL
-  real(8), save :: ahhbbl = 0.0d0
-
-  namelist /nmbbdh/ ahhbbl
-#endif
-
-  if (oinit) then
-#if defined(_OPENACC) || defined(GPU_DEBUG)
-     call gpu_create_arr
 #endif
 
 #ifdef OPT_OFFLINE
@@ -698,16 +579,14 @@ subroutine flxtrc( &
 #ifdef OPT_OFFLINE
   ty = tx
 #endif  
-#if defined(_OPENACC) || defined(GPU_DEBUG)
-  call dnsgrd(ty, tx, hz)
-#else
+
   call dnsgrd( &
      &  xdzdx,  ydzdy,  zdzdx,  zdzdy, &
      &  xdtdz,  ydtdz,  zdtdx,  zdtdy, &
      &  xpsiy,  ypsix, &
      &  zpsix,  zpsiy, &
      &     ty,     tx,     hz )
-#endif
+
 !$acc kernels default(present)
 !$omp parallel
 !$omp do
@@ -2544,16 +2423,14 @@ subroutine flxtrc( &
 end subroutine flxtrc
 
 ! *********************************************************************
-#if defined(_OPENACC) || defined(GPU_DEBUG)
-subroutine dnsgrd(ty, tx, hz)
-#else
+
 subroutine dnsgrd( &
   &  xdzdx,  ydzdy,  zdzdx,  zdzdy, &
   &  xdtdz,  ydtdz,  zdtdx,  zdtdy, &
   &  xpsiy,  ypsix, &
   &  zpsix,  zpsiy, &
   &     ty,     tx,     hz )
-#endif
+
   use bshft
   use qckot
   use ufile
@@ -2563,7 +2440,6 @@ subroutine dnsgrd( &
   real(8), intent(in)  ::     tx(nxydim, nzdim, ntdim)
   real(8), intent(in)  ::     hz(nxydim)
 
-#if !defined(_OPENACC) && !defined(GPU_DEBUG)
   real(8), intent(out) ::  xdzdx(nxydim, nzdim),  ydzdy(nxydim, nzdim)
   real(8), intent(out) ::  zdzdx(nxydim, nzdim),  zdzdy(nxydim, nzdim)
   real(8), intent(out) ::  xdtdz(nxydim, nzdim, ntdim)
@@ -2580,14 +2456,13 @@ subroutine dnsgrd( &
   
   real(8), save ::  cxpsy(nxydim), cypsx(nxydim)
   real(8), save ::  czpsx(nxydim), czpsy(nxydim)
-#endif
+
   real(8), save :: eps = 1.d-20
   logical, save :: ofirst = .true., ofirst2 = .true.
   integer, save ::  kzmin
 
   real(8), save :: r2taum
   
-#if !defined(_OPENACC) && !defined(GPU_DEBUG)
   real(8) ::      r(nxydim, nzdim)
   real(8) ::   hmld(nxydim), hmld1(nxydim)
   real(8) :: rmavez(nxydim), rmav1(nxydim)
@@ -2607,6 +2482,11 @@ subroutine dnsgrd( &
 
   real(8) ::   dtdx(nxydim, nzdim, ntdim),   dtdy(nxydim, nzdim, ntdim)
   real(8) ::  dtfdz(nxydim, nzdim, ntdim)
+#if defined(_OPENACC) || defined(GPU_DEBUG)
+  save r, hmld,hmld1, rmavez,rmav1, dzsig,dzmsig, zt,ztm, rsigth, &
+   &   nbv,lf, xpsiy1,ypsix1, zpsix1,zpsiy1, zmld0,zhmld,         &
+   &   hmldx,hmldy, xpsiyz,ypsixz, kmld, rmavdx,rmavdy,           &
+   &   muzx,muzy, dtdx,dtdy, dtfdz
 #endif
   real(8) ::     p1,     p2
   real(8) ::     tl,     sl
@@ -2635,6 +2515,32 @@ subroutine dnsgrd( &
     &               drsig, ocoamp, ofltrm, nfltrm, omlep
 
   if (ofirst) then
+    !$acc enter data create(c0,c1,c2,c3,c4,c5,c6)
+    !$acc enter data create(d0,d1,d2,d3,d4,d5,d6,d7,d8,d9)
+
+    !$acc enter data create(cxpsy, cypsx)
+    !$acc enter data create(czpsx, czpsy)
+
+    !$acc enter data create(r)
+    !$acc enter data create(   hmld, hmld1)
+    !$acc enter data create( rmavez, rmav1)
+    !$acc enter data create(  dzsig, dzmsig)
+    !$acc enter data create(     zt,    ztm)
+    !$acc enter data create( rsigth)
+    !$acc enter data create(    nbv,     lf)
+    !$acc enter data create( xpsiy1, ypsix1)
+    !$acc enter data create( zpsix1, zpsiy1)
+    !$acc enter data create(  zmld0,  zhmld)
+    !$acc enter data create(  hmldx,  hmldy)
+    !$acc enter data create( xpsiyz, ypsixz)
+    !$acc enter data create(  kmld)
+
+    !$acc enter data create( rmavdx, rmavdy)
+    !$acc enter data create(   muzx,   muzy)
+
+    !$acc enter data create(   dtdx,   dtdy)
+    !$acc enter data create(  dtfdz)
+
      ofirst = .false.
      READ_NAMELIST( nmslpm )
      READ_NAMELIST( nmmlep )
