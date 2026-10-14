@@ -116,20 +116,6 @@ contains
        write(jfpar, *) '*** read initial condition file ***'
     end if
 
-    tb    = 0.d0
-    ft    = 0.d0
-    swabs = 0.d0
-    fs    = 0.d0
-    taux  = 0.d0
-    tauy  = 0.d0
-    amv   = 0.d0
-    ahv   = 0.d0
-    ptop  = 0.d0
-    tsi   = dtds * si
-    hib   = 0.d0
-    hsb   = 0.d0
-    tib   = -0.1d0
-
     if (myrank /= iroot ) then
        allocate ( buf2(1,1) )
        allocate ( buf3(1,1,1) )
@@ -146,6 +132,7 @@ contains
        allocate ( gid(nxgdim,nygdim,0:nic) )
     end if
 
+    ub = 0.d0
     if ( myrank == iroot ) then
        rewind(nfinit)
        read(nfinit, end=109) chead
@@ -161,6 +148,7 @@ contains
     end if
     call scatter_3d(ub, g3d)
 
+    vb = 0.d0
     if ( myrank == iroot ) then
        read(nfinit, end=119) chead
        read(nfinit) buf3
@@ -174,7 +162,8 @@ contains
 119    continue
     end if
     call scatter_3d(vb, g3d)
-    
+
+    tb(:,:,:,1)=0.d0
     if ( myrank == iroot ) then
        read(nfinit, end=129) chead
        read(nfinit) buf3
@@ -188,7 +177,8 @@ contains
  129     continue
     end if
     call scatter_3d(tb, g3d)
-      
+
+    tb(:,:,:,2)=0.d0
     if ( myrank == iroot ) then
        read(nfinit, end=139) chead
        read(nfinit) buf3
@@ -203,6 +193,7 @@ contains
     end if
     call scatter_3d(tb(1, 1, 1, 2), g3d)
 
+    hb = 0.d0
     if ( myrank == iroot ) then
        read(nfinit, end=141) chead
        read(nfinit) buf2
@@ -214,7 +205,8 @@ contains
 141    continue
     end if
     call scatter_2d(hb, g2d)
-    
+
+    ubtb = 0.d0
     if ( myrank == iroot ) then
        read(nfinit, end=143) chead
        read(nfinit) buf2
@@ -227,6 +219,7 @@ contains
     end if
     call scatter_2d(ubtb, g2d)
 
+    vbtb = 0.d0
     if ( myrank == iroot ) then
        read(nfinit, end=145) chead
        read(nfinit) buf2
@@ -239,6 +232,7 @@ contains
     end if
     call scatter_2d(vbtb, g2d)
 
+    w = 0.d0
     if ( myrank == iroot ) then
        read(nfinit, end=159) chead
        read(nfinit) buf3
@@ -253,6 +247,7 @@ contains
     end if
     call scatter_3d(w, g3d)
 
+    ab = 0.d0
     if ( myrank == iroot ) then
        read(nfinit, end=301) chead
        read(nfinit) bufi
@@ -266,7 +261,8 @@ contains
 301    continue
     end if
     call scatter_id(ab, gid)
-    
+
+    hib = 0.d0
     if ( myrank == iroot ) then
        read(nfinit, end=311) chead
        read(nfinit) bufi
@@ -281,6 +277,7 @@ contains
     end if
     call scatter_id(hib, gid)
 
+    uib = 0.d0
     if ( myrank == iroot ) then
        read(nfinit, end=321) chead
        read(nfinit) buf2
@@ -293,6 +290,7 @@ contains
     end if
     call scatter_2d(uib, g2d)
 
+    vib = 0.d0
     if ( myrank == iroot ) then
        read(nfinit, end=331) chead
        read(nfinit) buf2
@@ -305,6 +303,7 @@ contains
     end if
     call scatter_2d(vib, g2d)
 
+    tib = -0.1d0
     if ( myrank == iroot ) then
        read(nfinit, end=336) chead
        read(nfinit) bufi
@@ -319,6 +318,7 @@ contains
     end if
     call scatter_id(tib, gid)
 
+    hsb = 0.d0
     if ( myrank == iroot ) then
        read(nfinit, end=341) chead
        read(nfinit) bufi
@@ -332,7 +332,8 @@ contains
 341    continue
     end if
     call scatter_id(hsb, gid)
-    
+
+    ft(:,:,1)=0.d0
     if ( myrank == iroot ) then
        read(nfinit, end=189) chead
        read(nfinit) buf2
@@ -344,7 +345,8 @@ contains
 189    continue
     end if
     call scatter_2d(ft, g2d)
-    
+
+    swabs = 0.d0
     if ( myrank == iroot ) then
        read(nfinit, end=401) chead
        read(nfinit) buf2
@@ -357,6 +359,7 @@ contains
     end if
     call scatter_2d(swabs, g2d)
 
+    ft(:,:,2)=0.d0
     if ( myrank == iroot ) then
        read(nfinit, end=199) chead
        read(nfinit) buf2
@@ -368,7 +371,8 @@ contains
 199    continue
     end if
     call scatter_2d(ft(1, 1, 2), g2d)
-    
+
+    fs = 0.d0
     if ( myrank == iroot ) then
        read(nfinit, end=411) chead
        read(nfinit) buf2
@@ -381,6 +385,7 @@ contains
     end if
     call scatter_2d(fs, g2d)
 
+    taux = 0.d0
     if ( myrank == iroot ) then
        read(nfinit, end=421) chead
        read(nfinit) buf2
@@ -393,6 +398,7 @@ contains
     end if
     call scatter_2d(taux, g2d)
 
+    tauy = 0.d0
     if ( myrank == iroot ) then
        read(nfinit, end=431) chead
        read(nfinit) buf2
@@ -405,6 +411,7 @@ contains
     end if
     call scatter_2d(tauy, g2d)
 
+    amv = 0.d0
     if ( myrank == iroot ) then
        read(nfinit, end=169) chead
        read(nfinit) buf3
@@ -419,6 +426,7 @@ contains
     end if
     call scatter_3d(amv, g3d)
 
+    ahv = 0.d0
     if ( myrank == iroot ) then
        read(nfinit, end=179) chead
        read(nfinit) buf3
@@ -433,6 +441,7 @@ contains
     end if
     call scatter_3d(ahv, g3d)
 
+    ptop = 0.d0
     if ( myrank == iroot ) then
        read(nfinit, end=441) chead
        read(nfinit) buf2
@@ -445,6 +454,7 @@ contains
     end if
     call scatter_2d(ptop, g2d)
 
+    tsi = dtds * si
     if ( myrank == iroot ) then
        read(nfinit, end=451) chead
        read(nfinit) bufi
@@ -460,6 +470,7 @@ contains
     call scatter_id(tsi, gid)
 
     do l = 3, ntdim
+       tb(:,:,:,l)=0.d0
        if ( myrank == iroot ) then
           read(nfinit, end=209) chead
           read(nfinit) buf3
@@ -476,6 +487,7 @@ contains
     end do
 
     do l = 3, ntdim
+       ft(:,:,l)=0.d0
        if ( myrank == iroot ) then
           read(nfinit, end=219) chead
           read(nfinit) buf2
