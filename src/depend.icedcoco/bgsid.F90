@@ -1,3 +1,9 @@
+#ifdef OPT_IO_COCOMPI
+subroutine dummyi
+  return
+end subroutine dummyi
+
+#else
 module bgsid
 ! --- information -----------------------------------------------------
 !
@@ -175,3 +181,4 @@ contains
  return
  end  subroutine scatter_id
 end module bgsid
+#endif

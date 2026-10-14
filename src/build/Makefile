@@ -30,7 +30,7 @@ SRCS_icedcoco = \
 	aocea.F90 \
 	aprdc.F90 \
 	bfrch.F90 \
-	bgsid$(MPI).F90 \
+	bgsid.F90 \
 	binst.F90 \
 	brstt$(MPI).F90 \
 	cadvc.F90 \
