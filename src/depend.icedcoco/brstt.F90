@@ -95,10 +95,9 @@ contains
     real(8),   intent(inout)  ::   ptop(nxdim, nydim)
 
 !---- local varibles
-    real(8)           ::     tt,    ttt
+    real(8)           ::    ttt
     real(8),    save  ::     si
     character(len=16) ::  cdate
-    integer(4)        ::  ixdim,  jydim,  kzdim
     integer(4)        ::      i,      j,      k,      l
     integer(4), save  ::  ifpar,  jfpar,  istat
     integer(4), save  :: irstrt,   ierr
@@ -424,348 +423,39 @@ contains
        chead(62) = chead(60)
     end if
 
-    call gather_3d(g3d, ub)
-    if ( myrank == iroot ) then
-       do k = 1, nz
-          do j = 1, nyg
-             do i = 1, nxg
-                buf3(i, j, k) = g3d(igstr+i-1, jgstr+j-1, kstr+k-1)
-             end do
-          end do
-       end do
-       call edhead('UO', 'ocean zonal velocity', 'cm/s', 'OCLVTV')
-       write(nfrest) chead
-       write(nfrest) buf3
-    end if
-    
-    call gather_3d(g3d, vb)
-    if ( myrank == iroot ) then
-       do k = 1, nz
-          do j = 1, nyg
-             do i = 1, nxg
-                buf3(i, j, k) = g3d(igstr+i-1, jgstr+j-1, kstr+k-1)
-             end do
-          end do
-       end do
-       call edhead('VO', 'ocean meridional velocity', 'cm/s', 'OCLVTV')
-       write(nfrest) chead
-       write(nfrest) buf3
-    end if
-
-    call gather_3d(g3d, tb)
-    if ( myrank == iroot ) then
-       do k = 1, nz
-          do j = 1, nyg
-             do i = 1, nxg
-                buf3(i, j, k) = g3d(igstr+i-1, jgstr+j-1, kstr+k-1)
-             end do
-          end do
-       end do
-       call edhead('TO', 'ocean temperature', 'degC', 'OCLVTT')
-       write(nfrest) chead
-       write(nfrest) buf3
-    end if
-    
-    call gather_3d(g3d, tb(1, 1, 1, 2))
-    if ( myrank == iroot ) then
-       do k = 1, nz
-          do j = 1, nyg
-             do i = 1, nxg
-                buf3(i, j, k) = g3d(igstr+i-1, jgstr+j-1, kstr+k-1)
-             end do
-          end do
-       end do
-       call edhead('SO', 'ocean salinity', 'psu', 'OCLVTT')
-       write(nfrest) chead
-       write(nfrest) buf3
-    end if
-    
-    call gather_2d(g2d, hb)
-    if ( myrank == iroot ) then
-       do j = 1, nyg
-          do i = 1, nxg
-             buf2(i, j) = g2d(igstr+i-1, jgstr+j-1)
-          end do
-       end do
-       call edhead('SHO', 'sea surface height', 'cm', 'OCSFCT' )
-       write(nfrest) chead
-       write(nfrest) buf2
-    end if
-
-    call gather_2d(g2d, ubtb)
-    if ( myrank == iroot ) then
-       do j = 1, nyg
-          do i = 1, nxg
-             buf2(i, j) = g2d(igstr+i-1, jgstr+j-1)
-          end do
-       end do
-       call edhead('UBTO', 'ocean zonal transport', 'cm^2/s', 'OCSFCV')
-       write(nfrest) chead
-       write(nfrest) buf2
-    end if
-    
-    call gather_2d(g2d, vbtb)
-    if ( myrank == iroot ) then
-       do j = 1, nyg
-          do i = 1, nxg
-             buf2(i, j) = g2d(igstr+i-1, jgstr+j-1)
-          end do
-       end do
-       call edhead('VBTO', 'ocean meridional transport', 'cm^2/s', 'OCSFCV')
-       write(nfrest) chead
-       write(nfrest) buf2
-    end if
-    
-    call gather_3d(g3d, w)
-    if ( myrank == iroot ) then
-       do k = 1, nz
-          do j = 1, nyg
-             do i = 1, nxg
-                buf3(i, j, k) = g3d(igstr+i-1, jgstr+j-1, kstr+k-1)
-             end do
-          end do
-       end do
-       call edhead('WO', 'ocean vertical velocity', 'cm/s', 'OCLVMT')
-       write(nfrest) chead
-       write(nfrest) buf3
-    end if
-    
-    call gather_id(gid, ab)
-    if ( myrank == iroot ) then
-       do k = 1, nic
-          do j = 1, nyg
-             do i = 1, nxg
-                bufi(i, j, k) = gid(igstr+i-1, jgstr+j-1, k)
-             end do
-          end do
-       end do
-       call edhead('AI', 'ice concentration', 'N.D.', 'OCICET')
-       write(nfrest) chead
-       write(nfrest) bufi
-    end if
-    
-    call gather_id(gid, hib)
-    if ( myrank == iroot ) then
-       do k = 1, nic
-          do j = 1, nyg
-             do i = 1, nxg
-                bufi(i, j, k) = gid(igstr+i-1, jgstr+j-1, k)
-             end do
-          end do
-       end do
-       call edhead('HI', 'ice thickness', 'cm', 'OCICET')
-       write(nfrest) chead
-       write(nfrest) bufi
-    end if
-    
-    call gather_2d(g2d, uib)
-    if ( myrank == iroot ) then
-       do j = 1, nyg
-          do i = 1, nxg
-             buf2(i, j) = g2d(igstr+i-1, jgstr+j-1)
-          end do
-       end do
-       call edhead('UI', 'ice zonal velocity', 'cm/s', 'OCSFCV')
-       write(nfrest) chead
-       write(nfrest) buf2
-    end if
-    
-    call gather_2d(g2d, vib)
-    if ( myrank == iroot ) then
-       do j = 1, nyg
-          do i = 1, nxg
-             buf2(i, j) = g2d(igstr+i-1, jgstr+j-1)
-          end do
-       end do
-       call edhead('VI', 'ice meridional velocity', 'cm/s', 'OCSFCV')
-       write(nfrest) chead
-       write(nfrest) buf2
-    end if
-    
-    call gather_id(gid, tib)
-    if ( myrank == iroot ) then
-       do k = 1, nic
-          do j = 1, nyg
-             do i = 1, nxg
-                bufi(i, j, k) = gid(igstr+i-1, jgstr+j-1, k)
-             end do
-          end do
-       end do
-       call edhead('TI', 'ice temperature', 'degC', 'OCICET')
-       write(nfrest) chead
-       write(nfrest) bufi
-    end if
-    
-    call gather_id(gid, hsb)
-    if ( myrank == iroot ) then
-       do k = 1, nic
-          do j = 1, nyg
-             do i = 1, nxg
-                bufi(i, j, k) = gid(igstr+i-1, jgstr+j-1, k)
-             end do
-          end do
-       end do
-       call edhead('HS', 'snow thickness', 'cm', 'OCICET')
-       write(nfrest) chead
-       write(nfrest) bufi
-    end if
-    
-    call gather_2d(g2d, ft)
-    if ( myrank == iroot ) then
-       do j = 1, nyg
-          do i = 1, nxg
-             buf2(i, j) = g2d(igstr+i-1, jgstr+j-1)
-          end do
-       end do
-       call edhead('FT', 'sea surface temperature flux', 'K cm/s', 'OCSFCT')
-       write(nfrest) chead
-       write(nfrest) buf2
-    end if
-    
-    call gather_2d(g2d, swabs)
-    if ( myrank == iroot ) then
-       do j = 1, nyg
-          do i = 1, nxg
-             buf2(i, j) = g2d(igstr+i-1, jgstr+j-1)
-          end do
-       end do
-       call edhead('SWABS', 'absorbed shortwave', 'erg/cm^2/s', 'OCSFCT')
-       write(nfrest) chead
-       write(nfrest) buf2
-    end if
-    
-    call gather_2d(g2d, ft(1, 1, 2))
-    if ( myrank == iroot ) then
-       do j = 1, nyg
-          do i = 1, nxg
-             buf2(i, j) = g2d(igstr+i-1, jgstr+j-1)
-          end do
-       end do
-       call edhead('FW', 'sea surface freshwater flux', 'cm/s', 'OCSFCT')
-       write(nfrest) chead
-       write(nfrest) buf2
-    end if
-    
-    call gather_2d(g2d, fs)
-    if ( myrank == iroot ) then
-       do j = 1, nyg
-          do i = 1, nxg
-             buf2(i, j) = g2d(igstr+i-1, jgstr+j-1)
-          end do
-       end do
-       call edhead('FS', 'sea surface salinity flux', 'psu cm/s', 'OCSFCT')
-       write(nfrest) chead
-       write(nfrest) buf2
-    end if
-
-    call gather_2d(g2d, taux)
-    if ( myrank == iroot ) then
-       do j = 1, nyg
-          do i = 1, nxg
-             buf2(i, j) = g2d(igstr+i-1, jgstr+j-1)
-          end do
-       end do
-       call edhead('TAUX', 'zonal wind stress', 'dyn/cm^2', 'OCSFCV')
-       write(nfrest) chead
-       write(nfrest) buf2
-    end if
-
-    call gather_2d(g2d, tauy)
-    if ( myrank == iroot ) then
-       do j = 1, nyg
-          do i = 1, nxg
-             buf2(i, j) = g2d(igstr+i-1, jgstr+j-1)
-          end do
-       end do
-       call edhead('TAUY', 'meridional wind stress', 'dyn/cm^2', 'OCSFCV')
-       write(nfrest) chead
-       write(nfrest) buf2
-    end if
-    
-    call gather_3d(g3d, amv)
-    if ( myrank == iroot ) then
-       do k = 1, nz
-          do j = 1, nyg
-             do i = 1, nxg
-                buf3(i, j, k) = g3d(igstr+i-1, jgstr+j-1, kstr+k-1)
-             end do
-          end do
-       end do
-       call edhead('AMV', 'ocean vertical viscosity', 'cm^2/s', 'OCLVMV')
-       write(nfrest) chead
-       write(nfrest) buf3
-    end if
-    
-    call gather_3d(g3d, ahv)
-    if ( myrank == iroot ) then
-       do k = 1, nz
-          do j = 1, nyg
-             do i = 1, nxg
-                buf3(i, j, k) = g3d(igstr+i-1, jgstr+j-1, kstr+k-1)
-             end do
-          end do
-       end do
-       call edhead('AHV', 'ocean vertical diffusivity', 'cm^2/s', 'OCLVMT')
-       write(nfrest) chead
-       write(nfrest) buf3
-    end if
-    
-    call gather_2d(g2d, ptop)
-    if ( myrank == iroot ) then
-       do j = 1, nyg
-          do i = 1, nxg
-             buf2(i, j) = g2d(igstr+i-1, jgstr+j-1)
-          end do
-       end do
-       call edhead('PTOP', 'sea surface presssure (inc. sea ice)', 'dyn/cm^2', 'OCSFCT')
-       write(nfrest) chead
-       write(nfrest) buf2
-    end if
-    
-    call gather_id(gid, tsi)
-    if ( myrank == iroot ) then
-       do k = 1, nic
-          do j = 1, nyg
-             do i = 1, nxg
-                bufi(i, j, k) = gid(igstr+i-1, jgstr+j-1, k)
-             end do
-          end do
-       end do
-       call edhead('TSI', 'sea ice surface temperature', 'degC', 'OCICET')
-       write(nfrest) chead
-       write(nfrest) bufi
-    end if
+    call finadd(ub,          nxdim, nydim, nzdim, 'UO',   'OCN', 'ocean zonal velocity',                 'cm/s',       'OCLVTV')
+    call finadd(vb,          nxdim, nydim, nzdim, 'VO',   'OCN', 'ocean meridional velocity',            'cm/s',       'OCLVTV')
+    call finadd(tb,          nxdim, nydim, nzdim, 'TO',   'OCN', 'ocean temperature',                    'degC',       'OCLVTT')
+    call finadd(tb(1,1,1,2), nxdim, nydim, nzdim, 'SO',   'OCN', 'ocean salinity',                       'psu',        'OCLVTT')
+    call finadd(hb,          nxdim, nydim,     1, 'SHO',  'SFC', 'sea surface height',                   'cm',         'OCSFCT')
+    call finadd(ubtb,        nxdim, nydim,     1, 'UBTO', 'SFC', 'ocean zonal transport',                'cm^2/s',     'OCSFCV')
+    call finadd(vbtb,        nxdim, nydim,     1, 'VBTO', 'SFC', 'ocean meridional transport',           'cm^2/s',     'OCSFCV')
+    call finadd(w,           nxdim, nydim, nzdim, 'WO',   'OCN', 'ocean vertical velocity',              'cm/s',       'OCLVMT')
+    call finadd(ab,          nxdim, nydim, nic+1, 'AI',   'ICE', 'ice concentration',                    'N.D.',       'OCICET')
+    call finadd(hib,         nxdim, nydim, nic+1, 'HI',   'ICE', 'ice thickness',                        'cm',         'OCICET')
+    call finadd(uib,         nxdim, nydim,     1, 'UI',   'SFC', 'ice zonal velocity',                   'cm/s',       'OCSFCV')
+    call finadd(vib,         nxdim, nydim,     1, 'VI',   'SFC', 'ice meridional velocity',              'cm/s',       'OCSFCV')
+    call finadd(tib,         nxdim, nydim, nic+1, 'TI',   'ICE', 'ice temperature',                      'degC',       'OCICET')
+    call finadd(hsb,         nxdim, nydim, nic+1, 'HS',   'ICE', 'snow thickness',                       'cm',         'OCICET')
+    call finadd(ft,          nxdim, nydim,     1, 'FT',   'SFC', 'sea surface temperature flux',         'K cm/s',     'OCSFCT')
+    call finadd(swabs,       nxdim, nydim,     1, 'SWABS','SFC', 'absorbed shortwave',                   'erg/cm^2/s', 'OCSFCT')
+    call finadd(ft(1,1,2),   nxdim, nydim,     1, 'FW',   'SFC', 'sea surface freshwater flux',          'cm/s',       'OCSFCT')
+    call finadd(fs,          nxdim, nydim,     1, 'FS',   'SFC', 'sea surface salinity flux',            'psu cm/s',   'OCSFCT')
+    call finadd(taux,        nxdim, nydim,     1, 'TAUX', 'SFC', 'zonal wind stress',                    'dyn/cm^2',   'OCSFCV')
+    call finadd(tauy,        nxdim, nydim,     1, 'TAUY', 'SFC', 'meridional wind stress',               'dyn/cm^2',   'OCSFCV')
+    call finadd(amv,         nxdim, nydim, nzdim, 'AMV',  'OCN', 'ocean vertical viscosity',             'cm^2/s',     'OCLVMV')
+    call finadd(ahv,         nxdim, nydim, nzdim, 'AHV',  'OCN', 'ocean vertical diffusivity',           'cm^2/s',     'OCLVMT')
+    call finadd(ptop,        nxdim, nydim,     1, 'PTOP', 'SFC', 'sea surface presssure (inc. sea ice)', 'dyn/cm^2',   'OCSFCT')
+    call finadd(tsi,         nxdim, nydim, nic+1, 'TSI',  'ICE', 'sea ice surface temperature',          'degC',       'OCICET')
     
     do l = 3, ntdim
-       call gather_3d(g3d, tb(1, 1, 1, l))
-       if ( myrank == iroot ) then
-          do k = 1, nz
-             do j = 1, nyg
-                do i = 1, nxg
-                   buf3(i, j, k) = g3d(igstr+i-1, jgstr+j-1, kstr+k-1)
-                end do
-             end do
-          end do
-          write(citem, '(a,i2.2)') 'TRACER', l
-          call edhead(citem, '', '', 'OCLVTT')
-          write(nfrest) chead
-          write(nfrest) buf3
-       end if
+       write(citem, '(a,i2.2)') 'TRACER', l
+       call finadd(tb(1,1,1,l), nxdim, nydim, nzdim, citem, 'OCN', '', '', 'OCLVTT')
     end do
       
     do l = 3, ntdim
-       call gather_2d(g2d, ft(1, 1, l))
-       if ( myrank == iroot ) then
-          do j = 1, nyg
-             do i = 1, nxg
-                buf2(i, j) = g2d(igstr+i-1, jgstr+j-1)
-             end do
-          end do
-          write(citem, '(a,i2.2)') 'TRCFLX', l
-          call edhead(citem, '', '', 'OCSFCT')
-          write(nfrest) chead
-          write(nfrest) buf2
-       end if
+       write(citem, '(a,i2.2)') 'TRCFLX', l
+       call finadd(ft(1,1,l),   nxdim, nydim,     1, citem, 'SFC', '', '', 'OCSFCT')
     end do
     
     if ( myrank == iroot ) then
@@ -781,7 +471,7 @@ contains
 
   subroutine finadd(                                                  &
     &             additm,  ixdim,  jydim,  kzdim,                     &
-    &             ccitem,   clas  ) 
+    &             ccitem,   clas,  htitl,  hunit,  cclas) 
 
     use zocdim,   only  :                                             &
     &      igstr,  jgstr,   kstr,                                     &
@@ -797,22 +487,41 @@ contains
     integer(4),   intent(in)     ::   ixdim,  jydim,  kzdim
     real(8),      intent(inout)  ::  additm(ixdim, jydim, kzdim)
     character(*), intent(in)     ::  ccitem,   clas
+    character(*), intent(in), optional ::  htitl,  hunit, cclas
 
 !---- local variables
     integer(4)   ::     i,     j,     k
     
-    chead(3) = ccitem
-    write(chead(14), '(16x)')
-    write(chead(15), '(16x)')
-    write(chead(16), '(16x)')
+
+    if(present(htitl)) then
+       call edhead(ccitem, htitl, hunit, cclas)
+    else
+       chead(3) = ccitem
+       write(chead(14), '(16x)')
+       write(chead(15), '(16x)')
+       write(chead(16), '(16x)')
 
 #ifdef OPT_TRIPOLE
-    write(chead(29), '(a,i0)') 'OCLONTPT', nxg
-    write(chead(32), '(a,i0)') 'OCLATTPT', nyg
+       write(chead(29), '(a,i0)') 'OCLONTPT', nxg
+       write(chead(32), '(a,i0)') 'OCLATTPT', nyg
 #else
-    write(chead(29), '(i15,a1)') nxg, 'X'
-    write(chead(32), '(i15,a1)') nyg, 'Y'
+       write(chead(29), '(i15,a1)') nxg, 'X'
+       write(chead(32), '(i15,a1)') nyg, 'Y'
 #endif
+       if ( clas(1:3) == 'OCN' ) then
+          write(chead(35), '(a,i0)') 'OCDEPT', nz
+          write(chead(37), '(i16)') nz
+          write(chead(64), '(i16)') nxyzg
+       else if ( clas(1:3) == 'ICE' ) then
+          write(chead(35), '(a)') 'NUMBER1000'
+          write(chead(37), '(i16)') nic
+          write(chead(64), '(i16)') nxyg*nic
+       else
+          write(chead(35), '(a)') 'SFC1'
+          write(chead(37), '(i16)') 1
+          write(chead(64), '(i16)') nxyg
+       end if
+    end if
 
     if ( clas(1:3) == 'OCN' ) then
        call gather_3d(g3d, additm)
@@ -824,9 +533,6 @@ contains
                 end do
              end do
           end do
-          write(chead(35), '(a,i0)') 'OCDEPT', nz
-          write(chead(37), '(i16)') nz
-          write(chead(64), '(i16)') nxyzg
           write(nfrest) chead
           write(nfrest) buf3
        end if
@@ -840,9 +546,6 @@ contains
                 end do
              end do
           end do
-          write(chead(35), '(a)') 'NUMBER1000'
-          write(chead(37), '(i16)') nic
-          write(chead(64), '(i16)') nxyg*nic
           write(nfrest) chead
           write(nfrest) bufi
        end if
@@ -854,14 +557,10 @@ contains
                 buf2(i, j) = g2d(igstr+i-1, jgstr+j-1)
              end do
           end do
-          write(chead(35), '(a)') 'SFC1'
-          write(chead(37), '(i16)') 1
-          write(chead(64), '(i16)') nxyg
           write(nfrest) chead
           write(nfrest) buf2
        end if
     end if
-    
   end subroutine finadd
 
   subroutine edhead(                 &
