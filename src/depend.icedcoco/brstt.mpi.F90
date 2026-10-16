@@ -405,118 +405,42 @@ contains
     call date_and_time(hdate, htime, hzone, ivalues)
     write(chead(60), '(i4.4,2i2.2,1x,3i2.2,1x)') ivalues(1:3), ivalues(5:7)
     chead(62) = chead(60)
-    !$acc update self(ub, vb, tb, hb,ubtb, vbtb, w, ab, hib, uib, vib, tib, hsb, ft, swabs, fs)
-    !$acc update self(taux, tauy, amv, ahv, ptop, tsi)
-    call edhead('UO', 'ocean zonal velocity', 'cm/s', 'OCLVTV')
-    call mpi_write_header(chead, mpi_fh_w, dispw)
-    call mpi_write_3d(ub, mpi_fh_w,dispw)    
-    
-    call edhead('VO', 'ocean meridional velocity', 'cm/s', 'OCLVTV')
-    call mpi_write_header(chead, mpi_fh_w, dispw)
-    call mpi_write_3d(vb, mpi_fh_w,dispw)    
 
-    call edhead('TO', 'ocean temperature', 'degC', 'OCLVTT')
-    call mpi_write_header(chead, mpi_fh_w, dispw)
-    call mpi_write_3d(tb, mpi_fh_w,dispw)    
-
-    call edhead('SO', 'ocean salinity', 'psu', 'OCLVTT')
-    call mpi_write_header(chead, mpi_fh_w, dispw)
-    call mpi_write_3d(tb(1,1,1,2), mpi_fh_w,dispw)    
-
-    call edhead('SHO', 'sea surface height', 'cm', 'OCSFCT' )
-    call mpi_write_header(chead, mpi_fh_w, dispw)
-    call mpi_write_2d(hb, mpi_fh_w,dispw)    
-
-    call edhead('UBTO', 'ocean zonal transport', 'cm^2/s', 'OCSFCV')
-    call mpi_write_header(chead, mpi_fh_w, dispw)
-    call mpi_write_2d(ubtb, mpi_fh_w,dispw)    
-       
-    call edhead('VBTO', 'ocean meridional transport', 'cm^2/s', 'OCSFCV')
-    call mpi_write_header(chead, mpi_fh_w, dispw)
-    call mpi_write_2d(vbtb, mpi_fh_w,dispw)    
-
-    call edhead('WO', 'ocean vertical velocity', 'cm/s', 'OCLVMT')
-    call mpi_write_header(chead, mpi_fh_w, dispw)
-    call mpi_write_3d(w, mpi_fh_w,dispw)    
-
-    call edhead('AI', 'ice concentration', 'N.D.', 'OCICET')
-    call mpi_write_header(chead, mpi_fh_w, dispw)
-    call mpi_write_id(ab, mpi_fh_w,dispw)    
-       
-    call edhead('HI', 'ice thickness', 'cm', 'OCICET')
-    call mpi_write_header(chead, mpi_fh_w, dispw)
-    call mpi_write_id(hib, mpi_fh_w,dispw)    
-   
-    call edhead('UI', 'ice zonal velocity', 'cm/s', 'OCSFCV')
-    call mpi_write_header(chead, mpi_fh_w, dispw)
-    call mpi_write_2d(uib, mpi_fh_w,dispw)    
-   
-    call edhead('VI', 'ice meridional velocity', 'cm/s', 'OCSFCV')
-    call mpi_write_header(chead, mpi_fh_w, dispw)
-    call mpi_write_2d(vib, mpi_fh_w,dispw)    
-
-    call edhead('TI', 'ice temperature', 'degC', 'OCICET')
-    call mpi_write_header(chead, mpi_fh_w, dispw)
-    call mpi_write_id(tib, mpi_fh_w,dispw)    
-    
-    call edhead('HS', 'snow thickness', 'cm', 'OCICET')
-    call mpi_write_header(chead, mpi_fh_w, dispw)
-    call mpi_write_id(hsb, mpi_fh_w,dispw)    
-
-    call edhead('FT', 'sea surface temperature flux', 'K cm/s', 'OCSFCT')
-    call mpi_write_header(chead, mpi_fh_w, dispw)
-    call mpi_write_2d(ft, mpi_fh_w,dispw)    
-
-    call edhead('SWABS', 'absorbed shortwave', 'erg/cm^2/s', 'OCSFCT')
-    call mpi_write_header(chead, mpi_fh_w, dispw)
-    call mpi_write_2d(swabs, mpi_fh_w,dispw)    
-
-    call edhead('FW', 'sea surface freshwater flux', 'cm/s', 'OCSFCT')
-    call mpi_write_header(chead, mpi_fh_w, dispw)
-    call mpi_write_2d(ft(1,1,2), mpi_fh_w,dispw)    
-    
-    call edhead('FS', 'sea surface salinity flux', 'psu cm/s', 'OCSFCT')
-    call mpi_write_header(chead, mpi_fh_w, dispw)
-    call mpi_write_2d(fs, mpi_fh_w,dispw)    
-
-    call edhead('TAUX', 'zonal wind stress', 'dyn/cm^2', 'OCSFCV')
-    call mpi_write_header(chead, mpi_fh_w, dispw)
-    call mpi_write_2d(taux, mpi_fh_w,dispw)    
-
-    call edhead('TAUY', 'meridional wind stress', 'dyn/cm^2', 'OCSFCV')
-    call mpi_write_header(chead, mpi_fh_w, dispw)
-    call mpi_write_2d(tauy, mpi_fh_w,dispw)    
-    
-    call edhead('AMV', 'ocean vertical viscosity', 'cm^2/s', 'OCLVMV')
-    call mpi_write_header(chead, mpi_fh_w, dispw)
-    call mpi_write_3d(amv, mpi_fh_w,dispw)    
-
-    call edhead('AHV', 'ocean vertical diffusivity', 'cm^2/s', 'OCLVMT')
-    call mpi_write_header(chead, mpi_fh_w, dispw)
-    call mpi_write_3d(ahv, mpi_fh_w,dispw)    
-
-    call edhead('PTOP', 'sea surface presssure (inc. sea ice)', 'dyn/cm^2', 'OCSFCT')
-    call mpi_write_header(chead, mpi_fh_w, dispw)
-    call mpi_write_2d(ptop, mpi_fh_w,dispw)    
-
-    call edhead('TSI', 'sea ice surface temperature', 'degC', 'OCICET')
-    call mpi_write_header(chead, mpi_fh_w, dispw)
-    call mpi_write_id(tsi, mpi_fh_w,dispw)    
+    call finadd(ub,          nxdim, nydim, nzdim, 'UO',   'OCN', 'ocean zonal velocity',                 'cm/s',       'OCLVTV')
+    call finadd(vb,          nxdim, nydim, nzdim, 'VO',   'OCN', 'ocean meridional velocity',            'cm/s',       'OCLVTV')
+    call finadd(tb,          nxdim, nydim, nzdim, 'TO',   'OCN', 'ocean temperature',                    'degC',       'OCLVTT')
+    call finadd(tb(1,1,1,2), nxdim, nydim, nzdim, 'SO',   'OCN', 'ocean salinity',                       'psu',        'OCLVTT')
+    call finadd(hb,          nxdim, nydim,     1, 'SHO',  'SFC', 'sea surface height',                   'cm',         'OCSFCT')
+    call finadd(ubtb,        nxdim, nydim,     1, 'UBTO', 'SFC', 'ocean zonal transport',                'cm^2/s',     'OCSFCV')
+    call finadd(vbtb,        nxdim, nydim,     1, 'VBTO', 'SFC', 'ocean meridional transport',           'cm^2/s',     'OCSFCV')
+    call finadd(w,           nxdim, nydim, nzdim, 'WO',   'OCN', 'ocean vertical velocity',              'cm/s',       'OCLVMT')
+    call finadd(ab,          nxdim, nydim, nic+1, 'AI',   'ICE', 'ice concentration',                    'N.D.',       'OCICET')
+    call finadd(hib,         nxdim, nydim, nic+1, 'HI',   'ICE', 'ice thickness',                        'cm',         'OCICET')
+    call finadd(uib,         nxdim, nydim,     1, 'UI',   'SFC', 'ice zonal velocity',                   'cm/s',       'OCSFCV')
+    call finadd(vib,         nxdim, nydim,     1, 'VI',   'SFC', 'ice meridional velocity',              'cm/s',       'OCSFCV')
+    call finadd(tib,         nxdim, nydim, nic+1, 'TI',   'ICE', 'ice temperature',                      'degC',       'OCICET')
+    call finadd(hsb,         nxdim, nydim, nic+1, 'HS',   'ICE', 'snow thickness',                       'cm',         'OCICET')
+    call finadd(ft,          nxdim, nydim,     1, 'FT',   'SFC', 'sea surface temperature flux',         'K cm/s',     'OCSFCT')
+    call finadd(swabs,       nxdim, nydim,     1, 'SWABS','SFC', 'absorbed shortwave',                   'erg/cm^2/s', 'OCSFCT')
+    call finadd(ft(1,1,2),   nxdim, nydim,     1, 'FW',   'SFC', 'sea surface freshwater flux',          'cm/s',       'OCSFCT')
+    call finadd(fs,          nxdim, nydim,     1, 'FS',   'SFC', 'sea surface salinity flux',            'psu cm/s',   'OCSFCT')
+    call finadd(taux,        nxdim, nydim,     1, 'TAUX', 'SFC', 'zonal wind stress',                    'dyn/cm^2',   'OCSFCV')
+    call finadd(tauy,        nxdim, nydim,     1, 'TAUY', 'SFC', 'meridional wind stress',               'dyn/cm^2',   'OCSFCV')
+    call finadd(amv,         nxdim, nydim, nzdim, 'AMV',  'OCN', 'ocean vertical viscosity',             'cm^2/s',     'OCLVMV')
+    call finadd(ahv,         nxdim, nydim, nzdim, 'AHV',  'OCN', 'ocean vertical diffusivity',           'cm^2/s',     'OCLVMT')
+    call finadd(ptop,        nxdim, nydim,     1, 'PTOP', 'SFC', 'sea surface presssure (inc. sea ice)', 'dyn/cm^2',   'OCSFCT')
+    call finadd(tsi,         nxdim, nydim, nic+1, 'TSI',  'ICE', 'sea ice surface temperature',          'degC',       'OCICET')
     
     do l = 3, ntdim
        write(citem, '(a,i2.2)') 'TRACER', l
-       call edhead(citem, '', '', 'OCLVTT')
-       call mpi_write_header(chead, mpi_fh_w, dispw)
-       call mpi_write_3d(tb(1,1,1,l), mpi_fh_w,dispw)    
+       call finadd(tb(1,1,1,l), nxdim, nydim, nzdim, citem, 'OCN', '', '', 'OCLVTT')
     end do
-       
+      
     do l = 3, ntdim
        write(citem, '(a,i2.2)') 'TRCFLX', l
-       call edhead(citem, '', '', 'OCSFCT')
-       call mpi_write_header(chead, mpi_fh_w, dispw)
-       call mpi_write_2d(ft(1,1,l), mpi_fh_w,dispw)    
+       call finadd(ft(1,1,l),   nxdim, nydim,     1, citem, 'SFC', '', '', 'OCSFCT')
     end do
-    
+
     if ( myrank == iroot ) then
        write(jfpar, *) '*** Write restart file ***'
        write(jfpar, *) ' time :', idate
@@ -530,7 +454,7 @@ contains
 
   subroutine finadd(                                                  &
     &             additm,  ixdim,  jydim,  kzdim,                     &
-    &             ccitem,   clas  ) 
+    &             ccitem,   clas,  htitl,  hunit,  cclas) 
 
     use zocdim,   only  :                                             &
     &      igstr,  jgstr,   kstr,                                     &
@@ -543,37 +467,46 @@ contains
     integer(4),   intent(in)     ::   ixdim,  jydim,  kzdim
     real(8),      intent(inout)  ::  additm(ixdim, jydim, kzdim)
     character(*), intent(in)     ::  ccitem,   clas
+    character(*), intent(in), optional ::  htitl,  hunit, cclas
     
     !$acc update self(additm)
-    chead(3) = ccitem
-    write(chead(14), '(16x)')
-    write(chead(15), '(16x)')
-    write(chead(16), '(16x)')
+
+    if(present(htitl)) then
+       call edhead(ccitem, htitl, hunit, cclas)
+    else
+       chead(3) = ccitem
+       write(chead(14), '(16x)')
+       write(chead(15), '(16x)')
+       write(chead(16), '(16x)')
 
 #ifdef OPT_TRIPOLE
-    write(chead(29), '(a,i0)') 'OCLONTPT', nxg
-    write(chead(32), '(a,i0)') 'OCLATTPT', nyg
+       write(chead(29), '(a,i0)') 'OCLONTPT', nxg
+       write(chead(32), '(a,i0)') 'OCLATTPT', nyg
 #else
-    write(chead(29), '(i15,a1)') nxg, 'X'
-    write(chead(32), '(i15,a1)') nyg, 'Y'
+       write(chead(29), '(i15,a1)') nxg, 'X'
+       write(chead(32), '(i15,a1)') nyg, 'Y'
 #endif
-
+       if ( clas(1:3) == 'OCN' ) then
+          write(chead(35), '(a,i0)') 'OCDEPT', nz
+          write(chead(37), '(i16)') nz
+          write(chead(64), '(i16)') nxyzg
+       else if ( clas(1:3) == 'ICE' ) then
+          write(chead(35), '(a)') 'NUMBER1000'
+          write(chead(37), '(i16)') nic
+          write(chead(64), '(i16)') nxyg*nic
+       else
+          write(chead(35), '(a)') 'SFC1'
+          write(chead(37), '(i16)') 1
+          write(chead(64), '(i16)') nxyg
+       end if
+    end if
     if ( clas(1:3) == 'OCN' ) then
-       write(chead(35), '(a,i0)') 'OCDEPT', nz
-       write(chead(37), '(i16)') nz
-       write(chead(64), '(i16)') nxyzg
        call mpi_write_header(chead, mpi_fh_w, dispw)
        call mpi_write_3d(additm, mpi_fh_w,dispw)    
     else if ( clas(1:3) == 'ICE' ) then
-       write(chead(35), '(a)') 'NUMBER1000'
-       write(chead(37), '(i16)') nic
-       write(chead(64), '(i16)') nxyg*nic
        call mpi_write_header(chead, mpi_fh_w, dispw)
        call mpi_write_id(additm, mpi_fh_w,dispw)    
     else
-       write(chead(35), '(a)') 'SFC1'
-       write(chead(37), '(i16)') 1
-       write(chead(64), '(i16)') nxyg
        call mpi_write_header(chead, mpi_fh_w, dispw)
        call mpi_write_2d(additm, mpi_fh_w,dispw)
     end if
