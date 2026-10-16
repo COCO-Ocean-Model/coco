@@ -111,7 +111,8 @@ contains
     integer(4)        ::      i,      j,      k,      l
     integer(4), save  ::  ifpar,  jfpar,  istat
     integer(4), save  :: irstrt,   ierr
-
+    logical           :: oeof
+    
     namelist /nmfini/ cfinit, irstrt
     namelist /nmislt/ si
     data     si / 5.d0 /
@@ -120,41 +121,54 @@ contains
     READ_NAMELIST( nmfini)
     READ_NAMELIST( nmislt)
 
+    hib=0.d0
+    do k = 1, nic
+       hib(:,:,k) = hic(k)
+    end do
+    
     call mpi_filopn(mpi_fh_r, cfinit, 'READ')
     disp=0
+    call rstadd(ub,          oeof, nxdim, nydim, nzdim, 'U',     'OCN', -1.d0,  -1,  -1, vinit=0.d0 )
+    call rstadd(vb,          oeof, nxdim, nydim, nzdim, 'V',     'OCN', -1.d0,  -1,  -1, vinit=0.d0 )
+    call rstadd(tb(1,1,1,1), oeof, nxdim, nydim, nzdim, 'T',     'OCN',  1.d0,   0,   0, vinit=0.d0 )
+    call rstadd(tb(1,1,1,2), oeof, nxdim, nydim, nzdim, 'S',     'OCN',  1.d0,   0,   0, vinit=0.d0 )
+    call rstadd(hb,          oeof, nxdim, nydim,     1, 'SH',    'SFC',  1.d0,   0,   0, vinit=0.d0 )
+    call rstadd(ubtb,        oeof, nxdim, nydim,     1, 'UBT',   'SFC', -1.d0,  -1,  -1, vinit=0.d0 )
+    call rstadd(vbtb,        oeof, nxdim, nydim,     1, 'VBT',   'SFC', -1.d0,  -1,  -1, vinit=0.d0 )
+    call rstadd(w,           oeof, nxdim, nydim, nzdim, 'W',     'OCN',  1.d0,   0,   0, vinit=0.d0 )
+    call rstadd(ab,          oeof, nxdim, nydim, nic+1, 'AI',    'ICE',  1.d0,   0,   0, vinit=0.d0 )
+    call rstadd(hib,         oeof, nxdim, nydim, nic+1, 'HI',    'ICE',  1.d0,   0,   0             )
+    call rstadd(uib,         oeof, nxdim, nydim,     1, 'UI',    'SFC', -1.d0,  -1,  -1, vinit=0.d0 )
+    call rstadd(vib,         oeof, nxdim, nydim,     1, 'VI',    'SFC', -1.d0,  -1,  -1, vinit=0.d0 )
+    call rstadd(tib,         oeof, nxdim, nydim, nic+1, 'TI',    'ICE',  1.d0,   0,   0, vinit=-0.1d0)
+    call rstadd(hsb,         oeof, nxdim, nydim, nic+1, 'HS',    'ICE',  1.d0,   0,   0, vinit=0.d0 )
+    call rstadd(ft(1,1,1),   oeof, nxdim, nydim,     1, 'FT',    'SFC',  1.d0,   0,   0, vinit=0.d0 )
+    call rstadd(swabs,       oeof, nxdim, nydim,     1, 'SWABS', 'SFC',  1.d0,   0,   0, vinit=0.d0 )
+    call rstadd(ft(1,1,2),   oeof, nxdim, nydim,     1, 'FW',    'SFC',  1.d0,   0,   0, vinit=0.d0 )
+    call rstadd(fs,          oeof, nxdim, nydim,     1, 'FS',    'SFC',  1.d0,   0,   0, vinit=0.d0 )
+    call rstadd(taux,        oeof, nxdim, nydim,     1, 'TAUX',  'SFC', -1.d0,  -1,  -1, vinit=0.d0 )
+    call rstadd(tauy,        oeof, nxdim, nydim,     1, 'TAUY',  'SFC', -1.d0,  -1,  -1, vinit=0.d0 )
+    call rstadd(amv,         oeof, nxdim, nydim, nzdim, 'AMV',   'OCN',  1.d0,  -1,  -1, vinit=0.d0 )
+    call rstadd(ahv,         oeof, nxdim, nydim, nzdim, 'AHV',   'OCN',  1.d0,   0,   0, vinit=0.d0 )
+    call rstadd(ptop,        oeof, nxdim, nydim,     1, 'PTOP',  'SFC',  1.d0,   0,   0, vinit=0.d0 )
+    call rstadd(tsi,         oeof, nxdim, nydim, nic+1, 'TSI',   'ICE',  1.d0,   0,   0, vinit=dtds * si)
 
-    call mpi_read_chead(chead, mpi_fh_r, disp, icread)
-    ub=0.d0
-    if(icread == 1024) call mpi_read_3d(ub, mpi_fh_r,disp)
+    do l = 3, ntdim
+       call rstadd(tb(1,1,1,l), oeof, nxdim, nydim, nzdim, 'TB', 'OCN',  1.d0,   0,   0, vinit=0.d0 )
+    end do
+    do l = 3, ntdim
+           call rstadd(ft(1,1,  l), oeof, nxdim, nydim,     1, 'FT', 'SFC',  1.d0,   0,   0, vinit=0.d0 )
+    end do
+        
     if (loglev > 0) then
-!       call print_stats(ub, chead(3), 'V')
-       call print_stats(ub, chead(3))
+       call print_stats(ub, 'U')
+       call print_stats(vb, 'V')
+       call print_stats(tb(:,:,:,1), 'T')
+       call print_stats(tb(:,:,:,2), 'S')
+       call print_stats(hb, 'SH')
     end if
-    !$acc update device(ub)
-    
-    call mpi_read_chead(chead, mpi_fh_r, disp, icread)
-    vb=0.d0
-    if(icread == 1024) call mpi_read_3d(vb, mpi_fh_r,disp)
-    if (loglev > 0) then
-!       call print_stats(vb, chead(3), 'V')
-       call print_stats(vb, chead(3))
-    end if
-    !$acc update device(vb)
-    
-    call mpi_read_chead(chead, mpi_fh_r, disp, icread)
-    tb(:,:,:,1)=0.d0
-    if(icread == 1024) call mpi_read_3d(tb, mpi_fh_r,disp)
-    if (loglev > 0) then
-       call print_stats(tb(:,:,:,1), chead(3))
-    end if
-    
-    call mpi_read_chead(chead, mpi_fh_r, disp, icread)
-    tb(:,:,:,2)=0.d0
-    if(icread == 1024) call mpi_read_3d(tb(1,1,1,2), mpi_fh_r,disp)
-    if (loglev > 0) then
-       call print_stats(tb(:,:,:,2), chead(3))
-    end if
-    !$acc update device(tb)
+    !$acc update device(ub, vb, tb, hb, ubtb, vbtb, w, ab, hib, uib, vib, tib, hsb, ft, swabs, fs, taux, tauy, amv, ahv, ptop, tsi)
+
     !$acc kernels default(present)
     do k=1,nzdim
     do j=1,nydim
@@ -163,175 +177,7 @@ contains
     end do
     end do
     end do
-    !$acc end kernels
-    
-    call mpi_read_chead(chead, mpi_fh_r, disp, icread)
-    hb=0.d0
-    if(icread == 1024) call mpi_read_2d(hb, mpi_fh_r,disp)
-    if (loglev > 0) then
-       call print_stats(hb, chead(3))
-    end if
-    !$acc update device(hb)
-    
-    call mpi_read_chead(chead, mpi_fh_r, disp, icread)
-    ubtb=0.d0
-    if(icread == 1024) call mpi_read_2d(ubtb, mpi_fh_r,disp)
-    !$acc update device(ubtb)
-    
-    call mpi_read_chead(chead, mpi_fh_r, disp, icread)
-    vbtb=0.d0
-    if(icread == 1024) call mpi_read_2d(vbtb, mpi_fh_r,disp)
-    !$acc update device(vbtb)
-    
-    call mpi_read_chead(chead, mpi_fh_r, disp, icread)
-    w=0.d0
-    if(icread == 1024) call mpi_read_3d(w, mpi_fh_r,disp)
-    !$acc update device(w)
-    
-    call mpi_read_chead(chead, mpi_fh_r, disp, icread)
-    ab=0.d0
-    if(icread == 1024) call mpi_read_id(ab, mpi_fh_r,disp)
-    !$acc update device(ab)
-    
-    call mpi_read_chead(chead, mpi_fh_r, disp, icread)
-    hib=0.d0
-    do k = 1, nic
-       hib(:,:,k) = hic(k)
-    end do
-    if(icread == 1024) call mpi_read_id(hib, mpi_fh_r,disp)
-    !$acc update device(hib)
-    
-    call mpi_read_chead(chead, mpi_fh_r, disp, icread)
-    uib=0.d0
-    if(icread == 1024) call mpi_read_2d(uib, mpi_fh_r,disp)
-    !$acc update device(uib)
-    
-    call mpi_read_chead(chead, mpi_fh_r, disp, icread)
-    vib=0.d0
-    if(icread == 1024) call mpi_read_2d(vib, mpi_fh_r,disp)
-    !$acc update device(vib)
-    
-    call mpi_read_chead(chead, mpi_fh_r, disp, icread)
-    tib=-0.1d0
-    if(icread == 1024) call mpi_read_id(tib, mpi_fh_r,disp)
-    !$acc update device(tib)
-    
-    call mpi_read_chead(chead, mpi_fh_r, disp, icread)
-    hsb=0.d0
-    if(icread == 1024) call mpi_read_id(hsb, mpi_fh_r,disp)
-    !$acc update device(hsb)
-    
-    call mpi_read_chead(chead, mpi_fh_r, disp, icread)
-    ft(:,:,1)=0.d0
-    if(icread == 1024) call mpi_read_2d(ft, mpi_fh_r,disp)
-    !$acc update device(ft)
-    
-    call mpi_read_chead(chead, mpi_fh_r, disp, icread)
-    swabs=0.d0
-    if(icread == 1024) call mpi_read_2d(swabs, mpi_fh_r,disp)
-    !$acc update device(swabs)
-    
-    call mpi_read_chead(chead, mpi_fh_r, disp, icread)
-    ft(:,:,2)=0.d0
-    if(icread == 1024) call mpi_read_2d(ft(1,1,2), mpi_fh_r,disp)
-    !$acc update device(ft)
-    
-    call mpi_read_chead(chead, mpi_fh_r, disp, icread)
-    fs=0.d0
-    if(icread == 1024) call mpi_read_2d(fs, mpi_fh_r,disp)
-    !$acc update device(fs)
-    
-    call mpi_read_chead(chead, mpi_fh_r, disp, icread)
-    taux=0.d0
-    if(icread == 1024) call mpi_read_2d(taux, mpi_fh_r,disp)
-    !$acc update device(taux)
-    
-    call mpi_read_chead(chead, mpi_fh_r, disp, icread)
-    tauy=0.d0
-    if(icread == 1024) call mpi_read_2d(tauy, mpi_fh_r,disp)
-    !$acc update device(tauy)
-    
-    call mpi_read_chead(chead, mpi_fh_r, disp, icread)
-    amv=0.d0
-    if(icread == 1024) call mpi_read_3d(amv, mpi_fh_r,disp)
-    !$acc update device(amv)
-    
-    call mpi_read_chead(chead, mpi_fh_r, disp, icread)
-    ahv=0.d0
-    if(icread == 1024) call mpi_read_3d(ahv, mpi_fh_r,disp)
-    !$acc update device(ahv)
-    
-    call mpi_read_chead(chead, mpi_fh_r, disp, icread)
-    ptop=0.d0
-    if(icread == 1024) call mpi_read_2d(ptop, mpi_fh_r,disp)
-    !$acc update device(ptop)
-    
-    call mpi_read_chead(chead, mpi_fh_r, disp, icread)
-    tsi=dtds*si
-    if(icread == 1024) call mpi_read_id(tsi, mpi_fh_r,disp)
-    !$acc update device(tsi)
 
-    do l = 3, ntdim
-       call mpi_read_chead(chead, mpi_fh_r, disp, icread)
-       tb(:,:,:,l)=0.d0
-       if(icread == 1024) call mpi_read_3d(tb(1,1,1,l), mpi_fh_r,disp)
-    end do
-    !$acc update device(tb)
-    do l = 3, ntdim
-       call mpi_read_chead(chead, mpi_fh_r, disp, icread)
-       ft(:,:,l)=0.d0
-       if(icread == 1024) call mpi_read_2d(ft(1,1,l), mpi_fh_r,disp)
-    end do
-    !$acc update device(ft)
-
-    call shift_pack_begin
-    call shift1(   ub, nxdim, nydim,  nzdim, -1.d0, -1, -1)
-    call shift1(   vb, nxdim, nydim,  nzdim, -1.d0, -1, -1)
-    call shift1(   tb, nxdim, nydim, nztdim,  1.d0,  0,  0)
-    call shift1(  amv, nxdim, nydim,  nzdim,  1.d0, -1, -1)
-    call shift1(    w, nxdim, nydim,  nzdim,  1.d0,  0,  0)
-    call shift1(  ahv, nxdim, nydim,  nzdim,  1.d0,  0,  0)
-    call shift1(   hb, nxdim, nydim,      1,  1.d0,  0,  0)
-    call shift1( ubtb, nxdim, nydim,      1, -1.d0, -1, -1)
-    call shift1( vbtb, nxdim, nydim,      1, -1.d0, -1, -1)
-    call shift1(   ab, nxdim, nydim,  nic+1,  1.d0,  0,  0)
-    call shift1(  hib, nxdim, nydim,  nic+1,  1.d0,  0,  0)
-    call shift1(  hsb, nxdim, nydim,  nic+1,  1.d0,  0,  0)
-    call shift1(  tsi, nxdim, nydim,  nic+1,  1.d0,  0,  0)
-    call shift1(  tib, nxdim, nydim,  nic+1,  1.d0,  0,  0)
-    call shift1(  uib, nxdim, nydim,      1, -1.d0, -1, -1)
-    call shift1(  vib, nxdim, nydim,      1, -1.d0, -1, -1)
-    call shift1(   ft, nxdim, nydim,  ntdim,  1.d0,  0,  0)
-    call shift1(   fs, nxdim, nydim,      1,  1.d0,  0,  0)
-    call shift1(swabs, nxdim, nydim,      1,  1.d0,  0,  0)
-    call shift1( ptop, nxdim, nydim,      1,  1.d0,  0,  0)
-    call shift1( taux, nxdim, nydim,      1, -1.d0, -1, -1)
-    call shift1( tauy, nxdim, nydim,      1, -1.d0, -1, -1)
-    call shift_pack_end
-    call shift_unpack(   ub,  1)
-    call shift_unpack(   vb,  2)
-    call shift_unpack(   tb,  3)
-    call shift_unpack(  amv,  4)
-    call shift_unpack(    w,  5)
-    call shift_unpack(  ahv,  6)
-    call shift_unpack(   hb,  7)
-    call shift_unpack( ubtb,  8)
-    call shift_unpack( vbtb,  9)
-    call shift_unpack(   ab, 10)
-    call shift_unpack(  hib, 11)
-    call shift_unpack(  hsb, 12)
-    call shift_unpack(  tsi, 13)
-    call shift_unpack(  tib, 14)
-    call shift_unpack(  uib, 15)
-    call shift_unpack(  vib, 16)
-    call shift_unpack(   ft, 17)
-    call shift_unpack(   fs, 18)
-    call shift_unpack(swabs, 19)
-    call shift_unpack( ptop, 20)
-    call shift_unpack( taux, 21)
-    call shift_unpack( tauy, 22)
-
-    !$acc kernels default(present)
     ab(1:nxdim,1:nydim,0) = 1.d0
     do k = 1, nic
        do j = 1, nydim
@@ -369,12 +215,8 @@ contains
   subroutine rstadd(                                                  &
     &      additm,   oeof,                                            &
     &       ixdim,  jydim,  kzdim,                                    &
-#ifndef OPT_TRIPOLE
-    &      ccitem,   clas )
-#else
     &      ccitem,   clas,                                            &
-    &        fact,   ioff,   joff )
-#endif
+    &       fact0,  ioff0,  joff0,  vinit)
 
     use zocdim,   only  :                                             &
     &      nxdim,  nydim,  nzdim,    nic,                             &
@@ -391,16 +233,23 @@ contains
     real(8),      intent(inout)  ::  additm(ixdim, jydim, kzdim)
     logical,      intent(inout)  ::    oeof
     character(*), intent(in)     ::  ccitem,   clas
-#ifdef OPT_TRIPOLE
-! set 1 for scalar, set -1 for vector
-    real(8),      intent(in)    ::    fact  
-!(IOFF,JOFF)=(0,0)for T-cell, (-1,-1)for V-cell 
-    integer(4),   intent(in)    ::    ioff,   joff 
-#endif
+
+    real(8),      intent(in), optional :: fact0        ! 1 for scalar, -1 for vector
+    integer(4),   intent(in), optional :: ioff0, joff0 !((0,0)for T-cell, (-1,-1)for V-cell 
+    real(8),      intent(in), optional :: vinit
 
 !---- local variables
-    integer(4)   ::     i,     j,     k
-    integer(4)   ::  ierr
+    integer(4)   :: i, j, k, ierr, ioff, joff
+    real(8)      :: fact
+
+    if(present(fact0)) then
+       fact=fact0
+       ioff=ioff0
+       joff=joff0
+    end if
+    if(present(vinit)) then
+       additm=vinit
+    end if
 
     shift_gpu=.false.
     
@@ -414,13 +263,7 @@ contains
           additm(:,:,:kstr-1)=0.d0
           additm(:,:,kstr+nz:)=0.d0
           call mpi_read_3d(additm, mpi_fh_r,disp)
-
-#ifdef OPT_TRIPOLE
-          call shift1(additm, nxdim, nydim, nzdim,                    &
-    &                          fact,  ioff,  joff  )
-#else
-          call shift1(additm, nxdim, nydim, nzdim)
-#endif
+          call shift1(additm, nxdim, nydim, nzdim, fact, ioff, joff)
        end if
     else if ( clas(1:3) == 'ICE' ) then
        oeof = .false.
@@ -430,13 +273,7 @@ contains
        end if
        if(.not. oeof) then
           call mpi_read_id(additm, mpi_fh_r,disp)
-
-#ifdef OPT_TRIPOLE
-          call shift1(additm, nxdim, nydim, nic+1,                    &
-    &                          fact,  ioff,  joff  )
-#else
-          call shift1(additm, nxdim, nydim, nic+1)
-#endif
+          call shift1(additm, nxdim, nydim, nic+1, fact, ioff, joff)
        end if
     else
        oeof = .false.
@@ -446,12 +283,7 @@ contains
        end if
        if(.not. oeof) then
           call mpi_read_2d(additm, mpi_fh_r,disp)
-#ifdef OPT_TRIPOLE
-          call shift1(additm, nxdim, nydim,     1,                    &
-    &                          fact,  ioff,  joff)
-#else
-          call shift1(additm, nxdim, nydim, 1)
-#endif
+          call shift1(additm, nxdim, nydim, 1, fact, ioff, joff)
        end if
     end if
 
