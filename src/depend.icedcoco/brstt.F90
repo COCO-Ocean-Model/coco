@@ -279,8 +279,6 @@ contains
        additm=vinit
     end if
 
-    shift_gpu=.false.
-
 #ifdef OPT_IO_COCOMPI
     oeof = .false.
     call mpi_read_chead(chead, mpi_fh_r, disp, icread)
@@ -288,6 +286,7 @@ contains
        oeof = .true.
     end if
     if(.not. oeof) then
+       shift_gpu=.false.
        if ( clas(1:3) == 'OCN' ) then
           additm(:,:,:kstr-1)=0.d0
           additm(:,:,kstr+nz:)=0.d0
@@ -322,6 +321,7 @@ contains
           call scatter_3d(additm, g3d)
           additm(:,:,:kstr-1)=0.d0
           additm(:,:,kstr+nz:)=0.d0
+          shift_gpu=.false.
           call shift1(additm, nxdim, nydim, nzdim, fact,  ioff,  joff  )
        end if
     else if ( clas(1:3) == 'ICE' ) then
@@ -342,6 +342,7 @@ contains
        call mpi_bcast(oeof, 1, mpi_logical, iroot, mpi_comm_ogcm, ierr)
        if ( .not. oeof ) then
           call scatter_id(additm, gid)
+          shift_gpu=.false.
           call shift1(additm, nxdim, nydim, nic+1, fact,  ioff,  joff  )
        end if
     else
@@ -360,6 +361,7 @@ contains
        call mpi_bcast(oeof, 1, mpi_logical, iroot, mpi_comm_ogcm, ierr)
        if ( .not. oeof ) then
           call scatter_2d(additm, g2d)
+          shift_gpu=.false.
           call shift1(additm, nxdim, nydim, 1, fact,  ioff,  joff)
        end if
     end if
