@@ -295,54 +295,15 @@ subroutine flxtrc( &
 #else
      do n = 1, ntdim
 #endif
-#ifdef OPT_TRIPOLE
-        call rstadd(sx(1, 1, n), oeof, &
-          &         nxdim, nydim, nzdim, 'SX', 'OCN', &
-          &                            1.d0,  0,  0 )
-        call rstadd(sy(1, 1, n), oeof, &
-          &         nxdim, nydim, nzdim, 'SY', 'OCN', &
-          &                           -1.d0,  0,  0 )
-        call rstadd(sz(1, 1, n), oeof, &
-          &         nxdim, nydim, nzdim, 'SZ', 'OCN', &
-          &                            1.d0,  0,  0 )
-        call rstadd(sxx(1, 1, n), oeof, &
-          &         nxdim, nydim, nzdim, 'SXX', 'OCN', &
-          &                             1.d0,  0,  0 )
-        call rstadd(syy(1, 1, n), oeof, &
-          &         nxdim, nydim, nzdim, 'SYY', 'OCN', &
-          &                             1.d0,  0,  0 )
-        call rstadd(szz(1, 1, n), oeof, &
-          &         nxdim, nydim, nzdim, 'SZZ', 'OCN', &
-          &                             1.d0,  0,  0 )
-        call rstadd(sxy(1, 1, n), oeof, &
-          &         nxdim, nydim, nzdim, 'SXY', 'OCN', &
-          &                            -1.d0,  0,  0 )
-        call rstadd(sxz(1, 1, n), oeof, &
-          &         nxdim, nydim, nzdim, 'SXZ', 'OCN', &
-          &                             1.d0,  0,  0 )
-        call rstadd(syz(1, 1, n), oeof, &
-          &         nxdim, nydim, nzdim, 'SYZ', 'OCN', &
-          &                            -1.d0,  0,  0 )
-#else
-        call rstadd(sx(1, 1, n), oeof, &
-          &         nxdim, nydim, nzdim, 'SX', 'OCN')
-        call rstadd(sy(1, 1, n), oeof, &
-          &         nxdim, nydim, nzdim, 'SY', 'OCN')
-        call rstadd(sz(1, 1, n), oeof, &
-          &         nxdim, nydim, nzdim, 'SZ', 'OCN')
-        call rstadd(sxx(1, 1, n), oeof, &
-          &         nxdim, nydim, nzdim, 'SXX', 'OCN')
-        call rstadd(syy(1, 1, n), oeof, &
-          &         nxdim, nydim, nzdim, 'SYY', 'OCN')
-        call rstadd(szz(1, 1, n), oeof, &
-          &         nxdim, nydim, nzdim, 'SZZ', 'OCN')
-        call rstadd(sxy(1, 1, n), oeof, &
-          &         nxdim, nydim, nzdim, 'SXY', 'OCN')
-        call rstadd(sxz(1, 1, n), oeof, &
-          &         nxdim, nydim, nzdim, 'SXZ', 'OCN')
-        call rstadd(syz(1, 1, n), oeof, &
-          &         nxdim, nydim, nzdim, 'SYZ', 'OCN')
-#endif
+        call rstadd(sx( 1, 1, n), oeof, nxdim, nydim, nzdim, 'SX',  'OCN',  1.d0, 0, 0, vinit=0.d0 )
+        call rstadd(sy( 1, 1, n), oeof, nxdim, nydim, nzdim, 'SY',  'OCN', -1.d0, 0, 0, vinit=0.d0 )
+        call rstadd(sz( 1, 1, n), oeof, nxdim, nydim, nzdim, 'SZ',  'OCN',  1.d0, 0, 0, vinit=0.d0 )
+        call rstadd(sxx(1, 1, n), oeof, nxdim, nydim, nzdim, 'SXX', 'OCN',  1.d0, 0, 0, vinit=0.d0 )
+        call rstadd(syy(1, 1, n), oeof, nxdim, nydim, nzdim, 'SYY', 'OCN',  1.d0, 0, 0, vinit=0.d0 )
+        call rstadd(szz(1, 1, n), oeof, nxdim, nydim, nzdim, 'SZZ', 'OCN',  1.d0, 0, 0, vinit=0.d0 )
+        call rstadd(sxy(1, 1, n), oeof, nxdim, nydim, nzdim, 'SXY', 'OCN', -1.d0, 0, 0, vinit=0.d0 )
+        call rstadd(sxz(1, 1, n), oeof, nxdim, nydim, nzdim, 'SXZ', 'OCN',  1.d0, 0, 0, vinit=0.d0 )
+        call rstadd(syz(1, 1, n), oeof, nxdim, nydim, nzdim, 'SYZ', 'OCN', -1.d0, 0, 0, vinit=0.d0 )
      end do
      !$acc update device(sx,sy,sz, sxx,syy,szz, sxy,sxz,syz)
      return
