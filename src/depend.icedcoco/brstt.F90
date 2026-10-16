@@ -16,6 +16,7 @@ module brstt
 !                          eliminate unphysical negative AB(IJ, 0)
 !     '10.04.14  M.Kurogi: (COCO4.4 tripolar code by Dr. Suzuki)
 !     '12.09.10  H.Tatebe: for COCO5.0 in F90
+!     '15.04.07  M.Kurogi: MPI-IO
 ! ---------------------------------------------------------------------
 
   use zocfil,   only  :   ncf
@@ -25,20 +26,30 @@ module brstt
 #include "coco.h"
   private
 
+#ifdef OPT_IO_COCOMPI
+  integer, save :: mpi_fh_w, mpi_fh_r
+  integer(kind=mpi_offset_kind), save :: disp, dispw=0
+  integer :: icread
+#else
   real(8),    allocatable,  save  ::    buf2(:,:),   buf3(:,:,:),   bufi(:,:,:)
   real(8),    allocatable,  save  ::     g2d(:,:),    g3d(:,:,:),    gid(:,:,:)
+#endif
   integer(4),               save  ::  nfinit,      nfrest
   integer(4),               save  ::   idate(1:6)
-  logical,                  save  ::  ofirst
   character(len=ncf)              ::  cfinit,      cfrest
-  character(len=16),        save  ::   chead(64) 
-  data ofirst / .true. /
+  character(len=16),        save  ::  chead(1:64)
   data cfinit, cfrest / 'not-specified', 'not-specified' /
 
   character(len=16),        save  ::   chrnum
   real(8), save  ::  dundef = -1.d20
 
   public  ::  restrt,  rstadd,  finadd, finout
+
+  interface  print_stats
+     module procedure &
+          & print_stats_2d, &
+          & print_stats_3d
+  end interface print_stats
 
 contains
 
@@ -62,12 +73,10 @@ contains
     &       dtds
     use zocfil
     use ufile
-    use bgsid
-    use bgs2d
-    use bgs3d
     use ucaln
-    use bshft
-
+    use zocgrd,   only  : hic
+    use zocout,   only  :                                             &
+    &     loglev
     implicit none
 
     real(8),   intent(in)     ::  tstrt
@@ -111,6 +120,14 @@ contains
     READ_NAMELIST( nmfini )
     READ_NAMELIST( nmislt )
 
+    hib=0.d0
+    do k = 1, nic
+       hib(:,:,k) = hic(k)
+    end do
+#ifdef OPT_IO_COCOMPI
+    call mpi_filopn(mpi_fh_r, cfinit, 'READ')
+    disp=0
+#else
     if ( myrank == iroot ) then
        call filopn(nfinit, cfinit, 'READ')
        write(jfpar, *) '*** read initial condition file ***'
@@ -132,6 +149,7 @@ contains
        allocate ( gid(nxgdim,nygdim,0:nic) )
     end if
 
+#endif
     call rstadd(ub,          oeof, nxdim, nydim, nzdim, 'U',     'OCN', -1.d0,  -1,  -1, vinit=0.d0 )
     call rstadd(vb,          oeof, nxdim, nydim, nzdim, 'V',     'OCN', -1.d0,  -1,  -1, vinit=0.d0 )
     call rstadd(tb(1,1,1,1), oeof, nxdim, nydim, nzdim, 'T',     'OCN',  1.d0,   0,   0, vinit=0.d0 )
@@ -141,7 +159,7 @@ contains
     call rstadd(vbtb,        oeof, nxdim, nydim,     1, 'VBT',   'SFC', -1.d0,  -1,  -1, vinit=0.d0 )
     call rstadd(w,           oeof, nxdim, nydim, nzdim, 'W',     'OCN',  1.d0,   0,   0, vinit=0.d0 )
     call rstadd(ab,          oeof, nxdim, nydim, nic+1, 'AI',    'ICE',  1.d0,   0,   0, vinit=0.d0 )
-    call rstadd(hib,         oeof, nxdim, nydim, nic+1, 'HI',    'ICE',  1.d0,   0,   0, vinit=0.d0 )
+    call rstadd(hib,         oeof, nxdim, nydim, nic+1, 'HI',    'ICE',  1.d0,   0,   0             )
     call rstadd(uib,         oeof, nxdim, nydim,     1, 'UI',    'SFC', -1.d0,  -1,  -1, vinit=0.d0 )
     call rstadd(vib,         oeof, nxdim, nydim,     1, 'VI',    'SFC', -1.d0,  -1,  -1, vinit=0.d0 )
     call rstadd(tib,         oeof, nxdim, nydim, nic+1, 'TI',    'ICE',  1.d0,   0,   0, vinit=-0.1d0)
@@ -161,8 +179,27 @@ contains
        call rstadd(tb(1,1,1,l), oeof, nxdim, nydim, nzdim, 'TB', 'OCN',  1.d0,   0,   0, vinit=0.d0 )
     end do
     do l = 3, ntdim
-           call rstadd(ft(1,1,  l), oeof, nxdim, nydim,     1, 'FT', 'SFC',  1.d0,   0,   0, vinit=0.d0 )
+       call rstadd(ft(1,1,  l), oeof, nxdim, nydim,     1, 'FT', 'SFC',  1.d0,   0,   0, vinit=0.d0 )
     end do
+
+    if (loglev > 0) then
+       call print_stats(ub, 'U')
+       call print_stats(vb, 'V')
+       call print_stats(tb(:,:,:,1), 'T')
+       call print_stats(tb(:,:,:,2), 'S')
+       call print_stats(hb, 'SH')
+    end if
+    !$acc update device(ub, vb, tb, hb, ubtb, vbtb, w, ab, hib, uib, vib, tib, hsb, ft, swabs, fs, taux, tauy, amv, ahv, ptop, tsi)
+
+    !$acc kernels default(present)
+    do k=1,nzdim
+    do j=1,nydim
+    do i=1,nxdim
+       tb(i,j,k,2)=abs(tb(i,j,k,2))
+    end do
+    end do
+    end do
+
     ab(1:nxdim,1:nydim,0) = 1.d0
     do k = 1, nic
        do j = 1, nydim
@@ -179,7 +216,8 @@ contains
           ab(i, j, 0) = max(0.d0, ab(i, j ,0))
        end do
     end do
-
+    !$acc end kernels
+    
     if ( myrank == iroot ) then
        cdate = chead(50)
        read(cdate, '(i6.6,5i2.2)') idate
@@ -208,9 +246,13 @@ contains
     &        nxg,    nyg,     nz
     use zocnod,   only  :                                             &
     &     myrank,  iroot, mpi_comm_ogcm
+#ifdef OPT_IO_COCOMPI
+    use mpiio
+#else
     use bgs2d
     use bgs3d
     use bgsid
+#endif
     use bshft
 
     implicit none
@@ -237,6 +279,29 @@ contains
        additm=vinit
     end if
 
+    shift_gpu=.false.
+
+#ifdef OPT_IO_COCOMPI
+    oeof = .false.
+    call mpi_read_chead(chead, mpi_fh_r, disp, icread)
+    if(icread .ne. 1024) then
+       oeof = .true.
+    end if
+    if(.not. oeof) then
+       if ( clas(1:3) == 'OCN' ) then
+          additm(:,:,:kstr-1)=0.d0
+          additm(:,:,kstr+nz:)=0.d0
+          call mpi_read_3d(additm, mpi_fh_r,disp)
+          call shift1(additm, nxdim, nydim, nzdim, fact, ioff, joff)
+       else if ( clas(1:3) == 'ICE' ) then
+          call mpi_read_id(additm, mpi_fh_r,disp)
+          call shift1(additm, nxdim, nydim, nic+1, fact, ioff, joff)
+       else
+          call mpi_read_2d(additm, mpi_fh_r,disp)
+          call shift1(additm, nxdim, nydim, 1, fact, ioff, joff)
+       end if
+    end if
+#else
     if ( clas(1:3) == 'OCN' ) then
        if ( myrank == iroot ) then
           oeof = .true.
@@ -298,7 +363,7 @@ contains
           call shift1(additm, nxdim, nydim, 1, fact,  ioff,  joff)
        end if
     end if
-
+#endif
   end subroutine rstadd
 
 ! =====================================================================
@@ -321,11 +386,7 @@ contains
     use zocnod,   only  :                                             &
     &     myrank,  iroot, mpi_comm_ogcm
     use ufile
-    use bgsid
-    use bgs2d
-    use bgs3d
     use ucaln
-
     implicit none
 
     real(8),    intent(in)     ::  tt
@@ -365,6 +426,7 @@ contains
     character(len=5)  :: hzone
     integer :: ivalues(1:8)
     character(len=16) :: citem
+    logical,    save  ::  ofirst = .true.
 
     namelist /nmfrst/ cfrest
     namelist /nmrun/ crun
@@ -372,9 +434,13 @@ contains
     if ( ofirst ) then
        READ_NAMELIST( nmfrst )
        READ_NAMELIST( nmrun  )
+#ifdef OPT_IO_COCOMPI
+       call mpi_filopn(mpi_fh_w, cfrest, 'WRITE')
+#else
        if ( myrank == iroot ) then
           call filopn(nfrest, cfrest, 'WRITE')
        end if
+#endif
        ofirst = .false.
     end if
 
@@ -385,43 +451,48 @@ contains
     end if
 
     if ( .not. orsout ) return
-
+#ifdef OPT_IO_COCOMPI
+    if (orsrwd) then
+       dispw=0
+    end if
+#else
     if ( myrank == iroot ) then
-       do i = 1, 64
-          write(chead(i),'(16x)')
-       end do
        if (orsrwd) then
           rewind(nfrest)
        end if
-       call css2yh(  idate, tt)
-       write(chead(1), '(i16)') 9010
-       chead(2) = chrnum
-       write(chead(25), '(i16)') nint(tt / 3.6d3)
-       chead(26) = 'HOUR'
-       chead(38) = 'UR8'
-       write(chead(27), '(i4.4,2i2.2,1x,3i2.2,1x)') idate(1:6)
-       write(chead(48), '(i4.4,2i2.2,1x,3i2.2,1x)') idate(1:6)
-       write(chead(49), '(i4.4,2i2.2,1x,3i2.2,1x)') idate(1:6)
-       write(chead(50), '(i6.6,5i2.2)') idate(1:6)
-       write(chead(30), '(i16)') 1
-       write(chead(31), '(i16)') nxg
-       write(chead(33), '(i16)') 1
-       write(chead(34), '(i16)') nyg
-       write(chead(36), '(i16)') 1
-       write(chead(39), '(e16.7)') dundef
-       chead(40) = chead(39)
-       chead(41) = chead(39)
-       chead(42) = chead(39)
-       chead(43) = chead(39)
-       write(chead(44), '(i16)') 1
-       write(chead(46), '(i16)') 0
-       write(chead(47), '(e16.7)') 0.d0
-       chead(61) = 'COCO'
-       chead(63) = 'COCO'
-       call date_and_time(hdate, htime, hzone, ivalues)
-       write(chead(60), '(i4.4,2i2.2,1x,3i2.2,1x)') ivalues(1:3), ivalues(5:7)
-       chead(62) = chead(60)
-    end if
+    endif
+#endif
+    do i = 1, 64
+       write(chead(i),'(16x)')
+    end do
+    call css2yh(  idate, tt)
+    write(chead(1), '(i16)') 9010
+    chead(2) = chrnum
+    write(chead(25), '(i16)') nint(tt / 3.6d3)
+    chead(26) = 'HOUR'
+    chead(38) = 'UR8'
+    write(chead(27), '(i4.4,2i2.2,1x,3i2.2,1x)') idate(1:6)
+    write(chead(48), '(i4.4,2i2.2,1x,3i2.2,1x)') idate(1:6)
+    write(chead(49), '(i4.4,2i2.2,1x,3i2.2,1x)') idate(1:6)
+    write(chead(50), '(i6.6,5i2.2)') idate(1:6)
+    write(chead(30), '(i16)') 1
+    write(chead(31), '(i16)') nxg
+    write(chead(33), '(i16)') 1
+    write(chead(34), '(i16)') nyg
+    write(chead(36), '(i16)') 1
+    write(chead(39), '(e16.7)') dundef
+    chead(40) = chead(39)
+    chead(41) = chead(39)
+    chead(42) = chead(39)
+    chead(43) = chead(39)
+    write(chead(44), '(i16)') 1
+    write(chead(46), '(i16)') 0
+    write(chead(47), '(e16.7)') 0.d0
+    chead(61) = 'COCO'
+    chead(63) = 'COCO'
+    call date_and_time(hdate, htime, hzone, ivalues)
+    write(chead(60), '(i4.4,2i2.2,1x,3i2.2,1x)') ivalues(1:3), ivalues(5:7)
+    chead(62) = chead(60)
 
     call finadd(ub,          nxdim, nydim, nzdim, 'UO',   'OCN', 'ocean zonal velocity',                 'cm/s',       'OCLVTV')
     call finadd(vb,          nxdim, nydim, nzdim, 'VO',   'OCN', 'ocean meridional velocity',            'cm/s',       'OCLVTV')
@@ -457,7 +528,7 @@ contains
        write(citem, '(a,i2.2)') 'TRCFLX', l
        call finadd(ft(1,1,l),   nxdim, nydim,     1, citem, 'SFC', '', '', 'OCSFCT')
     end do
-    
+
     if ( myrank == iroot ) then
        write(jfpar, *) '*** Write restart file ***'
        write(jfpar, *) ' time :', idate
@@ -478,20 +549,21 @@ contains
     &        nxg,    nyg,     nz,   nxyg,  nxyzg, nic
     use zocnod,   only  :                                             &
     &     myrank,  iroot
+#ifdef OPT_IO_COCOMPI
+    use mpiio
+#else
     use bgs2d
     use bgs3d
     use bgsid
-
+#endif
     implicit none
 
     integer(4),   intent(in)     ::   ixdim,  jydim,  kzdim
     real(8),      intent(inout)  ::  additm(ixdim, jydim, kzdim)
     character(*), intent(in)     ::  ccitem,   clas
     character(*), intent(in), optional ::  htitl,  hunit, cclas
-
-!---- local variables
-    integer(4)   ::     i,     j,     k
-    
+    integer(4) :: i, j, k
+    !$acc update self(additm)
 
     if(present(htitl)) then
        call edhead(ccitem, htitl, hunit, cclas)
@@ -523,6 +595,18 @@ contains
        end if
     end if
 
+#ifdef OPT_IO_COCOMPI
+    if ( clas(1:3) == 'OCN' ) then
+       call mpi_write_header(chead, mpi_fh_w, dispw)
+       call mpi_write_3d(additm, mpi_fh_w,dispw)    
+    else if ( clas(1:3) == 'ICE' ) then
+       call mpi_write_header(chead, mpi_fh_w, dispw)
+       call mpi_write_id(additm, mpi_fh_w,dispw)    
+    else
+       call mpi_write_header(chead, mpi_fh_w, dispw)
+       call mpi_write_2d(additm, mpi_fh_w,dispw)
+    end if
+#else
     if ( clas(1:3) == 'OCN' ) then
        call gather_3d(g3d, additm)
        if ( myrank == iroot ) then
@@ -561,7 +645,10 @@ contains
           write(nfrest) buf2
        end if
     end if
+#endif
   end subroutine finadd
+
+! =====================================================================
 
   subroutine edhead(                 &
        &             ccitem,         &
@@ -611,5 +698,220 @@ contains
     end if
 
   end subroutine edhead
+
+! =====================================================================
+  subroutine print_stats_2d(data, cname, cpos)
+
+    use ufile
+    use zocdim,   only  :                                             &
+    &     istr, iend, jstr, jend, kstr, nxdim
+    use zocmsk,   only  :                                             &
+    &      amskt,  amskv
+    use zocnod,   only  :                                             &
+    &     mpi_comm_ogcm
+!#ifdef OPT_TOUZA
+!    use TOUZA_Std_log, only: msg
+!#endif
+    real(8),          intent(in)           :: data(:,:)
+    character(len=*), intent(in)           :: cname
+    character(1),     intent(in), optional :: cpos
+    
+    logical, save              :: ofirst = .true.
+    logical, save, allocatable :: omask(:, :)
+    integer, save              :: dnumg
+
+    real(8) ::  dmax,  dmin, dmaxg, dming
+    real(8) ::  dsum,  dave, dsumg, daveg
+    real(8) ::  dvar, dvarg, dstdg
+    integer ::  dnum
+    integer :: ifpar, jfpar,  ierr
+    integer ::    ij,     i,     j
+    logical :: oposv
+    
+    logical, save ::  omsk = .false.  !! if true, does not work correctly
+
+    if (ofirst) then
+       allocate(omask(size(data,1),size(data,2)))
+       omask(:,:) = .false.
+       if (omsk) then
+          oposv = .false.
+          if (present(cpos)) then
+             if (cpos == 'V') then
+                oposv = .true.
+             end if
+          end if
+          if (oposv) then
+             do j = jstr, jend
+             do i = istr, iend
+                ij = nxdim*(j-1) + i
+                if (amskv(ij, kstr) > 0.D0) then
+                   omask(i, j) = .true.
+                end if
+             end do
+             end do
+          else
+             do j = jstr, jend
+             do i = istr, iend
+                ij = nxdim*(j-1) + i
+                if (amskt(ij, kstr) > 1.D0) then
+                   omask(i, j) = .true.
+                end if
+             end do
+             end do
+          end if
+       else
+          do j = jstr, jend
+          do i = istr, iend
+             omask(i, j) = .true.
+          end do
+          end do
+       end if
+       dnum=count(omask)
+       call mpi_allreduce( &
+            &  dnum, dnumg, 1, mpi_integer4, &
+            &  mpi_sum, mpi_comm_ogcm, ierr)
+       ofirst = .false.
+    end if
+    
+    dmax=maxval(data, omask)
+    dmin=minval(data, omask)
+    call mpi_allreduce( &
+         &  dmax, dmaxg, 1, mpi_real8, &
+         &  mpi_max, mpi_comm_ogcm, ierr)
+    call mpi_allreduce( &
+         &  dmin, dming, 1, mpi_real8, &
+         &  mpi_min, mpi_comm_ogcm, ierr)
+    dsum=sum(data, omask)
+    call mpi_allreduce( &
+         &  dsum, dsumg, 1, mpi_real8, &
+         &  mpi_sum, mpi_comm_ogcm, ierr)
+    daveg=dsumg/dble(dnumg)
+    dvar=sum(data**2.d0,omask)
+    call mpi_allreduce( &
+         &  dvar, dvarg, 1, mpi_real8, &
+         &  mpi_sum, mpi_comm_ogcm, ierr)
+    dvarg=dvarg/dble(dnumg)-daveg**2.d0
+    dstdg=sqrt(dvarg)
+
+    call rewnml(ifpar, jfpar)
+!#ifdef OPT_TOUZA
+!    call msg('("MAX, MIN, AVE, SD, NUM of '//trim(cname)//' : ")', dmaxg, dming, daveg, dstdg, dnumg, jfpar)
+!#else
+    write(jfpar,*) 'MAX, MIN, AVE, SD, NUM of '//trim(cname)//' : ', dmaxg, ',', dming, ',', daveg, ',', dstdg, ',', dnumg
+!    call flush(jfpar)
+!#endif
+    call flush(jfpar)
+    
+  end subroutine print_stats_2d
+
+  subroutine print_stats_3d(data, cname, cpos)
+
+    use ufile
+    use zocdim,   only  :                                             &
+    &     istr, iend, jstr, jend, kstr, kend, nxdim, nxydim
+    use zocmsk,   only  :                                             &
+    &      amskt,  amskv
+    use zocnod,   only  :                                             &
+    &     mpi_comm_ogcm
+!#ifdef OPT_TOUZA
+!    use TOUZA_Std_log, only: msg
+!#endif
+    
+    real(8),          intent(in)           :: data(:,:,:)
+    character(len=*), intent(in)           :: cname
+    character(1),     intent(in), optional :: cpos
+    
+    logical, save              :: ofirst = .true.
+    logical, save, allocatable :: omask(:,:,:)
+    integer, save              :: dnumg
+
+    real(8) ::  dmax,  dmin, dmaxg, dming
+    real(8) ::  dsum,  dave, dsumg, daveg
+    real(8) ::  dvar, dvarg, dstdg
+    integer ::  dnum
+    integer :: ifpar, jfpar,  ierr
+    integer ::    ij,     i,     j,     k
+    logical :: oposv
+    
+    logical, save ::  omsk = .false.  !! if true, does not work correctly
+
+    if (ofirst) then
+       allocate(omask(size(data,1),size(data,2),size(data,3)))
+       omask(:,:,:) = .false.
+       oposv = .false.
+       if (omsk) then
+          if (present(cpos)) then
+             if (cpos == 'V') then
+                oposv = .true.
+             end if
+          end if
+          if (oposv) then
+             do j = jstr, jend
+             do i = istr, iend
+                ij = nxdim*(j-1) + i
+                do k = kstr, kend
+                   if (amskv(ij, k) > 0.D0) then
+                      omask(i, j, k) = .true.
+                   end if
+                end do
+             end do
+             end do
+          else
+             do j = jstr, jend
+             do i = istr, iend
+                ij = nxdim*(j-1) + i
+                do k = kstr, kend
+                   if (amskt(ij, k) > 0.D0) then
+                      omask(i, j, k) = .true.
+                   end if
+                end do
+             end do
+             end do
+          end if
+       else
+          do k = kstr, kend
+          do j = jstr, jend
+          do i = istr, iend
+             omask(i, j, k) = .true.
+          end do
+          end do
+          end do
+       end if
+       dnum=count(omask)
+       call mpi_allreduce( &
+            &  dnum, dnumg, 1, mpi_integer4, &
+            &  mpi_sum, mpi_comm_ogcm, ierr)
+       ofirst = .false.
+    end if
+    
+    dmax=maxval(data, omask)
+    dmin=minval(data, omask)
+    call mpi_allreduce( &
+         &  dmax, dmaxg, 1, mpi_real8, &
+         &  mpi_max, mpi_comm_ogcm, ierr)
+    call mpi_allreduce( &
+         &  dmin, dming, 1, mpi_real8, &
+         &  mpi_min, mpi_comm_ogcm, ierr)
+    dsum=sum(data, omask)
+    call mpi_allreduce( &
+         &  dsum, dsumg, 1, mpi_real8, &
+         &  mpi_sum, mpi_comm_ogcm, ierr)
+    daveg=dsumg/dble(dnumg)
+    dvar=sum(data**2.d0,omask)
+    call mpi_allreduce( &
+         &  dvar, dvarg, 1, mpi_real8, &
+         &  mpi_sum, mpi_comm_ogcm, ierr)
+    dvarg=dvarg/dble(dnumg)-daveg**2.d0
+    dstdg=sqrt(dvarg)
+
+    call rewnml(ifpar, jfpar)
+!#ifdef OPT_TOUZA
+!    call msg('("MAX, MIN, AVE, SD, NUM of '//trim(cname)//' : ")', dmaxg, dming, daveg, dstdg, dnumg, jfpar)
+!#else
+    write(jfpar,*) 'MAX, MIN, AVE, SD, NUM of '//trim(cname)//' : ', dmaxg, ',', dming, ',', daveg, ',', dstdg, ',', dnumg
+!#endif
+    call flush(jfpar)
+
+  end subroutine print_stats_3d
 
 end module brstt
