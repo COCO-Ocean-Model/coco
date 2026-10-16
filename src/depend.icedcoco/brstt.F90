@@ -102,7 +102,8 @@ contains
     integer(4)        ::      i,      j,      k,      l
     integer(4), save  ::  ifpar,  jfpar,  istat
     integer(4), save  :: irstrt,   ierr
-
+    logical           :: oeof
+    
     namelist /nmfini/ cfinit, irstrt
     namelist /nmislt/ si
     data     si / 5.d0 /
@@ -132,425 +133,37 @@ contains
        allocate ( gid(nxgdim,nygdim,0:nic) )
     end if
 
-    ub = 0.d0
-    if ( myrank == iroot ) then
-       rewind(nfinit)
-       read(nfinit, end=109) chead
-       read(nfinit) buf3
-       do k = 1, nz
-          do j = 1, nyg
-             do i = 1, nxg
-                g3d(igstr+i-1, jgstr+j-1, kstr+k-1) = buf3(i, j, k)
-             end do
-          end do
-       end do
-109    continue
-    end if
-    call scatter_3d(ub, g3d)
-
-    vb = 0.d0
-    if ( myrank == iroot ) then
-       read(nfinit, end=119) chead
-       read(nfinit) buf3
-       do k = 1, nz
-          do j = 1, nyg
-             do i = 1, nxg
-                g3d(igstr+i-1, jgstr+j-1, kstr+k-1) = buf3(i, j, k)
-             end do
-          end do
-       end do
-119    continue
-    end if
-    call scatter_3d(vb, g3d)
-
-    tb(:,:,:,1)=0.d0
-    if ( myrank == iroot ) then
-       read(nfinit, end=129) chead
-       read(nfinit) buf3
-       do k = 1, nz
-          do j = 1, nyg
-             do i = 1, nxg
-                g3d(igstr+i-1, jgstr+j-1, kstr+k-1) = buf3(i, j, k)
-             end do
-          end do
-       end do
- 129     continue
-    end if
-    call scatter_3d(tb, g3d)
-
-    tb(:,:,:,2)=0.d0
-    if ( myrank == iroot ) then
-       read(nfinit, end=139) chead
-       read(nfinit) buf3
-       do k = 1, nz
-          do j = 1, nyg
-             do i = 1, nxg
-                g3d(igstr+i-1, jgstr+j-1, kstr+k-1) = abs( buf3(i, j, k) )
-             end do
-          end do
-       end do
-139    continue
-    end if
-    call scatter_3d(tb(1, 1, 1, 2), g3d)
-
-    hb = 0.d0
-    if ( myrank == iroot ) then
-       read(nfinit, end=141) chead
-       read(nfinit) buf2
-       do j = 1, nyg
-          do i = 1, nxg
-             g2d(igstr+i-1, jgstr+j-1) = buf2(i, j)
-          end do
-       end do
-141    continue
-    end if
-    call scatter_2d(hb, g2d)
-
-    ubtb = 0.d0
-    if ( myrank == iroot ) then
-       read(nfinit, end=143) chead
-       read(nfinit) buf2
-       do j = 1, nyg
-          do i = 1, nxg
-             g2d(igstr+i-1, jgstr+j-1) = buf2(i, j)
-          end do
-       end do
-143    continue
-    end if
-    call scatter_2d(ubtb, g2d)
-
-    vbtb = 0.d0
-    if ( myrank == iroot ) then
-       read(nfinit, end=145) chead
-       read(nfinit) buf2
-       do j = 1, nyg
-          do i = 1, nxg
-             g2d(igstr+i-1, jgstr+j-1) = buf2(i, j)
-          end do
-       end do
-145    continue
-    end if
-    call scatter_2d(vbtb, g2d)
-
-    w = 0.d0
-    if ( myrank == iroot ) then
-       read(nfinit, end=159) chead
-       read(nfinit) buf3
-       do k = 1, nz
-          do j = 1, nyg
-             do i = 1, nxg
-                g3d(igstr+i-1, jgstr+j-1, kstr+k-1) = buf3(i, j, k)
-             end do
-          end do
-       end do
-159    continue
-    end if
-    call scatter_3d(w, g3d)
-
-    ab = 0.d0
-    if ( myrank == iroot ) then
-       read(nfinit, end=301) chead
-       read(nfinit) bufi
-       do k = 1, nic
-          do j = 1, nyg
-             do i = 1, nxg
-                gid(igstr+i-1, jgstr+j-1, k) = bufi(i, j, k)
-             end do
-          end do
-       end do
-301    continue
-    end if
-    call scatter_id(ab, gid)
-
-    hib = 0.d0
-    if ( myrank == iroot ) then
-       read(nfinit, end=311) chead
-       read(nfinit) bufi
-       do k = 1, nic
-          do j = 1, nyg
-             do i = 1, nxg
-                gid(igstr+i-1, jgstr+j-1, k) = bufi(i, j, k)
-             end do
-          end do
-       end do
-311    continue
-    end if
-    call scatter_id(hib, gid)
-
-    uib = 0.d0
-    if ( myrank == iroot ) then
-       read(nfinit, end=321) chead
-       read(nfinit) buf2
-       do j = 1, nyg
-          do i = 1, nxg
-             g2d(igstr+i-1, jgstr+j-1) = buf2(i, j)
-          end do
-       end do
-321    continue
-    end if
-    call scatter_2d(uib, g2d)
-
-    vib = 0.d0
-    if ( myrank == iroot ) then
-       read(nfinit, end=331) chead
-       read(nfinit) buf2
-       do j = 1, nyg
-          do i = 1, nxg
-             g2d(igstr+i-1, jgstr+j-1) = buf2(i, j)
-          end do
-       end do
-331    continue
-    end if
-    call scatter_2d(vib, g2d)
-
-    tib = -0.1d0
-    if ( myrank == iroot ) then
-       read(nfinit, end=336) chead
-       read(nfinit) bufi
-       do k = 1, nic
-          do j = 1, nyg
-             do i = 1, nxg
-                gid(igstr+i-1, jgstr+j-1, k) = bufi(i, j, k)
-             end do
-          end do
-       end do
-336    continue
-    end if
-    call scatter_id(tib, gid)
-
-    hsb = 0.d0
-    if ( myrank == iroot ) then
-       read(nfinit, end=341) chead
-       read(nfinit) bufi
-       do k = 1, nic
-          do j = 1, nyg
-             do i = 1, nxg
-                gid(igstr+i-1, jgstr+j-1, k) = bufi(i, j, k)
-             end do
-          end do
-       end do
-341    continue
-    end if
-    call scatter_id(hsb, gid)
-
-    ft(:,:,1)=0.d0
-    if ( myrank == iroot ) then
-       read(nfinit, end=189) chead
-       read(nfinit) buf2
-       do j = 1, nyg
-          do i = 1, nxg
-             g2d(igstr+i-1, jgstr+j-1) = buf2(i, j)
-          end do
-       end do
-189    continue
-    end if
-    call scatter_2d(ft, g2d)
-
-    swabs = 0.d0
-    if ( myrank == iroot ) then
-       read(nfinit, end=401) chead
-       read(nfinit) buf2
-       do j = 1, nyg
-          do i = 1, nxg
-             g2d(igstr+i-1, jgstr+j-1) = buf2(i, j)
-          end do
-       end do
-401    continue
-    end if
-    call scatter_2d(swabs, g2d)
-
-    ft(:,:,2)=0.d0
-    if ( myrank == iroot ) then
-       read(nfinit, end=199) chead
-       read(nfinit) buf2
-       do j = 1, nyg
-          do i = 1, nxg
-             g2d(igstr+i-1, jgstr+j-1) = buf2(i, j)
-          end do
-       end do
-199    continue
-    end if
-    call scatter_2d(ft(1, 1, 2), g2d)
-
-    fs = 0.d0
-    if ( myrank == iroot ) then
-       read(nfinit, end=411) chead
-       read(nfinit) buf2
-       do j = 1, nyg
-          do i = 1, nxg
-             g2d(igstr+i-1, jgstr+j-1) = buf2(i, j)
-          end do
-       end do
-411    continue
-    end if
-    call scatter_2d(fs, g2d)
-
-    taux = 0.d0
-    if ( myrank == iroot ) then
-       read(nfinit, end=421) chead
-       read(nfinit) buf2
-       do j = 1, nyg
-          do i = 1, nxg
-             g2d(igstr+i-1, jgstr+j-1) = buf2(i, j)
-          end do
-       end do
-421    continue
-    end if
-    call scatter_2d(taux, g2d)
-
-    tauy = 0.d0
-    if ( myrank == iroot ) then
-       read(nfinit, end=431) chead
-       read(nfinit) buf2
-       do j = 1, nyg
-          do i = 1, nxg
-             g2d(igstr+i-1, jgstr+j-1) = buf2(i, j)
-          end do
-       end do
- 431     continue
-    end if
-    call scatter_2d(tauy, g2d)
-
-    amv = 0.d0
-    if ( myrank == iroot ) then
-       read(nfinit, end=169) chead
-       read(nfinit) buf3
-       do k = 1, nz
-          do j = 1, nyg
-             do i = 1, nxg
-                g3d(igstr+i-1, jgstr+j-1, kstr+k-1) = buf3(i, j, k)
-             end do
-          end do
-       end do
-169    continue
-    end if
-    call scatter_3d(amv, g3d)
-
-    ahv = 0.d0
-    if ( myrank == iroot ) then
-       read(nfinit, end=179) chead
-       read(nfinit) buf3
-       do k = 1, nz
-          do j = 1, nyg
-             do i = 1, nxg
-                g3d(igstr+i-1, jgstr+j-1, kstr+k-1) = buf3(i, j, k)
-             end do
-          end do
-       end do
-179    continue
-    end if
-    call scatter_3d(ahv, g3d)
-
-    ptop = 0.d0
-    if ( myrank == iroot ) then
-       read(nfinit, end=441) chead
-       read(nfinit) buf2
-       do j = 1, nyg
-          do i = 1, nxg
-             g2d(igstr+i-1, jgstr+j-1) = buf2(i, j)
-          end do
-       end do
-441    continue
-    end if
-    call scatter_2d(ptop, g2d)
-
-    tsi = dtds * si
-    if ( myrank == iroot ) then
-       read(nfinit, end=451) chead
-       read(nfinit) bufi
-       do k = 1, nic
-          do j = 1, nyg
-             do i = 1, nxg
-                gid(igstr+i-1, jgstr+j-1, k) = bufi(i, j, k)
-             end do
-          end do
-       end do
-451    continue
-    end if
-    call scatter_id(tsi, gid)
+    call rstadd(ub,          oeof, nxdim, nydim, nzdim, 'U',     'OCN', -1.d0,  -1,  -1, vinit=0.d0 )
+    call rstadd(vb,          oeof, nxdim, nydim, nzdim, 'V',     'OCN', -1.d0,  -1,  -1, vinit=0.d0 )
+    call rstadd(tb(1,1,1,1), oeof, nxdim, nydim, nzdim, 'T',     'OCN',  1.d0,   0,   0, vinit=0.d0 )
+    call rstadd(tb(1,1,1,2), oeof, nxdim, nydim, nzdim, 'S',     'OCN',  1.d0,   0,   0, vinit=0.d0 )
+    call rstadd(hb,          oeof, nxdim, nydim,     1, 'SH',    'SFC',  1.d0,   0,   0, vinit=0.d0 )
+    call rstadd(ubtb,        oeof, nxdim, nydim,     1, 'UBT',   'SFC', -1.d0,  -1,  -1, vinit=0.d0 )
+    call rstadd(vbtb,        oeof, nxdim, nydim,     1, 'VBT',   'SFC', -1.d0,  -1,  -1, vinit=0.d0 )
+    call rstadd(w,           oeof, nxdim, nydim, nzdim, 'W',     'OCN',  1.d0,   0,   0, vinit=0.d0 )
+    call rstadd(ab,          oeof, nxdim, nydim, nic+1, 'AI',    'ICE',  1.d0,   0,   0, vinit=0.d0 )
+    call rstadd(hib,         oeof, nxdim, nydim, nic+1, 'HI',    'ICE',  1.d0,   0,   0, vinit=0.d0 )
+    call rstadd(uib,         oeof, nxdim, nydim,     1, 'UI',    'SFC', -1.d0,  -1,  -1, vinit=0.d0 )
+    call rstadd(vib,         oeof, nxdim, nydim,     1, 'VI',    'SFC', -1.d0,  -1,  -1, vinit=0.d0 )
+    call rstadd(tib,         oeof, nxdim, nydim, nic+1, 'TI',    'ICE',  1.d0,   0,   0, vinit=-0.1d0)
+    call rstadd(hsb,         oeof, nxdim, nydim, nic+1, 'HS',    'ICE',  1.d0,   0,   0, vinit=0.d0 )
+    call rstadd(ft(1,1,1),   oeof, nxdim, nydim,     1, 'FT',    'SFC',  1.d0,   0,   0, vinit=0.d0 )
+    call rstadd(swabs,       oeof, nxdim, nydim,     1, 'SWABS', 'SFC',  1.d0,   0,   0, vinit=0.d0 )
+    call rstadd(ft(1,1,2),   oeof, nxdim, nydim,     1, 'FW',    'SFC',  1.d0,   0,   0, vinit=0.d0 )
+    call rstadd(fs,          oeof, nxdim, nydim,     1, 'FS',    'SFC',  1.d0,   0,   0, vinit=0.d0 )
+    call rstadd(taux,        oeof, nxdim, nydim,     1, 'TAUX',  'SFC', -1.d0,  -1,  -1, vinit=0.d0 )
+    call rstadd(tauy,        oeof, nxdim, nydim,     1, 'TAUY',  'SFC', -1.d0,  -1,  -1, vinit=0.d0 )
+    call rstadd(amv,         oeof, nxdim, nydim, nzdim, 'AMV',   'OCN',  1.d0,  -1,  -1, vinit=0.d0 )
+    call rstadd(ahv,         oeof, nxdim, nydim, nzdim, 'AHV',   'OCN',  1.d0,   0,   0, vinit=0.d0 )
+    call rstadd(ptop,        oeof, nxdim, nydim,     1, 'PTOP',  'SFC',  1.d0,   0,   0, vinit=0.d0 )
+    call rstadd(tsi,         oeof, nxdim, nydim, nic+1, 'TSI',   'ICE',  1.d0,   0,   0, vinit=dtds * si)
 
     do l = 3, ntdim
-       tb(:,:,:,l)=0.d0
-       if ( myrank == iroot ) then
-          read(nfinit, end=209) chead
-          read(nfinit) buf3
-          do k = 1, nz
-             do j = 1, nyg
-                do i = 1, nxg
-                   g3d(igstr+i-1, jgstr+j-1, kstr+k-1) = buf3(i, j, k)
-                end do
-             end do
-          end do
-209       continue
-       end if
-       call scatter_3d(tb(1, 1, 1, l), g3d)
+       call rstadd(tb(1,1,1,l), oeof, nxdim, nydim, nzdim, 'TB', 'OCN',  1.d0,   0,   0, vinit=0.d0 )
     end do
-
     do l = 3, ntdim
-       ft(:,:,l)=0.d0
-       if ( myrank == iroot ) then
-          read(nfinit, end=219) chead
-          read(nfinit) buf2
-          do j = 1, nyg
-             do i = 1, nxg
-                g2d(igstr+i-1, jgstr+j-1) = buf2(i, j)
-             end do
-          end do
-219       continue
-       end if
-       call scatter_2d(ft(1, 1, l), g2d)
+           call rstadd(ft(1,1,  l), oeof, nxdim, nydim,     1, 'FT', 'SFC',  1.d0,   0,   0, vinit=0.d0 )
     end do
-
-#ifdef OPT_TRIPOLE
-    call shift2(    ub,      vb,                                      &
-    &             nxdim,   nydim,  nzdim,                             &
-    &             -1.d0,      -1,     -1 ) 
-    call shift1(   tb,                                                &
-    &             nxdim,   nydim, nztdim,                             &
-    &              1.d0,       0,      0)
-    call shift1(   amv,                                               &
-    &            nxdim,   nydim,  nzdim,                              &
-    &             1.d0,      -1,     -1 )
-    call shift2(     w,     ahv,                                      &
-    &            nxdim,   nydim,  nzdim,                              &
-    &             1.d0,       0,      0 )
-    call shift1(    hb,                                               &
-    &            nxdim,   nydim,      1,                              &
-    &             1.d0,       0,      0 )
-    call shift2(  ubtb,    vbtb,                                      &
-    &            nxdim,   nydim,      1,                              &
-    &            -1.d0,      -1,     -1 )
-    call shift3(    ab,     hib,    hsb,                              &
-    &            nxdim,   nydim,  nic+1,                              &
-    &             1.d0,       0,      0 )
-    call shift2(   tsi,     tib,                                      &
-    &            nxdim,   nydim,  nic+1,                              &
-    &             1.d0,       0,      0 )
-    call shift2(   uib,     vib,                                      &
-    &            nxdim,   nydim,      1,                              &
-    &            -1.d0,      -1,     -1 )
-    call shift1(    ft,                                               &
-    &            nxdim,   nydim,  ntdim,                              &
-    &             1.d0,       0,      0 )
-    call shift3(    fs,   swabs,   ptop,                              &
-    &            nxdim,   nydim,      1,                              &
-    &             1.d0,       0,      0 )
-    call shift2(  taux,    tauy,                                      &
-    &            nxdim,   nydim,      1,                              &
-    &            -1.d0,      -1,     -1 )
-#else
-    call shift3(    ub,     vb,      w,  nxdim,  nydim,  nzdim )
-    call shift1(    tb,                  nxdim,  nydim, nztdim )
-    call shift2(   amv,    ahv,          nxdim,  nydim,  nzdim )
-    call shift3(    hb,   ubtb,   vbtb,  nxdim,  nydim,      1 )
-    call shift3(    ab,    hib,    hsb,  nxdim,  nydim,  nic+1 )
-    call shift2(   tsi,    tib,          nxdim,  nydim,  nic+1 )
-    call shift2(   uib,    vib,          nxdim,  nydim,      1 )
-    call shift1(    ft,                  nxdim,  nydim,  ntdim )
-    call shift2( swabs,     fs,          nxdim,  nydim,      1 )
-    call shift3(  taux,   tauy,   ptop,  nxdim,  nydim,      1 )
-#endif
-
     ab(1:nxdim,1:nydim,0) = 1.d0
     do k = 1, nic
        do j = 1, nydim
@@ -587,12 +200,8 @@ contains
   subroutine rstadd(                                                  &
     &      additm,   oeof,                                            &
     &       ixdim,  jydim,  kzdim,                                    &
-#ifndef OPT_TRIPOLE
-    &      ccitem,   clas )
-#else
     &      ccitem,   clas,                                            &
-    &        fact,   ioff,   joff )
-#endif
+    &       fact0,  ioff0,  joff0,  vinit)
 
     use zocdim,   only  :                                             &
     &      nxdim,  nydim,  nzdim,    nic,                             &
@@ -611,16 +220,23 @@ contains
     real(8),      intent(inout)  ::  additm(ixdim, jydim, kzdim)
     logical,      intent(inout)  ::    oeof
     character(*), intent(in)     ::  ccitem,   clas
-#ifdef OPT_TRIPOLE
-! set 1 for scalar, set -1 for vector
-    real(8),      intent(in)    ::    fact  
-!(IOFF,JOFF)=(0,0)for T-cell, (-1,-1)for V-cell 
-    integer(4),   intent(in)    ::    ioff,   joff 
-#endif
+
+    real(8),      intent(in), optional :: fact0        ! 1 for scalar, -1 for vector
+    integer(4),   intent(in), optional :: ioff0, joff0 !((0,0)for T-cell, (-1,-1)for V-cell 
+    real(8),      intent(in), optional :: vinit
 
 !---- local variables
-    integer(4)   ::     i,     j,     k
-    integer(4)   ::  ierr
+    integer(4)   :: i, j, k, ierr, ioff, joff
+    real(8)      :: fact
+
+    if(present(fact0)) then
+       fact=fact0
+       ioff=ioff0
+       joff=joff0
+    end if
+    if(present(vinit)) then
+       additm=vinit
+    end if
 
     if ( clas(1:3) == 'OCN' ) then
        if ( myrank == iroot ) then
@@ -637,16 +253,12 @@ contains
           oeof = .false.
 309       continue
        end if
-       call mpi_bcast                                                 &
-    &        (oeof, 1, mpi_logical, iroot, mpi_comm_ogcm, ierr)
+       call mpi_bcast(oeof, 1, mpi_logical, iroot, mpi_comm_ogcm, ierr)
        if ( .not. oeof ) then
           call scatter_3d(additm, g3d)
-#ifdef OPT_TRIPOLE
-          call shift1(additm, nxdim, nydim, nzdim,                    &
-    &                          fact,  ioff,  joff  )
-#else
-          call shift1(additm, nxdim, nydim, nzdim)
-#endif
+          additm(:,:,:kstr-1)=0.d0
+          additm(:,:,kstr+nz:)=0.d0
+          call shift1(additm, nxdim, nydim, nzdim, fact,  ioff,  joff  )
        end if
     else if ( clas(1:3) == 'ICE' ) then
        if ( myrank == iroot ) then
@@ -663,16 +275,10 @@ contains
           oeof = .false.
 314       continue
        end if
-       call mpi_bcast                                                 &
-    &        (oeof, 1, mpi_logical, iroot, mpi_comm_ogcm, ierr)
+       call mpi_bcast(oeof, 1, mpi_logical, iroot, mpi_comm_ogcm, ierr)
        if ( .not. oeof ) then
           call scatter_id(additm, gid)
-#ifdef OPT_TRIPOLE
-          call shift1(additm, nxdim, nydim, nic+1,                    &
-    &                          fact,  ioff,  joff  )
-#else
-          call shift1(additm, nxdim, nydim, nic+1)
-#endif
+          call shift1(additm, nxdim, nydim, nic+1, fact,  ioff,  joff  )
        end if
     else
        if ( myrank == iroot ) then
@@ -687,16 +293,10 @@ contains
           oeof = .false.
 319       continue
        end if
-       call mpi_bcast                                                 &
-    &        (oeof, 1, mpi_logical, iroot, mpi_comm_ogcm, ierr)
+       call mpi_bcast(oeof, 1, mpi_logical, iroot, mpi_comm_ogcm, ierr)
        if ( .not. oeof ) then
           call scatter_2d(additm, g2d)
-#ifdef OPT_TRIPOLE
-          call shift1(additm, nxdim, nydim,     1,                    &
-    &                          fact,  ioff,  joff)
-#else
-          call shift1(additm, nxdim, nydim, 1)
-#endif
+          call shift1(additm, nxdim, nydim, 1, fact,  ioff,  joff)
        end if
     end if
 
