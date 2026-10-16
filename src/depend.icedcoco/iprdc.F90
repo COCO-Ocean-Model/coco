@@ -231,42 +231,21 @@ subroutine predci( &
            eix(ij, l) = ei(tix(ij, l), si) * hix(ij, l) !used in shift3 (oinit=.true.)
         end do
      end do
-#ifdef OPT_TRIPOLE
-     call rstadd(pice, oeof, nxdim, nydim, 1, 'PICE', 'SFC', &
-       &                                      1.d0,  0,  0 )
+
+     call rstadd(pice, oeof, nxdim, nydim, 1, 'PICE', 'SFC', 1.d0, 0, 0 )
      if (osage) then
-        call rstadd( asx, oeof, nxdim, nydim, nic+1, 'AS', 'ICE', &
-          &                                      1.d0,  0,  0 )
+        call rstadd( asx,  oeof, nxdim, nydim, nic+1, 'AS',   'ICE', 1.d0, 0, 0 )
      end if
      if (impnd > 0) then
-        call rstadd(frlvx, oeof, nxdim, nydim, nic+1, 'FRLV', 'ICE', &
-          &                                      1.d0,  0,  0 )
-        call rstadd(vmpx, oeof, nxdim, nydim, nic+1, 'VMP', 'ICE', &
-          &                                      1.d0,  0,  0 )
-        call rstadd(frmpx, oeof, nxdim, nydim, nic+1, 'FRMP', 'ICE', &
-          &                                      1.d0,  0,  0 )
+        call rstadd(frlvx, oeof, nxdim, nydim, nic+1, 'FRLV', 'ICE', 1.d0, 0, 0 )
+        call rstadd(vmpx,  oeof, nxdim, nydim, nic+1, 'VMP',  'ICE', 1.d0, 0, 0 )
+        call rstadd(frmpx, oeof, nxdim, nydim, nic+1, 'FRMP', 'ICE', 1.d0, 0, 0 )
      end if
      if (oadst) then
-        call rstadd(dsdx, oeof, nxdim, nydim, nic+1, 'DSD', 'ICE', &
-          &                                      1.d0,  0,  0 )
-        call rstadd(dsbx, oeof, nxdim, nydim, nic+1, 'DSB', 'ICE', &
-          &                                      1.d0,  0,  0 )
+        call rstadd(dsdx,  oeof, nxdim, nydim, nic+1, 'DSD',  'ICE', 1.d0, 0, 0 )
+        call rstadd(dsbx,  oeof, nxdim, nydim, nic+1, 'DSB',  'ICE', 1.d0, 0, 0 )
      end if
-#else
-     call rstadd(pice, oeof, nxdim, nydim, 1, 'PICE', 'SFC')
-     if (osage) then
-        call rstadd( asx, oeof, nxdim, nydim, nic+1, 'AS'  , 'ICE')
-     end if
-     if (impnd > 0) then
-        call rstadd(frlvx, oeof, nxdim, nydim, nic+1, 'FRLV' , 'ICE')
-        call rstadd(vmpx, oeof, nxdim, nydim, nic+1, 'VMP' , 'ICE')
-        call rstadd(frmpx, oeof, nxdim, nydim, nic+1, 'FRMP' , 'ICE')
-     end if
-     if (oadst) then
-        call rstadd(dsdx, oeof, nxdim, nydim, nic+1, 'DSD' , 'ICE')
-        call rstadd(dsbx, oeof, nxdim, nydim, nic+1, 'DSB' , 'ICE')
-     end if
-#endif
+
      call idfrmp( &
        &          frlvx,   vmpx,  frmpx, &
        &         improf, &

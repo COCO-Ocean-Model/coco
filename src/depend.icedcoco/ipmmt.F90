@@ -127,18 +127,9 @@ subroutine pmomnt( &
      sgmxx(:)=0.d0
      sgmyy(:)=0.d0
      sgmxy(:)=0.d0
-#ifdef OPT_TRIPOLE
-     call rstadd(sgmxx, oeof, nxdim, nydim, 1, 'SGMXX', 'SFC', &
-       &                                        1.d0,  0,  0 )
-     call rstadd(sgmyy, oeof, nxdim, nydim, 1, 'SGMYY', 'SFC', &
-       &                                        1.d0,  0,  0 )
-     call rstadd(sgmxy, oeof, nxdim, nydim, 1, 'SGMXY', 'SFC', &
-       &                                        1.d0,  0,  0 )
-#else
-     call rstadd(sgmxx, oeof, nxdim, nydim, 1, 'SGMXX', 'SFC')
-     call rstadd(sgmyy, oeof, nxdim, nydim, 1, 'SGMYY', 'SFC')
-     call rstadd(sgmxy, oeof, nxdim, nydim, 1, 'SGMXY', 'SFC')
-#endif
+     call rstadd(sgmxx, oeof, nxdim, nydim, 1, 'SGMXX', 'SFC', 1.d0,  0,  0 )
+     call rstadd(sgmyy, oeof, nxdim, nydim, 1, 'SGMYY', 'SFC', 1.d0,  0,  0 )
+     call rstadd(sgmxy, oeof, nxdim, nydim, 1, 'SGMXY', 'SFC', 1.d0,  0,  0 )
 !$acc enter data copyin(sgmxx, sgmyy, sgmxy)
      return
   end if

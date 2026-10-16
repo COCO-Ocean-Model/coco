@@ -270,15 +270,8 @@ subroutine vdiff( &
            psi(ij, k) = psimin
         end do
      end do
-#ifdef OPT_TRIPOLE
-     call rstadd(tke, oeof, nxdim, nydim, nzdim, 'TKE', 'OCN', &
-       &                                          1.d0,  0,  0 )
-     call rstadd(psi, oeof, nxdim, nydim, nzdim, 'PSI', 'OCN', &
-       &                                          1.d0,  0,  0 )
-#else
-     call rstadd(tke, oeof, nxdim, nydim, nzdim, 'TKE', 'OCN')
-     call rstadd(psi, oeof, nxdim, nydim, nzdim, 'PSI', 'OCN')
-#endif
+     call rstadd(tke, oeof, nxdim, nydim, nzdim, 'TKE', 'OCN', 1.d0,  0,  0 )
+     call rstadd(psi, oeof, nxdim, nydim, nzdim, 'PSI', 'OCN', 1.d0,  0,  0 )
      !$acc update device(tke, psi)
      return
   end if

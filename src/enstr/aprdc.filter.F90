@@ -120,12 +120,7 @@ contains
     !$acc enter data create(  fuse,  fvse)
     !$acc enter data create( hxb, h1)
        
-#ifdef OPT_TRIPOLE
-    call rstadd(h1, oeof, nxdim, nydim, 1, 'H1', 'SFC',     &
-    &                                        1.d0,  0,  0 )
-#else
-    call rstadd(h1, oeof, nxdim, nydim, 1, 'H1', 'SFC')
-#endif
+    call rstadd(h1, oeof, nxdim, nydim, 1, 'H1', 'SFC', 1.d0,  0,  0 )
     !$acc update device(h1)
     if(oeof) then
       !$acc kernels default(present)
