@@ -93,21 +93,10 @@ subroutine tnduvd( &
         yy3(ij)=0.d0
      end do
 
-#ifdef OPT_TRIPOLE
-     call rstadd(xx2, oeof, nxdim, nydim, 1, 'XX2', 'SFC', &
-        &                                 -1.d0,  -1,  -1)
-     call rstadd(xx3, oeof, nxdim, nydim, 1, 'XX3', 'SFC', &
-        &                                 -1.d0,  -1,  -1)
-     call rstadd(yy2, oeof, nxdim, nydim, 1, 'YY2', 'SFC', &
-        &                                 -1.d0,  -1,  -1)
-     call rstadd(yy3, oeof, nxdim, nydim, 1, 'YY3', 'SFC', &
-        &                                 -1.d0,  -1,  -1)
-#else
-     call rstadd(xx2, oeof, nxdim, nydim, 1, 'XX2', 'SFC')
-     call rstadd(xx3, oeof, nxdim, nydim, 1, 'XX3', 'SFC')
-     call rstadd(yy2, oeof, nxdim, nydim, 1, 'YY2', 'SFC')
-     call rstadd(yy3, oeof, nxdim, nydim, 1, 'YY3', 'SFC')
-#endif
+     call rstadd(xx2, oeof, nxdim, nydim, 1, 'XX2', 'SFC', -1.d0,  -1,  -1)
+     call rstadd(xx3, oeof, nxdim, nydim, 1, 'XX3', 'SFC', -1.d0,  -1,  -1)
+     call rstadd(yy2, oeof, nxdim, nydim, 1, 'YY2', 'SFC', -1.d0,  -1,  -1)
+     call rstadd(yy3, oeof, nxdim, nydim, 1, 'YY3', 'SFC', -1.d0,  -1,  -1)
      return
   end if
 
@@ -495,21 +484,10 @@ subroutine tnduvb( &
         yy2(ij)=0.d0
         yy3(ij)=0.d0
      end do
-#ifdef OPT_TRIPOLE
-     call rstadd(xx2, oeof, nxdim, nydim, 1, 'XX2', 'SFC', &
-        &                                 -1.d0,  -1,  -1)
-     call rstadd(xx3, oeof, nxdim, nydim, 1, 'XX3', 'SFC', &
-        &                                 -1.d0,  -1,  -1)
-     call rstadd(yy2, oeof, nxdim, nydim, 1, 'YY2', 'SFC', &
-        &                                 -1.d0,  -1,  -1)
-     call rstadd(yy3, oeof, nxdim, nydim, 1, 'YY3', 'SFC', &
-        &                                 -1.d0,  -1,  -1)
-#else
-     call rstadd(xx2, oeof, nxdim, nydim, 1, 'XX2', 'SFC')
-     call rstadd(xx3, oeof, nxdim, nydim, 1, 'XX3', 'SFC')
-     call rstadd(yy2, oeof, nxdim, nydim, 1, 'YY2', 'SFC')
-     call rstadd(yy3, oeof, nxdim, nydim, 1, 'YY3', 'SFC')
-#endif
+     call rstadd(xx2, oeof, nxdim, nydim, 1, 'XX2', 'SFC', -1.d0,  -1,  -1)
+     call rstadd(xx3, oeof, nxdim, nydim, 1, 'XX3', 'SFC', -1.d0,  -1,  -1)
+     call rstadd(yy2, oeof, nxdim, nydim, 1, 'YY2', 'SFC', -1.d0,  -1,  -1)
+     call rstadd(yy3, oeof, nxdim, nydim, 1, 'YY3', 'SFC', -1.d0,  -1,  -1)
      return
   end if
 
