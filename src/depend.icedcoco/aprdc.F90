@@ -136,17 +136,8 @@ contains
           allocate( vbtset(nxydim, nbt+1) )
 
           do n = 1, nbt
-#ifdef OPT_TRIPOLE
-             call rstadd(ubtset(1, n), oeof, nxdim, nydim, 1, &
-                  &     'UBTSET', 'SFC', 1.d0,  0,  0 )
-             call rstadd(vbtset(1, n), oeof, nxdim, nydim, 1, &
-                  &     'VBTSET', 'SFC', 1.d0,  0,  0 )
-#else
-             call rstadd(ubtset(1, n), oeof, nxdim, nydim, 1, &
-                  &     'UBTSET', 'SFC')
-             call rstadd(vbtset(1, n), oeof, nxdim, nydim, 1, &
-                  &     'VBTSET', 'SFC')
-#endif
+             call rstadd(ubtset(1, n), oeof, nxdim, nydim, 1, 'UBTSET', 'SFC', 1.d0,  0,  0 )
+             call rstadd(vbtset(1, n), oeof, nxdim, nydim, 1, 'VBTSET', 'SFC', 1.d0,  0,  0 )
           end do
           if (oeof) then
              ubtset(:,1:nbt) = 0.d0
@@ -162,12 +153,7 @@ contains
              vbtwof(:) = vbtwof(:) + vbtset(:, n)
           end do
        end if
-#ifdef OPT_TRIPOLE
-       call rstadd(h1, oeof, nxdim, nydim, 1, 'H1', 'SFC',            &
-    &                                      1.d0,  0,  0 )
-#else
-       call rstadd(h1, oeof, nxdim, nydim, 1, 'H1', 'SFC')
-#endif
+       call rstadd(h1, oeof, nxdim, nydim, 1, 'H1', 'SFC', 1.d0,  0,  0 )
        if (oeof) then
           do ij = 1, nxydim
              h1(ij) = hx(ij)
@@ -196,17 +182,8 @@ contains
 #ifdef OPT_BBL
     call vdiffb(   amv,    ahv  )
 #endif
-#ifdef OPT_TRIPOLE
-    call shift1(    amv,                                              &
-    &             nxdim,  nydim,  nzdim,                              &
-    &              1.D0,     -1,     -1   )
-    call shift1(    ahv,                                              &
-    &             nxdim,  nydim,  nzdim,                              &
-    &              1.d0,      0,      0   )
-#else
-    call shift2(    amv,    ahv,                                      &
-    &             nxdim,  nydim,  nzdim)
-#endif
+    call shift1( amv, nxdim, nydim, nzdim, 1.d0, -1, -1 )
+    call shift1( ahv, nxdim, nydim, nzdim, 1.d0,  0,  0 )
     call clcend('COEFF')
 
 ! *** baroclinic flow ***
@@ -294,15 +271,7 @@ contains
           end do
           call modgxy(  gxx,    gyy,                                  &
     &                  ubtx,   vbtx  )
-#ifdef OPT_TRIPOLE
-          call shift2(   gxx,    gyy,                                 &
-    &                  nxdim,  nydim,      1,                         &
-    &                  -1.D0,     -1,     -1 )
-#else
-          call shift2(                                                &
-    &                  gxx,    gyy,                                   &
-    &                nxdim,  nydim,      1)
-#endif
+          call shift2( gxx, gyy, nxdim, nydim,  1, -1.d0, -1, -1 )
           call btavst( ubtav,  vbtav )
           if ( otide ) then
              call bvfreq(ty)
@@ -316,18 +285,10 @@ contains
     &                    htmp,  ubtmp,  vbtmp,                        &
     &                      hx,   ubtx,   vbtx,                        &
     &                     gxx,    gyy,   ptop,  ft(1,2))
-#ifdef OPT_TRIPOLE
-             call shift2( ubtmp,  vbtmp,                              &
-    &                     nxdim,  nydim,      1,                      &
-    &                     -1.D0,     -1,     -1 )
-             call shift1(  htmp,                                      &
-    &                     nxdim,  nydim,      1,                      &
-    &                      1.d0,      0,      0 )
-#else
-             call shift3(                                             &
-    &                     htmp,  ubtmp,  vbtmp,                       &
-    &                    nxdim,  nydim,      1)
-#endif
+
+             call shift2( ubtmp, vbtmp, nxdim, nydim,  1,  -1.d0, -1, -1 )
+             call shift1(  htmp,        nxdim, nydim,  1,   1.d0,  0,  0 )
+
              call btavad(                                             &
     &                   ubtav,  vbtav,                                &
     &                   ubtmp,  vbtmp)
@@ -335,33 +296,17 @@ contains
     &                      hx,   ubtx,   vbtx,                        &
     &                    htmp,  ubtmp,  vbtmp,                        &
     &                     gxx,    gyy,   ptop,  ft(1,2))
-#ifdef OPT_TRIPOLE
-             call shift2(  ubtx,   vbtx,                              &
-    &                     nxdim,  nydim,      1,                      &
-    &                     -1.d0,     -1,     -1 )
-             call shift1(    hx,                                      &
-    &                     nxdim,  nydim,      1,                      &
-    &                      1.d0,      0,      0 )
-#else
-             call shift3(                                             &
-    &                       hx,   ubtx,   vbtx,                       &
-    &                    nxdim,  nydim,      1)
-#endif
 
+             call shift2( ubtx, vbtx, nxdim,  nydim,  1, -1.d0, -1, -1 )
+             call shift1(   hx,       nxdim,  nydim,  1,  1.d0,  0,  0 )
              if (itsplt == ntss/2) then
                 h1(1:nxydim) = hx(1:nxydim)
              end if
              
           end do
-#ifdef OPT_TRIPOLE
-          call shift2( ubtav,  vbtav,                                 &
-    &                  nxdim,  nydim,      1,                         &
-    &                  -1.d0,     -1,     -1 )
-#else
-          call shift2(                                                &
-    &                 ubtav,  vbtav,                                  &
-    &                 nxdim,  nydim,      1)
-#endif
+
+          call shift2( ubtav, vbtav, nxdim, nydim,  1,  -1.d0,  -1,  -1 )
+
           if ( otide ) then
              call bfbtav(                                             &
     &                    ubtset, vbtset,                              &
@@ -384,17 +329,8 @@ contains
     &                 UADV,   VADV,                                   &
     &                UBTAV,  VBTAV,     UX,     VX)
 !                     UBTAV,  VBTAV,     UY,     VY)
-#ifdef OPT_TRIPOLE
-    if (.not.(oinit .or. ofinal)) then
-       call shift2(   uadv,    vadv,                                  &
-    &                nxdim,   nydim,  nzdim,                          &
-    &                -1.d0,      -1,     -1 )
-    end if
-#else
-    call shift2(                                                      &
-    &                uadv,   vadv,                                    &
-    &               nxdim,  nydim,  nzdim)
-#endif
+
+    call shift2( uadv, vadv, nxdim, nydim, nzdim, -1.d0, -1,  -1 )
 #ifdef OPT_BBL
     call rmmskt
     call admktb
@@ -469,21 +405,10 @@ contains
     &                  tmp,     xx,                                   &
     &                   ft,  swabs,     fs,     hz,   ssfc,           &
     &                   ax)
-#ifdef OPT_TRIPOLE
-          call shift1(    tx,                                         &
-    &                  nxdim,   nydim, nztdim,                        &
-    &                   1.d0,       0,      0 )
-          call shift1(    hx,                                         &
-    &                  nxdim,   nydim,      1,                        &
-    &                   1.d0,       0,      0 )
-#else
-          call shift1(                                                &
-    &                   tx,                                           &
-    &                nxdim,  nydim, nztdim)
-          call shift1(                                                &
-    &                   hx,                                           &
-    &                nxdim,  nydim,      1)
-#endif
+
+          call shift1( tx, nxdim,   nydim, nztdim, 1.d0,  0,  0 )
+          call shift1( hx, nxdim,   nydim,      1, 1.d0,  0,  0 )
+
           call shdiff(   tx,     hx)
           call clcstr('TUNDIF')
           call tundif(   tx,     hx)
@@ -492,27 +417,9 @@ contains
 #ifdef OPT_BBL
           call stbbtr(   tx   )
 #endif
-#ifdef OPT_TRIPOLE
-          call shift1(   r,                                           &
-    &                nxdim,   nydim,  nzdim,                          &
-    &                 1.d0,       0,      0 )
-          call shift1(  tx,                                           &
-    &                nxdim,   nydim, nztdim,                          &
-    &                 1.d0,       0,      0 )
-          call shift1(  hx,                                           &
-    &                nxdim,   nydim,      1,                          &
-    &                 1.d0,       0,      0 )
-#else
-          call shift1(                                                &
-    &                     r,                                          &
-    &                 nxdim,  nydim,  nzdim)
-          call shift1(                                                &
-    &                    tx,                                          &
-    &                 nxdim,  nydim, nztdim)
-          call shift1(                                                &
-    &                    hx,                                          &
-    &                 nxdim,  nydim,      1)
-#endif
+          call shift1(  r, nxdim, nydim,  nzdim,  1.d0,  0,  0 )
+          call shift1( tx, nxdim, nydim, nztdim,  1.d0,  0,  0 )
+          call shift1( hx, nxdim, nydim,      1,  1.d0,  0,  0 )
           call stbctr(    tx,      r)
        end if
     end if
@@ -531,15 +438,8 @@ contains
     &                   ux,     vx,                                   &
     &                ubtav,   vbtav,   uadv,   vadv)
 !    &                 UBTX,   VBTX,   UADV,   VADV)
-#ifdef OPT_TRIPOLE
-    call shift2(    ux,     vx,                                       &
-    &            nxdim,  nydim,  nzdim,                               &
-    &            -1.d0,     -1,     -1 )
-#else
-    call shift2(                                                      &
-    &               ux,     vx,                                       &
-    &            nxdim,  nydim,  nzdim)
-#endif
+
+    call shift2( ux, vx, nxdim, nydim, nzdim, -1.d0, -1, -1 )
 #ifdef OPT_BBL
     call rmmskt
     call admktb
@@ -556,37 +456,14 @@ contains
     &             uadv,   vadv,   wadv,                               &
     &               ux,     vx,      w) 
 #ifdef OPT_BBL
-    call stbbvt(    ux,     vx    )
-#ifdef OPT_TRIPOLE
-    call shift2(    ux,     vx,                                       &
-    &            nxdim,  nydim,  nzdim,                               &
-    &            -1.d0,     -1,     -1 )
-#else
-    call shift2(                                                      &
-    &               ux,     vx,                                       &
-    &            nxdim,  nydim,  nzdim)
-#endif
+    call stbbvt( ux, vx )
+    call shift2( ux, vx, nxdim, nydim, nzdim,  -1.d0, -1, -1 )
     call rmmskv
     call admkv1
 #endif
-#ifdef OPT_TRIPOLE
-    call shift1(                                                      &
-    &             uadv,                                               &
-    &            nxdim,  nydim,  nzdim,                               &
-    &            -1.d0,      0,     -1)
-    call shift1(                                                      &
-    &             vadv,                                               &
-    &            nxdim,  nydim,  nzdim,                               &
-    &            -1.d0,     -1,      0)
-    call shift1(                                                      &
-    &             wadv,                                               &
-    &            nxdim,  nydim,  nzdim,                               &
-    &             1.d0,     -1,     -1)
-#else
-    call shift3(                                                      &
-    &             uadv,   vadv,   wadv,                               &
-    &            nxdim,  nydim,  nzdim)
-#endif
+    call shift1( uadv, nxdim, nydim, nzdim, -1.d0,  0, -1)
+    call shift1( vadv, nxdim, nydim, nzdim, -1.d0, -1,  0)
+    call shift1( wadv, nxdim, nydim, nzdim,  1.d0, -1, -1)
     call clcend('VDIAG')
 
     if ( (.not. oinit) .and. (.not. ofinal)) then
