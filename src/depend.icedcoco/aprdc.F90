@@ -330,7 +330,14 @@ contains
     &                UBTAV,  VBTAV,     UX,     VX)
 !                     UBTAV,  VBTAV,     UY,     VY)
 
+#ifdef OPT_TRIPOLE
+    if (.not.(oinit .or. ofinal)) then
+#endif
     call shift2( uadv, vadv, nxdim, nydim, nzdim, -1.d0, -1,  -1 )
+#ifdef OPT_TRIPOLE
+    end if
+#endif
+
 #ifdef OPT_BBL
     call rmmskt
     call admktb
