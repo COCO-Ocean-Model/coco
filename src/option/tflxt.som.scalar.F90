@@ -232,54 +232,15 @@ subroutine flxtrc( &
 
   if (oinit) then
      do n = 1, ntdim
-#ifdef OPT_TRIPOLE
-        call rstadd(sx(1, 1, n), oeof, &
-          &         nxdim, nydim, nzdim, 'SX', 'OCN', &
-          &                            1.d0,  0,  0 )
-        call rstadd(sy(1, 1, n), oeof, &
-          &         nxdim, nydim, nzdim, 'SY', 'OCN', &
-          &                           -1.d0,  0,  0 )
-        call rstadd(sz(1, 1, n), oeof, &
-          &         nxdim, nydim, nzdim, 'SZ', 'OCN', &
-          &                            1.d0,  0,  0 )
-        call rstadd(sxx(1, 1, n), oeof, &
-          &         nxdim, nydim, nzdim, 'SXX', 'OCN', &
-          &                             1.d0,  0,  0 )
-        call rstadd(syy(1, 1, n), oeof, &
-          &         nxdim, nydim, nzdim, 'SYY', 'OCN', &
-          &                             1.d0,  0,  0 )
-        call rstadd(szz(1, 1, n), oeof, &
-          &         nxdim, nydim, nzdim, 'SZZ', 'OCN', &
-          &                             1.d0,  0,  0 )
-        call rstadd(sxy(1, 1, n), oeof, &
-          &         nxdim, nydim, nzdim, 'SXY', 'OCN', &
-          &                            -1.d0,  0,  0 )
-        call rstadd(sxz(1, 1, n), oeof, &
-          &         nxdim, nydim, nzdim, 'SXZ', 'OCN', &
-          &                             1.d0,  0,  0 )
-        call rstadd(syz(1, 1, n), oeof, &
-          &         nxdim, nydim, nzdim, 'SYZ', 'OCN', &
-          &                            -1.d0,  0,  0 )
-#else
-        call rstadd(sx(1, 1, n), oeof, &
-          &         nxdim, nydim, nzdim, 'SX', 'OCN')
-        call rstadd(sy(1, 1, n), oeof, &
-          &         nxdim, nydim, nzdim, 'SY', 'OCN')
-        call rstadd(sz(1, 1, n), oeof, &
-          &         nxdim, nydim, nzdim, 'SZ', 'OCN')
-        call rstadd(sxx(1, 1, n), oeof, &
-          &         nxdim, nydim, nzdim, 'SXX', 'OCN')
-        call rstadd(syy(1, 1, n), oeof, &
-          &         nxdim, nydim, nzdim, 'SYY', 'OCN')
-        call rstadd(szz(1, 1, n), oeof, &
-          &         nxdim, nydim, nzdim, 'SZZ', 'OCN')
-        call rstadd(sxy(1, 1, n), oeof, &
-          &         nxdim, nydim, nzdim, 'SXY', 'OCN')
-        call rstadd(sxz(1, 1, n), oeof, &
-          &         nxdim, nydim, nzdim, 'SXZ', 'OCN')
-        call rstadd(syz(1, 1, n), oeof, &
-          &         nxdim, nydim, nzdim, 'SYZ', 'OCN')
-#endif
+        call rstadd(sx( 1, 1, n), oeof, nxdim, nydim, nzdim, 'SX',  'OCN',  1.d0, 0, 0, vinit=0.d0 )
+        call rstadd(sy( 1, 1, n), oeof, nxdim, nydim, nzdim, 'SY',  'OCN', -1.d0, 0, 0, vinit=0.d0 )
+        call rstadd(sz( 1, 1, n), oeof, nxdim, nydim, nzdim, 'SZ',  'OCN',  1.d0, 0, 0, vinit=0.d0 )
+        call rstadd(sxx(1, 1, n), oeof, nxdim, nydim, nzdim, 'SXX', 'OCN',  1.d0, 0, 0, vinit=0.d0 )
+        call rstadd(syy(1, 1, n), oeof, nxdim, nydim, nzdim, 'SYY', 'OCN',  1.d0, 0, 0, vinit=0.d0 )
+        call rstadd(szz(1, 1, n), oeof, nxdim, nydim, nzdim, 'SZZ', 'OCN',  1.d0, 0, 0, vinit=0.d0 )
+        call rstadd(sxy(1, 1, n), oeof, nxdim, nydim, nzdim, 'SXY', 'OCN', -1.d0, 0, 0, vinit=0.d0 )
+        call rstadd(sxz(1, 1, n), oeof, nxdim, nydim, nzdim, 'SXZ', 'OCN',  1.d0, 0, 0, vinit=0.d0 )
+        call rstadd(syz(1, 1, n), oeof, nxdim, nydim, nzdim, 'SYZ', 'OCN', -1.d0, 0, 0, vinit=0.d0 )
      end do
      return
   end if
@@ -477,15 +438,7 @@ subroutine flxtrc( &
 #endif
      end if
 
-#ifdef OPT_TRIPOLE
-     call shift2( ahi3d,  ahg3d, &
-          &       nxdim,  nydim,  nzdim, &
-          &        1.d0,      0,      0 )
-#else
-     call shift2( &
-          &       ahi3d,  ahg3d, &
-          &       nxdim,  nydim,  nzdim )
-#endif
+     call shift2(ahi3d, ahg3d, nxdim, nydim, nzdim,  1.d0,  0,  0)
 
 #ifdef OPT_BBL
      READ_NAMELIST( nmbbdh )
@@ -805,7 +758,7 @@ subroutine flxtrc( &
 
 !$omp do
   do k = kstr, kend
-     do ij=1, nxydim
+     do ij = ijtstr, ijtend+nxdim
         igsx(ij, k) = ( ahi3d(ij, k) - ahg3d(ij, k) ) * xdzdx(ij, k)
         igsy(ij, k) = ( ahi3d(ij, k) - ahg3d(ij, k) ) * ydzdy(ij, k)
      end do
@@ -1172,29 +1125,11 @@ subroutine flxtrc( &
 !$omp end parallel do
 
 !---- bug fix 2
-#ifdef OPT_TRIPOLE
-     call shift1( sy, &
-       &           nxdim, nydim, nztdim, &
-       &           -1.d0,     0,      0 )
-     call shift1( syy, &
-       &           nxdim, nydim, nztdim, &
-       &            1.d0,     0,      0 )
-     call shift1( sxy, &
-       &           nxdim, nydim, nztdim, &
-       &           -1.d0,     0,      0 )
-     call shift1( syz, &
-       &           nxdim, nydim, nztdim, &
-       &           -1.d0,     0,      0 )
-     call shift1( s0(:,:,n), &
-       &           nxdim,  nydim,  nzdim, &
-       &            1.d0,      0,      0 )
-#else
-     call shift1( sy , nxdim, nydim, nztdim )
-     call shift1( syy, nxdim, nydim, nztdim )
-     call shift1( sxy, nxdim, nydim, nztdim )
-     call shift1( syz, nxdim, nydim, nztdim )
-     call shift1( s0 (:,:,n), nxdim, nydim, nzdim )
-#endif
+     call shift1( sy,  nxdim, nydim, nztdim, -1.d0,  0,  0 )
+     call shift1( syy, nxdim, nydim, nztdim,  1.d0,  0,  0 )
+     call shift1( sxy, nxdim, nydim, nztdim, -1.d0,  0,  0 )
+     call shift1( syz, nxdim, nydim, nztdim, -1.d0,  0,  0 )
+     call shift1( s0,  nxdim, nydim, nztdim,  1.d0,  0,  0 )
 
 !!*POPTION PARALLEL
 !$omp parallel do &
@@ -1711,47 +1646,15 @@ subroutine flxtrc( &
   call stbbtr( syz )
 #endif
 
-
-#ifdef OPT_TRIPOLE
-  call shift1(    sx, &
-    &          nxdim, nydim, nztdim, &
-    &           1.d0,     0,      0 )
-  call shift1(    sy, &
-    &          nxdim, nydim, nztdim, &
-    &          -1.d0,     0,      0 )
-  call shift1(    sz, &
-    &          nxdim, nydim, nztdim, &
-    &           1.d0,     0,      0 )
-  call shift1(   sxx, &
-    &          nxdim, nydim, nztdim, &
-    &           1.d0,     0,      0 )
-  call shift1(   syy, &
-    &          nxdim, nydim, nztdim, &
-    &           1.d0,     0,      0 )
-  call shift1(   szz, &
-    &          nxdim, nydim, nztdim, &
-    &           1.d0,     0,      0 )
-  call shift1(   sxy, &
-    &          nxdim, nydim, nztdim, &
-    &          -1.d0,     0,      0 )
-  call shift1(   sxz, &
-    &          nxdim, nydim, nztdim, &
-    &           1.d0,     0,      0 )
-  call shift1(   syz, &
-    &          nxdim, nydim, nztdim, &
-    &          -1.d0,     0,      0 )
-#else
-!  call shift1( s0 , nxdim, nydim, nztdim )
-  call shift1( sx , nxdim, nydim, nztdim )
-  call shift1( sy , nxdim, nydim, nztdim )
-  call shift1( sz , nxdim, nydim, nztdim )
-  call shift1( sxx, nxdim, nydim, nztdim )
-  call shift1( syy, nxdim, nydim, nztdim )
-  call shift1( szz, nxdim, nydim, nztdim )
-  call shift1( sxy, nxdim, nydim, nztdim )
-  call shift1( sxz, nxdim, nydim, nztdim )
-  call shift1( syz, nxdim, nydim, nztdim )
-#endif
+  call shift1( sx, nxdim, nydim, nztdim,  1.d0,  0,  0)
+  call shift1( sy, nxdim, nydim, nztdim, -1.d0,  0,  0)
+  call shift1( sz, nxdim, nydim, nztdim,  1.d0,  0,  0)
+  call shift1(sxx, nxdim, nydim, nztdim,  1.d0,  0,  0)
+  call shift1(syy, nxdim, nydim, nztdim,  1.d0,  0,  0)
+  call shift1(szz, nxdim, nydim, nztdim,  1.d0,  0,  0)
+  call shift1(sxy, nxdim, nydim, nztdim, -1.d0,  0,  0)
+  call shift1(sxz, nxdim, nydim, nztdim,  1.d0,  0,  0)
+  call shift1(syz, nxdim, nydim, nztdim, -1.d0,  0,  0)
 
 !---- for CMIP6 output
   call chekin(  ublsx, 'UBOLUS', &
