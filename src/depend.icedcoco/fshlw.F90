@@ -69,7 +69,10 @@ contains
     use bshft
 
     use bt_shft, only : &
-         bt_shift1, bt_shift2, bt_shift3, bt_shift_pack_begin, bt_shift_pack_end, bt_shift_unpack, &
+         bt_shift1 => shift1, bt_shift2 => shift2, bt_shift3 => shift3, &
+         bt_shift_pack_begin => shift_pack_begin,                       &
+         bt_shift_pack_end => shift_pack_end,                           &
+         bt_shift_unpack => shift_unpack,                               &
          istr_w, jstr_w, iend_w, jend_w, nxdim_w, nydim_w, ncomm
 
     real(8), intent(inout) ::   gxx(nxdim, nydim),   gyy(nxdim, nydim), fw(nxdim, nydim)
@@ -239,7 +242,8 @@ contains
 
     use zocphy,   only :  gravit, rhoo
     use zocgrd,   only :  ry, rxt, ryt, rym, rxu, ryu, hxu, hyu, rdepv, cor
-    use bt_shft, only : bt_shift1, bt_shift2, bt_shift3, nxdim_w, nydim_w, nxydim_w, istr_w, jstr_w, ncomm
+    use bt_shft, only : bt_shift1 => shift1, bt_shift2 => shift2, bt_shift3 => shift3, &
+         nxdim_w, nydim_w, nxydim_w, istr_w, jstr_w, ncomm
     use zocmsk,  only :  amskt,  amskv
     use ufile
     implicit none

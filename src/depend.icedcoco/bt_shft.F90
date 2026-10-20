@@ -76,14 +76,14 @@ module bt_shft
 
   logical, save :: shift_gpu=.true.,shift_rdgeo=.false.
 
-  public  ::  bt_shift1,  bt_shift2,  bt_shift3, bt_shift_pack_begin, bt_shift_pack_end, bt_shift_unpack
+  public  ::  shift1, shift2, shift3, shift_pack_begin, shift_pack_end, shift_unpack
 #ifdef OPT_WIDE_BT_SHFT
   public  ::  istr_w, jstr_w, iend_w, jend_w, nxdim_w, nydim_w, nxydim_w, ncomm
 #endif
 contains
 
 !=======================================================================
-  subroutine bt_shift_pack_begin
+  subroutine shift_pack_begin
     implicit none
     logical, save :: ofirst=.true.
 #include "mpif.h"
@@ -109,10 +109,10 @@ contains
     koffset(1) = 0
     is_tri_edge = jrank .eq. jnodes -1
 
-  end subroutine bt_shift_pack_begin
+  end subroutine shift_pack_begin
 
 !=======================================================================
-  subroutine bt_shift_pack(qq, ksize, fact2, ioff2, joff2)
+  subroutine shift_pack(qq, ksize, fact2, ioff2, joff2)
     real(8) :: qq(:,:,:)
     integer :: ksize
     real(8) :: fact2
@@ -176,10 +176,10 @@ contains
     !$acc end kernels
 #endif
     !$acc wait
-  end subroutine bt_shift_pack
+  end subroutine shift_pack
 
 !=======================================================================
-  subroutine bt_shift_pack_end
+  subroutine shift_pack_end
     integer :: nelems, koff
     
     if (.not. pack_mode) return
@@ -246,10 +246,10 @@ contains
     end if
 #endif
     pack_mode = .false.
-  end subroutine bt_shift_pack_end
+  end subroutine shift_pack_end
 
 !=======================================================================
-  subroutine bt_shift_unpack(q1, id)
+  subroutine shift_unpack(q1, id)
     implicit none
 #include "mpif.h"
     real(8) :: q1(nxdim,nydim,*)
@@ -365,7 +365,7 @@ contains
     end if
 #endif
     if(id == num_packed) shift_gpu=.true.
-  end subroutine bt_shift_unpack
+  end subroutine shift_unpack
 
 !=======================================================================
 
@@ -408,7 +408,7 @@ contains
 #endif
 !=======================================================================
   
-  subroutine bt_shift1(                                               &
+  subroutine shift1(                                                  &
     &                 q1,                                             &
     &               idim,   jdim,   kdim,                             & 
     &              fact0,  ioff0,   joff0)
@@ -429,18 +429,18 @@ contains
     if (oinit) shift_gpu=.false.
     
     if (pack_mode) then
-       call bt_shift_pack(q1, kdim, fact, ioff, joff)
+       call shift_pack(q1, kdim, fact, ioff, joff)
     else
-       call bt_shift_pack_begin
-       call bt_shift_pack(q1, kdim, fact, ioff, joff)
-       call bt_shift_pack_end
-       call bt_shift_unpack(q1, 1)
+       call shift_pack_begin
+       call shift_pack(q1, kdim, fact, ioff, joff)
+       call shift_pack_end
+       call shift_unpack(q1, 1)
     end if
     shift_gpu=.true.
-  end subroutine bt_shift1
+  end subroutine shift1
 
 
-  subroutine bt_shift2(                                               &
+  subroutine shift2(                                                  &
     &                 q1,     q2,                                     &
     &               idim,   jdim,   kdim,                             &
     &              fact0,  ioff0,   joff0)
@@ -462,20 +462,20 @@ contains
     if (oinit) shift_gpu=.false.
     
     if (pack_mode) then
-       call bt_shift_pack(q1, kdim, fact, ioff, joff)
-       call bt_shift_pack(q2, kdim, fact, ioff, joff)
+       call shift_pack(q1, kdim, fact, ioff, joff)
+       call shift_pack(q2, kdim, fact, ioff, joff)
     else
-       call bt_shift_pack_begin
-       call bt_shift_pack(q1, kdim, fact, ioff, joff)
-       call bt_shift_pack(q2, kdim, fact, ioff, joff)
-       call bt_shift_pack_end
-       call bt_shift_unpack(q1, 1)
-       call bt_shift_unpack(q2, 2)
+       call shift_pack_begin
+       call shift_pack(q1, kdim, fact, ioff, joff)
+       call shift_pack(q2, kdim, fact, ioff, joff)
+       call shift_pack_end
+       call shift_unpack(q1, 1)
+       call shift_unpack(q2, 2)
     end if
     shift_gpu=.true.
-  end subroutine bt_shift2
+  end subroutine shift2
 
-  subroutine bt_shift3(                   &
+  subroutine shift3(                      &
     &                 q1,     q2,     q3, &
     &               idim,   jdim,   kdim, &
     &              fact0,  ioff0,   joff0)
@@ -499,21 +499,21 @@ contains
     if (oinit) shift_gpu=.false.
     
     if (pack_mode) then
-       call bt_shift_pack(q1, kdim, fact, ioff, joff)
-       call bt_shift_pack(q2, kdim, fact, ioff, joff)
-       call bt_shift_pack(q3, kdim, fact, ioff, joff)
+       call shift_pack(q1, kdim, fact, ioff, joff)
+       call shift_pack(q2, kdim, fact, ioff, joff)
+       call shift_pack(q3, kdim, fact, ioff, joff)
     else
-       call bt_shift_pack_begin
-       call bt_shift_pack(q1, kdim, fact, ioff, joff)
-       call bt_shift_pack(q2, kdim, fact, ioff, joff)
-       call bt_shift_pack(q3, kdim, fact, ioff, joff)
-       call bt_shift_pack_end
-       call bt_shift_unpack(q1, 1)
-       call bt_shift_unpack(q2, 2)
-       call bt_shift_unpack(q3, 3)
+       call shift_pack_begin
+       call shift_pack(q1, kdim, fact, ioff, joff)
+       call shift_pack(q2, kdim, fact, ioff, joff)
+       call shift_pack(q3, kdim, fact, ioff, joff)
+       call shift_pack_end
+       call shift_unpack(q1, 1)
+       call shift_unpack(q2, 2)
+       call shift_unpack(q3, 3)
     end if
     shift_gpu=.true.
-  end subroutine bt_shift3
+  end subroutine shift3
 
   
   subroutine shifts(nbfdim, nbfdim0, rbf1, rbf2, sbf1, sbf2, n_down, n_up)
