@@ -52,7 +52,7 @@ The development version may include changes made since the latest official relea
 
 ## Usage
 
-Detailed documentation is currently available in Japanese. See the documentation included in this repository for build instructions, configuration, and usage examples.
+Detailed documentation is currently available in Japanese. See the [documentation](docs/USER_GUIDE_JA.md) included in this repository for build instructions, configuration, and usage examples.
 
 ## Maintenance
 
