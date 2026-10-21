@@ -106,11 +106,11 @@ contains
   shift_rdgeo=.true.
 
   call read_mask_scalar(dx)
-  call read_mask_2d(dy,  fact=1.d0, ioff= 0, joff= 0, vinit=1.d0)
-  call read_mask_2d(dym, fact=1.d0, ioff=-1, joff=-1, vinit=1.d0)
-  call read_mask_3d(dz,  fact=1.d0, ioff= 0, joff= 0, vinit=1.d0)
-  call read_mask_3d(dzm, fact=1.d0, ioff= 0, joff= 0, vinit=1.d0)
-  call read_mask_3d(dzv, fact=1.d0, ioff=-1, joff=-1, vinit=1.d0)
+  call read_mask_2d(dy,  fact=1.d0, ioff= 0, joff= 0, vinit=1.d0, fill_nsb=.true.)
+  call read_mask_2d(dym, fact=1.d0, ioff=-1, joff=-1, vinit=1.d0, fill_nsb=.true.)
+  call read_mask_3d(dz,  fact=1.d0, ioff= 0, joff= 0, vinit=1.d0, fill_nsb=.true.)
+  call read_mask_3d(dzm, fact=1.d0, ioff= 0, joff= 0, vinit=1.d0, fill_nsb=.true.)
+  call read_mask_3d(dzv, fact=1.d0, ioff=-1, joff=-1, vinit=1.d0, fill_nsb=.true.)
   call read_mask_1d(dz0, nzdim)
   call read_mask_1d(ds,  nzdim)
   call read_mask_1d(dsm, nzdim)
@@ -118,88 +118,33 @@ contains
   call read_mask_scalar(rea)
   call read_mask_scalar(zbot)
 
-  call read_mask_2d(  cor, fact= 1.d0, ioff=-1, joff=-1, vinit=1.d0)
-  call read_mask_2d( dept, fact= 1.d0, ioff= 0, joff= 0, vinit=1.d0)
-  call read_mask_2d(rdepv, fact= 1.d0, ioff=-1, joff=-1, vinit=1.d0)
-  call read_mask_2d(  hxt, fact= 1.d0, ioff= 0, joff= 0, vinit=1.d0)
-  call read_mask_2d(  hxu, fact= 1.d0, ioff=-1, joff=-1, vinit=1.d0)
-  call read_mask_2d(  hyt, fact= 1.d0, ioff= 0, joff= 0, vinit=1.d0)
-  call read_mask_2d(  hyu, fact= 1.d0, ioff=-1, joff=-1, vinit=1.d0)
-  call read_mask_2d( hxyt, fact=-1.d0, ioff= 0, joff= 0, vinit=1.d0)
-  call read_mask_2d( hxyu, fact=-1.d0, ioff=-1, joff=-1, vinit=1.d0)
-  call read_mask_2d( hyxt, fact=-1.d0, ioff= 0, joff= 0, vinit=1.d0)
-  call read_mask_2d( hyxu, fact=-1.d0, ioff=-1, joff=-1, vinit=1.d0)
+  call read_mask_2d(  cor, fact= 1.d0, ioff=-1, joff=-1, vinit=1.d0, fill_nsb=.true.)
+  call read_mask_2d( dept, fact= 1.d0, ioff= 0, joff= 0, vinit=1.d0, fill_nsb=.true.)
+  call read_mask_2d(rdepv, fact= 1.d0, ioff=-1, joff=-1, vinit=1.d0, fill_nsb=.true.)
+  call read_mask_2d(  hxt, fact= 1.d0, ioff= 0, joff= 0, vinit=1.d0, fill_nsb=.true.)
+  call read_mask_2d(  hxu, fact= 1.d0, ioff=-1, joff=-1, vinit=1.d0, fill_nsb=.true.)
+  call read_mask_2d(  hyt, fact= 1.d0, ioff= 0, joff= 0, vinit=1.d0, fill_nsb=.true.)
+  call read_mask_2d(  hyu, fact= 1.d0, ioff=-1, joff=-1, vinit=1.d0, fill_nsb=.true.)
+  call read_mask_2d( hxyt, fact=-1.d0, ioff= 0, joff= 0, vinit=1.d0, fill_nsb=.true.)
+  call read_mask_2d( hxyu, fact=-1.d0, ioff=-1, joff=-1, vinit=1.d0, fill_nsb=.true.)
+  call read_mask_2d( hyxt, fact=-1.d0, ioff= 0, joff= 0, vinit=1.d0, fill_nsb=.true.)
+  call read_mask_2d( hyxu, fact=-1.d0, ioff=-1, joff=-1, vinit=1.d0, fill_nsb=.true.)
 
-#ifndef OPT_TRIPOLE
-  if (jup .eq. mpi_proc_null) then
-     do j = jend+1, nydim
-        do i = 1, nxdim
-           ije = (jend - 1) * nxdim + i
-           ij  = (j - 1) * nxdim + i
-           dy(ij) = dy(ije)
-           dym(ij) = dym(ije)
-           cor(ij) = cor(ije)
-           dept(ij) = dept(ije)
-           rdepv(ij) = rdepv(ije)
-           hxt(ij) = hxt(ije)
-           hxu(ij) = hxu(ije)
-           hyt(ij) = hyt(ije)
-           hyu(ij) = hyu(ije)
-           hxyt(ij) = hxyt(ije)
-           hxyu(ij) = hxyu(ije)
-           hyxt(ij) = hyxt(ije)
-           hyxu(ij) = hyxu(ije)
-        end do
-     end do
-     do k = 1, nzdim
-        do j = jend+1, nydim
-           do i = 1, nxdim
-              ije = (jend - 1) * nxdim + i
-              ij  = (j - 1) * nxdim + i
-              dz(ij, k) = dz(ije, k)
-              dzm(ij, k) = dzm(ije, k)
-              dzv(ij, k) = dzv(ije, k)
-           end do
-        end do
-     end do
-  end if
+  call read_mask_2i(nbot, vinit=kstr-1)
+  call shft1i(      nbot, nxdim, nydim)
+#ifdef OPT_TRIPOLE
+  call shftint(     nbot, nxdim, nydim)
 #endif
-  if (jdown .eq. mpi_proc_null) then
-     do j = 1, jstr-1
-        do i = 1, nxdim
-           ijs = (jstr - 1) * nxdim + i
-           ij  = (j - 1) * nxdim + i
-           dy(ij) = dy(ijs)
-           dym(ij) = dym(ijs)
-           cor(ij) = cor(ijs)
-           dept(ij) = dept(ijs)
-           rdepv(ij) = rdepv(ijs)
-           hxt(ij) = hxt(ijs)
-           hxu(ij) = hxu(ijs)
-           hyt(ij) = hyt(ijs)
-           hyu(ij) = hyu(ijs)
-           hxyt(ij) = hxyt(ijs)
-           hxyu(ij) = hxyu(ijs)
-           hyxt(ij) = hyxt(ijs)
-           hyxu(ij) = hyxu(ijs)
-        end do
-     end do
-     do k = 1, nzdim
-        do j = 1, jstr-1
-           do i = 1, nxdim
-              ijs = (jstr - 1) * nxdim + i
-              ij  = (j - 1) * nxdim + i
-              dz(ij, k) = dz(ijs, k)
-              dzm(ij, k) = dzm(ijs, k)
-              dzv(ij, k) = dzv(ijs, k)
-           end do
-        end do
-     end do
-  end if
-  call read_mask_2i(nbot,   vinit=kstr-1)
+
 #ifdef OPT_BBL
-  call read_mask_2i(nbotv,  vinit=kstr-1)
+  call read_mask_2i(nbotv, vinit=kstr-1)
+  call shft1i(      nbotv, nxdim, nydim)
+#ifdef OPT_TRIPOLE
+  call shftinv(     nbotv, nxdim, nydim)
+  call shft1i(      nbotv, nxdim, nydim)
 #endif
+#endif
+  
   call read_mask_3d(amskt, fact=1.d0, ioff= 0, joff= 0, vinit=0.d0)
   call read_mask_3d(amftx, fact=1.d0, ioff= 1, joff= 0, vinit=0.d0)
   call read_mask_3d(amfty,                              vinit=0.d0)
@@ -223,79 +168,49 @@ contains
 #endif
   call read_mask_3d(amskb,  fact=1.d0, ioff=-1, joff=-1, vinit=0.d0)
 
-  call shft1i( nbot, nxdim, nydim)
+#ifdef OPT_EXMASK
+  call read_mask_2d(glont, fact=1.d0, ioff=0, joff=0, fill_nsb=.true.)
+  call read_mask_2d(glatt, fact=1.d0, ioff=0, joff=0, fill_nsb=.true.)
+  call read_mask_2d(rangt, fact=1.d0, ioff=0, joff=0, fill_nsb=.true.)
+#endif
 
-#ifdef OPT_TRIPOLE
-  call shftint(nbot, nxdim, nydim)
-
-  if (jupe .ne. mpi_proc_null.or.jupw .ne. mpi_proc_null) then
-  do j = jend+1, nydim
-     do i = 1, nxdim
-        ijs = (j - 2) * nxdim + i
-        ij  = (j - 1) * nxdim + i
-        do k=1,nzdim
-            amfty(ij,k) = amskt(ij,k)*amskt(ijs,k)                             &
-   &                    * min(dz(ij,k),dz(ijs,k))
-         enddo
-     enddo
-  enddo
+#ifdef OPT_IO_COCOMPI
+  call mpi_filcls(mpi_fh)
+#else
+  if (myrank .eq. iroot) then
+     call filcls(nfmask)
   endif
+  deallocate(g2d)
+  deallocate(g3d)
+  deallocate(g2di)
+#endif
+  
+#ifdef OPT_TRIPOLE
+  if (jupe .ne. mpi_proc_null.or.jupw .ne. mpi_proc_null) then
+     do k=1, nzdim
+        do j = jend+1, nydim
+           do i = 1, nxdim
+              ijs = (j - 2) * nxdim + i
+              ij  = (j - 1) * nxdim + i
+              amfty(ij,k) = amskt(ij,k)*amskt(ijs,k) * min(dz(ij,k),dz(ijs,k))
+           end do
+        end do
+     end do
+  end if
+#ifdef OPT_BBL
+  if (jupe .ne. mpi_proc_null.or.jupw .ne. mpi_proc_null) then
+     do j = jend+1, nydim
+        do i = 1, nxdim
+           ijs = (j - 2) * nxdim + i
+           ij  = (j - 1) * nxdim + i
+           amfty(ij,kend) =  amsktb(ij)*amsktb(ijs) * min(dz(ij,kend),dz(ijs,kend))
+        end do
+     end do
+  endif
+#endif
 #endif
   call shift1(amfty, nxdim,  nydim,  nzdim, 1.d0,  0,  1)
   
-#ifdef OPT_BBL
-  call shft1i( nbotv, nxdim, nydim)
-
-#ifdef OPT_TRIPOLE
-  call shftinv(nbotv, nxdim, nydim)
-  call shft1i( nbotv, nxdim, nydim)
-
-  if (jupe .ne. mpi_proc_null.or.jupw .ne. mpi_proc_null) then
-  do j = jend+1, nydim
-     do i = 1, nxdim
-        ijs = (j - 2) * nxdim + i
-        ij  = (j - 1) * nxdim + i
-        amfty(ij,kend) =  amsktb(ij)*amsktb(ijs)                               &
-   &                    * min(dz(ij,kend),dz(ijs,kend))
-     enddo
-  enddo
-  endif
-  call shift1(amfty, nxdim,  nydim,  nzdim, 1.d0,  0,  1)
-#endif
-#endif
-
-#ifdef OPT_EXMASK
-  call read_mask_2d(glont, fact=1.d0, ioff=0, joff=0)
-  call read_mask_2d(glatt, fact=1.d0, ioff=0, joff=0)
-  call read_mask_2d(rangt, fact=1.d0, ioff=0, joff=0)
-
-#ifndef OPT_TRIPOLE
-  if (jup .eq. mpi_proc_null) then
-     do j = jend+1, nydim
-        do i = 1, nxdim
-           ije = (jend - 1) * nxdim + i
-           ij  = (j - 1) * nxdim + i
-           glont(ij) = glont(ije)
-           glatt(ij) = glatt(ije)
-           rangt(ij) = rangt(ije)
-        end do
-     end do
-  end if
-#endif
-
-  if (jdown .eq. mpi_proc_null) then
-     do j = 1, jstr-1
-        do i = 1, nxdim
-           ijs = (jstr - 1) * nxdim + i
-           ij  = (j - 1) * nxdim + i
-           glont(ij) = glont(ijs)
-           glatt(ij) = glatt(ijs)
-           rangt(ij) = rangt(ijs)
-        end do
-     end do
-  end if
-#endif
-
   do ij = ijstr, ijend
      ijtstr = ij
      if (amskt(ij, kstr) .eq. 1.d0) exit
@@ -314,19 +229,10 @@ contains
      ijvend = ij
      if (amskv(ij, kstr) .eq. 1.d0) exit
   end do
-#ifdef OPT_IO_COCOMPI
-  call mpi_filcls(mpi_fh)
-#else
-  if (myrank .eq. iroot) then
-     call filcls(nfmask)
-  endif
-  deallocate(g2d)
-  deallocate(g3d)
-  deallocate(g2di)
-#endif
+
   rx = 1.d0 / dx
   do ij = 1, nxydim
-     ry(ij) = 1.d0 / dy(ij)
+     ry( ij) = 1.d0 / dy( ij)
      rym(ij) = 1.d0 / dym(ij)
      rxt(ij) = 1.d0 / hxt(ij)
      rxu(ij) = 1.d0 / hxu(ij)
@@ -334,7 +240,7 @@ contains
      ryu(ij) = 1.d0 / hyu(ij)
   end do
   do k = 1, nzdim
-     rs(k) = 1.d0 / ds(k)
+     rs( k) = 1.d0 / ds( k)
      rsm(k) = 1.d0 / dsm(k)
   end do
 
@@ -344,7 +250,6 @@ contains
   call admkvb
 #endif
 #endif
-
 !$acc enter data copyin(amskt, amftx, amfty, amftz,  amskv,  amfvx,  amfvy,  amfvz,  amskb,  nbot)
 !$acc enter data copyin(dy, dym, dz, dzm, dzv, dz0, ds, dsm, hic, cor, dept, rdepv)
 !$acc enter data copyin(hxt, hxu, hyt, hyu, hxyt, hxyu, hyxt, hyxu)
@@ -401,12 +306,13 @@ contains
 #endif
   end subroutine read_mask_2i
   
-  subroutine read_mask_2d(d2, fact, ioff, joff, vinit)
+  subroutine read_mask_2d(d2, fact, ioff, joff, vinit, fill_nsb)
     implicit none
     real(8), intent(out) :: d2(nxdim, nydim)
     integer, intent(in), optional :: ioff, joff
     real(8), intent(in), optional :: fact
     real(8), intent(in), optional :: vinit
+    logical, intent(in), optional :: fill_nsb
     if( present(vinit) ) then
        d2(:,:)=vinit
     end if
@@ -421,14 +327,35 @@ contains
     if( present(fact) ) then
        call shift1(d2, nxdim, nydim, 1, fact, ioff, joff)
     end if
+
+    if( present(fill_nsb) ) then
+#ifndef OPT_TRIPOLE
+       if (jup .eq. mpi_proc_null) then
+          do j = jend+1, nydim
+             do i=1, nxdim
+                d2(i,j)=d2(i,jend)
+             end do
+          end do
+       end if
+#endif
+       if (jdown .eq. mpi_proc_null) then
+          do j = 1, jstr-1
+             do i = 1, nxdim
+                d2(i,j)=d2(i,jstr)
+             end do
+          end do
+       end if
+    end if
   end subroutine read_mask_2d
 
-  subroutine read_mask_3d(d3, fact, ioff, joff, vinit)
+  subroutine read_mask_3d(d3, fact, ioff, joff, vinit, fill_nsb)
     implicit none
     real(8), intent(out) :: d3(nxdim, nydim, nzdim)
     integer, intent(in), optional :: ioff, joff
     real(8), intent(in), optional :: fact
     real(8), intent(in), optional :: vinit
+    logical, intent(in), optional :: fill_nsb
+    
     if( present(vinit) ) then
        d3(:,:,:)=vinit
     end if
@@ -442,6 +369,29 @@ contains
 #endif
     if( present(fact) ) then
        call shift1(d3, nxdim, nydim, nzdim, fact, ioff, joff)
+    end if
+
+    if( present(fill_nsb) ) then
+#ifndef OPT_TRIPOLE
+       if (jup .eq. mpi_proc_null) then
+          do k = 1, nzdim
+             do j = jend+1, nydim
+                do i=1, nxdim
+                   d3(i,j,k)=d3(i,jend,k)
+                end do
+             end do
+          end do
+       end if
+#endif
+       if (jdown .eq. mpi_proc_null) then
+          do k = 1, nzdim
+             do j = 1, jstr-1
+                do i = 1, nxdim
+                   d3(i,j,k)=d3(i,jstr,k)
+                end do
+             end do
+          end do
+       end if
     end if
   end subroutine read_mask_3d
   
