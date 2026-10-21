@@ -8,7 +8,7 @@ SRCS_SHARED = \
 	bchmk.F90 \
 	bgs2d.F90 \
 	bgs3d.F90 \
-	brdge$(MPI).F90 \
+	brdge.F90 \
 	bshfi.F90 \
 	bshft.F90 \
 	bstbc.F90 \

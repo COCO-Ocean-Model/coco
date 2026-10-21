@@ -10,7 +10,7 @@ module brdge
 !     '07.12.20  H.Hasumi: MASK file format is modified
 !     '10.04.14  M.Kurogi: (COCO4.4 tripolar code by Dr. Suzuki)
 !     '12.07.20  M.kurogi: for COCO5.0
-!
+!     '15.04.07  M.Kurogi: MPI-IO
 ! ---------------------------------------------------------------------
 implicit none
 private 
@@ -48,19 +48,26 @@ contains
 
  use zocfil, only : ncf
  use ufile
- use bgs2d
- use bgs3d
  use bshfi
  use bshft
+#ifdef OPT_IO_COCOMPI
+ use mpiio
+#else
+ use bgs2d
+ use bgs3d
+#endif
+
 #ifdef OPT_OFFLINE 
  use bchmk
 #endif
+
  implicit none
 #include "mpif.h"
 #include "coco.h"
-
-  integer,allocatable :: g2di(:)
-  real(8),allocatable :: g2d(:), g3d(:)
+#ifndef OPT_IO_COCOMPI
+ integer,allocatable :: g2di(:)
+ real(8),allocatable :: g2d(:), g3d(:)
+#endif
   integer ::  n
   integer :: ij,      k
   integer ::  i,      j,    ijs,   ije,   ijn,  ijw
@@ -68,6 +75,10 @@ contains
   integer :: nfmask
   integer :: istat
 
+#ifdef OPT_IO_COCOMPI
+  integer :: mpi_fh
+  integer (kind = mpi_offset_kind) :: disp
+#endif
   character(ncf) :: cfmask
   data cfmask / 'not-specified' /
   namelist /nmmask/ cfmask
@@ -76,48 +87,12 @@ contains
   write(jfpar, *) '*** rdgeo ***'
   READ_NAMELIST( nmmask )
 
+#ifdef OPT_IO_COCOMPI
+  call mpi_filopn(mpi_fh, cfmask, 'READ')
+  disp=0
+#else
   if (myrank .eq. iroot) then
-    call filopn(nfmask, cfmask, 'read')
-  endif
-
-  amskt = 0.d0
-  amftx = 0.d0
-  amfty = 0.d0
-  amftz = 0.d0
-  amskv = 0.d0
-  amfvx = 0.d0
-  amfvy = 0.d0
-  amfvz = 0.d0
-  amskb = 0.d0
-  dy = 1.d0
-  dym = 1.d0
-  dz  = 1.d0
-  dzm = 1.d0
-  dzv = 1.d0
-  cor = 1.d0
-  hxt = 1.d0
-  hxu = 1.d0
-  hyt = 1.d0
-  hyu = 1.d0
-  hxyt = 1.d0
-  hxyu = 1.d0
-  hyxt = 1.d0
-  hyxu = 1.d0
-  dept = 1.d0
-  rdepv = 1.d0
-  nbot = kstr - 1
-#ifdef OPT_BBL
-  nbotv = kstr - 1
-  amsktb = 0.d0
-  amskt0 = 0.d0
-  amskt1 = 0.d0
-  amskvb = 0.d0
-  amskv0 = 0.d0
-  amskv1 = 0.d0
-#endif
-
-
-  if (myrank .eq. iroot) then
+     call filopn(nfmask, cfmask, 'read')
      allocate(g2d(nxygdm))
      allocate(g3d(nxyzgd))
      allocate(g2di(nxygdm))
@@ -126,130 +101,34 @@ contains
      allocate(g3d(1))
      allocate(g2di(1))
   end if
+#endif
 
-  if (myrank .eq. iroot) then
-     read(nfmask) dx
-  end if
-  call mpi_bcast(dx, 1, mpi_real8, iroot, mpi_comm_ogcm, ierr)
+  shift_rdgeo=.true.
 
-  if (myrank .eq. iroot) then
-     read(nfmask) g2d
-  end if
-  call scatter_2d(dy, g2d)
+  call read_mask_scalar(dx)
+  call read_mask_2d(dy,  fact=1.d0, ioff= 0, joff= 0, vinit=1.d0)
+  call read_mask_2d(dym, fact=1.d0, ioff=-1, joff=-1, vinit=1.d0)
+  call read_mask_3d(dz,  fact=1.d0, ioff= 0, joff= 0, vinit=1.d0)
+  call read_mask_3d(dzm, fact=1.d0, ioff= 0, joff= 0, vinit=1.d0)
+  call read_mask_3d(dzv, fact=1.d0, ioff=-1, joff=-1, vinit=1.d0)
+  call read_mask_1d(dz0, nzdim)
+  call read_mask_1d(ds,  nzdim)
+  call read_mask_1d(dsm, nzdim)
+  call read_mask_1d(hic, nic+1)
+  call read_mask_scalar(rea)
+  call read_mask_scalar(zbot)
 
-  if (myrank .eq. iroot) then
-     read(nfmask) g2d
-  end if
-  call scatter_2d(dym, g2d)
-
-  if (myrank .eq. iroot) then
-     read(nfmask) g3d
-  end if
-  call scatter_3d(dz, g3d)
-
-  if (myrank .eq. iroot) then
-     read(nfmask) g3d
-  end if
-  call scatter_3d(dzm, g3d)
-
-  if (myrank .eq. iroot) then
-     read(nfmask) g3d
-  end if
-  call scatter_3d(dzv, g3d)
-
-  if (myrank .eq. iroot) then
-     read(nfmask) dz0
-  end if
-  call mpi_bcast(dz0, nzdim, mpi_real8, iroot, mpi_comm_ogcm, ierr)
-
-  if (myrank .eq. iroot) then
-     read(nfmask) ds
-  end if
-  call mpi_bcast(ds, nzdim, mpi_real8, iroot, mpi_comm_ogcm, ierr)
-
-  if (myrank .eq. iroot) then
-     read(nfmask) dsm
-  end if
-  call mpi_bcast(dsm, nzdim, mpi_real8, iroot, mpi_comm_ogcm, ierr)
-
-  if (myrank .eq. iroot) then
-     read(nfmask) hic
-  end if
-  call mpi_bcast(hic, nic+1, mpi_real8, iroot, mpi_comm_ogcm, ierr)
-
-  if (myrank .eq. iroot) then
-     read(nfmask) rea
-  end if
-  call mpi_bcast(rea, 1, mpi_real8, iroot, mpi_comm_ogcm, ierr)
-
-  if (myrank .eq. iroot) then
-     read(nfmask) zbot
-  end if
-  call mpi_bcast(zbot, 1, mpi_real8, iroot, mpi_comm_ogcm, ierr)
-
-  if (myrank .eq. iroot) then
-     read(nfmask) g2d
-  end if
-  call scatter_2d(cor, g2d)
-
-  if (myrank .eq. iroot) then
-     read(nfmask) g2d
-  end if
-  call scatter_2d(dept, g2d)
-
-  if (myrank .eq. iroot) then
-     read(nfmask) g2d
-  end if
-  call scatter_2d(rdepv, g2d)
-
-  if (myrank .eq. iroot) then
-     read(nfmask) g2d
-  end if
-  call scatter_2d(hxt, g2d)
-
-  if (myrank .eq. iroot) then
-     read(nfmask) g2d
-  end if
-  call scatter_2d(hxu, g2d)
-
-  if (myrank .eq. iroot) then
-     read(nfmask) g2d
-  end if
-  call scatter_2d(hyt, g2d)
-
-  if (myrank .eq. iroot) then
-     read(nfmask) g2d
-  end if
-  call scatter_2d(hyu, g2d)
-
-  if (myrank .eq. iroot) then
-     read(nfmask) g2d
-  end if
-  call scatter_2d(hxyt, g2d)
-
-  if (myrank .eq. iroot) then
-     read(nfmask) g2d
-  end if
-  call scatter_2d(hxyu, g2d)
-
-  if (myrank .eq. iroot) then
-     read(nfmask) g2d
-  end if
-  call scatter_2d(hyxt, g2d)
-
-  if (myrank .eq. iroot) then
-     read(nfmask) g2d
-  end if
-  call scatter_2d(hyxu, g2d)
-
-  call shift2(  dy, dept,        nxdim, nydim,     1,  1.d0,  0,  0)
-  call shift3( dym,  cor, rdepv, nxdim, nydim,     1,  1.d0, -1, -1)
-  call shift2(  dz,  dzm,        nxdim, nydim, nzdim,  1.d0,  0,  0)
-  call shift1( dzv,              nxdim, nydim, nzdim,  1.d0, -1, -1)
-  call shift2( hxt,  hyt,        nxdim, nydim,     1,  1.d0,  0,  0)
-  call shift2( hxu,  hyu,        nxdim, nydim,     1,  1.d0, -1, -1)
-  call shift2(hxyt, hyxt,        nxdim, nydim,     1, -1.d0,  0,  0)
-  call shift2(hxyu, hyxu,        nxdim, nydim,     1, -1.d0, -1, -1)
+  call read_mask_2d(  cor, fact= 1.d0, ioff=-1, joff=-1, vinit=1.d0)
+  call read_mask_2d( dept, fact= 1.d0, ioff= 0, joff= 0, vinit=1.d0)
+  call read_mask_2d(rdepv, fact= 1.d0, ioff=-1, joff=-1, vinit=1.d0)
+  call read_mask_2d(  hxt, fact= 1.d0, ioff= 0, joff= 0, vinit=1.d0)
+  call read_mask_2d(  hxu, fact= 1.d0, ioff=-1, joff=-1, vinit=1.d0)
+  call read_mask_2d(  hyt, fact= 1.d0, ioff= 0, joff= 0, vinit=1.d0)
+  call read_mask_2d(  hyu, fact= 1.d0, ioff=-1, joff=-1, vinit=1.d0)
+  call read_mask_2d( hxyt, fact=-1.d0, ioff= 0, joff= 0, vinit=1.d0)
+  call read_mask_2d( hxyu, fact=-1.d0, ioff=-1, joff=-1, vinit=1.d0)
+  call read_mask_2d( hyxt, fact=-1.d0, ioff= 0, joff= 0, vinit=1.d0)
+  call read_mask_2d( hyxu, fact=-1.d0, ioff=-1, joff=-1, vinit=1.d0)
 
 #ifndef OPT_TRIPOLE
   if (jup .eq. mpi_proc_null) then
@@ -317,102 +196,35 @@ contains
         end do
      end do
   end if
-
-  if (myrank .eq. iroot) then
-     read(nfmask) g2di
-  end if
-  call scatter_2d_int(nbot, g2di)
+  call read_mask_2i(nbot,   vinit=kstr-1)
+#ifdef OPT_BBL
+  call read_mask_2i(nbotv,  vinit=kstr-1)
+#endif
+  call read_mask_3d(amskt, fact=1.d0, ioff= 0, joff= 0, vinit=0.d0)
+  call read_mask_3d(amftx, fact=1.d0, ioff= 1, joff= 0, vinit=0.d0)
+  call read_mask_3d(amfty,                              vinit=0.d0)
+  call read_mask_3d(amftz, fact=1.d0, ioff= 0, joff= 0, vinit=0.d0)
 
 #ifdef OPT_BBL
-  if (myrank .eq. iroot) then
-     read(nfmask) g2di
-  end if
-  call scatter_2d_int(nbotv, g2di)
+  call read_mask_2d(amsktb, fact=1.d0, ioff= 0, joff= 0, vinit=0.d0)
+  call read_mask_2d(amskt0, fact=1.d0, ioff= 0, joff= 0, vinit=0.d0)
+  call read_mask_2d(amskt1, fact=1.d0, ioff= 0, joff= 0, vinit=0.d0)
 #endif
 
-  if (myrank .eq. iroot) then
-     read(nfmask) g3d
-  end if
-  call scatter_3d(amskt, g3d)
-
-  if (myrank .eq. iroot) then
-     read(nfmask) g3d
-  end if
-  call scatter_3d(amftx, g3d)
-
-  if (myrank .eq. iroot) then
-     read(nfmask) g3d
-  end if
-  call scatter_3d(amfty, g3d)
-
-  if (myrank .eq. iroot) then
-     read(nfmask) g3d
-  end if
-  call scatter_3d(amftz, g3d)
+  call read_mask_3d(amskv, fact=1.d0, ioff=-1, joff=-1, vinit=0.d0)
+  call read_mask_3d(amfvx, fact=1.d0, ioff= 0, joff=-1, vinit=0.d0)
+  call read_mask_3d(amfvy, fact=1.d0, ioff=-1, joff= 0, vinit=0.d0)
+  call read_mask_3d(amfvz, fact=1.d0, ioff=-1, joff=-1, vinit=0.d0)
 
 #ifdef OPT_BBL
-  if (myrank .eq. iroot) then
-     read(nfmask) g2d
-  end if
-  call scatter_2d(amsktb, g2d)
-
-  if (myrank .eq. iroot) then
-     read(nfmask) g2d
-  end if
-  call scatter_2d(amskt0, g2d)
-
-  if (myrank .eq. iroot) then
-     read(nfmask) g2d
-  end if
-  call scatter_2d(amskt1, g2d)
+  call read_mask_2d(amskvb, fact=1.d0, ioff=-1, joff=-1, vinit=0.d0)
+  call read_mask_2d(amskv0, fact=1.d0, ioff=-1, joff=-1, vinit=0.d0)
+  call read_mask_2d(amskv1, fact=1.d0, ioff=-1, joff=-1, vinit=0.d0)
 #endif
+  call read_mask_3d(amskb,  fact=1.d0, ioff=-1, joff=-1, vinit=0.d0)
 
-  if (myrank .eq. iroot) then
-     read(nfmask) g3d
-  end if
-  call scatter_3d(amskv, g3d)
-
-  if (myrank .eq. iroot) then
-     read(nfmask) g3d
-  end if
-  call scatter_3d(amfvx, g3d)
-
-  if (myrank .eq. iroot) then
-     read(nfmask) g3d
-  end if
-  call scatter_3d(amfvy, g3d)
-
-  if (myrank .eq. iroot) then
-     read(nfmask) g3d
-  end if
-  call scatter_3d(amfvz, g3d)
-
-#ifdef OPT_BBL
-  if (myrank .eq. iroot) then
-     read(nfmask) g2d
-  end if
-  call scatter_2d(amskvb, g2d)
-
-  if (myrank .eq. iroot) then
-     read(nfmask) g2d
-  end if
-  call scatter_2d(amskv0, g2d)
-
-  if (myrank .eq. iroot) then
-     read(nfmask) g2d
-  end if
-  call scatter_2d(amskv1, g2d)
-#endif
-
-  if (myrank .eq. iroot) then
-     read(nfmask) g3d
-  endif
-  call scatter_3d(amskb, g3d)
-
-  call shift2(amskt, amftz, nxdim, nydim, nzdim, 1.d0,  0,  0)
-  call shift2(amskv, amfvz, nxdim, nydim, nzdim, 1.d0, -1, -1)
-  call shift1(amskb,        nxdim, nydim, nzdim, 1.d0, -1, -1)
   call shft1i( nbot, nxdim, nydim)
+
 #ifdef OPT_TRIPOLE
   call shftint(nbot, nxdim, nydim)
 
@@ -429,14 +241,9 @@ contains
   enddo
   endif
 #endif
-  call shift1(amftx, nxdim,  nydim,  nzdim, 1.d0,  1,  0)
   call shift1(amfty, nxdim,  nydim,  nzdim, 1.d0,  0,  1)
-  call shift1(amfvx, nxdim,  nydim,  nzdim, 1.d0,  0, -1)
-  call shift1(amfvy, nxdim,  nydim,  nzdim, 1.d0, -1,  0)
-
+  
 #ifdef OPT_BBL
-  call shift3(amsktb, amskt0, amskt1, nxdim, nydim, 1, 1.d0,  0,  0)
-  call shift3(amskvb, amskv0, amskv1, nxdim, nydim, 1, 1.d0, -1, -1)
   call shft1i( nbotv, nxdim, nydim)
 
 #ifdef OPT_TRIPOLE
@@ -453,30 +260,14 @@ contains
      enddo
   enddo
   endif
-  call shift1(amftx, nxdim,  nydim,  nzdim, 1.d0,  1,  0)
   call shift1(amfty, nxdim,  nydim,  nzdim, 1.d0,  0,  1)
-  call shift1(amfvx, nxdim,  nydim,  nzdim, 1.d0,  0, -1)
-  call shift1(amfvy, nxdim,  nydim,  nzdim, 1.d0, -1,  0)
 #endif
 #endif
 
 #ifdef OPT_EXMASK
-  if(myrank .eq. iroot) THEN
-     read(nfmask) g2d
-  end if
-  call scatter_2d(glont, g2d)
-
-  if(myrank .eq. iroot) THEN
-     read(nfmask) g2d
-  end if
-  call scatter_2d(glatt, g2d)
-
-  if(myrank .eq. iroot) THEN
-     read(nfmask) g2d
-  end if
-  call scatter_2d(rangt, g2d)
-
-  call shift3(glont, glatt, rangt, nxdim, nydim, 1, 1.d0, 0, 0)
+  call read_mask_2d(glont, fact=1.d0, ioff=0, joff=0)
+  call read_mask_2d(glatt, fact=1.d0, ioff=0, joff=0)
+  call read_mask_2d(rangt, fact=1.d0, ioff=0, joff=0)
 
 #ifndef OPT_TRIPOLE
   if (jup .eq. mpi_proc_null) then
@@ -523,14 +314,16 @@ contains
      ijvend = ij
      if (amskv(ij, kstr) .eq. 1.d0) exit
   end do
-
+#ifdef OPT_IO_COCOMPI
+  call mpi_filcls(mpi_fh)
+#else
   if (myrank .eq. iroot) then
      call filcls(nfmask)
   endif
   deallocate(g2d)
   deallocate(g3d)
   deallocate(g2di)
-
+#endif
   rx = 1.d0 / dx
   do ij = 1, nxydim
      ry(ij) = 1.d0 / dy(ij)
@@ -552,6 +345,105 @@ contains
 #endif
 #endif
 
-end subroutine rdgeo
+!$acc enter data copyin(amskt, amftx, amfty, amftz,  amskv,  amfvx,  amfvy,  amfvz,  amskb,  nbot)
+!$acc enter data copyin(dy, dym, dz, dzm, dzv, dz0, ds, dsm, hic, cor, dept, rdepv)
+!$acc enter data copyin(hxt, hxu, hyt, hyu, hxyt, hxyu, hyxt, hyxu)
+!$acc enter data copyin(ry, rym, rxt, rxu, ryt, ryu, rs, rsm)
+#ifdef OPT_EXMASK
+!$acc enter data copyin(glont, glatt, rangt)
+#endif
+  shift_rdgeo=.false.
+  return
+contains
+  subroutine read_mask_scalar(d0)
+    implicit none
+    real(8), intent(out) :: d0
+    real(8) :: d1(1)
+#ifdef OPT_IO_COCOMPI
+    call mpi_read_root(d1,1,mpi_fh, disp)
+    d0=d1(1)
+#else
+    if (myrank .eq. iroot) then
+       read(nfmask)d0
+    end if
+#endif
+    call mpi_bcast(d0, 1, mpi_real8, iroot, mpi_comm_ogcm, ierr)
+  end subroutine read_mask_scalar
 
+  subroutine read_mask_1d(d1, ndim)
+    implicit none
+    integer, intent(in)  :: ndim
+    real(8), intent(out) :: d1(ndim)
+#ifdef OPT_IO_COCOMPI
+    call mpi_read_root(d1, ndim, mpi_fh, disp)
+#else
+    if (myrank .eq. iroot) then
+       read(nfmask)d1
+    end if
+#endif
+    call mpi_bcast(d1, ndim, mpi_real8, iroot, mpi_comm_ogcm, ierr)
+  end subroutine read_mask_1d
+  
+  subroutine read_mask_2i(i2, vinit)
+    implicit none
+    integer, intent(out) :: i2(nxdim, nydim)
+    integer, intent(in), optional :: vinit
+    if( present(vinit) ) then
+       i2(:,:)=vinit
+    end if
+#ifdef OPT_IO_COCOMPI
+    call mpi_read_2d_intx( i2, mpi_fh, disp)
+#else
+  if (myrank .eq. iroot) then
+     read(nfmask) g2di
+  end if
+  call scatter_2d_int(i2, g2di)
+#endif
+  end subroutine read_mask_2i
+  
+  subroutine read_mask_2d(d2, fact, ioff, joff, vinit)
+    implicit none
+    real(8), intent(out) :: d2(nxdim, nydim)
+    integer, intent(in), optional :: ioff, joff
+    real(8), intent(in), optional :: fact
+    real(8), intent(in), optional :: vinit
+    if( present(vinit) ) then
+       d2(:,:)=vinit
+    end if
+#ifdef OPT_IO_COCOMPI
+    call mpi_read_2d_dimx(d2, mpi_fh, disp)
+#else
+    if (myrank .eq. iroot) then
+       read(nfmask) g2d
+    end if
+    call scatter_2d(d2, g2d)
+#endif
+    if( present(fact) ) then
+       call shift1(d2, nxdim, nydim, 1, fact, ioff, joff)
+    end if
+  end subroutine read_mask_2d
+
+  subroutine read_mask_3d(d3, fact, ioff, joff, vinit)
+    implicit none
+    real(8), intent(out) :: d3(nxdim, nydim, nzdim)
+    integer, intent(in), optional :: ioff, joff
+    real(8), intent(in), optional :: fact
+    real(8), intent(in), optional :: vinit
+    if( present(vinit) ) then
+       d3(:,:,:)=vinit
+    end if
+#ifdef OPT_IO_COCOMPI
+    call mpi_read_3d_dimx(d3, mpi_fh, disp)
+#else
+    if (myrank .eq. iroot) then
+       read(nfmask) g3d
+    end if
+    call scatter_3d(d3, g3d)
+#endif
+    if( present(fact) ) then
+       call shift1(d3, nxdim, nydim, nzdim, fact, ioff, joff)
+    end if
+  end subroutine read_mask_3d
+  
+  end subroutine rdgeo
 end module brdge
