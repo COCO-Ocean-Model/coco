@@ -66,7 +66,6 @@ contains
   integer :: istat
   integer :: mpi_fh
   integer (kind = mpi_offset_kind) :: disp
-  real(8) :: dim1(1)
   character(ncf) :: cfmask
   data cfmask / 'not-specified' /
   namelist /nmmask/ cfmask
@@ -79,93 +78,32 @@ contains
 
   shift_rdgeo=.true.
   
-  amskt = 0.d0
-  amftx = 0.d0
-  amfty = 0.d0
-  amftz = 0.d0
-  amskv = 0.d0
-  amfvx = 0.d0
-  amfvy = 0.d0
-  amfvz = 0.d0
-  amskb = 0.d0
-  dy = 1.d0
-  dym = 1.d0
-  dz  = 1.d0
-  dzm = 1.d0
-  dzv = 1.d0
-  cor = 1.d0
-  hxt = 1.d0
-  hxu = 1.d0
-  hyt = 1.d0
-  hyu = 1.d0
-  hxyt = 1.d0
-  hxyu = 1.d0
-  hyxt = 1.d0
-  hyxu = 1.d0
-  dept = 1.d0
-  rdepv = 1.d0
-  nbot = kstr - 1
-#ifdef OPT_BBL
-  nbotv = kstr - 1
-  amsktb = 0.d0
-  amskt0 = 0.d0
-  amskt1 = 0.d0
-  amskvb = 0.d0
-  amskv0 = 0.d0
-  amskv1 = 0.d0
-#endif
 
   disp=0
-  call mpi_read_root(dim1,1,mpi_fh, disp)
-  dx=dim1(1)
-  call mpi_bcast(dx, 1, mpi_real8, iroot, mpi_comm_ogcm, ierr)
+  call read_mask_scalar(dx)
+  call read_mask_2d(dy,  fact=1.d0, ioff= 0, joff= 0, vinit=1.d0)
+  call read_mask_2d(dym, fact=1.d0, ioff=-1, joff=-1, vinit=1.d0)
+  call read_mask_3d(dz,  fact=1.d0, ioff= 0, joff= 0, vinit=1.d0)
+  call read_mask_3d(dzm, fact=1.d0, ioff= 0, joff= 0, vinit=1.d0)
+  call read_mask_3d(dzv, fact=1.d0, ioff=-1, joff=-1, vinit=1.d0)
+  call read_mask_1d(dz0, nzdim)
+  call read_mask_1d(ds,  nzdim)
+  call read_mask_1d(dsm, nzdim)
+  call read_mask_1d(hic, nic+1)
+  call read_mask_scalar(rea)
+  call read_mask_scalar(zbot)
 
-  call mpi_read_2d_dimx(dy , mpi_fh, disp)
-  call mpi_read_2d_dimx(dym, mpi_fh, disp)
-  call mpi_read_3d_dimx(dz , mpi_fh, disp)
-  call mpi_read_3d_dimx(dzm, mpi_fh, disp)
-  call mpi_read_3d_dimx(dzv, mpi_fh, disp)
-
-  call mpi_read_root(dz0, nzdim, mpi_fh, disp)
-  call mpi_bcast(dz0, nzdim, mpi_real8, iroot, mpi_comm_ogcm, ierr)
-
-  call mpi_read_root(ds, nzdim, mpi_fh, disp)
-  call mpi_bcast(ds, nzdim, mpi_real8, iroot, mpi_comm_ogcm, ierr)
-
-  call mpi_read_root(dsm, nzdim, mpi_fh, disp)
-  call mpi_bcast(dsm, nzdim, mpi_real8, iroot, mpi_comm_ogcm, ierr)
-
-  call mpi_read_root(hic, nic+1, mpi_fh, disp)
-  call mpi_bcast(hic, nic+1, mpi_real8, iroot, mpi_comm_ogcm, ierr)
-
-  call mpi_read_root(dim1, 1, mpi_fh, disp)
-  rea=dim1(1)
-  call mpi_bcast(rea, 1, mpi_real8, iroot, mpi_comm_ogcm, ierr)
-
-  call mpi_read_root(dim1, 1, mpi_fh, disp)
-  zbot=dim1(1)
-  call mpi_bcast(zbot, 1, mpi_real8, iroot, mpi_comm_ogcm, ierr)
-
-  call mpi_read_2d_dimx(  cor, mpi_fh, disp)
-  call mpi_read_2d_dimx( dept, mpi_fh, disp)
-  call mpi_read_2d_dimx(rdepv, mpi_fh, disp)
-  call mpi_read_2d_dimx(  hxt, mpi_fh, disp)
-  call mpi_read_2d_dimx(  hxu, mpi_fh, disp)
-  call mpi_read_2d_dimx(  hyt, mpi_fh, disp)
-  call mpi_read_2d_dimx(  hyu, mpi_fh, disp)
-  call mpi_read_2d_dimx( hxyt, mpi_fh, disp)
-  call mpi_read_2d_dimx( hxyu, mpi_fh, disp)
-  call mpi_read_2d_dimx( hyxt, mpi_fh, disp)
-  call mpi_read_2d_dimx( hyxu, mpi_fh, disp)
-
-  call shift2(  dy, dept,        nxdim, nydim,     1,  1.d0,  0,  0)
-  call shift3( dym,  cor, rdepv, nxdim, nydim,     1,  1.d0, -1, -1)
-  call shift2(  dz,  dzm,        nxdim, nydim, nzdim,  1.d0,  0,  0)
-  call shift1( dzv,              nxdim, nydim, nzdim,  1.d0, -1, -1)
-  call shift2( hxt,  hyt,        nxdim, nydim,     1,  1.d0,  0,  0)
-  call shift2( hxu,  hyu,        nxdim, nydim,     1,  1.d0, -1, -1)
-  call shift2(hxyt, hyxt,        nxdim, nydim,     1, -1.d0,  0,  0)
-  call shift2(hxyu, hyxu,        nxdim, nydim,     1, -1.d0, -1, -1)
+  call read_mask_2d(  cor, fact= 1.d0, ioff=-1, joff=-1, vinit=1.d0)
+  call read_mask_2d( dept, fact= 1.d0, ioff= 0, joff= 0, vinit=1.d0)
+  call read_mask_2d(rdepv, fact= 1.d0, ioff=-1, joff=-1, vinit=1.d0)
+  call read_mask_2d(  hxt, fact= 1.d0, ioff= 0, joff= 0, vinit=1.d0)
+  call read_mask_2d(  hxu, fact= 1.d0, ioff=-1, joff=-1, vinit=1.d0)
+  call read_mask_2d(  hyt, fact= 1.d0, ioff= 0, joff= 0, vinit=1.d0)
+  call read_mask_2d(  hyu, fact= 1.d0, ioff=-1, joff=-1, vinit=1.d0)
+  call read_mask_2d( hxyt, fact=-1.d0, ioff= 0, joff= 0, vinit=1.d0)
+  call read_mask_2d( hxyu, fact=-1.d0, ioff=-1, joff=-1, vinit=1.d0)
+  call read_mask_2d( hyxt, fact=-1.d0, ioff= 0, joff= 0, vinit=1.d0)
+  call read_mask_2d( hyxu, fact=-1.d0, ioff=-1, joff=-1, vinit=1.d0)
 
 #ifndef OPT_TRIPOLE
   if (jup .eq. mpi_proc_null) then
@@ -233,38 +171,33 @@ contains
         end do
      end do
   end if
-
-  call mpi_read_2d_intx( nbot, mpi_fh, disp)
+  call read_mask_2i(nbot,   vinit=kstr-1)
 #ifdef OPT_BBL
-  call mpi_read_2d_intx(nbotv, mpi_fh, disp)
+  call read_mask_2i(nbotv,  vinit=kstr-1)
 #endif
-
-  call mpi_read_3d_dimx(amskt, mpi_fh, disp)
-  call mpi_read_3d_dimx(amftx, mpi_fh, disp)
-  call mpi_read_3d_dimx(amfty, mpi_fh, disp)
-  call mpi_read_3d_dimx(amftz, mpi_fh, disp)
+  call read_mask_3d(amskt, fact=1.d0, ioff= 0, joff= 0, vinit=0.d0)
+  call read_mask_3d(amftx, fact=1.d0, ioff= 1, joff= 0, vinit=0.d0)
+  call read_mask_3d(amfty,                              vinit=0.d0)
+  call read_mask_3d(amftz, fact=1.d0, ioff= 0, joff= 0, vinit=0.d0)
 
 #ifdef OPT_BBL
-  call mpi_read_2d_dimx(amsktb, mpi_fh, disp)
-  call mpi_read_2d_dimx(amskt0, mpi_fh, disp)
-  call mpi_read_2d_dimx(amskt1, mpi_fh, disp)
+  call read_mask_2d(amsktb, fact=1.d0, ioff= 0, joff= 0, vinit=0.d0)
+  call read_mask_2d(amskt0, fact=1.d0, ioff= 0, joff= 0, vinit=0.d0)
+  call read_mask_2d(amskt1, fact=1.d0, ioff= 0, joff= 0, vinit=0.d0)
 #endif
 
-  call mpi_read_3d_dimx(amskv, mpi_fh, disp)
-  call mpi_read_3d_dimx(amfvx, mpi_fh, disp)
-  call mpi_read_3d_dimx(amfvy, mpi_fh, disp)
-  call mpi_read_3d_dimx(amfvz, mpi_fh, disp)
+  call read_mask_3d(amskv, fact=1.d0, ioff=-1, joff=-1, vinit=0.d0)
+  call read_mask_3d(amfvx, fact=1.d0, ioff= 0, joff=-1, vinit=0.d0)
+  call read_mask_3d(amfvy, fact=1.d0, ioff=-1, joff= 0, vinit=0.d0)
+  call read_mask_3d(amfvz, fact=1.d0, ioff=-1, joff=-1, vinit=0.d0)
 
 #ifdef OPT_BBL
-  call mpi_read_2d_dimx(amskvb, mpi_fh, disp)
-  call mpi_read_2d_dimx(amskv0, mpi_fh, disp)
-  call mpi_read_2d_dimx(amskv1, mpi_fh, disp)
+  call read_mask_2d(amskvb, fact=1.d0, ioff=-1, joff=-1, vinit=0.d0)
+  call read_mask_2d(amskv0, fact=1.d0, ioff=-1, joff=-1, vinit=0.d0)
+  call read_mask_2d(amskv1, fact=1.d0, ioff=-1, joff=-1, vinit=0.d0)
 #endif
-  call mpi_read_3d_dimx(amskb, mpi_fh, disp)
+  call read_mask_3d(amskb,  fact=1.d0, ioff=-1, joff=-1, vinit=0.d0)
 
-  call shift2(amskt, amftz, nxdim, nydim, nzdim, 1.d0,  0,  0)
-  call shift2(amskv, amfvz, nxdim, nydim, nzdim, 1.d0, -1, -1)
-  call shift1(amskb,        nxdim, nydim, nzdim, 1.d0, -1, -1)
   call shft1i( nbot, nxdim, nydim)
 
 #ifdef OPT_TRIPOLE
@@ -283,14 +216,9 @@ contains
   enddo
   endif
 #endif
-  call shift1(amftx, nxdim,  nydim,  nzdim, 1.d0,  1,  0)
   call shift1(amfty, nxdim,  nydim,  nzdim, 1.d0,  0,  1)
-  call shift1(amfvx, nxdim,  nydim,  nzdim, 1.d0,  0, -1)
-  call shift1(amfvy, nxdim,  nydim,  nzdim, 1.d0, -1,  0)
-
+  
 #ifdef OPT_BBL
-  call shift3(amsktb, amskt0, amskt1, nxdim, nydim, 1, 1.d0,  0,  0)
-  call shift3(amskvb, amskv0, amskv1, nxdim, nydim, 1, 1.d0, -1, -1)
   call shft1i( nbotv, nxdim, nydim)
 
 #ifdef OPT_TRIPOLE
@@ -307,19 +235,14 @@ contains
      enddo
   enddo
   endif
-  call shift1(amftx, nxdim,  nydim,  nzdim, 1.d0,  1,  0)
   call shift1(amfty, nxdim,  nydim,  nzdim, 1.d0,  0,  1)
-  call shift1(amfvx, nxdim,  nydim,  nzdim, 1.d0,  0, -1)
-  call shift1(amfvy, nxdim,  nydim,  nzdim, 1.d0, -1,  0)
 #endif
 #endif
 
 #ifdef OPT_EXMASK
-  call mpi_read_2d_dimx(glont, mpi_fh, disp)
-  call mpi_read_2d_dimx(glatt, mpi_fh, disp)
-  call mpi_read_2d_dimx(rangt, mpi_fh, disp)
-
-  call shift3(glont, glatt, rangt, nxdim, nydim, 1, 1.d0, 0, 0)
+  call read_mask_2d(glont, fact=1.d0, ioff=0, joff=0)
+  call read_mask_2d(glatt, fact=1.d0, ioff=0, joff=0)
+  call read_mask_2d(rangt, fact=1.d0, ioff=0, joff=0)
 
 #ifndef OPT_TRIPOLE
   if (jup .eq. mpi_proc_null) then
@@ -347,7 +270,6 @@ contains
      end do
   end if
 #endif
-
 
   do ij = ijstr, ijend
      ijtstr = ij
@@ -400,5 +322,63 @@ contains
 #endif
   shift_rdgeo=.false.
   return
+contains
+  subroutine read_mask_scalar(d0)
+    implicit none
+    real(8), intent(out) :: d0
+    real(8) :: d1(1)
+    call mpi_read_root(d1,1,mpi_fh, disp)
+    d0=d1(1)
+    call mpi_bcast(d0, 1, mpi_real8, iroot, mpi_comm_ogcm, ierr)
+  end subroutine read_mask_scalar
+
+  subroutine read_mask_1d(d1, ndim)
+    implicit none
+    integer, intent(in)  :: ndim
+    real(8), intent(out) :: d1(ndim)
+    call mpi_read_root(d1, ndim, mpi_fh, disp)
+    call mpi_bcast(d1, ndim, mpi_real8, iroot, mpi_comm_ogcm, ierr)
+  end subroutine read_mask_1d
+  
+  subroutine read_mask_2i(i2, vinit)
+    implicit none
+    integer, intent(out) :: i2(nxdim, nydim)
+    integer, intent(in), optional :: vinit
+    if( present(vinit) ) then
+       i2(:,:)=vinit
+    end if
+    call mpi_read_2d_intx( i2, mpi_fh, disp)
+  end subroutine read_mask_2i
+  
+  subroutine read_mask_2d(d2, fact, ioff, joff, vinit)
+    implicit none
+    real(8), intent(out) :: d2(nxdim, nydim)
+    integer, intent(in), optional :: ioff, joff
+    real(8), intent(in), optional :: fact
+    real(8), intent(in), optional :: vinit
+    if( present(vinit) ) then
+       d2(:,:)=vinit
+    end if
+    call mpi_read_2d_dimx(d2, mpi_fh, disp)
+    if( present(fact) ) then
+       call shift1(d2, nxdim, nydim, 1, fact, ioff, joff)
+    end if
+  end subroutine read_mask_2d
+
+  subroutine read_mask_3d(d3, fact, ioff, joff, vinit)
+    implicit none
+    real(8), intent(out) :: d3(nxdim, nydim, nzdim)
+    integer, intent(in), optional :: ioff, joff
+    real(8), intent(in), optional :: fact
+    real(8), intent(in), optional :: vinit
+    if( present(vinit) ) then
+       d3(:,:,:)=vinit
+    end if
+    call mpi_read_3d_dimx(d3, mpi_fh, disp)
+    if( present(fact) ) then
+       call shift1(d3, nxdim, nydim, nzdim, fact, ioff, joff)
+    end if
+  end subroutine read_mask_3d
+  
   end subroutine rdgeo
 end module brdge
