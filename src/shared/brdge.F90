@@ -329,6 +329,7 @@ contains
     end if
 
     if( present(fill_nsb) ) then
+       if(.not. fill_nsb) return
 #ifndef OPT_TRIPOLE
        if (jup .eq. mpi_proc_null) then
           do j = jend+1, nydim
@@ -372,6 +373,7 @@ contains
     end if
 
     if( present(fill_nsb) ) then
+       if(.not. fill_nsb) return
 #ifndef OPT_TRIPOLE
        if (jup .eq. mpi_proc_null) then
           do k = 1, nzdim
