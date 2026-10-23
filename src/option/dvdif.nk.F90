@@ -198,12 +198,7 @@ subroutine vdiff( &
            tke(ij, k) = eps
         end do
      end do
-#ifdef OPT_TRIPOLE
-     call rstadd(tke, oeof, nxdim, nydim, nzdim, 'TKE', 'OCN', &
-       &                                         1.d0,  0,  0 )
-#else
-     call rstadd(tke, oeof, nxdim, nydim, nzdim, 'TKE', 'OCN')
-#endif
+     call rstadd(tke, oeof, nxdim, nydim, nzdim, 'TKE', 'OCN', 1.d0, 0, 0)
      return
   end if
 
@@ -312,7 +307,7 @@ subroutine vdiff( &
         slats = -latc0
         nlats = +latceq
         nlatn = +latc0
-        do ij = ijstr, ijend
+        do ij = ijstr-nxdim-1, ijend+nxdim+1
            cort = (cor(ij)+cor(ij+lw)+cor(ij+lsw)+cor(ij+ls)) * 0.25d0
            if ( cort/(2.d0*omega) .gt.  1.d0 ) then
               cort =   2.d0 * omega
@@ -334,7 +329,7 @@ subroutine vdiff( &
            endif
         enddo
      else
-        do ij = ijstr, ijend
+        do ij = ijstr-nxdim-1, ijend+nxdim+1
            c0lat(ij) = c0
         enddo
      endif
@@ -386,14 +381,8 @@ subroutine vdiff( &
         call scatter_2d( tedn2d, g2d )
         deallocate( buf2, g2d )
 #endif
-#ifdef OPT_TRIPOLE
-        call shift1(tedn2d,                                      &
-    &                nxdim,  nydim,      1,                      &
-    &                 1.d0,      0,      0 )
-#else
-        call shift1(tedn2d,                                      &
-    &                nxdim,  nydim,      1)
-#endif
+        call shift1(tedn2d, nxdim, nydim, 1, 1.d0, 0, 0)
+
         rzeta = 1.d0 / zeta * 1.d-2
         do ij = 1, nxydim
            depth0(ij, kstr) = 0.d0
@@ -444,14 +433,7 @@ subroutine vdiff( &
               write(jfpar, *) 'Dissipation rate is prop. to N^2 for far-field mixing'
            end if
         end if
-#ifdef OPT_TRIPOLE
-        call shift1(tedf2d,                                      &
-    &                nxdim,  nydim,      1,                      &
-    &                 1.d0,      0,      0 )
-#else
-        call shift1(tedf2d,                                      &
-    &                nxdim,  nydim,      1)
-#endif
+        call shift1(tedf2d, nxdim, nydim, 1, 1.d0, 0, 0)
      end if
 !---
 
@@ -785,9 +767,7 @@ subroutine vdiff( &
   end do
   
 #ifdef OPT_TRIPOLE
-  call shift1(   tke, &
-    &          nxdim,  nydim,  nzdim, &
-    &           1.d0,      0,      0 )
+  call shift1(tke, nxdim, nydim,  nzdim, 1.d0, 0, 0)
 #endif
 
 !!--- sea-surface elevation is not considered
@@ -801,7 +781,7 @@ subroutine vdiff( &
 !--- tidal turbulent energy dissipation rate
 ! near-field
   if ( iamn /= 0 ) then
-     do ij = ijstr, ijend
+     do ij = 1, nxydim
         gint(ij) = 0.d0
      end do
      do k = kstr+1, kend
@@ -821,7 +801,7 @@ subroutine vdiff( &
   end if
 ! far-field
   if ( iamf /= 0 ) then
-     do ij = ijstr, ijend
+     do ij = 1, nxydim
         gint(ij) = 0.d0
      end do
      if (ofvcnt) then
@@ -920,7 +900,7 @@ subroutine puttao( &
 
   integer ::     ij
 
-  do ij = ijvstr, ijvend
+  do ij = 1, nxydim
      tauaox(ij) = ( taox(ij) * caic &
        &          - taoy(ij) * sign(cais, cor(ij))) * &
        &          amskv(ij, kstr)
@@ -928,18 +908,7 @@ subroutine puttao( &
        &          + taox(ij) * sign(cais, cor(ij))) * &
        &          amskv(ij, kstr)
   end do
-
-#ifdef OPT_TRIPOLE
-  call shift2( &
-    &          tauaox, tauaoy, &
-    &           nxdim,  nydim,      1, &
-    &           -1.d0,     -1,     -1 )
-#else
-  call shift2( &
-    &          tauaox,   tauaoy, &
-    &           nxdim,    nydim,     1)
-#endif
-
+  call shift2(tauaox, tauaoy, nxdim, nydim, 1, -1.d0, -1, -1)
   return
 
 end subroutine puttao
