@@ -1247,10 +1247,10 @@ subroutine blkcof_core ( &
   real(8), intent(in)  :: gdps  ( nxydim )   !! sea level pressure
   integer, intent(in)  :: l                  !! 1 for ice, 2 for ocean
 
-  real(8), save ::       pi,   exi, akappa
+  real(8), save :: pi, akappa
   logical, save :: ofirst = .true.
 
-  real(8) ::  theta, thetav,    rho,   uabs,   qsat,  cmvsqr
+  real(8) ::  exi, theta, thetav,    rho,   uabs,   qsat,  cmvsqr
   real(8) ::  ustar,  tstar,  qstar,   zeta
   real(8) ::      x,  psi_m,  psi_h,   un10, fncmvr,      xx,     x2
   real(8) ::  astbl
@@ -1272,8 +1272,6 @@ subroutine blkcof_core ( &
   endif
 
   rho = 1.22d0
-  ! For nvhpc 24.7 (ES), error occurs due to the absence of exi in device memory (compiler bug ?).
-  !$acc data create(exi)
   !$acc kernels default(present)
   do ij = ijstr, ijend
 !     rho = gdps(ij) / (rair + (rvap - rair) * gdqa(ij)) / gdta(ij)
@@ -1396,7 +1394,6 @@ subroutine blkcof_core ( &
      cev( ij ) = cev( ij ) * min( max( uabs, usmine ), usmaxe )
   end do
   !$acc end kernels
-  !$acc end data
   return
 end subroutine blkcof_core
 
