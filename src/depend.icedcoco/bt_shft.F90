@@ -35,9 +35,9 @@ module bt_shft
   integer, parameter :: nxdim_w=nxdim, nydim_w=nydim, nxydim_w=nxdim_w*nydim_w
 #endif
 
-  integer, parameter :: max_ksize0 = 10 * nzdim
-  integer, parameter :: max_ksize  = 20 * nzdim * ntdim
-  integer, parameter :: max_num_packed = 32
+  integer, parameter :: max_ksize0 = 16
+  integer, parameter :: max_ksize  = 16
+  integer, parameter :: max_num_packed = 16
 
   real(8), save :: north_send(nxdim, jcomm, max_ksize)
   real(8), save :: south_send(nxdim, jcomm, max_ksize)
