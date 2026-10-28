@@ -339,46 +339,32 @@ contains
   subroutine excngw(wadv)
     use zocdim
     implicit none
-
     real(8), intent(inout) ::    wadv(nxdim, nydim, nzdim, 9)
-    real(8) ::  wadv2(nxdim, nydim, nzdim, 9)
-#if defined(_OPENACC) || defined(GPU_DEBUG)
-    save wadv2
-#endif
-    integer i, j, k, n, istv, jstv
-    logical, save :: ofirst = .true.
-
-    if (ofirst) then
-       !$acc enter data create(wadv2)
-       ofirst = .false.
-    end if    
+    real(8) :: tmp
+    integer i, j, k
     
     if(jrank .ne. jnodes-1) return
 
-    !$acc kernels default(present)
-    do n=1,9
-    do k=1,nzdim
-    do j=1,nydim
-    do i=1,nxdim
-       wadv2(i,j,k,n)=wadv(i,j,k,n)
-    end do
-    end do
-    end do
-    end do
-    !$acc end kernels
     if(inodes .eq. 1) then
        !$acc kernels default(present)
       do k=1, nzdim
       do j=jend+1, nydim
       do i=1,nxdim
-        wadv(i,j,k,2)=wadv2(i,j,k,6)
-        wadv(i,j,k,3)=wadv2(i,j,k,7)
-        wadv(i,j,k,4)=wadv2(i,j,k,8)
-        wadv(i,j,k,5)=wadv2(i,j,k,9)
-        wadv(i,j,k,6)=wadv2(i,j,k,2)
-        wadv(i,j,k,7)=wadv2(i,j,k,3)
-        wadv(i,j,k,8)=wadv2(i,j,k,4)
-        wadv(i,j,k,9)=wadv2(i,j,k,5)
+         tmp          =wadv(i,j,k,2)
+         wadv(i,j,k,2)=wadv(i,j,k,6)
+         wadv(i,j,k,6)=tmp
+
+         tmp          =wadv(i,j,k,3)
+         wadv(i,j,k,3)=wadv(i,j,k,7)
+         wadv(i,j,k,7)=tmp
+
+         tmp          =wadv(i,j,k,4)
+         wadv(i,j,k,4)=wadv(i,j,k,8)
+         wadv(i,j,k,8)=tmp
+
+         tmp          =wadv(i,j,k,5)
+         wadv(i,j,k,5)=wadv(i,j,k,9)
+         wadv(i,j,k,9)=tmp
       end do
       end do
       end do
@@ -386,14 +372,21 @@ contains
       j=jend
       do k=1, nzdim
       do i=nxdim/2+1,nxdim
-        wadv(i,j,k,2)=wadv2(i,j,k,6)
-        wadv(i,j,k,3)=wadv2(i,j,k,7)
-        wadv(i,j,k,4)=wadv2(i,j,k,8)
-        wadv(i,j,k,5)=wadv2(i,j,k,9)
-        wadv(i,j,k,6)=wadv2(i,j,k,2)
-        wadv(i,j,k,7)=wadv2(i,j,k,3)
-        wadv(i,j,k,8)=wadv2(i,j,k,4)
-        wadv(i,j,k,9)=wadv2(i,j,k,5)
+         tmp          =wadv(i,j,k,2)
+         wadv(i,j,k,2)=wadv(i,j,k,6)
+         wadv(i,j,k,6)=tmp
+
+         tmp          =wadv(i,j,k,3)
+         wadv(i,j,k,3)=wadv(i,j,k,7)
+         wadv(i,j,k,7)=tmp
+
+         tmp          =wadv(i,j,k,4)
+         wadv(i,j,k,4)=wadv(i,j,k,8)
+         wadv(i,j,k,8)=tmp
+
+         tmp          =wadv(i,j,k,5)
+         wadv(i,j,k,5)=wadv(i,j,k,9)
+         wadv(i,j,k,9)=tmp
       end do
       end do
       !$acc end kernels
@@ -402,14 +395,21 @@ contains
       do k=1, nzdim
       do j=jend+1, nydim
       do i=1,nxdim
-        wadv(i,j,k,2)=wadv2(i,j,k,6)
-        wadv(i,j,k,3)=wadv2(i,j,k,7)
-        wadv(i,j,k,4)=wadv2(i,j,k,8)
-        wadv(i,j,k,5)=wadv2(i,j,k,9)
-        wadv(i,j,k,6)=wadv2(i,j,k,2)
-        wadv(i,j,k,7)=wadv2(i,j,k,3)
-        wadv(i,j,k,8)=wadv2(i,j,k,4)
-        wadv(i,j,k,9)=wadv2(i,j,k,5)
+         tmp          =wadv(i,j,k,2)
+         wadv(i,j,k,2)=wadv(i,j,k,6)
+         wadv(i,j,k,6)=tmp
+
+         tmp          =wadv(i,j,k,3)
+         wadv(i,j,k,3)=wadv(i,j,k,7)
+         wadv(i,j,k,7)=tmp
+
+         tmp          =wadv(i,j,k,4)
+         wadv(i,j,k,4)=wadv(i,j,k,8)
+         wadv(i,j,k,8)=tmp
+
+         tmp          =wadv(i,j,k,5)
+         wadv(i,j,k,5)=wadv(i,j,k,9)
+         wadv(i,j,k,9)=tmp
       end do
       end do
       end do
@@ -419,14 +419,21 @@ contains
       do k=1, nzdim
       do j=jend, nydim
       do i=1,nxdim
-        wadv(i,j,k,2)=wadv2(i,j,k,6)
-        wadv(i,j,k,3)=wadv2(i,j,k,7)
-        wadv(i,j,k,4)=wadv2(i,j,k,8)
-        wadv(i,j,k,5)=wadv2(i,j,k,9)
-        wadv(i,j,k,6)=wadv2(i,j,k,2)
-        wadv(i,j,k,7)=wadv2(i,j,k,3)
-        wadv(i,j,k,8)=wadv2(i,j,k,4)
-        wadv(i,j,k,9)=wadv2(i,j,k,5)
+         tmp          =wadv(i,j,k,2)
+         wadv(i,j,k,2)=wadv(i,j,k,6)
+         wadv(i,j,k,6)=tmp
+
+         tmp          =wadv(i,j,k,3)
+         wadv(i,j,k,3)=wadv(i,j,k,7)
+         wadv(i,j,k,7)=tmp
+
+         tmp          =wadv(i,j,k,4)
+         wadv(i,j,k,4)=wadv(i,j,k,8)
+         wadv(i,j,k,8)=tmp
+
+         tmp          =wadv(i,j,k,5)
+         wadv(i,j,k,5)=wadv(i,j,k,9)
+         wadv(i,j,k,9)=tmp
       end do
       end do
       end do
