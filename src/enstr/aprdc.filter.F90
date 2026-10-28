@@ -395,35 +395,35 @@ contains
     call rmmskv
     call admkv1
 #endif
-
-    call shift_pack_begin
-    call shift1(uadv,      nxdim, nydim, nzdim, -1.d0,  0,  0)
-    call shift1(vadv,      nxdim, nydim, nzdim, -1.d0,  0,  0)
-    call shift1(wadv(:,1), nxdim, nydim, nzdim,  1.d0, -1, -1)
-    call shift1(wadv(:,2), nxdim, nydim, nzdim,  1.d0, -1, -1)
-    call shift1(wadv(:,3), nxdim, nydim, nzdim,  1.d0, -1, -1)
-    call shift1(wadv(:,4), nxdim, nydim, nzdim,  1.d0, -1, -1)
-    call shift1(wadv(:,5), nxdim, nydim, nzdim,  1.d0, -1, -1)
-    call shift1(wadv(:,6), nxdim, nydim, nzdim,  1.d0, -1, -1)
-    call shift1(wadv(:,7), nxdim, nydim, nzdim,  1.d0, -1, -1)
-    call shift1(wadv(:,8), nxdim, nydim, nzdim,  1.d0, -1, -1)
-    call shift1(wadv(:,9), nxdim, nydim, nzdim,  1.d0, -1, -1)
-    call shift_pack_end
-    call shift_unpack(     uadv,  1)
-    call shift_unpack(     vadv,  2)
-    call shift_unpack(wadv(:,1),  3)
-    call shift_unpack(wadv(:,2),  4)
-    call shift_unpack(wadv(:,3),  5)
-    call shift_unpack(wadv(:,4),  6)
-    call shift_unpack(wadv(:,5),  7)
-    call shift_unpack(wadv(:,6),  8)
-    call shift_unpack(wadv(:,7),  9)
-    call shift_unpack(wadv(:,8), 10)
-    call shift_unpack(wadv(:,9), 11)
-
+    if ( (.not. oinit) .and. (.not. ofinal)) then
+       call shift_pack_begin
+       call shift1(uadv,      nxdim, nydim, nzdim, -1.d0,  0,  0)
+       call shift1(vadv,      nxdim, nydim, nzdim, -1.d0,  0,  0)
+       call shift1(wadv(:,1), nxdim, nydim, nzdim,  1.d0, -1, -1)
+       call shift1(wadv(:,2), nxdim, nydim, nzdim,  1.d0, -1, -1)
+       call shift1(wadv(:,3), nxdim, nydim, nzdim,  1.d0, -1, -1)
+       call shift1(wadv(:,4), nxdim, nydim, nzdim,  1.d0, -1, -1)
+       call shift1(wadv(:,5), nxdim, nydim, nzdim,  1.d0, -1, -1)
+       call shift1(wadv(:,6), nxdim, nydim, nzdim,  1.d0, -1, -1)
+       call shift1(wadv(:,7), nxdim, nydim, nzdim,  1.d0, -1, -1)
+       call shift1(wadv(:,8), nxdim, nydim, nzdim,  1.d0, -1, -1)
+       call shift1(wadv(:,9), nxdim, nydim, nzdim,  1.d0, -1, -1)
+       call shift_pack_end
+       call shift_unpack(     uadv,  1)
+       call shift_unpack(     vadv,  2)
+       call shift_unpack(wadv(:,1),  3)
+       call shift_unpack(wadv(:,2),  4)
+       call shift_unpack(wadv(:,3),  5)
+       call shift_unpack(wadv(:,4),  6)
+       call shift_unpack(wadv(:,5),  7)
+       call shift_unpack(wadv(:,6),  8)
+       call shift_unpack(wadv(:,7),  9)
+       call shift_unpack(wadv(:,8), 10)
+       call shift_unpack(wadv(:,9), 11)
 #ifdef OPT_TRIPOLE
-    call excngw(  wadv  )
+       call excngw(  wadv  )
 #endif
+    end if
     call clcend('VDIAG')
 
       if ( (.not. oinit) .and. (.not. ofinal)) then
