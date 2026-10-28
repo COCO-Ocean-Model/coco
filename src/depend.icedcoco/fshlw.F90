@@ -752,7 +752,7 @@ contains
        !$acc enter data create(bvf)
        !$acc enter data copyin(rzm)
        
-       !$acc kernels
+       !$acc kernels default(present)
        ubtwof(:)=0.d0
        vbtwof(:)=0.d0
        !$acc end kernels
