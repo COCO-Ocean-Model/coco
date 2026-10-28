@@ -392,9 +392,11 @@ contains
 #if defined(_OPENACC) || defined(GPU_DEBUG)
     save fsrst, vwteqg, vareag
 #endif
-    if ( oinit .or. ofinal ) then
+    if (oinit) then
        !$acc enter data create(aa,ab,ac, dh,hzbot,hxbot)
        !$acc enter data create(fsrst, vwteqg, vareag)
+    end if
+    if ( oinit .or. ofinal ) then
        return
     end if
     !$acc kernels default(present)

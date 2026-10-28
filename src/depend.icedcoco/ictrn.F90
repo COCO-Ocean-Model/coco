@@ -375,12 +375,14 @@ subroutine icadjs( &
   save axhix,axhsx, axeix, axvmp, axdsd,axdsb, ci
 #endif
   
-  if (oinit .or. ofinal) then
+  if (oinit) then
      !$acc enter data create(  axhix,  axhsx)
      !$acc enter data create(  axeix)
      !$acc enter data create(  axvmp)
      !$acc enter data create(  axdsd,  axdsb)
      !$acc enter data create(     ci)
+  end if
+  if (oinit .or. ofinal) then
      return
   end if
 
@@ -490,7 +492,7 @@ subroutine ichflt( &
   save axhix,axhsx, axeix, axasx,axvmp, axflv,axfmp, axdsd,axdsb, &
    &   ci, daxhix, rdaxhi
 #endif
-  if (oinit .or. ofinal) then
+  if (oinit) then
      !$acc enter data create(  axhix,  axhsx)
      !$acc enter data create(  axeix)
      !$acc enter data create(  axasx,  axvmp)
@@ -499,6 +501,8 @@ subroutine ichflt( &
      !$acc enter data create(     ci)
      !$acc enter data create( daxhix)
      !$acc enter data create( rdaxhi)
+  end if
+  if (oinit .or. ofinal) then
      return
   end if
 

@@ -37,8 +37,10 @@ contains
   save uavr,vavr, ubar,vbar
 #endif
   
-  if (oinit .or. ofinal) then
+  if (oinit) then
      !$acc enter data create(uavr,vavr, ubar,vbar)
+  end if
+  if (oinit .or. ofinal) then
      return
   end if
 
