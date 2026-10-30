@@ -66,7 +66,12 @@ For details on maintenance, including the current list of Maintainers and contac
 
 If this software contributes to scientific publications, technical reports, operational products, commercial services, or other publicly distributed works, the authors kindly request that the software and/or associated publications be cited.
 
-Citation information is provided in [`CITATION.md`](CITATION.md).
+The recommended citation for COCO version 6.0.0 is:
+
+> COCO Development Team (2026). COCO Version 6.0.0. Zenodo. https://doi.org/10.5281/zenodo.23750415
+
+For citation information on other versions and references to related publications, see [`CITATION.md`](CITATION.md).
+
 
 ## License
 

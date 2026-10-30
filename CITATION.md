@@ -12,7 +12,12 @@ Whenever possible, cite a tagged release rather than the development branch.
 
 **Recommended software citation**
 
-> COCO Development Team (Year). *COCO*, Version X.Y.Z. GitHub Release. https://github.com/ORG/COCO/releases/tag/vX.Y.Z
+> COCO Development Team (2026). COCO Version 6.0.0. Zenodo. https://doi.org/10.5281/zenodo.23750415
+
+The COCO Development Team collectively represents the researchers and developers who have contributed to the development of COCO throughout its history.
+
+Official COCO releases are distributed through [GitHub Releases](https://github.com/COCO-Ocean-Model/coco/releases).
+Zenodo provides persistent DOIs and archived snapshots of selected releases.
 
 In addition to citing the software itself, users are encouraged to cite a publication describing the model that is appropriate for their application.
 
@@ -24,7 +29,7 @@ Although this report describes an earlier implementation of COCO, it remains the
 
 For studies using COCO as the ocean component of **MIROC6**, users may alternatively cite:
 
-> Tatebe, H., et al. (2019). *Description and basic evaluation of simulated mean state, internal variability, and climate sensitivity in MIROC6*. Geoscientific Model Development, **12**, 2727–2765. https://doi.org/10.5194/gmd-12-2727-2019
+> Tatebe, H., et al. (2019). *Description and basic evaluation of simulated mean state, internal variability, and climate sensitivity in MIROC6*. Geoscientific Model Development, **12**, 2727-2765. https://doi.org/10.5194/gmd-12-2727-2019
 
 ---
 
@@ -32,26 +37,25 @@ For studies using COCO as the ocean component of **MIROC6**, users may alternati
 
 Several components of COCO implement numerical methods and physical parameterizations that have been described in scientific publications. If your work relies substantially on one or more of these components, please cite the corresponding reference(s) in addition to the software itself.
 
-| Component / Feature                           | Recommended Citation         |
-| --------------------------------------------- | ---------------------------- |
-| COCO software                                 | GitHub Release (recommended) |
-| COCO model description                        | Hasumi (2006)                |
-| MIROC6 ocean component                        | Tatebe et al. (2019)         |
-| Tidal mixing parameterization                 | Kawasaki et al. (2021)       |
-| Tracer advection (Second-Order Moment scheme) | Tatebe and Hasumi (2010)     |
-| Bottom boundary layer scheme                  | Nakano and Suginohara (2002) |
+| Component / Feature                           | Recommended Citation                                                        |
+| --------------------------------------------- | --------------------------------------------------------------------------- |
+| COCO software                                 | COCO Development Team (2026), or the corresponding version-specific release |
+| COCO model description                        | Hasumi (2006)                                                               |
+| MIROC6 ocean component                        | Tatebe et al. (2019)                                                        |
+| Tidal mixing parameterization                 | Kawasaki et al. (2021)                                                      |
+| Tracer advection (Second-Order Moment scheme) | Tatebe and Hasumi (2010)                                                    |
+| Bottom boundary layer scheme                  | Nakano and Suginohara (2002)                                                |
 
 ---
 
-## Why cite a GitHub Release?
+## Software Releases and DOIs
 
-Unlike traditional publications, a GitHub Release identifies the exact version of the source code used in a study. This improves the reproducibility, transparency, and traceability of scientific results by providing a permanent record of the software implementation.
+Official COCO releases are available from the [GitHub Releases](https://github.com/COCO-Ocean-Model/coco/releases) page.
 
----
+Zenodo provides persistent DOIs and archived snapshots of selected releases.
+When a version-specific DOI is available, we recommend citing it while referring to GitHub Releases for the official source code distribution.
 
-## Future DOI Support
-
-If persistent identifiers (e.g., DOIs through Zenodo or similar services) become available for COCO releases in the future, we recommend citing the DOI associated with the corresponding release instead of the GitHub URL.
+For versions without a DOI, please cite the corresponding GitHub Release.
 
 ---
 
@@ -59,7 +63,7 @@ If persistent identifiers (e.g., DOIs through Zenodo or similar services) become
 
 If you are uncertain which references are most appropriate for your work, we recommend citing:
 
-1. the GitHub Release corresponding to the version used; and
+1. the version-specific software DOI, if available, or the corresponding GitHub Release; and
 2. either **Hasumi (2006)** or **Tatebe et al. (2019)**, depending on your application;
 
 together with the publications describing the model components or parameterizations that are central to your study.
