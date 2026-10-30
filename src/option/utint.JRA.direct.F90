@@ -648,11 +648,13 @@ end subroutine intpsfc
   real(8) :: fy(ny0), fy2(ny0), fyb(ny0,nx), fy2b(ny0,nx), xb(nx)
   real(8) :: data1(nx,ny), tmp(nx,ny)
   real(8) :: x,y
-  integer :: i,j,j1, ijd, ifail
+  integer :: i,j,j1, ijd, ifail, ii,jj
 
   real(8), save :: glont0(nxydim)
-
+  integer, save :: ilon(nx,ny), jlat(nx,ny)
   if (of) then
+     of=.false.
+
      ocycle(:)=.true.
      do j=1,ny0
         do i=1,nx0
@@ -679,7 +681,21 @@ end subroutine intpsfc
      where(glont0 < alonc(0))     glont0 = glont0 + 2.d0*pi
      where(glont0 > alonc(nx0+1)) glont0 = glont0 - 2.d0*pi
 
-     of=.false.
+     do j=1,ny
+        do i=1,nx
+           ilon(i,j)=-999
+           jlat(i,j)=-999
+           ijd = i+istr-1 + nxdim*(j+jstr-2)
+           y=glatt(ijd)
+           x=glont0(ijd)
+           do ii=1,nx0+1 ! index in alonc(0:nx0+1) seen as x(1:nx0+2) in splint
+              if( (x .ge. alonc(ii-1)) .and. (x .le. alonc(ii)) )  ilon(i,j)=ii
+           end do
+           do jj=1,ny0-1
+              if( (y .ge. alat(jj)) .and. (y .le. alat(jj+1)) )  jlat(i,j)=jj
+           end do
+        end do
+     end do
   end if
 
   where(mask ==0) dat4=-1.d20 !set missing value
@@ -711,7 +727,7 @@ end subroutine intpsfc
 
      if( j .eq. 1) then ! effective for lat/lon grid
         do j1=1,ny0
-            fy(j1)=splint(nx0+2, alonc(0), dat(0,j1), y2c(0,j1), x)
+            fy(j1)=splint(nx0+2, alonc(0), dat(0,j1), y2c(0,j1), x, ilon(i,j))
         end do
         call spline(ny0, alat, fy, fy2, ifail)
           xb(i)=x
@@ -725,12 +741,12 @@ end subroutine intpsfc
           fy2=fy2b(:,i)
         else
            do j1=1,ny0
-              fy(j1)=splint(nx0+2, alonc(0), dat(0,j1), y2c(0,j1), x)
+              fy(j1)=splint(nx0+2, alonc(0), dat(0,j1), y2c(0,j1), x, ilon(i,j))
            end do
            call spline(ny0, alat, fy, fy2, ifail)
         end if
      end if     
-        tmp(i,j)=splint(ny0, alat, fy, fy2, y)
+        tmp(i,j)=splint(ny0, alat, fy, fy2, y, jlat(i,j))
   end do
   end do
 
@@ -810,20 +826,13 @@ end subroutine tmintp_direct
   return
   end subroutine spline_cyclic
 !====================================================================
-  function splint(nx, x,y,y2, xx) result(v)
+  function splint(nx, x,y,y2, xx, i0) result(v)
   implicit none
-  integer, intent(in) :: nx
+  integer, intent(in) :: nx, i0
   real(8), intent(in) :: x(nx), y(nx), y2(nx), xx
   real(8) :: v
   real(8) :: a, b, c, d, h
-  integer :: i,i0
 
-  i0=-999
-  do i=1,nx-1
-     if( (xx .ge. x(i)) .and. (xx .le. x(i+1)) ) then
-        i0=i
-     end if     
-  end do
   if (i0 >0) then
      h=(x(i0+1)-x(i0))
      a=(x(i0+1)-xx)/h
@@ -832,15 +841,12 @@ end subroutine tmintp_direct
      d=b*(b*b-1)*h*h/6.d0
      v=a*y(i0)+ b*y(i0+1)+c*y2(i0)+ d*y2(i0+1)
      if ( min(y(i0), y(i0+1)) < -1.d19 ) v=-1.d20 !missing value
-  end if
-
-  if(i0 < -1) then
+     if ( xx .eq. x(i0  ) ) v=y(i0  )
+     if ( xx .eq. x(i0+1) ) v=y(i0+1)
+  else
     v= -1.d20 !missing value
   end if
-
-  do i=1,nx
-     if( xx .eq. x(i) ) v=y(i)
-  end do
+  
   end function splint
 !====================================================================
   subroutine tridag(n, a, b, c, r, u, gam, ifail)
