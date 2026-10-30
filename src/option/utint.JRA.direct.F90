@@ -2,9 +2,8 @@ module utint
     use zocdim,  only  : nxy, mpi_comm_ogcm
   implicit none
 #include "coco.h"
-  
+  integer,parameter :: nx0=640, ny0=320
   private
-
   public  ::  tmintp, tmintp_direct
 #ifdef OPT_BODY
   public  ::  tmintb
@@ -105,7 +104,7 @@ contains
     data cftdmp / ntdim*'not-specified' /
 
 
-    integer,parameter :: nx0=640, ny0=320
+
     real(4) :: direct(nx0, ny0)
     real(8), save :: alon(nx0), alat(ny0)
     integer, save :: mask(nx0,ny0)=1
@@ -648,8 +647,8 @@ end subroutine intpsfc
   real(8) :: buf(nx0)
   real(8) :: fy(ny0), fy2(ny0), fyb(ny0,nx), fy2b(ny0,nx), xb(nx)
   real(8) :: data1(nx,ny), tmp(nx,ny)
-  real(8) :: x,y,value
-  integer :: i,j,j1, ijd
+  real(8) :: x,y
+  integer :: i,j,j1, ijd, ifail
 
   real(8), save :: glont0(nxydim)
 
@@ -686,18 +685,18 @@ end subroutine intpsfc
   where(mask ==0) dat4=-1.d20 !set missing value
 
 
-
+  ifail=0
   dat(1:nx0,1:ny0)=dat4(1:nx0,1:ny0)
   dat(   0,:)=dat(nx0,:)
   dat(nx0+1,:)=dat( 1,:)
 
   do j=1,ny0
      if(ocycle(j)) then
-       call spline_cyclic(alonc,dat(:,j),y2c(:,j))
+       call spline_cyclic(alonc,dat(:,j),y2c(:,j), ifail)
      else   
        !cshift is unnecessary for alon because d(alon) is const.
        buf=cshift(dat(1:nx0,j), is(j))
-       call spline(alon, buf, y2c(1:nx0,j))
+       call spline(nx0, alon, buf, y2c(1:nx0,j), ifail)
        y2c(1:nx0,j)=cshift(y2c(1:nx0,j), -is(j))
        y2c(    0,j)=y2c(nx0,j)
        y2c(nx0+1,j)=y2c(  1,j)
@@ -712,9 +711,9 @@ end subroutine intpsfc
 
      if( j .eq. 1) then ! effective for lat/lon grid
         do j1=1,ny0
-           call splint(alonc(0:nx0+1), dat(0:nx0+1,j1), y2c(0:nx0+1,j1), x, fy(j1))
+            fy(j1)=splint(nx0+2, alonc(0), dat(0,j1), y2c(0,j1), x)
         end do
-        call spline(alat, fy, fy2)
+        call spline(ny0, alat, fy, fy2, ifail)
           xb(i)=x
          fyb(:,i)= fy(:)
         fy2b(:,i)=fy2(:)
@@ -726,18 +725,21 @@ end subroutine intpsfc
           fy2=fy2b(:,i)
         else
            do j1=1,ny0
-              call splint(alonc(0:nx0+1), dat(0:nx0+1,j1), y2c(0:nx0+1,j1), x, fy(j1))
+              fy(j1)=splint(nx0+2, alonc(0), dat(0,j1), y2c(0,j1), x)
            end do
-           call spline(alat, fy, fy2)
+           call spline(ny0, alat, fy, fy2, ifail)
         end if
      end if     
-
-     call splint(alat, fy, fy2, y, value)
-
-        tmp(i,j)=value
+        tmp(i,j)=splint(ny0, alat, fy, fy2, y)
   end do
   end do
 
+  if (ifail > 0) then
+     call rewnml( ifpar, jfpar )
+     write(jfpar,*)'error: bet (tridag) = 0'
+     stop
+  end if
+  
   do j=1,ny
   do i=1,nx
      if(tmp(i,j) > -1.d19) data1(i,j)=tmp(i,j)
@@ -746,16 +748,19 @@ end subroutine intpsfc
 
 
   end subroutine intp_spline
-!====================================================================
-  subroutine spline(x,y,y2)
-  implicit none
-  integer :: n, i
-  real(8), intent(in ) :: x(:), y(:)
-  real(8), intent(out) :: y2(:)
-  real(8),allocatable :: a(:), b(:), c(:), r(:)
+end subroutine tmintp_direct
 
-  n=size(x)
-  allocate(a(n), b(n), c(n), r(n))
+!====================================================================
+  subroutine spline(n, x, y, y2, ifail)
+  implicit none
+  integer, intent(in )  :: n
+  real(8), intent(in )  :: x(n), y(n)
+  real(8), intent(out)  :: y2(n)
+  integer, intent(inout):: ifail
+  integer, parameter :: nmax=nx0
+  real(8) :: a(nmax), b(nmax), c(nmax), r(nmax), wrk(nmax)
+  integer :: i
+
   do i=2,n-1
     a(i)=(x(i  )-x(i-1))/6.d0
     b(i)=(x(i+1)-x(i-1))/3.d0
@@ -771,17 +776,17 @@ end subroutine intpsfc
   end do
   y2(1)=0.d0 !natural spline
   y2(n)=0.d0   
-  call tridag(a(2:n-1), b(2:n-1), c(2:n-1), r(2:n-1), y2(2:n-1))
+  call tridag(n-2, a(2:n-1), b(2:n-1), c(2:n-1), r(2:n-1), y2(2:n-1), wrk(2:n-1), ifail)
 
-  deallocate(a,b,c,r)
   return
   end subroutine spline
 !====================================================================
-  subroutine spline_cyclic(x,y,y2)
+  subroutine spline_cyclic(x,y,y2, ifail)
   implicit none
   integer :: n, i
   real(8), intent(in ) :: x(0:), y(0:)
   real(8), intent(out) :: y2(0:)
+  integer, intent(inout) :: ifail
   real(8) :: alpha, beta
   real(8),allocatable :: a(:), b(:), c(:), r(:)
 
@@ -797,7 +802,7 @@ end subroutine intpsfc
 
   beta =a(1)
   alpha=c(n)
-  call tridag_cyclic (a, b, c, alpha, beta, r, y2(1:n))
+  call tridag_cyclic (a, b, c, alpha, beta, r, y2(1:n), ifail)
 
   y2(0  )=y2(n)
   y2(n+1)=y2(1)
@@ -805,14 +810,14 @@ end subroutine intpsfc
   return
   end subroutine spline_cyclic
 !====================================================================
-  subroutine splint(x,y,y2, xx, value)
+  function splint(nx, x,y,y2, xx) result(v)
   implicit none
-  real(8),intent(in ) :: x(:), y(:), y2(:), xx
-  real(8),intent(out) :: value
+  integer, intent(in) :: nx
+  real(8), intent(in) :: x(nx), y(nx), y2(nx), xx
+  real(8) :: v
   real(8) :: a, b, c, d, h
-  integer :: nx, i,i0
+  integer :: i,i0
 
-  nx=size(x)
   i0=-999
   do i=1,nx-1
      if( (xx .ge. x(i)) .and. (xx .le. x(i+1)) ) then
@@ -825,65 +830,55 @@ end subroutine intpsfc
      b=1.d0-a
      c=a*(a*a-1)*h*h/6.d0
      d=b*(b*b-1)*h*h/6.d0
-
-     value=a*y(i0)+ b*y(i0+1)+c*y2(i0)+ d*y2(i0+1)
-
-     if ( min(y(i0), y(i0+1)) < -1.d19 ) value=-1.d20 !missing value
+     v=a*y(i0)+ b*y(i0+1)+c*y2(i0)+ d*y2(i0+1)
+     if ( min(y(i0), y(i0+1)) < -1.d19 ) v=-1.d20 !missing value
   end if
 
   if(i0 < -1) then
-    value= -1.d20 !missing value
+    v= -1.d20 !missing value
   end if
 
-
   do i=1,nx
-     if( xx .eq. x(i) ) value=y(i)
+     if( xx .eq. x(i) ) v=y(i)
   end do
-
-  end subroutine splint
+  end function splint
 !====================================================================
-  subroutine tridag(a, b, c, r, u)
+  subroutine tridag(n, a, b, c, r, u, gam, ifail)
   implicit none
-  integer :: n, j
-  real(8), intent(in ) :: a(:), b(:), c(:), r(:)
-  real(8), intent(out) :: u(:)
+  integer, intent(in ) :: n
+  real(8), intent(in ) :: a(n), b(n), c(n), r(n)
+  real(8), intent(out) :: u(n), gam(n)
+  integer, intent(inout) :: ifail
   real(8) :: bet
-  real(8),allocatable :: gam(:)
-  n=size(a)
-
-  allocate(gam(n))
+  integer :: j
+  
   bet=b(1)
   u(1)=r(1)/bet
   do j=2,n
      gam(j)=c(j-1)/bet
      bet=b(j)-a(j)*gam(j)
-     if (bet .eq. 0.d0)then
-        write(*,*)'tridag failed'
-        stop
-     end if
-        
+     if (bet .eq. 0.d0) ifail=ifail+1
      u(j)=(r(j)-a(j)*u(j-1))/bet
   end do
   do j=n-1,1,-1
      u(j)=u(j)-gam(j+1)*u(j+1)
   end do
-  deallocate(gam)
+
   return
   end subroutine tridag
 !====================================================================
-  subroutine tridag_cyclic (a, b, c, alpha, beta, r, x)      
+  subroutine tridag_cyclic (a, b, c, alpha, beta, r, x, ifail)
 !     From Numerical Recipes p67-68
   implicit none
   real(8), intent(in ) ::  a(:), b(:), c(:), alpha, beta, r(:)
   real(8), intent(out) ::  x(:)
+  integer, intent(inout) :: ifail
   integer :: n, i
   real(8) :: fact, gamma
-  real(8),allocatable :: bb(:), u(:), z(:)
+  real(8),allocatable :: bb(:), u(:), z(:), wrk(:)
 
   n=size(a)
-  allocate(bb(n))
-  allocate( u(n))
-  allocate( z(n))
+  allocate(bb(n), u(n), z(n), wrk(n))
 
   gamma=-b(1)
   bb(1)=b(1)-gamma
@@ -893,7 +888,7 @@ end subroutine intpsfc
      bb(i)=b(i)
   end do
       
-  call tridag(a, bb, c, r, x)
+  call tridag(n, a, bb, c, r, x, wrk, ifail)
 
   u(1)=gamma
   u(n)=alpha
@@ -901,21 +896,16 @@ end subroutine intpsfc
      u(i)=0.d0
   end do
       
-  call tridag(a, bb, c, u, z)
+  call tridag(n, a, bb, c, u, z, wrk, ifail)
   fact=( x(1) + beta*x(n)/gamma ) /(1.d0 +z(1) +beta*z(n)/ gamma )
       
   do i=1,n
      x(i)=x(i)-fact*z(i)
   end do
 
-  deallocate(bb)
-  deallocate( u)
-  deallocate( z)
+  deallocate(bb, u, z, wrk)
   return
   end subroutine tridag_cyclic
-
-  end subroutine tmintp_direct
-
 
 #ifndef OPT_IO_COCOMPI
   subroutine tmintp(  ditem, iitem  )
