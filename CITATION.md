@@ -23,7 +23,7 @@ In addition to citing the software itself, users are encouraged to cite a public
 
 The original description of COCO is:
 
-> Hasumi, H. (2006). *CCSR Ocean Component Model (COCO) Version 4.0*. CCSR Report No. 25, Center for Climate System Research, The University of Tokyo.
+> Hasumi, H. (2006). *CCSR Ocean Component Model (COCO) Version 4.0*. Zenodo, https://doi.org/10.5281/zenodo.23874555
 
 Although this report describes an earlier implementation of COCO, it remains the primary reference dedicated to the model itself. Since then, COCO has evolved substantially, including the transition from the original Fortran 77 implementation to the current Fortran 90/95 code base. At present, no dedicated model description paper is available for the modern implementation.
 
