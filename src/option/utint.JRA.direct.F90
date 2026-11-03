@@ -1,5 +1,6 @@
 module utint
-    use zocdim,  only  : nxy, mpi_comm_ogcm
+  use zocdim,  only  : nxy, mpi_comm_ogcm
+  use ucloc
   implicit none
 #include "coco.h"
   integer,parameter :: nx0=640, ny0=320
@@ -620,9 +621,9 @@ contains
   if (olint_wind) return
   
   if(iitem .le. 2) then
-     !$acc update self(data1)
+     call clcstr('SPLINE')
      call intp_spline(alon, alat, mask, direct, data1)
-     !$acc update device(data1)
+     call clcend('SPLINE')
   end if
 
 !  return
@@ -645,9 +646,10 @@ end subroutine intpsfc
   real(8) :: dat(0:nx0+1,ny0), y2c(0:nx0+1,1:ny0)
   real(8), save :: alonc(0:nx0+1)
   real(8) :: buf(nx0)
-  real(8) :: fy(ny0), fy2(ny0), fyb(ny0,nx), fy2b(ny0,nx), xb(nx)
-  real(8) :: data1(nx,ny), tmp(nx,ny)
-  real(8) :: x,y
+  real(8) :: fy(ny0), fy2(ny0)
+  real(8) :: a(nx0), b(nx0), c(nx0), r(nx0), gam(nx0)  ! work arrays for spline/tridag
+  real(8) :: data1(nx,ny)
+  real(8) :: x,y,tmp
   integer :: i,j,j1, ijd, ifail, ii,jj
 
   real(8), save :: glont0(nxydim)
@@ -696,6 +698,7 @@ end subroutine intpsfc
            end do
         end do
      end do
+     !$acc enter data copyin(alonc, glont0, ilon, jlat)
   end if
 
   where(mask ==0) dat4=-1.d20 !set missing value
@@ -706,75 +709,56 @@ end subroutine intpsfc
   dat(   0,:)=dat(nx0,:)
   dat(nx0+1,:)=dat( 1,:)
 
+!  call clcstr('spline1')
   do j=1,ny0
      if(ocycle(j)) then
        call spline_cyclic(alonc,dat(:,j),y2c(:,j), ifail)
      else   
        !cshift is unnecessary for alon because d(alon) is const.
        buf=cshift(dat(1:nx0,j), is(j))
-       call spline(nx0, alon, buf, y2c(1:nx0,j), ifail)
+       call spline(nx0, alon, buf, y2c(1:nx0,j), a, b, c, r, gam, ifail)
        y2c(1:nx0,j)=cshift(y2c(1:nx0,j), -is(j))
        y2c(    0,j)=y2c(nx0,j)
        y2c(nx0+1,j)=y2c(  1,j)
      end if
   end do
-
+!  call clcend('spline1')
+!  call clcstr('spline2')
+  !$acc data copyin(dat, y2c) copy(ifail)
+  !$acc parallel loop gang collapse(2) default(present) private(fy, fy2, a, b, c, r, gam) reduction(+:ifail)
   do j=1,ny
   do i=1,nx
      ijd = i+istr-1 + nxdim*(j+jstr-2)
      y=glatt(ijd)
      x=glont0(ijd)
-
-     if( j .eq. 1) then ! effective for lat/lon grid
-        do j1=1,ny0
-            fy(j1)=splint(nx0+2, alonc(0), dat(0,j1), y2c(0,j1), x, ilon(i,j))
-        end do
-        call spline(ny0, alat, fy, fy2, ifail)
-          xb(i)=x
-         fyb(:,i)= fy(:)
-        fy2b(:,i)=fy2(:)
-
-     else
-!        if( abs(x-xb(i)) .le. 1.e-10 ) then
-        if( x == xb(i) ) then
-           fy= fyb(:,i)
-          fy2=fy2b(:,i)
-        else
-           do j1=1,ny0
-              fy(j1)=splint(nx0+2, alonc(0), dat(0,j1), y2c(0,j1), x, ilon(i,j))
-           end do
-           call spline(ny0, alat, fy, fy2, ifail)
-        end if
-     end if     
-        tmp(i,j)=splint(ny0, alat, fy, fy2, y, jlat(i,j))
+     !$acc loop vector
+     do j1=1,ny0
+        fy(j1)=splint(nx0+2, alonc(0), dat(0,j1), y2c(0,j1), x, ilon(i,j))
+     end do
+     call spline(ny0, alat, fy, fy2, a, b, c, r, gam, ifail)
+     tmp=splint(ny0, alat, fy, fy2, y, jlat(i,j))
+     if(tmp > -1.d19) data1(i,j)=tmp
   end do
   end do
-
+  !$acc end data
+!  call clcend('spline2')
   if (ifail > 0) then
      call rewnml( ifpar, jfpar )
      write(jfpar,*)'error: bet (tridag) = 0'
      stop
   end if
-  
-  do j=1,ny
-  do i=1,nx
-     if(tmp(i,j) > -1.d19) data1(i,j)=tmp(i,j)
-  end do
-  end do
-
-
   end subroutine intp_spline
 end subroutine tmintp_direct
 
 !====================================================================
-  subroutine spline(n, x, y, y2, ifail)
+  subroutine spline(n, x, y, y2, a, b, c, r, gam, ifail)
   implicit none
+  !$acc routine seq
   integer, intent(in )  :: n
   real(8), intent(in )  :: x(n), y(n)
   real(8), intent(out)  :: y2(n)
+  real(8), intent(out)  :: a(n), b(n), c(n), r(n), gam(n)
   integer, intent(inout):: ifail
-  integer, parameter :: nmax=nx0
-  real(8) :: a(nmax), b(nmax), c(nmax), r(nmax), wrk(nmax)
   integer :: i
 
   do i=2,n-1
@@ -792,7 +776,7 @@ end subroutine tmintp_direct
   end do
   y2(1)=0.d0 !natural spline
   y2(n)=0.d0   
-  call tridag(n-2, a(2:n-1), b(2:n-1), c(2:n-1), r(2:n-1), y2(2:n-1), wrk(2:n-1), ifail)
+  call tridag(n-2, a(2:n-1), b(2:n-1), c(2:n-1), r(2:n-1), y2(2:n-1), gam(2:n-1), ifail)
 
   return
   end subroutine spline
@@ -828,6 +812,7 @@ end subroutine tmintp_direct
 !====================================================================
   function splint(nx, x,y,y2, xx, i0) result(v)
   implicit none
+  !$acc routine seq
   integer, intent(in) :: nx, i0
   real(8), intent(in) :: x(nx), y(nx), y2(nx), xx
   real(8) :: v
@@ -851,6 +836,7 @@ end subroutine tmintp_direct
 !====================================================================
   subroutine tridag(n, a, b, c, r, u, gam, ifail)
   implicit none
+  !$acc routine seq
   integer, intent(in ) :: n
   real(8), intent(in ) :: a(n), b(n), c(n), r(n)
   real(8), intent(out) :: u(n), gam(n)
