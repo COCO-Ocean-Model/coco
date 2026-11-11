@@ -725,7 +725,7 @@ end subroutine intpsfc
 !  call clcend('spline1')
 !  call clcstr('spline2')
   !$acc data copyin(dat, y2c) copy(ifail)
-  !$acc parallel loop gang collapse(2) default(present) private(fy, fy2, a, b, c, r, gam) reduction(+:ifail)
+  !$acc parallel loop gang collapse(2) num_gangs(4096) vector_length(32) default(present) private(fy, fy2, a, b, c, r, gam) reduction(+:ifail)
   do j=1,ny
   do i=1,nx
      ijd = i+istr-1 + nxdim*(j+jstr-2)
