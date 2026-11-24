@@ -734,21 +734,7 @@ contains
                    end do
                    end do
                 end if
-                if (osingl(iitem)) then
-                   do k = kzstr(iitem), kzend(iitem)
-                   do j = 1, ny
-                   do i = 1, nx
-                      ijk = (k - kzstr(iitem)) * nxy + (j - 1) * nx + i
-                      snglou(ijk) = dbleou(ijk)
-                   end do
-                   end do
-                   end do
-                   call write_ncfile(iitem, chead, nx, ny, kzdim, snglou)
-                else
-                   call rewnml(ifpar, jfpar)
-                   write(jfpar,*)'Err. Only for REAL4'
-                   stop
-                end if
+                call write_ncfile(iitem, chead, nx, ny, kzdim, dbleou)
 #else
                 call rewnml(ifpar, jfpar)
                 write(jfpar,*)'Err. OPT_IO_NCF should be specified'
@@ -1602,7 +1588,9 @@ contains
     integer,            intent(in) :: iitem
     character (len=16), intent(in) :: chead(1:64)
     integer,            intent(in) :: nx, ny, kzdim
-    real(4),            intent(in) :: dat(nx*ny*kzdim)
+    real(8),            intent(in) :: dat(nx*ny*kzdim)
+
+    real(4) :: dat_real4(nx*ny*kzdim)
     character (len=4)  :: cyr
     character (len=2)  :: cmon, cday, chr, cmin, csec
     character (len=5)  :: cz_unit
@@ -1635,6 +1623,11 @@ contains
     real(8) :: tout, time1
     integer :: idate(6)
 
+    type(xy_coord_type) :: xy_coord
+    type(z_coord_type) :: z_coord
+    type(t_coord_type) :: t_coord
+    type(v_info_type) :: v_info
+    
     if (of) then
        call def_coord
        of=.false.
@@ -1707,32 +1700,45 @@ contains
     read(chead(50),'(i6.6,5i2.2)') idate
     call cyh2ss(tout, idate)
 
+    xy_coord%x=x
+    xy_coord%y=y
+    xy_coord%x_unit='degrees_east'
+    xy_coord%y_unit='degrees_north'
+    xy_coord%x_long_name='longitude'
+    xy_coord%y_long_name='latitude'
+#ifdef OPT_EXMASK
+    xy_coord%x_vert=x_vert
+    xy_coord%y_vert=y_vert
+#endif
+    t_coord%time=tout
+    t_coord%t_unit='hours since '//cyr//'-'//cmon//'-'//cday//' '//chr//':'//cmin//':'//csec
+    t_coord%time1=time1
+    v_info%cvar=adjustl(citem(iitem))
+    v_info%v_unit=adjustl(cunit(iitem))
+    v_info%v_long_name=adjustl(ctitl(iitem))
+
     if (clas(iitem)(3:5) == 'SFC') then
-       call nc_write(cf=trim(adjustl(cfitem(iitem)))//'.nc', fid=iitem, time=tout, &
-            & nxg=nxg,nyg=nyg, nx=nx,ny=ny,nz=kzdim, irank=irank, jrank=jrank, &
-            & shuffle=.true., deflate_level=1, &
-            & buf4=dat, cvar=adjustl(citem(iitem)), v_unit=adjustl(cunit(iitem)), v_long_name=adjustl(ctitl(iitem)), &
-            & fill_value=-1.e20, &
-            & x=x, x_unit='degrees_east',  x_long_name='longitude', &
-            & y=y, y_unit='degrees_north', y_long_name='latitude', &
-#ifdef OPT_EXMASK
-            & x_vert=x_vert, y_vert=y_vert, &
-#endif
-            & t_unit='hours since '//cyr//'-'//cmon//'-'//cday//' '//chr//':'//cmin//':'//csec, time1=time1)
+       if (osingl(iitem)) then
+          dat_real4 = real(dat, 4)
+          call nc_write(trim(adjustl(cfitem(iitem)))//'.nc', iitem, dat_real4, &
+               & v_info, xy_coord, t_coord)
+       else
+          call nc_write(trim(adjustl(cfitem(iitem)))//'.nc', iitem, dat, &
+               & v_info, xy_coord, t_coord)
+       end if
     else
-       call nc_write(cf=trim(adjustl(cfitem(iitem)))//'.nc', fid=iitem, time=tout, &
-            & nxg=nxg,nyg=nyg, nx=nx,ny=ny,nz=kzdim, irank=irank, jrank=jrank, &
-            & shuffle=.true., deflate_level=1, &
-            & buf4=dat, cvar=adjustl(citem(iitem)), v_unit=adjustl(cunit(iitem)), v_long_name=adjustl(ctitl(iitem)), &
-            & fill_value=-1.e20, &
-            & x=x, x_unit='degrees_east',  x_long_name='longitude', &
-            & y=y, y_unit='degrees_north', y_long_name='latitude', &
-            & z=z, z_unit=trim(cz_unit),   z_long_name=cz_long_name, &
-#ifdef OPT_EXMASK
-            & x_vert=x_vert, y_vert=y_vert, &
-#endif
-            & z_bnd = z_bnd, &
-            & t_unit='hours since '//cyr//'-'//cmon//'-'//cday//' '//chr//':'//cmin//':'//csec, time1=time1)
+       z_coord%z=z
+       z_coord%z_bnd=z_bnd
+       z_coord%z_unit=trim(cz_unit)
+       z_coord%z_long_name=cz_long_name
+       if (osingl(iitem)) then
+          dat_real4 = real(dat, 4)
+          call nc_write(trim(adjustl(cfitem(iitem)))//'.nc', iitem, dat_real4, &
+               & v_info, xy_coord, t_coord, z_coord=z_coord)
+       else
+          call nc_write(trim(adjustl(cfitem(iitem)))//'.nc', iitem, dat, &
+               & v_info, xy_coord, t_coord, z_coord=z_coord)
+       end if
     end if
     deallocate(z)
     deallocate(z_bnd)
@@ -1788,6 +1794,8 @@ contains
       data c_ncg /'not-specified'/
 
 #ifdef OPT_EXMASK
+      glon(:)=0.d0
+      glat(:)=0.d0
       call gather_2d( glon, glont)
       call gather_2d( glat, glatt)
 #endif
@@ -1943,6 +1951,5 @@ contains
 
   end subroutine write_ncfile
 #endif
-  
-end module qckot
 
+end module qckot
