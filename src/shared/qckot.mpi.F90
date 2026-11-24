@@ -1737,6 +1737,7 @@ contains
        end if
     else
        z_coord%z=z
+       z_coord%z_bnd=z_bnd
        z_coord%z_unit=trim(cz_unit)
        z_coord%z_long_name=cz_long_name
        if (osingl(iitem)) then
