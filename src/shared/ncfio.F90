@@ -579,7 +579,7 @@ contains
     idate(1:6) = (/0,1,1,0,0,0/)
     pos = index(time_units, '-') 
     if (pos > 0) then
-       read(time_units(pos0+5:pos-1), '(I)') idate(1)
+       read(time_units(pos0+5:pos-1),     *) idate(1)
        read(time_units(pos+1:pos+2), '(I2)') idate(2)
        read(time_units(pos+4:pos+5), '(I2)') idate(3)
     end if
