@@ -1802,6 +1802,8 @@ contains
       data c_ncg /'not-specified'/
 
 #ifdef OPT_EXMASK
+      glon(:)=0.d0
+      glat(:)=0.d0
       call gather_2d( glon, glont)
       call gather_2d( glat, glatt)
 #endif
