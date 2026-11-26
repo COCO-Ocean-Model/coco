@@ -336,6 +336,7 @@ contains
        dmsktl(ij, nbot(ij)) = amskt1(ij)
     end do
 #endif
+    shift_gpu=.false.
 #ifdef OPT_TRIPOLE
     call shift1( dmsktl, nxdim, nydim, nzdim, 1.d0, 0, 0 )
 #else
@@ -354,6 +355,7 @@ contains
           end do
        end do
     end do
+    shift_gpu=.false.
 #ifdef OPT_TRIPOLE
     call shift1( dmskvl, nxdim, nydim, nzdim, 1.d0, -1, -1 )
 #else
@@ -920,6 +922,7 @@ contains
        
        if (oadd(item)) then
           if (iflout(item) == 1) then
+             !$acc update self(ditem)
              if ((nvcord(item) > 0) &
                 & .and.(nhcord(item) > 0)) then   !! sigma output
                 sdim = nsig(nvcord(item))
@@ -1080,6 +1083,8 @@ contains
          & '*** Varibles on sigma-coordinate will not be output. ***'
     end if
 
+    !$acc enter data create(sigma, korg, ksdst, dkrep, thick)
+    
     call secofx
 
 !   nbtnb(ij,1): nbot without BBL at T-point 
@@ -1208,7 +1213,17 @@ contains
     integer :: ij, k, n, nh, nl
     character(len=7) :: cvnam
     character(len=32) :: cvmes
+    logical, save :: of=.true.
+#if defined(_OPENACC) || defined(GPU_DEBUG)
+    save sigout
+#endif
+    if(of) then
+       !$acc enter data create(sigout, oscvtb)
+       of=.false.
+    end if
 
+    !$acc kernels default(present)
+    !$acc loop gang vector collapse(4)
     do nh = 1, nchmax
        do n = 0, nnc
           do k = 1, nzdim
@@ -1217,6 +1232,9 @@ contains
              end do
           end do
        end do
+    end do
+    !$acc loop gang vector collapse(4)
+    do nh = 1, nchmax
        do n = 1, nnc
           do nl = 1, nlist
              do ij = 1, nxydim
@@ -1227,9 +1245,13 @@ contains
              end do
           end do
        end do
+    end do
+    do nh = 1, nchmax
        oscvtb(nh) = .false.
     end do
+    !$acc end kernels
 
+    !$acc kernels default(present)
     do n = 0, nnc
        do ij = 1, nxydim
           do k = kstr, nbot(ij)
@@ -1256,12 +1278,14 @@ contains
 #endif
        end do
     end do
+    !$acc end kernels
 
     if (oinit) then
        return
     end if
 
     do n=0, nnc
+       !$acc kernels default(present)
        do k=1, nzdim
           do ij=1, nxydim
              sigout(ij, k) = sigma(ij, k, n, 1)
@@ -1274,6 +1298,7 @@ contains
             &       + sigout(ij, k) * (1.0d0 - amsktb(ij))
        end do
 #endif
+       !$acc end kernels
        cvmes = '                                '
        if (n == 0) then
           cvnam = 'PDEN   '
@@ -1310,11 +1335,14 @@ contains
           cycle
        end if
 
+       !$acc kernels default(present)
        do k=1, nzdim
           do ij=1, nxydim
              sigout(ij, k) = 1.0d0
           end do
        end do
+       !$acc end kernels
+
        cvmes = 'Sigma thickness(' // trim(cname(n)) // ')' 
        call chekin(sigout, 'DZSIG', &
          &      cvmes, 'cm',        &
@@ -1336,6 +1364,7 @@ contains
     use zocmsk, only: &
       &  amskvb
 #endif
+    use ufile
     implicit none
 
     integer, intent(in)  ::  sdim,  ncsig,    nch
@@ -1346,6 +1375,12 @@ contains
 
     REAL(8) :: zitmi
     integer :: ij, k, n, nl
+
+#ifdef _OPENACC
+    call stop_msg( &
+    'Insufficient OpenACC directives cause wrong results when cvsigc is called.', &
+    __FILE__, __LINE__)
+#endif
 
     if (.not.oscvtb(nch)) then  !! first conversion in each step
        if (nch == 2) then  !! calculate sigma for V-point
@@ -1551,6 +1586,12 @@ contains
       &   d0(0:nnc), d1(0:nnc), d2(0:nnc), d3(0:nnc), d4(0:nnc), &
       &   d5(0:nnc), d6(0:nnc), d7(0:nnc), d8(0:nnc), d9(0:nnc))
 
+    !$acc enter data create(c0, c1, c2, c3, c4, c5, c6)
+    !$acc enter data create(d0, d1, d2, d3, d4)
+    !$acc enter data create(d5, d6, d7, d8, d9)
+    !$acc enter data copyin(zref)
+    
+    !$acc kernels default(present)
     do n = 0, nnc
        z = zref(n) / 1.0d2
        c0(n) = p10 + (p1p + p1pp * z) * z
@@ -1572,6 +1613,7 @@ contains
        d8(n) = p2ss
        d9(n) = p2sstt
     end do
+    !$acc end kernels
 
     return
   end subroutine secofx
