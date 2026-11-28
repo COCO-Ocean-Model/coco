@@ -51,18 +51,20 @@ module qckot
 
   integer, save :: nbtnb(nxydim, nchmax)
   real*8, save :: dzmnb(nxydim, nzdim, nchmax)
-
-  real(8), allocatable, save ::  dmskt (:,:,:), dmsktl(:,:)
-  real(8), allocatable, save ::  dmskv (:,:,:), dmskvl(:,:) 
-  real(8), allocatable, save ::  dmskxl(:,:), dmskyl(:,:)
-  real(8), allocatable, save ::    buf3(:,:,:)
-  real(8), allocatable, save ::    buf2(:,:)
-  real(8), allocatable, save ::  dmskl (:,:)
-  
   real*8, allocatable, save :: sigma(:,:,:,:)
   integer, allocatable, save :: korg(:,:,:,:), ksdst(:,:,:,:)
   real*8, allocatable, save :: dkrep(:,:,:,:), thick(:,:,:,:)
   logical, save :: oscvtb(nchmax)
+  
+  real(8), allocatable, save ::  dmsktl(:,:)
+  real(8), allocatable, save ::  dmskvl(:,:) 
+  real(8), allocatable, save ::  dmskxl(:,:), dmskyl(:,:)
+  real(8), allocatable, save ::   dmskl(:,:)
+
+  real(8), allocatable, save ::  dmskt (:,:,:)
+  real(8), allocatable, save ::  dmskv (:,:,:)
+  real(8), allocatable, save ::    buf3(:,:,:)
+  real(8), allocatable, save ::    buf2(:,:)
 
   real*8, allocatable, save :: &
    &      c0(:), c1(:), c2(:), c3(:), c4(:), c5(:), c6(:), &
@@ -79,9 +81,6 @@ module qckot
 
   character(len=16), save :: chrnum
   real(8), save  ::  dundef = -1.d20
-
-  integer, save   :: isingl(nfomax)
-  data isingl / nfomax*1 /
 
 contains
   subroutine chkset
@@ -121,19 +120,18 @@ contains
     character ::  cohfil*(ncf), cohitm*16, cohvco*16
     character(len=ncf) ::  crun = '(RUN NAME WAS NOT SET)'
     character(16) :: ddfmt = 'not-specified'
-    character(16) ::  dfmt
+    character(16) :: dfmt
 
     namelist /nmtime/ itstrt, itend, tmstp, iutstp, ntsplt
-    namelist /nmdout/ iodstr, iodend, iodint, iudint, iodavr, iodsng, iodsvi, &
-         &             ddfmt, iodl6d
-    namelist /nmhist/ cohitm, cohfil, cohvco,                                 &
-         &            iohstr, iohend, iohint, iuhint, iohavr, iohsng,         &
-         &            ioxstr, ioxend, ioystr, ioyend, iozstr, iozend, iosvin, &
-         &              dfmt, iohl6d
+    namelist /nmdout/ iodstr, iodend, iodint, iudint, iodavr, iodsng, iodsvi, iodl6d, ddfmt
+    namelist /nmhist/ cohitm, cohfil, cohvco,                           &
+         &            iohstr, iohend, iohint, iuhint, iohavr, iohsng,   &
+         &            ioxstr, ioxend, ioystr, ioyend, iozstr, iozend, iosvin, iohl6d, dfmt
     namelist /nmrun/ crun
     
-    integer :: i, j, k, n, ij
+    integer :: i, j, k, ij, n
     integer :: istat
+    integer, save   :: isingl(nfomax)=1
     logical :: lopen
 
     nsig(0) = nz
@@ -146,7 +144,7 @@ contains
 
     READ_NAMELIST( nmtime )
     READ_NAMELIST( nmdout )
-    READ_NAMELIST( nmrun )
+    READ_NAMELIST( nmrun  )
 
     if (crun(1:1) == '(') then
        chrnum = 'COCO stand-alone'
@@ -162,8 +160,8 @@ contains
        iointv(iitem) = iodint
        iuintv(iitem) = iudint
        ioavrg(iitem) = iodavr
-       isvint(iitem) = iodsvi
        isingl(iitem) = iodsng
+       isvint(iitem) = iodsvi
        if ( iodsng == 0 ) cdfmt(iitem) = 'UR8'
        if ( iodsng == 1 ) cdfmt(iitem) = 'UR4'
        if ( ddfmt(1:13) /= 'not-specified' ) cdfmt(iitem) = ddfmt
@@ -474,6 +472,7 @@ contains
     use bgs3d
     use ucaln
     use ufile
+    use ucloc
     implicit none
 
     logical, intent(in) :: oflout(nfomax)
@@ -485,14 +484,14 @@ contains
     real(8) :: tout, tdur
     integer ::  idate(6) 
     integer :: ijk, ijkm
-    integer :: i, j, k
+    integer :: i, j, k, ij
     
     character(len=8)  :: hdate
     character(len=10) :: htime
     character(len=5)  :: hzone
     integer :: ivalues(1:8)
-    integer :: ij
 
+    call clcstr("CHKOUT")
     do iitem = 1, nohitm
        if (oflout(iitem)) then
           if (iflout(iitem) == 1) then
@@ -519,7 +518,6 @@ contains
              write(chead(28), '(i16)') nint(tdur / 3.6d3)
              write(chead(27), '(i4.4,2i2.2,1x,3i2.2,1x)') idate(1:6)
              write(chead(50), '(i6.6,5i2.2)') idate(1:6)
-             
 #ifdef OPT_TRIPOLE
              if (clas(iitem)(6:6) == 'V') then
                 write(chead(29), '(a,i0)') 'OCLONTPV', nxitm(iitem)
@@ -743,7 +741,7 @@ contains
                 stop
 #endif
              end if
-             
+    
              if (myrank < ijnode) then
                 do i = 1, nszitm(iitem)
                    wrkout(itopad(iitem) + i - 1) = 0.d0
@@ -771,6 +769,7 @@ contains
           end if
        end if
     end do
+    call clcend("CHKOUT")
 
     return
   end subroutine chkout
@@ -811,7 +810,7 @@ contains
 
     do iohitm = 1, nohitm
        ctitem = ccitem
-       if (citem(iohitm) .ne. ccitem) then
+       if (citem(iohitm) /= ccitem) then
           cycle
        end if
        item = iohitm
@@ -1003,7 +1002,7 @@ contains
 #ifdef OPT_BBL
       &  amsktb, amskvb,  nbotv, &
 #endif
-      &    nbot
+      &  nbot
     use zocfil, only: &
       &     ncf
     use ufile
@@ -1084,7 +1083,7 @@ contains
     end if
 
     !$acc enter data create(sigma, korg, ksdst, dkrep, thick)
-    
+
     call secofx
 
 !   nbtnb(ij,1): nbot without BBL at T-point 
@@ -1202,7 +1201,7 @@ contains
 #ifdef OPT_BBL
       &  amsktb, &
 #endif
-      &    nbot,  amskt
+      &   amskt,   nbot
 
     implicit none
 
@@ -1471,7 +1470,7 @@ contains
           if (korg(ij,1,n,nch) < 0) then
              write(jfpar,*) &
                &  ' ### PUTSIG: FAIL TO FIND THE STARTING BIN. ###'
-!             write(0,*) ij,sigma(ij,kstr,n,nch)
+!             write(jfpar,*) ij,sigma(ij,kstr,n,nch)
              stop
           end if
  
@@ -1526,7 +1525,7 @@ contains
              if (korg(ij,nl,n,nch) < 0) then
                 write(jfpar,*) &
                   &  ' ### PUTSIG: FAIL TO FIND THE BIN FOR BBL. ###'
-!                write(0,*) i,j,sigma(ij,kend,n,nch)
+!                write(jfpar,*) i,j,sigma(ij,kend,n,nch)
                 stop
              end if
           end if

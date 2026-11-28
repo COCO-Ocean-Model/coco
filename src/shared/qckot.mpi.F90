@@ -122,8 +122,7 @@ contains
     
     integer :: i, j, k, ij, n
     integer :: istat
-    integer, save   :: isingl(nfomax)
-    data isingl / nfomax*1 /
+    integer, save   :: isingl(nfomax)=1
 
     nsig(0) = nz
     nsig(1:nncmax) = 0
@@ -131,7 +130,7 @@ contains
     nsnzmx = maxval(nsig)
     nworks = max(cnwrks*maxval(nsig(1:nncmax))*nxydim, 1)
     allocate(owrksg(nworks))
-        
+
     READ_NAMELIST( nmtime )
     READ_NAMELIST( nmdout )
     READ_NAMELIST( nmrun  )
@@ -227,7 +226,7 @@ contains
           if (nvcord(iohitm) > 0) then        !! sigma output
              kzend(iohitm) = nsig(nvcord(iohitm))
           end if
- 
+
           if (iohstr(1) >= 0) then
              do i = 1, 6
                 iostrt(i, iohitm) = iohstr(i)
@@ -308,6 +307,7 @@ contains
     allocate(dmskvl(nxydim, nzdim))
     allocate(dmskxl(nxydim, nzdim))
     allocate(dmskyl(nxydim, nzdim))
+    allocate(dmskl (nxydim, nzdim))
     dmsktl(:,:) = amskt(:,:)
 #ifdef OPT_BBL
     do ij = 1, nxydim
@@ -1217,7 +1217,7 @@ contains
        oscvtb(nh) = .false.
     end do
     !$acc end kernels
-    
+
     !$acc kernels default(present)
     do n = 0, nnc
        do ij = 1, nxydim
@@ -1246,7 +1246,7 @@ contains
        end do
     end do
     !$acc end kernels
-    
+
     if (oinit) then
        return
     end if
